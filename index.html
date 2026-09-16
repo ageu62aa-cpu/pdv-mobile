@@ -3,213 +3,333 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDV Mobile & Desktop</title>
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Supabase JS SDK -->
+    <title>PDV-VS - Automação Comercial</title>
+    <!-- Tailwind CSS para estilização rápida e responsiva -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- Supabase JS Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <!-- Instascan para Leitura de Código de Barras via Câmera -->
-    <script src="https://rawgit.com/schmich/instascan-builds/master/instascan.min.js"></script>
+    <style>
+        body { background-color: #0f172a; color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; }
+    </style>
 </head>
-<body class="bg-gray-100 min-h-screen flex flex-col">
+<body class="h-screen flex flex-col justify-between overflow-hidden select-none">
 
-    <!-- Cabeçalho -->
-    <header class="bg-blue-600 text-white p-4 shadow-md flex justify-between items-center">
-        <h1 class="text-xl font-bold">PDV Rápido</h1>
-        <button onclick="abrirConfig()" class="bg-blue-700 px-3 py-1 rounded text-sm hover:bg-blue-800">⚙️ Configurar Supabase</button>
+    <!-- TOPO: Janela Estilo Sistema Comercial -->
+    <header class="bg-slate-900 border-b border-slate-800 px-4 py-2 flex justify-between items-center text-sm shadow-md">
+        <div class="flex items-center space-x-2">
+            <span class="inline-block w-3 h-3 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span class="font-bold tracking-wider text-slate-200">PDV-VS - Automação Comercial</span>
+        </div>
+        <div class="flex items-center space-x-6 text-slate-300">
+            <div>Atendente: <strong class="text-emerald-400">ADMIN</strong></div>
+            <div id="relogio" class="bg-slate-800 px-3 py-1 rounded text-emerald-300 font-mono text-xs border border-slate-700">--:--:-- | --/--/----</div>
+        </div>
+        <div>
+            <button onclick="abrirConfig()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded border border-slate-700 transition">⚙️ Configurar Supabase</button>
+        </div>
     </header>
 
-    <!-- Conteúdo Principal -->
-    <main class="flex-1 p-4 max-w-4xl mx-auto w-full grid grid-cols-1 md:grid-cols-2 gap-4">
-        
-        <!-- Lado Esquerdo: Caixa / Venda -->
-        <div class="bg-white p-4 rounded-lg shadow flex flex-col justify-between">
-            <div>
-                <h2 class="text-lg font-semibold mb-2 text-gray-700">Caixa Atual</h2>
-                <div class="flex gap-2 mb-4">
-                    <input type="text" id="codigoInput" placeholder="Digite ou bipe o código..." class="border p-2 rounded flex-1 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <button onclick="adicionarPorCodigo()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Adicionar</button>
-                </div>
-                
-                <!-- Botão Câmera -->
-                <button onclick="toggleCamera()" class="w-full bg-purple-600 text-white py-2 rounded mb-4 hover:bg-purple-700">📷 Ler com a Câmera</button>
-                <div id="camera-container" class="hidden mb-4 relative">
-                    <video id="preview" class="w-full rounded border"></video>
-                </div>
+    <!-- CONTAINER PRINCIPAL -->
+    <main class="flex-1 p-4 grid grid-cols-12 gap-4 max-h-[calc(100vh-110px)]">
 
-                <!-- Lista do Carrinho -->
-                <div class="border rounded h-48 overflow-y-auto p-2 bg-gray-50 mb-4" id="carrinhoLista">
-                    <p class="text-gray-400 text-center mt-16">Carrinho vazio</p>
+        <!-- LADO ESQUERDO: Controles, Banner e Entradas (7 colunas) -->
+        <section class="col-span-7 flex flex-col gap-4">
+            
+            <!-- BANNER DE DESTAQUE DO ÚLTIMO ITEM -->
+            <div id="banner-produto" class="bg-gradient-to-r from-emerald-700 to-emerald-900 border border-emerald-500/40 rounded-lg p-4 shadow-lg flex items-center justify-between">
+                <div>
+                    <span class="text-xs uppercase tracking-widest text-emerald-200 font-semibold">Caixa Aberto - Último Item</span>
+                    <h1 id="ultimo-item-nome" class="text-2xl font-black text-white tracking-wide mt-0.5">CAIXA LIVRE</h1>
+                </div>
+                <div class="text-right">
+                    <span class="text-xs text-emerald-200 block">Qtd / Valor</span>
+                    <span id="ultimo-item-detalhe" class="text-lg font-bold text-emerald-100 font-mono">R$ 0,00</span>
                 </div>
             </div>
 
-            <!-- Total e Pagamento -->
-            <div>
-                <div class="flex justify-between text-xl font-bold mb-4">
-                    <span>Total:</span>
-                    <span id="totalVenda" class="text-green-600">R$ 0,00</span>
+            <!-- BLOCO DE ENTRADA E LOGO -->
+            <div class="grid grid-cols-12 gap-4 flex-1">
+                <!-- Painel de Imagem / Logo PDV -->
+                <div class="col-span-5 bg-slate-900/80 border border-slate-800 rounded-lg p-4 flex flex-col items-center justify-center text-center shadow-inner">
+                    <div class="w-24 h-24 bg-emerald-500/10 border-2 border-emerald-500/30 rounded-2xl flex items-center justify-center mb-3 shadow-lg">
+                        <span class="text-3xl font-black tracking-tighter text-emerald-400">VS</span>
+                    </div>
+                    <span class="text-xs font-bold text-emerald-400 tracking-widest">PDV-VS</span>
+                    <span class="text-[10px] text-slate-400 mt-1">Ambiente Integrado Supabase</span>
                 </div>
-                <button onclick="finalizarVenda()" class="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700">Finalizar Venda (Pix / Dinheiro)</button>
-            </div>
-        </div>
 
-        <!-- Lado Direito: Cadastro Rápido de Produtos -->
-        <div class="bg-white p-4 rounded-lg shadow">
-            <h2 class="text-lg font-semibold mb-2 text-gray-700">Cadastrar Novo Produto</h2>
-            <form id="formProduto" onsubmit="cadastrarProduto(event)" class="space-y-3">
-                <div>
-                    <label class="block text-sm text-gray-600">Código de Barras</label>
-                    <input type="text" id="cadCodigo" required class="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <!-- Formulário de Leitura / Entrada -->
+                <div class="col-span-7 bg-slate-900/80 border border-slate-800 rounded-lg p-4 flex flex-col justify-between shadow-inner">
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wider">Código de Barras / Produto</label>
+                            <input type="text" id="input-codigo" autofocus placeholder="Digite ou escaneie..." class="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white font-mono focus:outline-none focus:border-emerald-500 text-sm shadow-inner" onkeydown="if(event.key === 'Enter') adicionarItemCarrinho()">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wider">Quantidade</label>
+                            <input type="number" id="input-qtd" value="1" min="1" class="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white font-mono focus:outline-none focus:border-emerald-500 text-sm">
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-[11px] font-semibold text-slate-400 mb-0.5 uppercase">Preço Unitário</label>
+                                <input type="text" id="input-preco-unit" readonly value="0,00" class="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1.5 text-emerald-400 font-mono text-sm text-right">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-semibold text-slate-400 mb-0.5 uppercase">Preço Total</label>
+                                <input type="text" id="input-preco-total" readonly value="0,00" class="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1.5 text-emerald-400 font-mono text-sm text-right">
+                            </div>
+                        </div>
+                    </div>
+                    <button onclick="adicionarItemCarrinho()" class="mt-3 w-full bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold py-2 rounded transition shadow-md text-xs uppercase tracking-wider">
+                        Adicionar Item (Enter)
+                    </button>
                 </div>
-                <div>
-                    <label class="block text-sm text-gray-600">Nome do Produto</label>
-                    <input type="text" id="cadNome" required class="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+
+            <!-- PAINEL CADASTRO RÁPIDO DE PRODUTO -->
+            <details class="bg-slate-900/60 border border-slate-800 rounded-lg p-3 text-xs">
+                <summary class="cursor-pointer text-emerald-400 font-semibold select-none">➕ Cadastrar Novo Produto no Banco</summary>
+                <div class="mt-3 grid grid-cols-4 gap-2 pt-2 border-t border-slate-800">
+                    <input type="text" id="cad-codigo" placeholder="Cód. Barras" class="bg-slate-800 border border-slate-700 rounded p-1.5 text-white">
+                    <input type="text" id="cad-nome" placeholder="Nome do Produto" class="bg-slate-800 border border-slate-700 rounded p-1.5 text-white col-span-2">
+                    <input type="number" step="0.01" id="cad-preco" placeholder="Preço R$" class="bg-slate-800 border border-slate-700 rounded p-1.5 text-white">
+                    <button onclick="cadastrarProduto()" class="col-span-4 bg-slate-800 hover:bg-emerald-600 hover:text-slate-950 text-emerald-400 border border-emerald-500/30 py-1.5 rounded font-bold transition mt-1">Salvar Produto no Supabase</button>
                 </div>
-                <div>
-                    <label class="block text-sm text-gray-600">Preço (R$)</label>
-                    <input type="number" step="0.01" id="cadPreco" required class="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </details>
+
+        </section>
+
+        <!-- LADO DIREITO: Carrinho / Lista de Itens (5 colunas) -->
+        <section class="col-span-5 bg-slate-900 border border-slate-800 rounded-lg flex flex-col justify-between shadow-xl overflow-hidden">
+            
+            <!-- Tabela de Itens -->
+            <div class="flex-1 overflow-y-auto p-2">
+                <table class="w-full text-left border-collapse text-xs">
+                    <thead>
+                        <tr class="border-b border-slate-800 text-slate-400 font-semibold sticky top-0 bg-slate-900">
+                            <th class="p-2 w-8">#</th>
+                            <th class="p-2">Código / Descrição</th>
+                            <th class="p-2 text-center w-12">Qt.</th>
+                            <th class="p-2 text-right w-16">Preço</th>
+                            <th class="p-2 text-right w-20">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabela-carrinho" class="divide-y divide-slate-800/50 font-mono">
+                        <tr>
+                            <td colspan="5" class="text-center py-12 text-slate-500 italic">Carrinho vazio</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Bloco Subtotal / Totalizador -->
+            <div class="bg-slate-950 border-t border-slate-800 p-4">
+                <div class="flex justify-between items-center mb-3">
+                    <span class="text-sm uppercase tracking-wider text-slate-400 font-semibold">Subtotal da Venda</span>
+                    <span id="valor-subtotal" class="text-3xl font-black text-emerald-400 font-mono">R$ 0,00</span>
                 </div>
-                <div>
-                    <label class="block text-sm text-gray-600">Estoque Inicial</label>
-                    <input type="number" id="cadEstoque" value="10" required class="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="removerUltimoItem()" class="bg-slate-800 hover:bg-red-950/40 hover:border-red-500/50 text-slate-300 border border-slate-700 py-2 rounded text-xs font-bold transition">
+                        [F5] Remover Item
+                    </button>
+                    <button onclick="finalizarVenda()" class="bg-emerald-600 hover:bg-emerald-500 text-slate-950 py-2 rounded text-xs font-black transition shadow-lg tracking-wide uppercase">
+                        Finalizar Venda
+                    </button>
                 </div>
-                <button type="submit" class="w-full bg-indigo-600 text-white py-2 rounded hover:bg-indigo-700 font-semibold">Salvar Produto</button>
-            </form>
-        </div>
+            </div>
+
+        </section>
+
     </main>
 
-    <!-- Modal de Configuração do Supabase -->
-    <div id="modalConfig" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white p-6 rounded-lg max-w-md w-full shadow-lg">
-            <h3 class="text-lg font-bold mb-3">Configurar Credenciais do Supabase</h3>
-            <p class="text-sm text-gray-600 mb-4">Insira os dados do seu painel do Supabase (Project Settings > API).</p>
+    <!-- RODAPÉ: Atalhos de Sistema -->
+    <footer class="bg-slate-950 border-t border-slate-800 px-4 py-2 text-[11px] text-slate-400 flex justify-between items-center font-mono">
+        <div class="flex space-x-4">
+            <span><strong class="text-emerald-400">F1</strong> Fechar Caixa</span>
+            <span><strong class="text-emerald-400">F2</strong> Abrir Caixa</span>
+            <span><strong class="text-emerald-400">F5</strong> Remover Item</span>
+            <span><strong class="text-emerald-400">F7</strong> Cancelar Venda</span>
+        </div>
+        <div class="text-emerald-500 font-semibold">
+            PDV-VS v1.0 • Conectado à Nuvem
+        </div>
+    </footer>
+
+    <!-- MODAL DE CONFIGURAÇÃO DO SUPABASE -->
+    <div id="modal-config" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center z-50">
+        <div class="bg-slate-900 border border-slate-800 p-6 rounded-xl w-96 shadow-2xl space-y-4">
+            <h3 class="text-lg font-bold text-white flex items-center space-x-2">
+                <span>⚙️</span> <span>Configurar Credenciais</span>
+            </h3>
+            <p class="text-xs text-slate-400">Insira a Project URL e a Publishable Key do seu painel do Supabase.</p>
             <div class="space-y-3">
-                <input type="text" id="inputUrl" placeholder="Project URL (https://xxx.supabase.co)" class="w-full border p-2 rounded">
-                <input type="text" id="inputKey" placeholder="Anon Public Key (eyJ...)" class="w-full border p-2 rounded">
+                <input type="text" id="cfg-url" placeholder="https://vbdglgmxaywntmjriccf.supabase.co" class="w-full bg-slate-800 border border-slate-700 rounded p-2 text-xs text-white">
+                <input type="text" id="cfg-key" placeholder="sb_publishable_..." class="w-full bg-slate-800 border border-slate-700 rounded p-2 text-xs text-white">
             </div>
-            <div class="flex justify-end gap-2 mt-4">
-                <button onclick="fecharConfig()" class="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">Cancelar</button>
-                <button onclick="salvarConfig()" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Salvar e Conectar</button>
+            <div class="flex justify-end space-x-2 pt-2">
+                <button onclick="fecharConfig()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded text-xs">Cancelar</button>
+                <button onclick="salvarConfig()" class="bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold px-4 py-1.5 rounded text-xs">Salvar e Conectar</button>
             </div>
         </div>
     </div>
 
-    <!-- Script de Lógica e Conexão -->
+    <!-- SCRIPT DE LÓGICA DO PDV -->
     <script>
-        // Carregar chaves salvas no navegador (localStorage)
-        let supabaseUrl = localStorage.getItem('supabase_url') || '';
-        let supabaseKey = localStorage.getItem('supabase_key') || '';
+        // Relógio em tempo real
+        setInterval(() => {
+            const agora = new Date();
+            document.getElementById('relogio').innerText = agora.toLocaleTimeString('pt-BR') + ' | ' + agora.toLocaleDateString('pt-BR');
+        }, 1000);
+
+        let carrinho = [];
         let supabaseClient = null;
 
-        if (supabaseUrl && supabaseKey) {
-            supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+        function initSupabase() {
+            let url = localStorage.getItem('supabase_url');
+            let key = localStorage.getItem('supabase_key');
+            if (url && key) {
+                try {
+                    supabaseClient = window.supabase.createClient(url.trim(), key.trim());
+                } catch (e) {
+                    console.error("Erro ao iniciar Supabase", e);
+                }
+            } else {
+                abrirConfig();
+            }
         }
 
         function abrirConfig() {
-            document.getElementById('inputUrl').value = supabaseUrl;
-            document.getElementById('inputKey').value = supabaseKey;
-            document.getElementById('modalConfig').classList.remove('hidden');
+            document.getElementById('cfg-url').value = localStorage.getItem('supabase_url') || '';
+            document.getElementById('cfg-key').value = localStorage.getItem('supabase_key') || '';
+            document.getElementById('modal-config').classList.remove('hidden');
+            document.getElementById('modal-config').classList.add('flex');
         }
 
         function fecharConfig() {
-            document.getElementById('modalConfig').classList.add('hidden');
+            document.getElementById('modal-config').classList.remove('flex');
+            document.getElementById('modal-config').classList.add('hidden');
         }
 
         function salvarConfig() {
-            const url = document.getElementById('inputUrl').value.trim();
-            const key = document.getElementById('inputKey').value.trim();
-            if(!url || !key) {
-                alert('Preencha ambos os campos!');
-                return;
-            }
+            let url = document.getElementById('cfg-url').value;
+            let key = document.getElementById('cfg-key').value;
             localStorage.setItem('supabase_url', url);
             localStorage.setItem('supabase_key', key);
-            location.reload();
+            fecharConfig();
+            initSupabase();
+            alert('Credenciais salvas com sucesso!');
         }
 
-        let carrinho = [];
-
-        // Buscar produto no Supabase ao bipar ou digitar
-        async function adicionarPorCodigo() {
-            if (!supabaseClient) {
-                alert('Configure as credenciais do Supabase no botão superior direito primeiro!');
-                abrirConfig();
-                return;
-            }
-            const codigo = document.getElementById('codigoInput').value.trim();
-            if (!codigo) return;
-
-            const { data, error } = await supabaseClient
-                .from('produtos')
-                .select('*')
-                .eq('codigo_barras', codigo)
-                .single();
-
-            if (error || !data) {
-                alert('Produto não encontrado no estoque!');
-                return;
-            }
-
-            carrinho.push(data);
-            atualizarCarrinho();
-            document.getElementById('codigoInput').value = '';
-            document.getElementById('codigoInput').focus();
-        }
-
-        function atualizarCarrinho() {
-            const lista = document.getElementById('carrinhoLista');
-            const totalEl = document.getElementById('totalVenda');
-            if (carrinho.length === 0) {
-                lista.innerHTML = '<p class="text-gray-400 text-center mt-16">Carrinho vazio</p>';
-                totalEl.innerText = 'R$ 0,00';
-                return;
-            }
-
-            let total = 0;
-            lista.innerHTML = '';
-            carrinho.forEach((item, index) => {
-                total += Number(item.preco);
-                lista.innerHTML += `
-                    <div class="flex justify-between items-center border-b py-1">
-                        <span>${item.nome}</span>
-                        <div class="flex items-center gap-2">
-                            <span class="font-semibold">R$ ${Number(item.preco).toFixed(2)}</span>
-                            <button onclick="removerItem(${index})" class="text-red-500 font-bold hover:text-red-700">✕</button>
-                        </div>
-                    </div>
-                `;
-            });
-            totalEl.innerText = `R$ ${total.toFixed(2)}`;
-        }
-
-        function removerItem(index) {
-            carrinho.splice(index, 1);
-            atualizarCarrinho();
-        }
-
-        // Cadastrar novo produto no Supabase
-        async function cadastrarProduto(e) {
-            e.preventDefault();
+        async function adicionarItemCarrinho() {
             if (!supabaseClient) {
                 alert('Configure o Supabase primeiro!');
                 abrirConfig();
                 return;
             }
 
-            const codigo_barras = document.getElementById('cadCodigo').value.trim();
-            const nome = document.getElementById('cadNome').value.trim();
-            const preco = parseFloat(document.getElementById('cadPreco').value);
-            const estoque = parseInt(document.getElementById('cadEstoque').value);
+            let codigoInput = document.getElementById('input-codigo').value.trim();
+            let qtdInput = parseInt(document.getElementById('input-qtd').value) || 1;
 
-            const { error } = await supabaseClient
+            if (!codigoInput) return;
+
+            let { data, error } = await supabaseClient
                 .from('produtos')
-                .insert([{ codigo_barras, nome, preco, estoque }]);
+                .select('*')
+                .or(`codigo.eq.${codigoInput},id.eq.${codigoInput}`)
+                .maybeSingle();
+
+            if (error || !data) {
+                alert('Produto não encontrado no banco de dados!');
+                return;
+            }
+
+            let itemExistente = carrinho.find(i => i.codigo === data.codigo);
+            if (itemExistente) {
+                itemExistente.qtd += qtdInput;
+            } else {
+                carrinho.push({
+                    codigo: data.codigo || data.id,
+                    nome: data.nome || data.descricao,
+                    preco: Number(data.preco),
+                    qtd: qtdInput
+                });
+            }
+
+            document.getElementById('ultimo-item-nome').innerText = data.nome || data.descricao;
+            document.getElementById('ultimo-item-detalhe').innerText = `${qtdInput}x R$ ${Number(data.preco).toFixed(2)}`;
+            document.getElementById('input-preco-unit').value = Number(data.preco).toFixed(2);
+            document.getElementById('input-preco-total').value = (Number(data.preco) * qtdInput).toFixed(2);
+
+            document.getElementById('input-codigo').value = '';
+            document.getElementById('input-qtd').value = '1';
+            document.getElementById('input-codigo').focus();
+
+            renderizarCarrinho();
+        }
+
+        function renderizarCarrinho() {
+            let tbody = document.getElementById('tabela-carrinho');
+            let subtotalElem = document.getElementById('valor-subtotal');
+            
+            if (carrinho.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="text-center py-12 text-slate-500 italic">Carrinho vazio</td></tr>`;
+                subtotalElem.innerText = 'R$ 0,00';
+                return;
+            }
+
+            let html = '';
+            let totalGeral = 0;
+
+            carrinho.forEach((item, index) => {
+                let totalItem = item.preco * item.qtd;
+                totalGeral += totalItem;
+                html += `
+                    <tr class="hover:bg-slate-800/40 border-b border-slate-800/30">
+                        <td class="p-2 text-slate-500">${index + 1}</td>
+                        <td class="p-2 text-white font-sans">${item.nome} <span class="text-[10px] text-slate-500 block">(${item.codigo})</span></td>
+                        <td class="p-2 text-center text-emerald-400 font-bold">${item.qtd}</td>
+                        <td class="p-2 text-right text-slate-300">R$ ${item.preco.toFixed(2)}</td>
+                        <td class="p-2 text-right text-emerald-400 font-bold">R$ ${totalItem.toFixed(2)}</td>
+                    </tr>
+                `;
+            });
+
+            tbody.innerHTML = html;
+            subtotalElem.innerText = `R$ ${totalGeral.toFixed(2)}`;
+        }
+
+        function removerUltimoItem() {
+            if (carrinho.length > 0) {
+                carrinho.pop();
+                renderizarCarrinho();
+            }
+        }
+
+        async function cadastrarProduto() {
+            if (!supabaseClient) {
+                alert('Configure o Supabase primeiro!');
+                return;
+            }
+            let codigo = document.getElementById('cad-codigo').value.trim();
+            let nome = document.getElementById('cad-nome').value.trim();
+            let preco = parseFloat(document.getElementById('cad-preco').value);
+
+            if (!codigo || !nome || isNaN(preco)) {
+                alert('Preencha todos os campos do cadastro corretamente!');
+                return;
+            }
+
+            let { error } = await supabaseClient
+                .from('produtos')
+                .insert([{ codigo: codigo, nome: nome, preco: preco, estoque: 100 }]);
 
             if (error) {
                 alert('Erro ao cadastrar: ' + error.message);
             } else {
                 alert('Produto cadastrado com sucesso!');
-                document.getElementById('formProduto').reset();
+                document.getElementById('cad-codigo').value = '';
+                document.getElementById('cad-nome').value = '';
+                document.getElementById('cad-preco').value = '';
             }
         }
 
@@ -218,44 +338,17 @@
                 alert('Carrinho vazio!');
                 return;
             }
-            alert('Venda finalizada com sucesso! (Integração de Pix pronta para ser ativada)');
+            let total = carrinho.reduce((acc, item) => acc + (item.preco * item.qtd), 0);
+            alert(`Venda finalizada com sucesso!\nTotal: R$ ${total.toFixed(2)}`);
             carrinho = [];
-            atualizarCarrinho();
+            renderizarCarrinho();
+            document.getElementById('ultimo-item-nome').innerText = 'CAIXA LIVRE';
+            document.getElementById('ultimo-item-detalhe').innerText = 'R$ 0,00';
+            document.getElementById('input-preco-unit').value = '0,00';
+            document.getElementById('input-preco-total').value = '0,00';
         }
 
-        // Suporte para leitor USB físico (Enter automático)
-        document.getElementById('codigoInput').addEventListener('keypress', function (e) {
-            if (e.key === 'Enter') {
-                adicionarPorCodigo();
-            }
-        });
-
-        // Câmera Scanner (Instascan)
-        let scanner = null;
-        function toggleCamera() {
-            const container = document.getElementById('camera-container');
-            if (container.classList.contains('hidden')) {
-                container.classList.remove('hidden');
-                scanner = new Instascan.Scanner({ video: document.getElementById('preview') });
-                scanner.addListener('scan', function (content) {
-                    document.getElementById('codigoInput').value = content;
-                    adicionarPorCodigo();
-                    toggleCamera(); // Fecha a câmera após bipar
-                });
-                Instascan.Camera.getCameras().then(function (cameras) {
-                    if (cameras.length > 0) {
-                        scanner.start(cameras[0]);
-                    } else {
-                        alert('Nenhuma câmera encontrada.');
-                    }
-                }).catch(function (e) {
-                    console.error(e);
-                });
-            } else {
-                if (scanner) scanner.stop();
-                container.classList.add('hidden');
-            }
-        }
+        window.onload = initSupabase;
     </script>
 </body>
 </html>
