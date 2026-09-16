@@ -1,10 +1,15 @@
-# Let's create the fully updated index.html containing:
-# 1. Clean professional light background theme (fundo branco / moderno limpo).
-# 2. In the logo/brand box where it currently says "VS", change it to "PDV-VS" explicitly.
-# 3. Fully functional keyboard shortcuts (F1 Fechar Caixa, F2 Abrir Caixa, F5 Remover Item, F7 Cancelar Venda, F9 Finalizar Venda, Enter para adicionar, etc.).
-# 4. Integrated Supabase client, barcode scanner via mobile camera, and full Bluetooth/USB scanner support.
+Python
+# Ah, look at what happened! The text showing at the top is actually the Python code snippet/comment that was mistakenly placed at the very first line of index.html outside the <html> tag or inside the body without proper escaping or as raw text.
+# Let's inspect the actual first few lines of index.html in the interpreter.
+with open("index.html", "r", encoding="utf-8") as f:
+    lines = f.readlines()
 
-html_content = """<!DOCTYPE html>
+print("First 5 lines of index.html:")
+for l in lines[:5]:
+    print(repr(l))
+
+# Let's write a completely clean index.html ensuring no stray text is at the beginning or end.
+clean_code = """<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -19,7 +24,6 @@ html_content = """<!DOCTYPE html>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         body { background-color: #f3f4f6; color: #1f2937; }
-        .custom-shadow { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03); }
     </style>
 </head>
 <body class="min-h-screen flex flex-col justify-between select-none">
@@ -66,7 +70,7 @@ html_content = """<!DOCTYPE html>
             <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex-1 flex flex-col justify-between space-y-4">
                 
                 <div class="grid grid-cols-1 xl:grid-cols-12 gap-4 items-center">
-                    <!-- Brand Logo Box modified to PDV-VS -->
+                    <!-- Brand Logo Box -->
                     <div class="xl:col-span-4 bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col items-center justify-center text-center shadow-inner">
                         <div class="bg-emerald-600 text-white font-black text-xl px-4 py-2 rounded-lg shadow mb-1 tracking-wider">
                             PDV-VS
@@ -242,7 +246,7 @@ html_content = """<!DOCTYPE html>
                 <div>
                     <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Preço de Venda (R$)</label>
                     <input type="number" step="0.01" id="new-prod-preco" required placeholder="0.00" 
-                        class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3.5 py-2 text-sm text-slate-800 outline-none focus:border-emerald-500">
+                        class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3.5 py-2 text-sm text-slate-800 uppercase outline-none focus:border-emerald-500">
                 </div>
                 <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-lg shadow transition text-sm">
                     Salvar Produto no Banco
@@ -253,7 +257,6 @@ html_content = """<!DOCTYPE html>
 
     <!-- Application Script -->
     <script>
-        // Clock updater
         function updateClock() {
             const now = new Date();
             const timeStr = now.toLocaleTimeString('pt-BR');
@@ -263,7 +266,6 @@ html_content = """<!DOCTYPE html>
         setInterval(updateClock, 1000);
         updateClock();
 
-        // Supabase Initialization
         let supabaseClient = null;
         const defaultUrl = "https://vbdglgmxaywntmjriccf.supabase.co";
         const defaultKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiZGdsZ214YXl3bnRtanJpY2NmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDEyMzE1MTUsImV4cCI6MjA1Njc5MTUxNX0.PqPq-default-placeholder-key-vbdglgmxaywntmjriccf";
@@ -332,7 +334,6 @@ html_content = """<!DOCTYPE html>
             }
         }
 
-        // Cart State
         let cart = [];
         let selectedCartIndex = null;
         let caixaAberto = true;
@@ -347,7 +348,6 @@ html_content = """<!DOCTYPE html>
         const caixaStatusBanner = document.getElementById('caixa-status-banner');
         const caixaStatusText = document.getElementById('caixa-status-text');
 
-        // Search product on typing or barcode scanning (USB / Bluetooth / Manual)
         inputCodigo.addEventListener('input', async (e) => {
             const val = e.target.value.trim();
             if(val.length >= 2 && supabaseClient) {
@@ -389,7 +389,6 @@ html_content = """<!DOCTYPE html>
                 return;
             }
 
-            // Fetch from Supabase
             const { data, error } = await supabaseClient
                 .from('produtos')
                 .select('*')
@@ -412,12 +411,10 @@ html_content = """<!DOCTYPE html>
             cart.push(item);
             renderCart();
             
-            // Update Banner
             caixaStatusBanner.className = "bg-emerald-600 text-white p-4 rounded-xl shadow flex justify-between items-center transition-all duration-300";
             caixaStatusText.innerText = data.nome.toUpperCase();
             headerTotPreview.innerText = `R$ ${item.total.toFixed(2).replace('.', ',')}`;
 
-            // Reset input
             inputCodigo.value = '';
             inputQtd.value = '1';
             inputPreco.value = '0,00';
@@ -495,7 +492,6 @@ html_content = """<!DOCTYPE html>
             inputCodigo.focus();
         }
 
-        // Functional Keyboard Shortcuts (F1, F2, F5, F7, F9)
         window.addEventListener('keydown', (e) => {
             if(e.key === 'F1') {
                 e.preventDefault();
@@ -528,7 +524,6 @@ html_content = """<!DOCTYPE html>
             }
         });
 
-        // Mobile Camera Scanner setup
         let html5QrCode = null;
         function openCameraScanner() {
             document.getElementById('camera-modal').classList.remove('hidden');
@@ -539,13 +534,10 @@ html_content = """<!DOCTYPE html>
                 async (decodedText) => {
                     document.getElementById('input-codigo').value = decodedText;
                     closeCameraScanner();
-                    // Trigger lookup
                     const event = new Event('input', { bubbles: true });
                     document.getElementById('input-codigo').dispatchEvent(event);
                 },
-                (errorMessage) => {
-                    // scanning error ignore
-                }
+                (errorMessage) => {}
             ).catch((err) => {
                 alert('Erro ao iniciar a câmera: ' + err);
             });
@@ -568,5 +560,6 @@ html_content = """<!DOCTYPE html>
 """
 
 with open("index.html", "w", encoding="utf-8") as f:
-    f.write(html_content)
-print("index.html updated successfully!")
+    f.write(clean_code)
+
+print("Index.html re-written cleanly without stray text.")
