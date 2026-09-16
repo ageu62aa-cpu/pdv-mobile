@@ -12,18 +12,16 @@
 </head>
 <body class="bg-slate-100 min-h-screen text-slate-800 flex flex-col">
 
-    <!-- HEADER -->
+    <!-- HEADER LIMPO (Focado em Operação e Acesso Admin) -->
     <header class="bg-slate-900 text-white px-4 py-3 flex flex-wrap justify-between items-center shadow-md">
         <div class="flex items-center space-x-3">
             <i class="fa-solid fa-cash-register text-2xl text-emerald-400"></i>
             <h1 class="text-xl font-bold tracking-wide">PDV-VS</h1>
         </div>
-        <div class="flex items-center space-x-2 mt-2 sm:mt-0">
-            <button onclick="abrirModalEstoque()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm font-semibold transition flex items-center space-x-1">
-                <i class="fa-solid fa-boxes-stacked"></i><span>Estoque / Gestão</span>
-            </button>
-            <button onclick="abrirModalCadastro()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded text-sm font-semibold transition flex items-center space-x-1">
-                <i class="fa-solid fa-plus"></i><span>Novo Produto</span>
+        <div class="flex items-center space-x-3">
+            <span class="text-xs bg-slate-800 px-3 py-1.5 rounded text-slate-300 border border-slate-700">CAIXA ABERTO</span>
+            <button onclick="abrirPainelAdmin()" class="bg-slate-800 hover:bg-slate-700 text-emerald-400 hover:text-emerald-300 px-3 py-2 rounded text-sm font-semibold transition border border-slate-700 flex items-center space-x-1.5" title="Painel Administrativo e Estoque">
+                <i class="fa-solid fa-lock"></i><span>Administração / Estoque</span>
             </button>
         </div>
     </header>
@@ -33,28 +31,32 @@
         
         <!-- COLUNA ESQUERDA: VENDA & ITENS -->
         <section class="lg:col-span-2 flex flex-col space-y-4">
-            <!-- CAMPO DE BUSCA / CÓDIGO DE BARRAS -->
+            
+            <!-- CAMPO DE BUSCA COM LEITOR DISCRETO -->
             <div class="bg-white p-4 rounded-lg shadow relative">
                 <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Pesquisar Produto (Nome ou Código - Min. 4 letras)</label>
-                <div class="flex space-x-2 relative">
+                <div class="flex space-x-2 relative items-center">
                     <div class="relative flex-1">
                         <input type="text" id="inputBusca" placeholder="Digite o nome ou código de barras..." 
                             oninput="aoDigitarBusca(this.value)"
-                            class="w-full border border-slate-300 rounded px-3 py-2 pl-9 focus:outline-none focus:border-emerald-500">
-                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-400"></i>
+                            class="w-full border border-slate-300 rounded px-3 py-2.5 pl-9 pr-10 focus:outline-none focus:border-emerald-500 text-sm">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-3.5 text-slate-400"></i>
+                        <!-- Ícone de Câmera Discreto dentro do Input -->
+                        <button onclick="abrirLeitorCamera()" class="absolute right-3 top-2.5 text-slate-400 hover:text-slate-700 transition" title="Escanear com Câmera do Celular">
+                            <i class="fa-solid fa-camera text-lg"></i>
+                        </button>
                     </div>
-                    <button onclick="abrirLeitorCamera()" class="bg-slate-800 text-white px-4 py-2 rounded hover:bg-slate-700 transition" title="Escanear com Câmera">
-                        <i class="fa-solid fa-camera"></i>
-                    </button>
                 </div>
+
                 <!-- PAINEL FLUTUANTE DE SUGESTÕES -->
                 <div id="painelSugestoes" class="hidden absolute left-4 right-4 bg-white border border-slate-200 rounded-b-lg shadow-lg z-50 max-h-60 overflow-y-auto"></div>
             </div>
 
             <!-- TABELA DE ITENS LANÇADOS -->
             <div class="bg-white rounded-lg shadow flex-1 flex flex-col overflow-hidden">
-                <div class="bg-slate-50 px-4 py-2 border-b border-slate-200 font-semibold text-sm text-slate-600">
-                    Itens da Venda Atual
+                <div class="bg-slate-50 px-4 py-2.5 border-b border-slate-200 font-semibold text-sm text-slate-600 flex justify-between items-center">
+                    <span>Itens da Venda Atual</span>
+                    <span id="contadorItens" class="text-xs text-slate-400 font-normal">0 itens</span>
                 </div>
                 <div class="flex-1 overflow-x-auto max-h-96">
                     <table class="w-full text-left border-collapse">
@@ -68,11 +70,12 @@
                             </tr>
                         </thead>
                         <tbody id="tabelaItensVenda" class="divide-y divide-slate-100 text-sm">
-                            <tr><td colspan="5" class="p-6 text-center text-slate-400">Nenhum produto adicionado na venda.</td></tr>
+                            <tr><td colspan="5" class="p-8 text-center text-slate-400">Nenhum produto adicionado na venda.</td></tr>
                         </tbody>
                     </table>
                 </div>
             </div>
+
         </section>
 
         <!-- COLUNA DIREITA: TOTALIZADOR E FINALIZAÇÃO -->
@@ -80,98 +83,112 @@
             <div>
                 <h2 class="text-lg font-bold text-slate-800 border-b pb-2 mb-4">Resumo da Venda</h2>
                 <div class="space-y-3">
-                    <div class="flex justify-between text-slate-600">
+                    <div class="flex justify-between text-slate-600 text-sm">
                         <span>Subtotal:</span>
                         <span id="txtSubtotal" class="font-semibold">R$ 0,00</span>
                     </div>
-                    <div class="flex justify-between text-slate-600">
+                    <div class="flex justify-between text-slate-600 text-sm">
                         <span>Descontos:</span>
                         <span class="font-semibold">R$ 0,00</span>
                     </div>
-                    <div class="border-t pt-3 flex justify-between text-xl font-bold text-slate-900">
-                        <span>Total a Pagar:</span>
+                    <div class="border-t pt-3 flex justify-between text-2xl font-bold text-slate-900">
+                        <span>Total:</span>
                         <span id="txtTotal" class="text-emerald-600">R$ 0,00</span>
                     </div>
                 </div>
             </div>
 
             <div class="mt-6 space-y-3">
-                <button onclick="finalizarVenda()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-lg shadow transition flex items-center justify-center space-x-2">
+                <button onclick="finalizarVenda()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-lg shadow transition flex items-center justify-center space-x-2 text-base">
                     <i class="fa-solid fa-check"></i><span>Finalizar Venda (F9)</span>
                 </button>
-                <button onclick="cancelarVenda()" class="w-full bg-rose-100 hover:bg-rose-200 text-rose-700 font-semibold py-2 rounded-lg transition text-sm">
+                <button onclick="cancelarVenda()" class="w-full bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold py-2.5 rounded-lg transition text-sm">
                     Cancelar Venda
                 </button>
             </div>
         </section>
+
     </main>
 
-    <!-- MODAL DE CADASTRO DE PRODUTO (ATUALIZADO COM ESTOQUE INICIAL) -->
-    <div id="modalCadastro" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-lg max-w-md w-full p-6 shadow-xl">
-            <h3 class="text-lg font-bold mb-4 text-slate-800">Cadastrar Novo Produto</h3>
-            <div class="space-y-3">
+    <!-- PAINEL ADMINISTRATIVO / GESTÃO DE ESTOQUE COMPLETA -->
+    <div id="modalAdmin" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-xl max-w-4xl w-full p-6 shadow-2xl max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center border-b pb-3 mb-4">
                 <div>
-                    <label class="block text-xs font-semibold text-slate-600 mb-1">Nome do Produto</label>
-                    <input type="text" id="cadNome" class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
+                    <h3 class="text-xl font-bold text-slate-800">Painel Administrativo & Estoque</h3>
+                    <p class="text-xs text-slate-500">Gerencie produtos cadastrados, ajuste preços, estoque ou adicione novos itens.</p>
                 </div>
-                <div>
-                    <label class="block text-xs font-semibold text-slate-600 mb-1">Código de Barras</label>
-                    <div class="flex space-x-2">
-                        <input type="text" id="cadCodigo" class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
-                        <button onclick="escanearCameraCadastro()" class="bg-slate-800 text-white px-3 rounded hover:bg-slate-700" title="Ler com Câmera"><i class="fa-solid fa-camera"></i></button>
-                    </div>
-                </div>
-                <div class="grid grid-cols-2 gap-2">
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Preço (R$)</label>
-                        <input type="number" step="0.01" id="cadPreco" class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Estoque Inicial</label>
-                        <input type="number" id="cadEstoque" value="0" class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
-                    </div>
-                </div>
+                <button onclick="fecharPainelAdmin()" class="text-slate-400 hover:text-slate-600 p-2"><i class="fa-solid fa-xmark text-2xl"></i></button>
             </div>
-            <div class="mt-6 flex justify-end space-x-2">
-                <button onclick="fecharModalCadastro()" class="px-4 py-2 bg-slate-200 text-slate-700 rounded text-sm hover:bg-slate-300">Cancelar</button>
-                <button onclick="salvarNovoProduto()" class="px-4 py-2 bg-emerald-600 text-white rounded text-sm hover:bg-emerald-700 font-semibold">Salvar Produto</button>
-            </div>
-        </div>
-    </div>
 
-    <!-- MODAL DE GESTÃO DE ESTOQUE -->
-    <div id="modalEstoque" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-lg max-w-3xl w-full p-6 shadow-xl max-h-[85vh] flex flex-col">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-lg font-bold text-slate-800">Gerenciamento de Estoque e Produtos</h3>
-                <button onclick="fecharModalEstoque()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-xl"></i></button>
+            <!-- Abas ou Ações do Admin -->
+            <div class="flex flex-wrap gap-2 justify-between items-center mb-4">
+                <input type="text" id="buscaAdmin" oninput="filtrarTabelaAdmin(this.value)" placeholder="Pesquisar por nome ou código..." class="border border-slate-300 rounded px-3 py-2 text-sm w-72 focus:outline-none focus:border-emerald-500">
+                <button onclick="abrirModalNovoProdutoAdmin()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded text-sm font-semibold transition flex items-center space-x-1.5">
+                    <i class="fa-solid fa-plus"></i><span>Cadastrar Novo Produto</span>
+                </button>
             </div>
-            <div class="mb-4">
-                <input type="text" id="buscaEstoqueModal" oninput="filtrarTabelaEstoque(this.value)" placeholder="Pesquisar produto no estoque..." class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
-            </div>
-            <div class="flex-1 overflow-y-auto border border-slate-200 rounded">
+
+            <!-- Tabela de Produtos Cadastrados -->
+            <div class="flex-1 overflow-y-auto border border-slate-200 rounded-lg">
                 <table class="w-full text-left border-collapse">
                     <thead>
                         <tr class="bg-slate-100 text-xs text-slate-500 uppercase border-b border-slate-200 sticky top-0">
                             <th class="p-3">Código</th>
-                            <th class="p-3">Produto</th>
-                            <th class="p-3">Preço</th>
+                            <th class="p-3">Nome do Produto</th>
+                            <th class="p-3">Preço (R$)</th>
                             <th class="p-3">Estoque</th>
                             <th class="p-3 text-center">Ações</th>
                         </tr>
                     </thead>
-                    <tbody id="tabelaEstoqueModal" class="divide-y divide-slate-100 text-sm"></tbody>
+                    <tbody id="tabelaAdminProdutos" class="divide-y divide-slate-100 text-sm">
+                        <!-- Preenchido via JS -->
+                    </tbody>
                 </table>
             </div>
         </div>
     </div>
 
-    <!-- MODAL DO LEITOR DE CÂMERA -->
+    <!-- MODAL DE CADASTRO/EDIÇÃO DE PRODUTO (ADMIN) -->
+    <div id="modalFormProduto" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg max-w-md w-full p-6 shadow-xl">
+            <h3 id="tituloModalProd" class="text-lg font-bold mb-4 text-slate-800">Cadastrar Novo Produto</h3>
+            <input type="hidden" id="formProdId">
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Nome do Produto</label>
+                    <input type="text" id="formNome" placeholder="Ex: Refrigerante Lata" class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Código de Barras</label>
+                    <div class="flex space-x-2">
+                        <input type="text" id="formCodigo" placeholder="Ex: 7891234567890" class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
+                        <button onclick="escanearCameraAdmin()" class="bg-slate-800 text-white px-3.5 rounded hover:bg-slate-700" title="Ler com Câmera"><i class="fa-solid fa-camera"></i></button>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Preço de Venda (R$)</label>
+                        <input type="number" step="0.01" id="formPreco" placeholder="0.00" class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Estoque Inicial</label>
+                        <input type="number" id="formEstoque" value="0" class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
+                    </div>
+                </div>
+            </div>
+            <div class="mt-6 flex justify-end space-x-2">
+                <button onclick="fecharFormProduto()" class="px-4 py-2 bg-slate-200 text-slate-700 rounded text-sm hover:bg-slate-300">Cancelar</button>
+                <button onclick="salvarProdutoAdmin()" class="px-4 py-2 bg-emerald-600 text-white rounded text-sm hover:bg-emerald-700 font-semibold">Salvar no Banco</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DO LEITOR DE CÂMERA (DISCRETO / UNIVERSAL) -->
     <div id="modalCamera" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
         <div class="bg-white rounded-lg max-w-md w-full p-4 shadow-xl text-center">
             <h3 class="text-lg font-bold mb-2">Escaneando Código de Barras</h3>
-            <div id="reader" class="w-full overflow-hidden rounded mb-4"></div>
+            <div id="reader" class="w-full overflow-hidden rounded mb-4 bg-slate-100"></div>
             <button onclick="fecharLeitorCamera()" class="px-4 py-2 bg-rose-600 text-white rounded text-sm hover:bg-rose-700 font-semibold w-full">Fechar Câmera</button>
         </div>
     </div>
@@ -185,20 +202,21 @@
         let itensVenda = [];
         let produtosCache = [];
         let html5QrCode = null;
-        let destinoLeitor = 'busca';
+        let origemLeitor = 'busca'; // 'busca' ou 'admin'
 
         async function carregarProdutosCache() {
             try {
-                const { data, error } = await supabaseClient.from('produtos').select('*');
+                const { data, error } = await supabaseClient.from('produtos').select('*').order('nome', { ascending: true });
                 if (!error && data) produtosCache = data;
             } catch (e) { console.error("Erro ao carregar produtos:", e); }
         }
 
         window.onload = () => { carregarProdutosCache(); };
 
+        // BUSCA E LANÇAMENTO NO CAIXA
         function aoDigitarBusca(termo) {
             const painel = document.getElementById('painelSugestoes');
-            if (termo.length < 4) { painel.classList.add('hidden'); return; }
+            if (termo.length < 2) { painel.classList.add('hidden'); return; }
 
             const termoLower = termo.toLowerCase();
             const filtrados = produtosCache.filter(p => 
@@ -240,8 +258,10 @@
 
         function atualizarTabelaVenda() {
             const tbody = document.getElementById('tabelaItensVenda');
+            document.getElementById('contadorItens').innerText = `${itensVenda.length} itens`;
+            
             if (itensVenda.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="p-6 text-center text-slate-400">Nenhum produto adicionado na venda.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-slate-400">Nenhum produto adicionado na venda.</td></tr>';
                 document.getElementById('txtSubtotal').innerText = 'R$ 0,00';
                 document.getElementById('txtTotal').innerText = 'R$ 0,00';
                 return;
@@ -253,10 +273,10 @@
                 totalGeral += subTotalItem;
                 html += `<tr class="border-b border-slate-100">
                     <td class="p-3 font-medium text-slate-800">${item.nome}</td>
-                    <td class="p-3"><input type="number" min="1" value="${item.qtd}" onchange="alterarQtd(${index}, this.value)" class="w-16 border rounded px-2 py-1 text-sm"></td>
+                    <td class="p-3"><input type="number" min="1" value="${item.qtd}" onchange="alterarQtd(${index}, this.value)" class="w-16 border rounded px-2 py-1 text-sm text-center"></td>
                     <td class="p-3 text-slate-600">R$ ${Number(item.preco).toFixed(2)}</td>
                     <td class="p-3 font-semibold text-slate-800">R$ ${subTotalItem.toFixed(2)}</td>
-                    <td class="p-3 text-center"><button onclick="removerItem(${index})" class="text-rose-500 hover:text-rose-700"><i class="fa-solid fa-trash"></i></button></td>
+                    <td class="p-3 text-center"><button onclick="removerItem(${index})" class="text-rose-500 hover:text-rose-700 px-2 py-1"><i class="fa-solid fa-trash"></i></button></td>
                 </tr>`;
             });
             tbody.innerHTML = html;
@@ -293,88 +313,103 @@
             }
         }
 
-        // CADASTRO
-        function abrirModalCadastro() { document.getElementById('modalCadastro').classList.remove('hidden'); }
-        function fecharModalCadastro() { document.getElementById('modalCadastro').classList.add('hidden'); }
-
-        async function salvarNovoProduto() {
-            const nome = document.getElementById('cadNome').value;
-            const codigo = document.getElementById('cadCodigo').value;
-            const preco = parseFloat(document.getElementById('cadPreco').value);
-            const estoque = parseInt(document.getElementById('cadEstoque').value);
-
-            if (!nome || isNaN(preco) || isNaN(estoque)) { alert('Preencha todos os campos corretamente!'); return; }
-
-            const { error } = await supabaseClient.from('produtos').insert([{ nome, codigo, preco, estoque }]);
-            if (error) {
-                alert('Erro ao cadastrar produto.');
-            } else {
-                alert('Produto cadastrado com sucesso!');
-                fecharModalCadastro();
-                document.getElementById('cadNome').value = '';
-                document.getElementById('cadCodigo').value = '';
-                document.getElementById('cadPreco').value = '';
-                document.getElementById('cadEstoque').value = '0';
-                await carregarProdutosCache();
-            }
-        }
-
-        // GESTÃO DE ESTOQUE
-        async function abrirModalEstoque() {
+        // PAINEL ADMINISTRATIVO
+        async function abrirPainelAdmin() {
             await carregarProdutosCache();
-            renderizarTabelaEstoque(produtosCache);
-            document.getElementById('modalEstoque').classList.remove('hidden');
+            renderizarTabelaAdmin(produtosCache);
+            document.getElementById('modalAdmin').classList.remove('hidden');
         }
-        function fecharModalEstoque() { document.getElementById('modalEstoque').classList.add('hidden'); }
+        function fecharPainelAdmin() { document.getElementById('modalAdmin').classList.add('hidden'); }
 
-        function renderizarTabelaEstoque(lista) {
-            const tbody = document.getElementById('tabelaEstoqueModal');
-            if (lista.length === 0) { tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-slate-400">Nenhum produto cadastrado.</td></tr>'; return; }
+        function renderizarTabelaAdmin(lista) {
+            const tbody = document.getElementById('tabelaAdminProdutos');
+            if (lista.length === 0) { tbody.innerHTML = '<tr><td colspan="5" class="p-6 text-center text-slate-400">Nenhum produto cadastrado.</td></tr>'; return; }
             let html = '';
             lista.forEach(p => {
-                html += `<tr class="border-b border-slate-100">
+                html += `<tr class="border-b border-slate-100 hover:bg-slate-50">
                     <td class="p-3 text-slate-600">${p.codigo || '-'}</td>
                     <td class="p-3 font-medium text-slate-800">${p.nome}</td>
                     <td class="p-3 text-slate-600">R$ ${Number(p.preco).toFixed(2)}</td>
                     <td class="p-3 font-semibold text-slate-800">${p.estoque}</td>
-                    <td class="p-3 text-center space-x-2">
-                        <button onclick="editarProduto(${p.id}, '${p.nome}', ${p.preco}, ${p.estoque})" class="text-blue-500 hover:text-blue-700"><i class="fa-solid fa-pen"></i></button>
-                        <button onclick="excluirProduto(${p.id})" class="text-rose-500 hover:text-rose-700"><i class="fa-solid fa-trash"></i></button>
+                    <td class="p-3 text-center space-x-3">
+                        <button onclick="abrirEditarProdutoAdmin(${p.id}, '${p.nome}', '${p.codigo || ''}', ${p.preco}, ${p.estoque})" class="text-blue-600 hover:text-blue-800" title="Editar Produto"><i class="fa-solid fa-pen"></i></button>
+                        <button onclick="excluirProdutoAdmin(${p.id})" class="text-rose-600 hover:text-rose-800" title="Excluir Produto"><i class="fa-solid fa-trash"></i></button>
                     </td>
                 </tr>`;
             });
             tbody.innerHTML = html;
         }
 
-        function filtrarTabelaEstoque(termo) {
+        function filtrarTabelaAdmin(termo) {
             const termoLower = termo.toLowerCase();
             const filtrados = produtosCache.filter(p => p.nome.toLowerCase().includes(termoLower) || (p.codigo && p.codigo.toLowerCase().includes(termoLower)));
-            renderizarTabelaEstoque(filtrados);
+            renderizarTabelaAdmin(filtrados);
         }
 
-        async function excluirProduto(id) {
-            if (!confirm('Deseja realmente excluir este produto?')) return;
+        // CADASTRO / EDIÇÃO NO ADMIN
+        function abrirModalNovoProdutoAdmin() {
+            document.getElementById('tituloModalProd').innerText = 'Cadastrar Novo Produto';
+            document.getElementById('formProdId').value = '';
+            document.getElementById('formNome').value = '';
+            document.getElementById('formCodigo').value = '';
+            document.getElementById('formPreco').value = '';
+            document.getElementById('formEstoque').value = '0';
+            document.getElementById('modalFormProduto').classList.remove('hidden');
+        }
+
+        function abrirEditarProdutoAdmin(id, nome, codigo, preco, estoque) {
+            document.getElementById('tituloModalProd').innerText = 'Editar Produto';
+            document.getElementById('formProdId').value = id;
+            document.getElementById('formNome').value = nome;
+            document.getElementById('formCodigo').value = codigo;
+            document.getElementById('formPreco').value = preco;
+            document.getElementById('formEstoque').value = estoque;
+            document.getElementById('modalFormProduto').classList.remove('hidden');
+        }
+
+        function fecharFormProduto() { document.getElementById('modalFormProduto').classList.add('hidden'); }
+
+        async function salvarProdutoAdmin() {
+            const id = document.getElementById('formProdId').value;
+            const nome = document.getElementById('formNome').value.trim();
+            const codigo = document.getElementById('formCodigo').value.trim();
+            const preco = parseFloat(document.getElementById('formPreco').value);
+            const estoque = parseInt(document.getElementById('formEstoque').value);
+
+            if (!nome || isNaN(preco) || isNaN(estoque)) { alert('Preencha os campos obrigatórios corretamente!'); return; }
+
+            if (id) {
+                // Atualizar existente
+                const { error } = await supabaseClient.from('produtos').update({ nome, codigo, preco, estoque }).eq('id', id);
+                if (error) { alert('Erro ao atualizar produto.'); console.error(error); }
+                else { alert('Produto atualizado com sucesso!'); fecharFormProduto(); await carregarProdutosCache(); renderizarTabelaAdmin(produtosCache); }
+            } else {
+                // Inserir novo
+                const { error } = await supabaseClient.from('produtos').insert([{ nome, codigo, preco, estoque }]);
+                if (error) { alert('Erro ao cadastrar produto.'); console.error(error); }
+                else { alert('Produto cadastrado com sucesso!'); fecharFormProduto(); await carregarProdutosCache(); renderizarTabelaAdmin(produtosCache); }
+            }
+        }
+
+        async function excluirProdutoAdmin(id) {
+            if (!confirm('Deseja realmente excluir este produto do estoque?')) return;
             const { error } = await supabaseClient.from('produtos').delete().eq('id', id);
-            if (!error) { await carregarProdutosCache(); renderizarTabelaEstoque(produtosCache); }
+            if (!error) { await carregarProdutosCache(); renderizarTabelaAdmin(produtosCache); }
             else { alert('Erro ao excluir produto.'); }
         }
 
-        async function editarProduto(id, nomeAtual, precoAtual, estoqueAtual) {
-            const novoNome = prompt('Novo nome do produto:', nomeAtual);
-            if (novoNome === null) return;
-            const novoPreco = parseFloat(prompt('Novo preço (R$):', precoAtual));
-            if (isNaN(novoPreco)) return;
-            const novoEstoque = parseInt(prompt('Nova quantidade em estoque:', estoqueAtual));
-            if (isNaN(novoEstoque)) return;
-
-            const { error } = await supabaseClient.from('produtos').update({ nome: novoNome, preco: novoPreco, estoque: novoEstoque }).eq('id', id);
-            if (!error) { await carregarProdutosCache(); renderizarTabelaEstoque(produtosCache); alert('Produto atualizado com sucesso!'); }
-            else { alert('Erro ao atualizar produto.'); }
+        // CÂMERA (LEITOR DISCRETO)
+        function abrirLeitorCamera() {
+            origemLeitor = 'busca';
+            document.getElementById('modalCamera').classList.remove('hidden');
+            iniciarCamera();
         }
 
-        // CÂMERA
-        function abrirLeitorCamera() { destinoLeitor = 'busca'; document.getElementById('modalCamera').classList.remove('hidden'); iniciarCamera(); }
-        function escanearCameraCadastro() { destinoLeitor = 'cadastro'; document.getElementById('modalCamera').classList.remove('hidden'); iniciarCamera(); }
+        function escanearCameraAdmin() {
+            origemLeitor = 'admin';
+            document.getElementById('modalCamera').classList.remove('hidden');
+            iniciarCamera();
+        }
 
         function iniciarCamera() {
             html5QrCode = new Html5Qrcode("reader");
@@ -383,11 +418,15 @@
                 { fps: 10, qrbox: { width: 250, height: 150 } },
                 code => {
                     fecharLeitorCamera();
-                    if (destinoLeitor === 'busca') { document.getElementById('inputBusca').value = code; aoDigitarBusca(code); }
-                    else { document.getElementById('cadCodigo').value = code; }
+                    if (origemLeitor === 'busca') {
+                        document.getElementById('inputBusca').value = code;
+                        aoDigitarBusca(code);
+                    } else {
+                        document.getElementById('formCodigo').value = code;
+                    }
                 },
                 () => {}
-            ).catch(err => { console.error(err); alert('Erro ao acessar a câmera.'); fecharLeitorCamera(); });
+            ).catch(err => { console.error(err); alert('Não foi possível acessar a câmera do dispositivo.'); fecharLeitorCamera(); });
         }
 
         function fecharLeitorCamera() {
