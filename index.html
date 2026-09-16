@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDV Mobile & Desktop</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Supabase JS SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Instascan para Leitura de Código de Barras via Câmera -->
+    <script src="https://rawgit.com/schmich/instascan-builds/master/instascan.min.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col">
+
+    <!-- Cabeçalho -->
+    <header class="bg-blue-600 text-white p-4 shadow-md flex justify-between items-center">
+        <h1 class="text-xl font-bold">PDV Rápido</h1>
+        <button onclick="abrirConfig()" class="bg-blue-700 px-3 py-1 rounded text-sm hover:bg-blue-800">⚙️ Configurar Supabase</button>
+    </header>
+
+    <!-- Conteúdo Principal -->
+    <main class="flex-1 p-4 max-w-4xl mx-auto w-full grid grid-cols-1 md:grid-cols-2 gap-4">
+        
+        <!-- Lado Esquerdo: Caixa / Venda -->
+        <div class="bg-white p-4 rounded-lg shadow flex flex-col justify-between">
+            <div>
+                <h2 class="text-lg font-semibold mb-2 text-gray-700">Caixa Atual</h2>
+                <div class="flex gap-2 mb-4">
+                    <input type="text" id="codigoInput" placeholder="Digite ou bipe o código..." class="border p-2 rounded flex-1 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <button onclick="adicionarPorCodigo()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Adicionar</button>
+                </div>
+                
+                <!-- Botão Câmera -->
+                <button onclick="toggleCamera()" class="w-full bg-purple-600 text-white py-2 rounded mb-4 hover:bg-purple-700">📷 Ler com a Câmera</button>
+                <div id="camera-container" class="hidden mb-4 relative">
+                    <video id="preview" class="w-full rounded border"></video>
+                </div>
+
+                <!-- Lista do Carrinho -->
+                <div class="border rounded h-48 overflow-y-auto p-2 bg-gray-50 mb-4" id="carrinhoLista">
+                    <p class="text-gray-400 text-center mt-16">Carrinho vazio</p>
+                </div>
+            </div>
+
+            <!-- Total e Pagamento -->
+            <div>
+                <div class="flex justify-between text-xl font-bold mb-4">
+                    <span>Total:</span>
+                    <span id="totalVenda" class="text-green-600">R$ 0,00</span>
+                </div>
+                <button onclick="finalizarVenda()" class="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700">Finalizar Venda (Pix / Dinheiro)</button>
+            </div>
+        </div>
+
+        <!-- Lado Direito: Cadastro Rápido de Produtos -->
+        <div class="bg-white p-4 rounded-lg shadow">
+            <h2 class="text-lg font-semibold mb-2 text-gray-700">Cadastrar Novo Produto</h2>
+            <form id="formProduto" onsubmit="cadastrarProduto(event)" class="space-y-3">
+                <div>
+                    <label class="block text-sm text-gray-600">Código de Barras</label>
+                    <input type="text" id="cadCodigo" required class="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-600">Nome do Produto</label>
+                    <input type="text" id="cadNome" required class="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-600">Preço (R$)</label>
+                    <input type="number" step="0.01" id="cadPreco" required class="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-600">Estoque Inicial</label>
+                    <input type="number" id="cadEstoque" value="10" required class="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <button type="submit" class="w-full bg-indigo-600 text-white py-2 rounded hover:bg-indigo-700 font-semibold">Salvar Produto</button>
+            </form>
+        </div>
+    </main>
+
+    <!-- Modal de Configuração do Supabase -->
+    <div id="modalConfig" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white p-6 rounded-lg max-w-md w-full shadow-lg">
+            <h3 class="text-lg font-bold mb-3">Configurar Credenciais do Supabase</h3>
+            <p class="text-sm text-gray-600 mb-4">Insira os dados do seu painel do Supabase (Project Settings > API).</p>
+            <div class="space-y-3">
+                <input type="text" id="inputUrl" placeholder="Project URL (https://xxx.supabase.co)" class="w-full border p-2 rounded">
+                <input type="text" id="inputKey" placeholder="Anon Public Key (eyJ...)" class="w-full border p-2 rounded">
+            </div>
+            <div class="flex justify-end gap-2 mt-4">
+                <button onclick="fecharConfig()" class="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">Cancelar</button>
+                <button onclick="salvarConfig()" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Salvar e Conectar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script de Lógica e Conexão -->
+    <script>
+        // Carregar chaves salvas no navegador (localStorage)
+        let supabaseUrl = localStorage.getItem('supabase_url') || '';
+        let supabaseKey = localStorage.getItem('supabase_key') || '';
+        let supabaseClient = null;
+
+        if (supabaseUrl && supabaseKey) {
+            supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+        }
+
+        function abrirConfig() {
+            document.getElementById('inputUrl').value = supabaseUrl;
+            document.getElementById('inputKey').value = supabaseKey;
+            document.getElementById('modalConfig').classList.remove('hidden');
+        }
+
+        function fecharConfig() {
+            document.getElementById('modalConfig').classList.add('hidden');
+        }
+
+        function salvarConfig() {
+            const url = document.getElementById('inputUrl').value.trim();
+            const key = document.getElementById('inputKey').value.trim();
+            if(!url || !key) {
+                alert('Preencha ambos os campos!');
+                return;
+            }
+            localStorage.setItem('supabase_url', url);
+            localStorage.setItem('supabase_key', key);
+            location.reload();
+        }
+
+        let carrinho = [];
+
+        // Buscar produto no Supabase ao bipar ou digitar
+        async function adicionarPorCodigo() {
+            if (!supabaseClient) {
+                alert('Configure as credenciais do Supabase no botão superior direito primeiro!');
+                abrirConfig();
+                return;
+            }
+            const codigo = document.getElementById('codigoInput').value.trim();
+            if (!codigo) return;
+
+            const { data, error } = await supabaseClient
+                .from('produtos')
+                .select('*')
+                .eq('codigo_barras', codigo)
+                .single();
+
+            if (error || !data) {
+                alert('Produto não encontrado no estoque!');
+                return;
+            }
+
+            carrinho.push(data);
+            atualizarCarrinho();
+            document.getElementById('codigoInput').value = '';
+            document.getElementById('codigoInput').focus();
+        }
+
+        function atualizarCarrinho() {
+            const lista = document.getElementById('carrinhoLista');
+            const totalEl = document.getElementById('totalVenda');
+            if (carrinho.length === 0) {
+                lista.innerHTML = '<p class="text-gray-400 text-center mt-16">Carrinho vazio</p>';
+                totalEl.innerText = 'R$ 0,00';
+                return;
+            }
+
+            let total = 0;
+            lista.innerHTML = '';
+            carrinho.forEach((item, index) => {
+                total += Number(item.preco);
+                lista.innerHTML += `
+                    <div class="flex justify-between items-center border-b py-1">
+                        <span>${item.nome}</span>
+                        <div class="flex items-center gap-2">
+                            <span class="font-semibold">R$ ${Number(item.preco).toFixed(2)}</span>
+                            <button onclick="removerItem(${index})" class="text-red-500 font-bold hover:text-red-700">✕</button>
+                        </div>
+                    </div>
+                `;
+            });
+            totalEl.innerText = `R$ ${total.toFixed(2)}`;
+        }
+
+        function removerItem(index) {
+            carrinho.splice(index, 1);
+            atualizarCarrinho();
+        }
+
+        // Cadastrar novo produto no Supabase
+        async function cadastrarProduto(e) {
+            e.preventDefault();
+            if (!supabaseClient) {
+                alert('Configure o Supabase primeiro!');
+                abrirConfig();
+                return;
+            }
+
+            const codigo_barras = document.getElementById('cadCodigo').value.trim();
+            const nome = document.getElementById('cadNome').value.trim();
+            const preco = parseFloat(document.getElementById('cadPreco').value);
+            const estoque = parseInt(document.getElementById('cadEstoque').value);
+
+            const { error } = await supabaseClient
+                .from('produtos')
+                .insert([{ codigo_barras, nome, preco, estoque }]);
+
+            if (error) {
+                alert('Erro ao cadastrar: ' + error.message);
+            } else {
+                alert('Produto cadastrado com sucesso!');
+                document.getElementById('formProduto').reset();
+            }
+        }
+
+        function finalizarVenda() {
+            if (carrinho.length === 0) {
+                alert('Carrinho vazio!');
+                return;
+            }
+            alert('Venda finalizada com sucesso! (Integração de Pix pronta para ser ativada)');
+            carrinho = [];
+            atualizarCarrinho();
+        }
+
+        // Suporte para leitor USB físico (Enter automático)
+        document.getElementById('codigoInput').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                adicionarPorCodigo();
+            }
+        });
+
+        // Câmera Scanner (Instascan)
+        let scanner = null;
+        function toggleCamera() {
+            const container = document.getElementById('camera-container');
+            if (container.classList.contains('hidden')) {
+                container.classList.remove('hidden');
+                scanner = new Instascan.Scanner({ video: document.getElementById('preview') });
+                scanner.addListener('scan', function (content) {
+                    document.getElementById('codigoInput').value = content;
+                    adicionarPorCodigo();
+                    toggleCamera(); // Fecha a câmera após bipar
+                });
+                Instascan.Camera.getCameras().then(function (cameras) {
+                    if (cameras.length > 0) {
+                        scanner.start(cameras[0]);
+                    } else {
+                        alert('Nenhuma câmera encontrada.');
+                    }
+                }).catch(function (e) {
+                    console.error(e);
+                });
+            } else {
+                if (scanner) scanner.stop();
+                container.classList.add('hidden');
+            }
+        }
+    </script>
+</body>
+</html>
