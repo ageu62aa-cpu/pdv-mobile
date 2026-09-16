@@ -1,15 +1,4 @@
-Python
-# Ah, look at what happened! The text showing at the top is actually the Python code snippet/comment that was mistakenly placed at the very first line of index.html outside the <html> tag or inside the body without proper escaping or as raw text.
-# Let's inspect the actual first few lines of index.html in the interpreter.
-with open("index.html", "r", encoding="utf-8") as f:
-    lines = f.readlines()
-
-print("First 5 lines of index.html:")
-for l in lines[:5]:
-    print(repr(l))
-
-# Let's write a completely clean index.html ensuring no stray text is at the beginning or end.
-clean_code = """<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -557,9 +546,3 @@ clean_code = """<!DOCTYPE html>
     </script>
 </body>
 </html>
-"""
-
-with open("index.html", "w", encoding="utf-8") as f:
-    f.write(clean_code)
-
-print("Index.html re-written cleanly without stray text.")
