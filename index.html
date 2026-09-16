@@ -10,118 +10,157 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="manifest" href="/manifest.json">
 </head>
-<body class="bg-slate-100 min-h-screen text-slate-800 flex flex-col">
+<body class="bg-slate-100 min-h-screen text-slate-800 flex flex-col justify-between">
 
-    <!-- HEADER LIMPO (Focado em Operação e Acesso Admin) -->
-    <header class="bg-slate-900 text-white px-4 py-3 flex flex-wrap justify-between items-center shadow-md">
-        <div class="flex items-center space-x-3">
-            <i class="fa-solid fa-cash-register text-2xl text-emerald-400"></i>
-            <h1 class="text-xl font-bold tracking-wide">PDV-VS</h1>
+    <!-- TELA DE LOGIN (Exibida se não houver sessão ativa) -->
+    <div id="telaLogin" class="fixed inset-0 bg-slate-900 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-8 shadow-2xl">
+            <div class="text-center mb-6">
+                <i class="fa-solid fa-cash-register text-4xl text-emerald-600 mb-2"></i>
+                <h2 class="text-2xl font-bold text-slate-900">PDV-VS Enterprise</h2>
+                <p class="text-xs text-slate-500">Entre com suas credenciais autorizadas</p>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">E-mail de Acesso</label>
+                    <input type="email" id="loginEmail" placeholder="seu.email@empresa.com" class="w-full border border-slate-300 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:border-emerald-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Senha</label>
+                    <input type="password" id="loginSenha" placeholder="••••••••" class="w-full border border-slate-300 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:border-emerald-500">
+                </div>
+                <button onclick="realizarLogin()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-lg shadow transition text-sm">
+                    Acessar Sistema
+                </button>
+                <p id="erroLogin" class="text-rose-600 text-xs text-center hidden"></p>
+            </div>
         </div>
-        <div class="flex items-center space-x-3">
-            <span class="text-xs bg-slate-800 px-3 py-1.5 rounded text-slate-300 border border-slate-700">CAIXA ABERTO</span>
-            <button onclick="abrirPainelAdmin()" class="bg-slate-800 hover:bg-slate-700 text-emerald-400 hover:text-emerald-300 px-3 py-2 rounded text-sm font-semibold transition border border-slate-700 flex items-center space-x-1.5" title="Painel Administrativo e Estoque">
-                <i class="fa-solid fa-lock"></i><span>Administração / Estoque</span>
-            </button>
-        </div>
-    </header>
+    </div>
 
-    <!-- MAIN CONTAINER -->
-    <main class="flex-1 p-4 grid grid-cols-1 lg:grid-cols-3 gap-4 max-w-7xl mx-auto w-full">
+    <!-- APLICAÇÃO PRINCIPAL (Oculta até o login) -->
+    <div id="appPrincipal" class="hidden flex-1 flex flex-col justify-between">
         
-        <!-- COLUNA ESQUERDA: VENDA & ITENS -->
-        <section class="lg:col-span-2 flex flex-col space-y-4">
+        <!-- HEADER -->
+        <header class="bg-slate-900 text-white px-4 py-3 flex flex-wrap justify-between items-center shadow-md">
+            <div class="flex items-center space-x-3">
+                <i class="fa-solid fa-cash-register text-2xl text-emerald-400"></i>
+                <h1 class="text-xl font-bold tracking-wide">PDV-VS</h1>
+            </div>
+            <div class="flex items-center space-x-3">
+                <span id="badgeCaixaStatus" class="text-xs bg-amber-500/20 text-amber-300 border border-amber-500/30 px-3 py-1.5 rounded font-semibold">CAIXA FECHADO</span>
+                <span id="infoUsuarioLogado" class="text-xs text-slate-300 bg-slate-800 px-3 py-1.5 rounded border border-slate-700">Operador</span>
+                <button id="btnAdminMenu" onclick="abrirPainelAdmin()" class="hidden bg-slate-800 hover:bg-slate-700 text-emerald-400 hover:text-emerald-300 px-3 py-2 rounded text-sm font-semibold transition border border-slate-700 flex items-center space-x-1.5">
+                    <i class="fa-solid fa-lock"></i><span>Administração</span>
+                </button>
+                <button onclick="realizarLogout()" class="bg-rose-900/40 hover:bg-rose-900/60 text-rose-300 px-3 py-2 rounded text-sm transition border border-rose-800" title="Sair do Sistema">
+                    <i class="fa-solid fa-power-off"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- CONTAINER PRINCIPAL -->
+        <main class="flex-1 p-4 grid grid-cols-1 lg:grid-cols-3 gap-4 max-w-7xl mx-auto w-full">
             
-            <!-- CAMPO DE BUSCA COM LEITOR DISCRETO -->
-            <div class="bg-white p-4 rounded-lg shadow relative">
-                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Pesquisar Produto (Nome ou Código - Min. 4 letras)</label>
-                <div class="flex space-x-2 relative items-center">
-                    <div class="relative flex-1">
-                        <input type="text" id="inputBusca" placeholder="Digite o nome ou código de barras..." 
-                            oninput="aoDigitarBusca(this.value)"
-                            class="w-full border border-slate-300 rounded px-3 py-2.5 pl-9 pr-10 focus:outline-none focus:border-emerald-500 text-sm">
-                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-3.5 text-slate-400"></i>
-                        <!-- Ícone de Câmera Discreto dentro do Input -->
-                        <button onclick="abrirLeitorCamera()" class="absolute right-3 top-2.5 text-slate-400 hover:text-slate-700 transition" title="Escanear com Câmera do Celular">
-                            <i class="fa-solid fa-camera text-lg"></i>
-                        </button>
+            <!-- COLUNA ESQUERDA: BUSCA E ITENS -->
+            <section class="lg:col-span-2 flex flex-col space-y-4">
+                
+                <!-- CAMPO DE BUSCA COM LEITOR -->
+                <div class="bg-white p-4 rounded-lg shadow relative">
+                    <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Pesquisar Produto (Nome ou Código - Min. 4 letras)</label>
+                    <div class="flex space-x-2 relative items-center">
+                        <div class="relative flex-1">
+                            <input type="text" id="inputBusca" placeholder="Digite o nome ou código de barras..." 
+                                oninput="aoDigitarBusca(this.value)"
+                                class="w-full border border-slate-300 rounded px-3 py-2.5 pl-9 pr-10 focus:outline-none focus:border-emerald-500 text-sm">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-3.5 text-slate-400"></i>
+                            <button onclick="abrirLeitorCamera()" class="absolute right-3 top-2.5 text-slate-400 hover:text-slate-700 transition" title="Escanear com Câmera">
+                                <i class="fa-solid fa-camera text-lg"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="painelSugestoes" class="hidden absolute left-4 right-4 bg-white border border-slate-200 rounded-b-lg shadow-lg z-40 max-h-60 overflow-y-auto"></div>
+                </div>
+
+                <!-- TABELA DE ITENS -->
+                <div class="bg-white rounded-lg shadow flex-1 flex flex-col overflow-hidden">
+                    <div class="bg-slate-50 px-4 py-2.5 border-b border-slate-200 font-semibold text-sm text-slate-600 flex justify-between items-center">
+                        <span>Itens da Venda Atual</span>
+                        <span id="contadorItens" class="text-xs text-slate-400 font-normal">0 itens</span>
+                    </div>
+                    <div class="flex-1 overflow-x-auto max-h-96">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-slate-100 text-xs text-slate-500 uppercase border-b border-slate-200">
+                                    <th class="p-3">Item</th>
+                                    <th class="p-3">Qtd</th>
+                                    <th class="p-3">Preço Un.</th>
+                                    <th class="p-3">Total</th>
+                                    <th class="p-3 text-center">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabelaItensVenda" class="divide-y divide-slate-100 text-sm">
+                                <tr><td colspan="5" class="p-8 text-center text-slate-400">Nenhum produto adicionado na venda.</td></tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
 
-                <!-- PAINEL FLUTUANTE DE SUGESTÕES -->
-                <div id="painelSugestoes" class="hidden absolute left-4 right-4 bg-white border border-slate-200 rounded-b-lg shadow-lg z-50 max-h-60 overflow-y-auto"></div>
-            </div>
+            </section>
 
-            <!-- TABELA DE ITENS LANÇADOS -->
-            <div class="bg-white rounded-lg shadow flex-1 flex flex-col overflow-hidden">
-                <div class="bg-slate-50 px-4 py-2.5 border-b border-slate-200 font-semibold text-sm text-slate-600 flex justify-between items-center">
-                    <span>Itens da Venda Atual</span>
-                    <span id="contadorItens" class="text-xs text-slate-400 font-normal">0 itens</span>
-                </div>
-                <div class="flex-1 overflow-x-auto max-h-96">
-                    <table class="w-full text-left border-collapse">
-                        <thead>
-                            <tr class="bg-slate-100 text-xs text-slate-500 uppercase border-b border-slate-200">
-                                <th class="p-3">Item</th>
-                                <th class="p-3">Qtd</th>
-                                <th class="p-3">Preço Un.</th>
-                                <th class="p-3">Total</th>
-                                <th class="p-3 text-center">Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tabelaItensVenda" class="divide-y divide-slate-100 text-sm">
-                            <tr><td colspan="5" class="p-8 text-center text-slate-400">Nenhum produto adicionado na venda.</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-        </section>
-
-        <!-- COLUNA DIREITA: TOTALIZADOR E FINALIZAÇÃO -->
-        <section class="bg-white p-6 rounded-lg shadow flex flex-col justify-between">
-            <div>
-                <h2 class="text-lg font-bold text-slate-800 border-b pb-2 mb-4">Resumo da Venda</h2>
-                <div class="space-y-3">
-                    <div class="flex justify-between text-slate-600 text-sm">
-                        <span>Subtotal:</span>
-                        <span id="txtSubtotal" class="font-semibold">R$ 0,00</span>
-                    </div>
-                    <div class="flex justify-between text-slate-600 text-sm">
-                        <span>Descontos:</span>
-                        <span class="font-semibold">R$ 0,00</span>
-                    </div>
-                    <div class="border-t pt-3 flex justify-between text-2xl font-bold text-slate-900">
-                        <span>Total:</span>
-                        <span id="txtTotal" class="text-emerald-600">R$ 0,00</span>
+            <!-- COLUNA DIREITA: RESUMO -->
+            <section class="bg-white p-6 rounded-lg shadow flex flex-col justify-between">
+                <div>
+                    <h2 class="text-lg font-bold text-slate-800 border-b pb-2 mb-4">Resumo da Venda</h2>
+                    <div class="space-y-3">
+                        <div class="flex justify-between text-slate-600 text-sm">
+                            <span>Subtotal:</span>
+                            <span id="txtSubtotal" class="font-semibold">R$ 0,00</span>
+                        </div>
+                        <div class="flex justify-between text-slate-600 text-sm">
+                            <span>Faturamento Dia (Operador):</span>
+                            <span id="txtFaturamentoDia" class="font-semibold text-emerald-600">R$ 0,00</span>
+                        </div>
+                        <div class="border-t pt-3 flex justify-between text-2xl font-bold text-slate-900">
+                            <span>Total:</span>
+                            <span id="txtTotal" class="text-emerald-600">R$ 0,00</span>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <div class="mt-6 space-y-3">
-                <button onclick="finalizarVenda()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-lg shadow transition flex items-center justify-center space-x-2 text-base">
-                    <i class="fa-solid fa-check"></i><span>Finalizar Venda (F9)</span>
-                </button>
-                <button onclick="cancelarVenda()" class="w-full bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold py-2.5 rounded-lg transition text-sm">
-                    Cancelar Venda
-                </button>
-            </div>
-        </section>
+                <div class="mt-6 space-y-3">
+                    <button onclick="finalizarVenda()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-lg shadow transition flex items-center justify-center space-x-2 text-base">
+                        <i class="fa-solid fa-check"></i><span>Finalizar Venda (F9)</span>
+                    </button>
+                    <button onclick="cancelarVenda()" class="w-full bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold py-2.5 rounded-lg transition text-sm">
+                        Cancelar Venda (F7)
+                    </button>
+                </div>
+            </section>
 
-    </main>
+        </main>
 
-    <!-- PAINEL ADMINISTRATIVO / GESTÃO DE ESTOQUE COMPLETA -->
+        <!-- BARRA DE ATALHOS INFERIOR (TECLAS F) -->
+        <footer class="bg-slate-900 text-white px-4 py-2.5 flex flex-wrap justify-center gap-3 text-xs border-t border-slate-800 shadow-inner">
+            <button onclick="gerenciarCaixaModal('abrir')" class="bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded border border-slate-700 transition"><span class="text-emerald-400 font-bold">[F1]</span> Abrir Caixa</button>
+            <button onclick="gerenciarCaixaModal('fechar')" class="bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded border border-slate-700 transition"><span class="text-amber-400 font-bold">[F2]</span> Fechar Caixa</button>
+            <button onclick="focarBusca()" class="bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded border border-slate-700 transition"><span class="text-blue-400 font-bold">[F5]</span> Localizar Item</button>
+            <button onclick="cancelarVenda()" class="bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded border border-slate-700 transition"><span class="text-rose-400 font-bold">[F7]</span> Cancelar Venda</button>
+            <button onclick="finalizarVenda()" class="bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded border border-slate-700 transition"><span class="text-emerald-400 font-bold">[F9]</span> Finalizar Venda</button>
+        </footer>
+
+    </div>
+
+    <!-- PAINEL ADMINISTRATIVO & ESTOQUE -->
     <div id="modalAdmin" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-xl max-w-4xl w-full p-6 shadow-2xl max-h-[90vh] flex flex-col">
+        <div class="bg-white rounded-xl max-w-5xl w-full p-6 shadow-2xl max-h-[90vh] flex flex-col">
             <div class="flex justify-between items-center border-b pb-3 mb-4">
                 <div>
-                    <h3 class="text-xl font-bold text-slate-800">Painel Administrativo & Estoque</h3>
-                    <p class="text-xs text-slate-500">Gerencie produtos cadastrados, ajuste preços, estoque ou adicione novos itens.</p>
+                    <h3 class="text-xl font-bold text-slate-800">Painel Administrativo & Controle de Estoque</h3>
+                    <p class="text-xs text-slate-500">Gestão centralizada de mercadorias, preços, faturamento e relatórios.</p>
                 </div>
                 <button onclick="fecharPainelAdmin()" class="text-slate-400 hover:text-slate-600 p-2"><i class="fa-solid fa-xmark text-2xl"></i></button>
             </div>
 
-            <!-- Abas ou Ações do Admin -->
             <div class="flex flex-wrap gap-2 justify-between items-center mb-4">
                 <input type="text" id="buscaAdmin" oninput="filtrarTabelaAdmin(this.value)" placeholder="Pesquisar por nome ou código..." class="border border-slate-300 rounded px-3 py-2 text-sm w-72 focus:outline-none focus:border-emerald-500">
                 <button onclick="abrirModalNovoProdutoAdmin()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded text-sm font-semibold transition flex items-center space-x-1.5">
@@ -129,7 +168,6 @@
                 </button>
             </div>
 
-            <!-- Tabela de Produtos Cadastrados -->
             <div class="flex-1 overflow-y-auto border border-slate-200 rounded-lg">
                 <table class="w-full text-left border-collapse">
                     <thead>
@@ -141,15 +179,13 @@
                             <th class="p-3 text-center">Ações</th>
                         </tr>
                     </thead>
-                    <tbody id="tabelaAdminProdutos" class="divide-y divide-slate-100 text-sm">
-                        <!-- Preenchido via JS -->
-                    </tbody>
+                    <tbody id="tabelaAdminProdutos" class="divide-y divide-slate-100 text-sm"></tbody>
                 </table>
             </div>
         </div>
     </div>
 
-    <!-- MODAL DE CADASTRO/EDIÇÃO DE PRODUTO (ADMIN) -->
+    <!-- MODAL DE CADASTRO/EDIÇÃO DE PRODUTO -->
     <div id="modalFormProduto" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
         <div class="bg-white rounded-lg max-w-md w-full p-6 shadow-xl">
             <h3 id="tituloModalProd" class="text-lg font-bold mb-4 text-slate-800">Cadastrar Novo Produto</h3>
@@ -184,7 +220,28 @@
         </div>
     </div>
 
-    <!-- MODAL DO LEITOR DE CÂMERA (DISCRETO / UNIVERSAL) -->
+    <!-- MODAL DE CAIXA (ABRIR / FECHAR) -->
+    <div id="modalCaixa" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl">
+            <h3 id="tituloModalCaixa" class="text-xl font-bold mb-2 text-slate-800">Abertura de Caixa</h3>
+            <p id="subtituloModalCaixa" class="text-xs text-slate-500 mb-4">Informe o valor inicial (fundo de troco) para iniciar as operações.</p>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Valor em Dinheiro (R$)</label>
+                    <input type="number" step="0.01" id="inputValorCaixa" value="0.00" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-lg font-bold text-slate-800 focus:outline-none focus:border-emerald-500">
+                </div>
+                <div id="resumoFechamentoCaixa" class="hidden bg-slate-50 p-3 rounded-lg text-xs space-y-1 text-slate-600 border">
+                    <p>Faturamento Total do Operador: <span id="valFaturamentoOperador" class="font-bold text-slate-900">R$ 0,00</span></p>
+                </div>
+            </div>
+            <div class="mt-6 flex space-x-2">
+                <button onclick="fecharModalCaixa()" class="flex-1 px-4 py-2.5 bg-slate-200 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-300">Cancelar</button>
+                <button id="btnConfirmarCaixa" onclick="confirmarAcaoCaixa()" class="flex-1 px-4 py-2.5 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DA CÂMERA -->
     <div id="modalCamera" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
         <div class="bg-white rounded-lg max-w-md w-full p-4 shadow-xl text-center">
             <h3 class="text-lg font-bold mb-2">Escaneando Código de Barras</h3>
@@ -199,21 +256,121 @@
         const SUPABASE_KEY = 'SUA_SUPABASE_ANON_KEY_AQUI';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+        let usuarioAtual = null;
+        let caixaAberto = false;
+        let faturamentoDia = 0;
         let itensVenda = [];
         let produtosCache = [];
         let html5QrCode = null;
-        let origemLeitor = 'busca'; // 'busca' ou 'admin'
+        let origemLeitor = 'busca';
+        let acaoCaixaAtual = 'abrir';
 
+        // AUTENTICAÇÃO REAL COM SUPABASE
+        async function realizarLogin() {
+            const email = document.getElementById('loginEmail').value.trim();
+            const senha = document.getElementById('loginSenha').value.trim();
+            const errEl = document.getElementById('erroLogin');
+            errEl.classList.add('hidden');
+
+            if (!email || !senha) {
+                errEl.innerText = 'Preencha e-mail e senha!';
+                errEl.classList.remove('hidden');
+                return;
+            }
+
+            try {
+                const { data, error } = await supabaseClient.auth.signInWithPassword({ email, senha });
+                if (error) throw error;
+
+                usuarioAtual = data.user;
+                verificarPermissoesUsuario();
+                document.getElementById('telaLogin').classList.add('hidden');
+                document.getElementById('appPrincipal').classList.remove('hidden');
+                carregarProdutosCache();
+            } catch (e) {
+                errEl.innerText = 'Credenciais inválidas ou erro de conexão.';
+                errEl.classList.remove('hidden');
+            }
+        }
+
+        async function realizarLogout() {
+            await supabaseClient.auth.signOut();
+            location.reload();
+        }
+
+        function verificarPermissoesUsuario() {
+            const email = usuarioAtual.email.toLowerCase();
+            document.getElementById('infoUsuarioLogado').innerText = email;
+            // Se for admin (você pode definir os e-mails administradores aqui)
+            if (email.includes('admin') || email === 'ageu62aa@gmail.com') {
+                document.getElementById('btnAdminMenu').classList.remove('hidden');
+            }
+        }
+
+        // ATALHOS DE TECLADO (F1, F2, F5, F7, F9)
+        window.addEventListener('keydown', (e) => {
+            if (document.getElementById('appPrincipal').classList.contains('hidden')) return;
+            if (e.key === 'F1') { e.preventDefault(); gerenciarCaixaModal('abrir'); }
+            if (e.key === 'F2') { e.preventDefault(); gerenciarCaixaModal('fechar'); }
+            if (e.key === 'F5') { e.preventDefault(); focarBusca(); }
+            if (e.key === 'F7') { e.preventDefault(); cancelarVenda(); }
+            if (e.key === 'F9') { e.preventDefault(); finalizarVenda(); }
+        });
+
+        function focarBusca() {
+            document.getElementById('inputBusca').focus();
+        }
+
+        // GESTÃO DE CAIXA
+        function gerenciarCaixaModal(tipo) {
+            acaoCaixaAtual = tipo;
+            const modal = document.getElementById('modalCaixa');
+            const titulo = document.getElementById('tituloModalCaixa');
+            const subtitulo = document.getElementById('subtituloModalCaixa');
+            const resumo = document.getElementById('resumoFechamentoCaixa');
+            
+            if (tipo === 'abrir') {
+                titulo.innerText = 'Abertura de Caixa';
+                subtitulo.innerText = 'Informe o fundo de troco inicial.';
+                resumo.classList.add('hidden');
+            } else {
+                if (!caixaAberto) { alert('O caixa já está fechado!'); return; }
+                titulo.innerText = 'Fechamento de Caixa';
+                subtitulo.innerText = 'Conferência de valores do operador.';
+                document.getElementById('valFaturamentoOperador').innerText = `R$ ${faturamentoDia.toFixed(2)}`;
+                resumo.classList.remove('hidden');
+            }
+            modal.classList.remove('hidden');
+        }
+
+        function fecharModalCaixa() { document.getElementById('modalCaixa').classList.add('hidden'); }
+
+        function confirmarAcaoCaixa() {
+            const badge = document.getElementById('badgeCaixaStatus');
+            if (acaoCaixaAtual === 'abrir') {
+                caixaAberto = true;
+                badge.innerText = 'CAIXA ABERTO';
+                badge.className = 'text-xs bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-3 py-1.5 rounded font-semibold';
+                alert('Caixa aberto com sucesso!');
+            } else {
+                caixaAberto = false;
+                badge.innerText = 'CAIXA FECHADO';
+                badge.className = 'text-xs bg-amber-500/20 text-amber-300 border border-amber-500/30 px-3 py-1.5 rounded font-semibold';
+                alert(`Caixa fechado! Faturamento total acumulado: R$ ${faturamentoDia.toFixed(2)}`);
+                faturamentoDia = 0;
+                document.getElementById('txtFaturamentoDia').innerText = 'R$ 0,00';
+            }
+            fecharModalCaixa();
+        }
+
+        // PRODUTOS E VENDAS
         async function carregarProdutosCache() {
             try {
                 const { data, error } = await supabaseClient.from('produtos').select('*').order('nome', { ascending: true });
                 if (!error && data) produtosCache = data;
-            } catch (e) { console.error("Erro ao carregar produtos:", e); }
+            } catch (e) { console.error(e); }
         }
 
-        window.onload = () => { carregarProdutosCache(); };
-
-        // BUSCA E LANÇAMENTO NO CAIXA
         function aoDigitarBusca(termo) {
             const painel = document.getElementById('painelSugestoes');
             if (termo.length < 2) { painel.classList.add('hidden'); return; }
@@ -296,20 +453,26 @@
         function cancelarVenda() { itensVenda = []; atualizarTabelaVenda(); }
 
         async function finalizarVenda() {
+            if (!caixaAberto) { alert('O caixa precisa estar aberto para finalizar vendas! Pressione [F1].'); return; }
             if (itensVenda.length === 0) { alert('Adicione itens à venda antes de finalizar!'); return; }
             try {
+                let valorVenda = 0;
                 for (const item of itensVenda) {
+                    valorVenda += item.qtd * item.preco;
                     const novoEstoque = item.estoque - item.qtd;
-                    const { error } = await supabaseClient.from('produtos').update({ estoque: novoEstoque }).eq('id', item.id);
-                    if (error) throw error;
+                    await supabaseClient.from('produtos').update({ estoque: novoEstoque }).eq('id', item.id);
                 }
+                
+                faturamentoDia += valorVenda;
+                document.getElementById('txtFaturamentoDia').innerText = `R$ ${faturamentoDia.toFixed(2)}`;
+
                 alert('Venda finalizada com sucesso e estoque atualizado!');
                 itensVenda = [];
                 atualizarTabelaVenda();
                 await carregarProdutosCache();
             } catch (e) {
                 console.error(e);
-                alert('Erro ao finalizar venda e dar baixa no estoque.');
+                alert('Erro ao finalizar venda.');
             }
         }
 
@@ -332,8 +495,8 @@
                     <td class="p-3 text-slate-600">R$ ${Number(p.preco).toFixed(2)}</td>
                     <td class="p-3 font-semibold text-slate-800">${p.estoque}</td>
                     <td class="p-3 text-center space-x-3">
-                        <button onclick="abrirEditarProdutoAdmin(${p.id}, '${p.nome}', '${p.codigo || ''}', ${p.preco}, ${p.estoque})" class="text-blue-600 hover:text-blue-800" title="Editar Produto"><i class="fa-solid fa-pen"></i></button>
-                        <button onclick="excluirProdutoAdmin(${p.id})" class="text-rose-600 hover:text-rose-800" title="Excluir Produto"><i class="fa-solid fa-trash"></i></button>
+                        <button onclick="abrirEditarProdutoAdmin(${p.id}, '${p.nome}', '${p.codigo || ''}', ${p.preco}, ${p.estoque})" class="text-blue-600 hover:text-blue-800" title="Editar"><i class="fa-solid fa-pen"></i></button>
+                        <button onclick="excluirProdutoAdmin(${p.id})" class="text-rose-600 hover:text-rose-800" title="Excluir"><i class="fa-solid fa-trash"></i></button>
                     </td>
                 </tr>`;
             });
@@ -346,7 +509,6 @@
             renderizarTabelaAdmin(filtrados);
         }
 
-        // CADASTRO / EDIÇÃO NO ADMIN
         function abrirModalNovoProdutoAdmin() {
             document.getElementById('tituloModalProd').innerText = 'Cadastrar Novo Produto';
             document.getElementById('formProdId').value = '';
@@ -376,29 +538,24 @@
             const preco = parseFloat(document.getElementById('formPreco').value);
             const estoque = parseInt(document.getElementById('formEstoque').value);
 
-            if (!nome || isNaN(preco) || isNaN(estoque)) { alert('Preencha os campos obrigatórios corretamente!'); return; }
+            if (!nome || isNaN(preco) || isNaN(estoque)) { alert('Preencha os campos obrigatórios!'); return; }
 
             if (id) {
-                // Atualizar existente
                 const { error } = await supabaseClient.from('produtos').update({ nome, codigo, preco, estoque }).eq('id', id);
-                if (error) { alert('Erro ao atualizar produto.'); console.error(error); }
-                else { alert('Produto atualizado com sucesso!'); fecharFormProduto(); await carregarProdutosCache(); renderizarTabelaAdmin(produtosCache); }
+                if (!error) { alert('Produto atualizado!'); fecharFormProduto(); await carregarProdutosCache(); renderizarTabelaAdmin(produtosCache); }
             } else {
-                // Inserir novo
                 const { error } = await supabaseClient.from('produtos').insert([{ nome, codigo, preco, estoque }]);
-                if (error) { alert('Erro ao cadastrar produto.'); console.error(error); }
-                else { alert('Produto cadastrado com sucesso!'); fecharFormProduto(); await carregarProdutosCache(); renderizarTabelaAdmin(produtosCache); }
+                if (!error) { alert('Produto cadastrado!'); fecharFormProduto(); await carregarProdutosCache(); renderizarTabelaAdmin(produtosCache); }
             }
         }
 
         async function excluirProdutoAdmin(id) {
-            if (!confirm('Deseja realmente excluir este produto do estoque?')) return;
+            if (!confirm('Deseja excluir este produto?')) return;
             const { error } = await supabaseClient.from('produtos').delete().eq('id', id);
             if (!error) { await carregarProdutosCache(); renderizarTabelaAdmin(produtosCache); }
-            else { alert('Erro ao excluir produto.'); }
         }
 
-        // CÂMERA (LEITOR DISCRETO)
+        // CÂMERA
         function abrirLeitorCamera() {
             origemLeitor = 'busca';
             document.getElementById('modalCamera').classList.remove('hidden');
@@ -426,22 +583,13 @@
                     }
                 },
                 () => {}
-            ).catch(err => { console.error(err); alert('Não foi possível acessar a câmera do dispositivo.'); fecharLeitorCamera(); });
+            ).catch(() => { alert('Erro ao acessar a câmera.'); fecharLeitorCamera(); });
         }
 
         function fecharLeitorCamera() {
             if (html5QrCode) {
                 html5QrCode.stop().then(() => { document.getElementById('modalCamera').classList.add('hidden'); }).catch(() => { document.getElementById('modalCamera').classList.add('hidden'); });
             } else { document.getElementById('modalCamera').classList.add('hidden'); }
-        }
-
-        // SERVICE WORKER PWA
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js')
-                    .then(reg => console.log('Service Worker registrado:', reg.scope))
-                    .catch(err => console.log('Erro Service Worker:', err));
-            });
         }
     </script>
 </body>
