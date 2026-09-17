@@ -1,4 +1,7 @@
-const SUPABASE_URL = 'https://supabase.co';
+// ==========================================
+// CONFIGURAÇÃO SUPABASE CORRIGIDA
+// ==========================================
+const SUPABASE_URL = 'https://vbdglglmxaywntmjriccf.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiZGdsZ214YXl3bnRtanJpY2NmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk1ODgzOTEsImV4cCI6MjEwNTE2NDM5MX0.S_IUvajnn7Qk7yNtkfBru9xsOjUkKhkJ0J0doikrWSs';
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -6,6 +9,7 @@ let usuarioAtual = null, empresaAtualId = null, dadosEmpresaAtual = null, cargoU
 let modoTelaAuth = 'login', caixaAberto = false, faturamentoDia = 0, itensVenda = [], produtosCache = [];
 let historicoVendasCache = [], html5QrcodeInstance = null, origemLeitor = 'busca';
 let acaoCaixaAtual = 'abrir', indiceItemParaRemover = null, deferredPrompt = null;
+let produtoEmPesagemAtual = null; // Controle para produtos vendidos por KG
 
 // ==========================================
 // 1. INICIALIZAÇÃO E PWA
@@ -361,7 +365,7 @@ function aoDigitarBusca(termo) {
     let html = '';
     filtrados.forEach(p => {
         const prodString = JSON.stringify(p).replace(/"/g, '&quot;');
-        html += `<div onclick="adicionarItemVendaPorObjeto('${prodString}')" class="p-3 hover:bg-slate-50 cursor-pointer border-b flex justify-between text-sm"> <div><span class="font-semibold text-slate-800">${p.nome}</span><span class="text-xs text-slate-400 block">Cód: ${p.codigo || 'N/A'}</span></div> <b>R$ ${Number(p.preco).toFixed(2)}</b> </div>`;
+        html += `<div onclick="adicionarItemVendaPorObjeto('${prodString}')" class="p-3 hover:bg-slate-50 cursor-pointer border-b flex justify-between text-sm"> <div><span class="font-semibold text-slate-800">${p.nome}</span><span class="text-xs text-slate-400 block">Cód: ${p.codigo || 'N/A'} ${p.unidade === 'KG' ? '<span class="text-amber-600 font-bold">(Por Peso)</span>' : ''}</span></div> <b>R$ ${Number(p.preco).toFixed(2)} ${p.unidade === 'KG' ? '/kg' : ''}</b> </div>`;
     });
     painel.innerHTML = html || '<div class="p-3 text-xs text-slate-400">Nenhum produto encontrado.</div>';
     painel.classList.remove('hidden');
@@ -370,10 +374,118 @@ function aoDigitarBusca(termo) {
 function adicionarItemVendaPorObjeto(prodStr) {
     try {
         const p = JSON.parse(prodStr.replace(/&quot;/g, '"'));
-        adicionarItemVenda(p);
+        tratarAdicaoProduto(p);
     } catch(err) {
         console.error("Erro ao parsear item:", err);
     }
+}
+
+// TRATAMENTO INTELIGENTE PARA PRODUTOS POR KG OU UNIDADE
+function tratarAdicaoProduto(produto) {
+    const painel = document.getElementById('painelSugestoes');
+    if(painel) painel.classList.add('hidden');
+    
+    const inputBusca = document.getElementById('inputBusca');
+    if(inputBusca) {
+        inputBusca.value = '';
+        inputBusca.focus();
+    }
+
+    // Se o produto for vendido por quilo (KG), abrir modal de pesagem manual profissional
+    if (produto.unidade === 'KG' || produto.por_peso) {
+        abrirModalPesagemManual(produto);
+    } else {
+        adicionarItemVendaDireto(produto, 1);
+    }
+}
+
+function abrirModalPesagemManual(produto) {
+    produtoEmPesagemAtual = produto;
+    
+    // Cria um modal dinâmico profissional se não existir no DOM
+    let modal = document.getElementById('modalPesagemManual');
+    if (!modal) {
+        const divModal = document.createElement('div');
+        divModal.id = 'modalPesagemManual';
+        divModal.className = 'fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4';
+        divModal.innerHTML = `
+            <div class="bg-white w-full max-w-sm rounded-xl shadow-2xl p-6 text-slate-800 animate-scaleUp">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-bold text-lg text-slate-900"><i class="fa-solid fa-scale-balanced text-emerald-600 mr-2"></i> Produto por Peso</h3>
+                    <button onclick="fecharModalPesagemManual()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+                </div>
+                <div class="mb-4 bg-slate-50 p-3 rounded-lg border">
+                    <p id="lblNomeProdutoPeso" class="font-bold text-slate-800 text-base"></p>
+                    <p id="lblPrecoKgProduto" class="text-xs text-slate-500 mt-1"></p>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-xs font-bold text-slate-600 mb-1">PESO NA BALANÇA (KG)</label>
+                    <input type="number" step="0.001" id="inputPesoKg" placeholder="Ex: 0.750" oninput="calcularValorParcialPeso(this.value)" class="w-full p-3 border rounded-lg text-lg font-bold text-emerald-700 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                </div>
+                <div class="mb-5 bg-emerald-50 border border-emerald-200 p-3 rounded-lg flex justify-between items-center">
+                    <span class="text-xs font-bold text-emerald-800">VALOR TOTAL:</span>
+                    <span id="lblValorCalculadoPeso" class="text-xl font-extrabold text-emerald-700">R$ 0,00</span>
+                </div>
+                <div class="flex space-x-2">
+                    <button onclick="fecharModalPesagemManual()" class="w-1/2 bg-slate-200 hover:bg-slate-300 text-slate-700 py-2.5 rounded-lg font-bold text-sm">Cancelar</button>
+                    <button onclick="confirmarAdicaoPeso()" class="w-1/2 bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-lg font-bold text-sm shadow">Adicionar</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(divModal);
+        modal = divModal;
+    }
+
+    document.getElementById('lblNomeProdutoPeso').innerText = produto.nome;
+    document.getElementById('lblPrecoKgProduto').innerText = `Preço por KG: R$ ${Number(produto.preco).toFixed(2)}`;
+    document.getElementById('inputPesoKg').value = '';
+    document.getElementById('lblValorCalculadoPeso').innerText = 'R$ 0,00';
+    modal.classList.remove('hidden');
+    setTimeout(() => document.getElementById('inputPesoKg').focus(), 100);
+}
+
+function calcularValorParcialPeso(pesoStr) {
+    const peso = parseFloat(pesoStr) || 0;
+    if (produtoEmPesagemAtual) {
+        const total = peso * produtoEmPesagemAtual.preco;
+        document.getElementById('lblValorCalculadoPeso').innerText = `R$ ${total.toFixed(2)}`;
+    }
+}
+
+function fecharModalPesagemManual() {
+    const modal = document.getElementById('modalPesagemManual');
+    if (modal) modal.classList.add('hidden');
+    produtoEmPesagemAtual = null;
+    focarBusca();
+}
+
+function confirmarAdicaoPeso() {
+    const peso = parseFloat(document.getElementById('inputPesoKg').value) || 0;
+    if (peso <= 0) {
+        alert('Informe um peso válido em KG.');
+        return;
+    }
+    if (produtoEmPesagemAtual) {
+        // Para itens fracionados por peso, guardamos a quantidade como decimal ex: 0.750 kg
+        adicionarItemVendaDireto(produtoEmPesagemAtual, peso, true);
+        fecharModalPesagemManual();
+    }
+}
+
+function adicionarItemVendaDireto(produto, qtd, isPeso = false) {
+    // Se for por peso, tratamos como item único na listagem ou acumulamos o peso se já existir
+    const existente = itensVenda.find(i => i.id === produto.id && !isPeso); 
+    if (existente && !isPeso) { 
+        existente.qtd += qtd; 
+    } else { 
+        itensVenda.push({ 
+            ...produto, 
+            qtd: qtd, 
+            isPeso: isPeso,
+            nomeExibicao: isPeso ? `${produto.nome} (${qtd.toFixed(3)} kg)` : produto.nome
+        }); 
+    }
+    atualizarTabelaVenda();
 }
 
 // COMPATÍVEL COM LEITORES FÍSICOS USB E BLUETOOTH (DISPARA NO ENTER)
@@ -385,32 +497,13 @@ function tratarEnterBuscaCaixa(e) {
         
         const p = produtosCache.find(prod => (prod.codigo && prod.codigo.toLowerCase() === termo) || prod.nome.toLowerCase() === termo);
         if (p) {
-            adicionarItemVenda(p);
+            tratarAdicaoProduto(p);
         } else {
             const pParcial = produtosCache.find(prod => prod.nome.toLowerCase().includes(termo) || (prod.codigo && prod.codigo.toLowerCase().includes(termo)));
-            if (pParcial) adicionarItemVenda(pParcial);
+            if (pParcial) tratarAdicaoProduto(pParcial);
             else alert('Produto não encontrado!');
         }
     }
-}
-
-function adicionarItemVenda(produto) {
-    const painel = document.getElementById('painelSugestoes');
-    if(painel) painel.classList.add('hidden');
-    
-    const inputBusca = document.getElementById('inputBusca');
-    if(inputBusca) {
-        inputBusca.value = '';
-        inputBusca.focus();
-    }
-    
-    const existente = itensVenda.find(i => i.id === produto.id);
-    if (existente) { 
-        existente.qtd += 1; 
-    } else { 
-        itensVenda.push({ ...produto, qtd: 1 }); 
-    }
-    atualizarTabelaVenda();
 }
 
 function atualizarTabelaVenda() {
@@ -427,12 +520,18 @@ function atualizarTabelaVenda() {
     
     let html = '', total = 0;
     itensVenda.forEach((item, i) => {
-        total += item.qtd * item.preco;
+        const subtotalItem = item.qtd * item.preco;
+        total += subtotalItem;
+        
+        const qtdDisplay = item.isPeso 
+            ? `<span class="text-amber-700 font-bold text-xs bg-amber-50 px-2 py-0.5 rounded">${item.qtd.toFixed(3)} kg</span>` 
+            : `<input type="number" min="1" value="${item.qtd}" onchange="alterarQtd(${i}, this.value)" class="w-14 text-center border rounded">`;
+
         html += `<tr class="border-b">
-            <td class="p-2">${item.nome}</td>
-            <td class="p-2"><input type="number" min="1" value="${item.qtd}" onchange="alterarQtd(${i}, this.value)" class="w-12 text-center border rounded"></td>
-            <td class="p-2">R$ ${Number(item.preco).toFixed(2)}</td>
-            <td class="p-2 font-bold">R$ ${(item.qtd * item.preco).toFixed(2)}</td>
+            <td class="p-2">${item.nome} ${item.isPeso ? '<span class="text-[10px] text-amber-600 block">Pesado manualmente</span>' : ''}</td>
+            <td class="p-2">${qtdDisplay}</td>
+            <td class="p-2">R$ ${Number(item.preco).toFixed(2)}${item.isPeso ? '/kg' : ''}</td>
+            <td class="p-2 font-bold">R$ ${subtotalItem.toFixed(2)}</td>
             <td class="p-2 text-center"><button onclick="solicitarRemocaoItem(${i})" class="text-rose-500"><i class="fa-solid fa-trash"></i></button></td>
         </tr>`;
     });
@@ -442,7 +541,7 @@ function atualizarTabelaVenda() {
 }
 
 function alterarQtd(i, qtd) { 
-    const q = parseInt(qtd); 
+    const q = parseFloat(qtd); 
     if (q > 0) { itensVenda[i].qtd = q; atualizarTabelaVenda(); } 
 }
 
@@ -565,11 +664,11 @@ function renderizarTabelaAdmin(lista) {
     lista.forEach(p => {
         html += `<tr class="border-b">
             <td class="p-2 text-xs">${p.codigo || '-'}</td>
-            <td class="p-2 font-medium">${p.nome}</td>
-            <td class="p-2">R$ ${Number(p.preco).toFixed(2)}</td>
+            <td class="p-2 font-medium">${p.nome} ${p.unidade === 'KG' ? '<span class="text-amber-600 text-[10px] font-bold">(KG)</span>' : ''}</td>
+            <td class="p-2">R$ ${Number(p.preco).toFixed(2)}${p.unidade === 'KG' ? '/kg' : ''}</td>
             <td class="p-2">${p.estoque}</td>
             <td class="p-2 text-center">
-                <button onclick="abrirEditarProdutoAdmin(${p.id},'${p.nome}','${p.codigo || ''}',${p.preco},${p.estoque})" class="text-blue-500 mr-2"><i class="fa-solid fa-pen"></i></button>
+                <button onclick="abrirEditarProdutoAdmin(${p.id},'${p.nome}','${p.codigo || ''}',${p.preco},${p.estoque}, '${p.unidade || 'UN'}')" class="text-blue-500 mr-2"><i class="fa-solid fa-pen"></i></button>
                 <button onclick="excluirProdutoAdmin(${p.id})" class="text-rose-500"><i class="fa-solid fa-trash"></i></button>
             </td>
         </tr>`;
@@ -587,15 +686,24 @@ function abrirModalNovoProdutoAdmin() {
     document.getElementById('formCodigo').value = ''; 
     document.getElementById('formPreco').value = '';
     document.getElementById('formEstoque').value = '';
+    
+    // Adicionar seletor de unidade caso exista ou criar dinâmico
+    let selectUnidade = document.getElementById('formUnidade');
+    if(selectUnidade) selectUnidade.value = 'UN';
+
     document.getElementById('modalFormProduto').classList.remove('hidden');
 }
 
-function abrirEditarProdutoAdmin(id, nome, cod, preco, est) {
+function abrirEditarProdutoAdmin(id, nome, cod, preco, est, unidade = 'UN') {
     document.getElementById('formProdId').value = id; 
     document.getElementById('formNome').value = nome;
     document.getElementById('formCodigo').value = cod; 
     document.getElementById('formPreco').value = preco;
     document.getElementById('formEstoque').value = est; 
+    
+    let selectUnidade = document.getElementById('formUnidade');
+    if(selectUnidade) selectUnidade.value = unidade;
+
     document.getElementById('modalFormProduto').classList.remove('hidden');
 }
 
@@ -605,11 +713,15 @@ function fecharFormProduto() {
 
 async function salvarProdutoAdmin() {
     const id = document.getElementById('formProdId').value;
+    const selectUnidade = document.getElementById('formUnidade');
+    const unidadeProd = selectUnidade ? selectUnidade.value : 'UN';
+
     const p = { 
         nome: document.getElementById('formNome').value, 
         codigo: document.getElementById('formCodigo').value, 
         preco: parseFloat(document.getElementById('formPreco').value) || 0, 
-        estoque: parseInt(document.getElementById('formEstoque').value) || 0 
+        estoque: parseInt(document.getElementById('formEstoque').value) || 0,
+        unidade: unidadeProd
     };
     
     if (id) { 
@@ -688,7 +800,7 @@ async function carregarHistoricoAdmin() {
 function renderizarHistoricoVendas() {
     let html = '';
     historicoVendasCache.forEach(v => {
-        const nomesItens = v.itens ? v.itens.map(i => i.nome).join(', ') : '';
+        const nomesItens = v.itens ? v.itens.map(i => i.isPeso ? `${i.nome} (${i.qtd.toFixed(3)}kg)` : `${i.nome} (x${i.qtd})`).join(', ') : '';
         html += `<tr class="border-b text-xs">
             <td class="p-3">${new Date(v.created_at).toLocaleString()}</td>
             <td class="p-3 font-semibold">${v.operador}</td>
@@ -737,7 +849,7 @@ async function iniciarCameraComHtml5Qrcode() {
                 if (origemLeitor === 'busca') {
                     const p = produtosCache.find(prod => prod.codigo === decodedText);
                     if (p) { 
-                        adicionarItemVenda(p); 
+                        tratarAdicaoProduto(p); 
                     } else { 
                         alert(`Código mapeado (${decodedText}) mas não cadastrado no estoque.`); 
                     }
@@ -815,3 +927,7 @@ window.escanearCameraAdmin = escanearCameraAdmin;
 window.fecharLeitorCamera = fecharLeitorCamera;
 window.salvarPinAdmin = salvarPinAdmin;
 window.adicionarItemVendaPorObjeto = adicionarItemVendaPorObjeto;
+window.abrirModalPesagemManual = abrirModalPesagemManual;
+window.fecharModalPesagemManual = fecharModalPesagemManual;
+window.calcularValorParcialPeso = calcularValorParcialPeso;
+window.confirmarAdicaoPeso = confirmarAdicaoPeso;
