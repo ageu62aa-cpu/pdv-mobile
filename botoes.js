@@ -1,37 +1,6 @@
 // ==========================================
-// CONFIGURAÇÃO SUPABASE CORRIGIDA
+// MÓDULO DE INTERFACE, BOTÕES E AÇÕES
 // ==========================================
-const SUPABASE_URL = 'https://vbdglgmxaywntmjriccf.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiZGdsZ214YXl3bnRtanJpY2NmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk1ODgzOTEsImV4cCI6MjEwNTE2NDM5MX0.S_IUvajnn7Qk7yNtkfBru9xsOjUkKhkJ0J0doikrWSs';
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-let usuarioAtual = null, empresaAtualId = null, dadosEmpresaAtual = null, cargoUsuarioAtual = null;
-let modoTelaAuth = 'login', caixaAberto = false, faturamentoDia = 0, itensVenda = [], produtosCache = [];
-let historicoVendasCache = [], html5QrcodeInstance = null, origemLeitor = 'busca';
-let acaoCaixaAtual = 'abrir', indiceItemParaRemover = null, deferredPrompt = null;
-let produtoEmPesagemAtual = null; // Controle para produtos vendidos por KG
-
-// ==========================================
-// 1. INICIALIZAÇÃO E PWA
-// ==========================================
-window.addEventListener('DOMContentLoaded', async () => {
-    try {
-        const { data: { session } } = await supabaseClient.auth.getSession();
-        if (session && session.user) { 
-            usuarioAtual = session.user; 
-            await validarVinculoEmpresaUsuario(); 
-        }
-    } catch (e) { 
-        console.error("Erro ao restaurar sessão:", e); 
-    }
-});
-
-window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault(); 
-    deferredPrompt = e;
-    const btnInstalar = document.getElementById('btnInstalarPwa');
-    if (btnInstalar) btnInstalar.classList.remove('hidden');
-});
 
 async function instalarPwaApp() {
     if (deferredPrompt) {
@@ -46,24 +15,6 @@ async function instalarPwaApp() {
         alert('Instale diretamente pelas configurações ou menu do seu navegador.');
     }
 }
-
-// ==========================================
-// 2. SUPER ADMIN (GATILHO SECRETO)
-// ==========================================
-let cliquesSecretos = 0;
-document.addEventListener('DOMContentLoaded', () => {
-    const gatilho = document.getElementById('gatilhoSuperAdmin');
-    if (gatilho) {
-        gatilho.addEventListener('click', () => {
-            cliquesSecretos++;
-            if (cliquesSecretos >= 5) {
-                cliquesSecretos = 0;
-                document.getElementById('telaLoginSuperAdmin').classList.remove('hidden');
-                setTimeout(() => document.getElementById('superAdminEmail').focus(), 100);
-            }
-        });
-    }
-});
 
 function fecharTelaSuperAdmin() { 
     document.getElementById('telaLoginSuperAdmin').classList.add('hidden'); 
@@ -156,9 +107,6 @@ async function alternarStatusEmpresa(empresaId, statusAtual) {
     }
 }
 
-// ==========================================
-// 3. AUTENTICAÇÃO E SESSÃO
-// ==========================================
 function alternarTelaAuth(modo) {
     modoTelaAuth = modo;
     const fields = {
@@ -299,21 +247,6 @@ async function realizarLogout() {
     location.reload(); 
 }
 
-// ==========================================
-// 4. MÓDULO DE CAIXA E VENDAS
-// ==========================================
-window.addEventListener('keydown', (e) => {
-    const appPrincipal = document.getElementById('appPrincipal');
-    if (!appPrincipal || appPrincipal.classList.contains('hidden')) return;
-    
-    if (e.key === 'F1') { e.preventDefault(); gerenciarCaixaModal('abrir'); }
-    if (e.key === 'F2') { e.preventDefault(); gerenciarCaixaModal('fechar'); }
-    if (e.key === 'F5') { e.preventDefault(); focarBusca(); }
-    if (e.key === 'F6') { e.preventDefault(); abrirModalCancelarItem(); }
-    if (e.key === 'F7') { e.preventDefault(); cancelarVenda(); }
-    if (e.key === 'F9') { e.preventDefault(); finalizarVenda(); }
-});
-
 function focarBusca() { 
     const input = document.getElementById('inputBusca');
     if(input) input.focus(); 
@@ -380,7 +313,6 @@ function adicionarItemVendaPorObjeto(prodStr) {
     }
 }
 
-// TRATAMENTO INTELIGENTE PARA PRODUTOS POR KG OU UNIDADE
 function tratarAdicaoProduto(produto) {
     const painel = document.getElementById('painelSugestoes');
     if(painel) painel.classList.add('hidden');
@@ -391,7 +323,6 @@ function tratarAdicaoProduto(produto) {
         inputBusca.focus();
     }
 
-    // Se o produto for vendido por quilo (KG), abrir modal de pesagem manual profissional
     if (produto.unidade === 'KG' || produto.por_peso) {
         abrirModalPesagemManual(produto);
     } else {
@@ -401,8 +332,6 @@ function tratarAdicaoProduto(produto) {
 
 function abrirModalPesagemManual(produto) {
     produtoEmPesagemAtual = produto;
-    
-    // Cria um modal dinâmico profissional se não existir no DOM
     let modal = document.getElementById('modalPesagemManual');
     if (!modal) {
         const divModal = document.createElement('div');
@@ -466,14 +395,12 @@ function confirmarAdicaoPeso() {
         return;
     }
     if (produtoEmPesagemAtual) {
-        // Para itens fracionados por peso, guardamos a quantidade como decimal ex: 0.750 kg
         adicionarItemVendaDireto(produtoEmPesagemAtual, peso, true);
         fecharModalPesagemManual();
     }
 }
 
 function adicionarItemVendaDireto(produto, qtd, isPeso = false) {
-    // Se for por peso, tratamos como item único na listagem ou acumulamos o peso se já existir
     const existente = itensVenda.find(i => i.id === produto.id && !isPeso); 
     if (existente && !isPeso) { 
         existente.qtd += qtd; 
@@ -488,7 +415,6 @@ function adicionarItemVendaDireto(produto, qtd, isPeso = false) {
     atualizarTabelaVenda();
 }
 
-// COMPATÍVEL COM LEITORES FÍSICOS USB E BLUETOOTH (DISPARA NO ENTER)
 function tratarEnterBuscaCaixa(e) {
     if (e.key === 'Enter') {
         e.preventDefault();
@@ -624,9 +550,6 @@ async function finalizarVenda() {
     focarBusca();
 }
 
-// ==========================================
-// 5. PAINEL ADMINISTRATIVO
-// ==========================================
 function mudarAbaAdmin(aba) {
     ['Produtos', 'Operadores', 'Historico'].forEach(a => {
         const conteudo = document.getElementById(`conteudoAba${a}`);
@@ -687,7 +610,6 @@ function abrirModalNovoProdutoAdmin() {
     document.getElementById('formPreco').value = '';
     document.getElementById('formEstoque').value = '';
     
-    // Adicionar seletor de unidade caso exista ou criar dinâmico
     let selectUnidade = document.getElementById('formUnidade');
     if(selectUnidade) selectUnidade.value = 'UN';
 
@@ -812,9 +734,6 @@ function renderizarHistoricoVendas() {
     if(tabelaHist) tabelaHist.innerHTML = html || '<tr><td colspan="4" class="p-4 text-center text-slate-400">Nenhuma venda registrada nos últimos dias.</td></tr>';
 }
 
-// ==========================================
-// 6. LEITURA POR CÂMERA (HTML5-QRCODE)
-// ==========================================
 async function abrirLeitorCamera() {
     origemLeitor = 'busca';
     document.getElementById('modalCamera').classList.remove('hidden');
@@ -879,55 +798,3 @@ async function fecharLeitorCamera() {
     const modalCamera = document.getElementById('modalCamera');
     if(modalCamera) modalCamera.classList.add('hidden');
 }
-
-// ==========================================
-// 7. EXPOSIÇÃO GLOBAL DE FUNÇÕES
-// ==========================================
-window.instalarPwaApp = instalarPwaApp; 
-window.fecharTelaSuperAdmin = fecharTelaSuperAdmin;
-window.logarSuperAdmin = logarSuperAdmin; 
-window.abrirSuperAdminMaster = abrirSuperAdminMaster;
-window.fecharSuperAdminMaster = fecharSuperAdminMaster; 
-window.carregarListaClientesSuperAdmin = carregarListaClientesSuperAdmin;
-window.filtrarClientesSuperAdmin = filtrarClientesSuperAdmin; 
-window.alternarStatusEmpresa = alternarStatusEmpresa;
-window.alternarTelaAuth = alternarTelaAuth; 
-window.tratarEnterLogin = tratarEnterLogin;
-window.processarAutenticacao = processarAutenticacao; 
-window.realizarLogout = realizarLogout;
-window.gerenciarCaixaModal = gerenciarCaixaModal; 
-window.fecharModalCaixa = fecharModalCaixa;
-window.confirmarAcaoCaixa = confirmarAcaoCaixa; 
-window.aoDigitarBusca = aoDigitarBusca;
-window.tratarEnterBuscaCaixa = tratarEnterBuscaCaixa; 
-window.focarBusca = focarBusca;
-window.alterarQtd = alterarQtd; 
-window.solicitarRemocaoItem = solicitarRemocaoItem;
-window.abrirModalCancelarItem = abrirModalCancelarItem; 
-window.fecharModalCancelarItem = fecharModalCancelarItem;
-window.fecharModalAutorizacao = fecharModalAutorizacao; 
-window.confirmarAutorizacaoPin = confirmarAutorizacaoPin;
-window.cancelarVenda = cancelarVenda; 
-window.finalizarVenda = finalizarVenda;
-window.mudarAbaAdmin = mudarAbaAdmin; 
-window.abrirPainelAdmin = abrirPainelAdmin;
-window.fecharPainelAdmin = fecharPainelAdmin; 
-window.excluirOperadorLoja = excluirOperadorLoja;
-window.abrirModalNovoOperador = abrirModalNovoOperador; 
-window.fecharModalNovoOperador = fecharModalNovoOperador;
-window.salvarNovoOperador = salvarNovoOperador; 
-window.filtrarTabelaAdmin = filtrarTabelaAdmin;
-window.abrirModalNovoProdutoAdmin = abrirModalNovoProdutoAdmin; 
-window.abrirEditarProdutoAdmin = abrirEditarProdutoAdmin;
-window.fecharFormProduto = fecharFormProduto; 
-window.salvarProdutoAdmin = salvarProdutoAdmin;
-window.excluirProdutoAdmin = excluirProdutoAdmin; 
-window.abrirLeitorCamera = abrirLeitorCamera;
-window.escanearCameraAdmin = escanearCameraAdmin; 
-window.fecharLeitorCamera = fecharLeitorCamera;
-window.salvarPinAdmin = salvarPinAdmin;
-window.adicionarItemVendaPorObjeto = adicionarItemVendaPorObjeto;
-window.abrirModalPesagemManual = abrirModalPesagemManual;
-window.fecharModalPesagemManual = fecharModalPesagemManual;
-window.calcularValorParcialPeso = calcularValorParcialPeso;
-window.confirmarAdicaoPeso = confirmarAdicaoPeso;
