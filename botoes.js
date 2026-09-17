@@ -1,5 +1,5 @@
 // ==========================================
-// MÓDULO DE INTERFACE, BOTÕES E AÇÕES
+// MÓDULO DE INTERFACE, BOTÕES E AÇÕES (CORRIGIDO)
 // ==========================================
 
 async function instalarPwaApp() {
@@ -17,35 +17,45 @@ async function instalarPwaApp() {
 }
 
 function fecharTelaSuperAdmin() { 
-    document.getElementById('telaLoginSuperAdmin').classList.add('hidden'); 
+    const tela = document.getElementById('telaLoginSuperAdmin');
+    if (tela) tela.classList.add('hidden'); 
 }
 
 async function logarSuperAdmin() {
-    const email = document.getElementById('superAdminEmail').value.trim();
-    const senha = document.getElementById('superAdminSenha').value.trim();
+    const emailEl = document.getElementById('superAdminEmail');
+    const senhaEl = document.getElementById('superAdminSenha');
     const fb = document.getElementById('feedbackSuperAdmin');
-    fb.classList.add('hidden');
+    
+    if (fb) fb.classList.add('hidden');
+    
+    const email = emailEl ? emailEl.value.trim() : '';
+    const senha = senhaEl ? senhaEl.value.trim() : '';
     
     if (email === 'vancely@admin.com' && senha === 'vancely2026') {
         fecharTelaSuperAdmin(); 
         await abrirSuperAdminMaster();
     } else {
-        fb.innerText = 'Credenciais inválidas.'; 
-        fb.classList.remove('hidden');
+        if (fb) {
+            fb.innerText = 'Credenciais inválidas.'; 
+            fb.classList.remove('hidden');
+        }
     }
 }
 
 async function abrirSuperAdminMaster() {
-    document.getElementById('modalSuperAdminMaster').classList.remove('hidden');
+    const modal = document.getElementById('modalSuperAdminMaster');
+    if (modal) modal.classList.remove('hidden');
     await carregarListaClientesSuperAdmin();
 }
 
 function fecharSuperAdminMaster() { 
-    document.getElementById('modalSuperAdminMaster').classList.add('hidden'); 
+    const modal = document.getElementById('modalSuperAdminMaster');
+    if (modal) modal.classList.add('hidden'); 
 }
 
 async function carregarListaClientesSuperAdmin() {
     const tbody = document.getElementById('tabelaClientesSuperAdmin');
+    if (!tbody) return;
     try {
         tbody.innerHTML = '<tr><td colspan="6" class="p-6 text-center text-slate-400">Buscando estabelecimentos...</td></tr>';
         const { data, error } = await supabaseClient.from('empresas').select('*').order('created_at', { ascending: false });
@@ -60,6 +70,7 @@ async function carregarListaClientesSuperAdmin() {
 
 function renderizarTabelaSuperAdmin(lista) {
     const tbody = document.getElementById('tabelaClientesSuperAdmin');
+    if (!tbody) return;
     if (!lista || lista.length === 0) { 
         tbody.innerHTML = '<tr><td colspan="6" class="p-6 text-center text-slate-400">Nenhum cadastrado.</td></tr>'; 
         return; 
@@ -121,27 +132,29 @@ function alternarTelaAuth(modo) {
         mercado: document.getElementById('divNomeMercadoCadastro'), 
         doc: document.getElementById('divDocumentoCadastro')
     };
-    document.getElementById('feedbackAuth').classList.add('hidden');
+    
+    const fb = document.getElementById('feedbackAuth');
+    if (fb) fb.classList.add('hidden');
 
     if (modo === 'login') {
-        fields.titulo.innerText = 'PDV-VS Enterprise'; 
-        fields.btn.innerText = 'Acessar Sistema';
-        fields.icone.className = 'fa-solid fa-cash-register text-4xl text-emerald-600 mb-2';
-        fields.divSenha.classList.remove('hidden'); 
-        fields.links.classList.remove('hidden');
-        fields.voltar.classList.add('hidden'); 
-        fields.perfil.classList.add('hidden');
-        fields.mercado.classList.add('hidden'); 
-        fields.doc.classList.add('hidden');
+        if (fields.titulo) fields.titulo.innerText = 'PDV-VS Enterprise'; 
+        if (fields.btn) fields.btn.innerText = 'Acessar Sistema';
+        if (fields.icone) fields.icone.className = 'fa-solid fa-cash-register text-4xl text-emerald-600 mb-2';
+        if (fields.divSenha) fields.divSenha.classList.remove('hidden'); 
+        if (fields.links) fields.links.classList.remove('hidden');
+        if (fields.voltar) fields.voltar.classList.add('hidden'); 
+        if (fields.perfil) fields.perfil.classList.add('hidden');
+        if (fields.mercado) fields.mercado.classList.add('hidden'); 
+        if (fields.doc) fields.doc.classList.add('hidden');
     } else if (modo === 'cadastro') {
-        fields.titulo.innerText = 'Novo Estabelecimento'; 
-        fields.btn.innerText = 'Criar Conta';
-        fields.icone.className = 'fa-solid fa-store text-4xl text-blue-600 mb-2';
-        fields.voltar.classList.remove('hidden'); 
-        fields.perfil.classList.remove('hidden');
-        fields.mercado.classList.remove('hidden'); 
-        fields.doc.classList.remove('hidden');
-        fields.links.classList.add('hidden');
+        if (fields.titulo) fields.titulo.innerText = 'Novo Estabelecimento'; 
+        if (fields.btn) fields.btn.innerText = 'Criar Conta';
+        if (fields.icone) fields.icone.className = 'fa-solid fa-store text-4xl text-blue-600 mb-2';
+        if (fields.voltar) fields.voltar.classList.remove('hidden'); 
+        if (fields.perfil) fields.perfil.classList.remove('hidden');
+        if (fields.mercado) fields.mercado.classList.remove('hidden'); 
+        if (fields.doc) fields.doc.classList.remove('hidden');
+        if (fields.links) fields.links.classList.add('hidden');
     }
 }
 
@@ -150,8 +163,11 @@ function tratarEnterLogin(e) {
 }
 
 async function processarAutenticacao() {
-    const email = document.getElementById('authEmail').value.trim();
-    const senha = document.getElementById('authSenha').value.trim();
+    const emailEl = document.getElementById('authEmail');
+    const senhaEl = document.getElementById('authSenha');
+    const email = emailEl ? emailEl.value.trim() : '';
+    const senha = senhaEl ? senhaEl.value.trim() : '';
+    
     if (!email) { mostrarFeedback('Por favor, informe o e-mail.', 'rose'); return; }
 
     try {
@@ -161,9 +177,13 @@ async function processarAutenticacao() {
             usuarioAtual = data.user; 
             await validarVinculoEmpresaUsuario();
         } else if (modoTelaAuth === 'cadastro') {
-            const nomeMercado = document.getElementById('authNomeMercado').value.trim();
-            const documento = document.getElementById('authDocumento').value.trim();
-            const tipoPerfil = document.getElementById('selectTipoPerfil').value;
+            const nomeMercadoEl = document.getElementById('authNomeMercado');
+            const documentoEl = document.getElementById('authDocumento');
+            const selectPerfilEl = document.getElementById('selectTipoPerfil');
+
+            const nomeMercado = nomeMercadoEl ? nomeMercadoEl.value.trim() : '';
+            const documento = documentoEl ? documentoEl.value.trim() : '';
+            const tipoPerfil = selectPerfilEl ? selectPerfilEl.value : 'operador';
 
             const { data: authData, error: authError } = await supabaseClient.auth.signUp({ 
                 email, 
@@ -222,22 +242,35 @@ async function validarVinculoEmpresaUsuario() {
 
 function mostrarFeedback(msg, cor) {
     const fb = document.getElementById('feedbackAuth'); 
-    fb.innerText = msg;
-    fb.className = `text-xs text-center text-${cor}-600 font-semibold mt-2`; 
-    fb.classList.remove('hidden');
+    if (fb) {
+        fb.innerText = msg;
+        fb.className = `text-xs text-center text-${cor}-600 font-semibold mt-2`; 
+        fb.classList.remove('hidden');
+    }
 }
 
 function concluirLoginSucesso(cargoUser) {
-    const usuarioNomeExibicao = usuarioAtual.email.split('@')[0];
-    document.getElementById('infoUsuarioLogado').innerText = `${usuarioNomeExibicao} (${cargoUser === 'admin_mercado' ? 'Admin' : 'Caixa'})`;
-    document.getElementById('tituloAppEmpresa').innerText = dadosEmpresaAtual.nome_mercado;
-    document.getElementById('badgeEmpresaLogada').innerText = `CNPJ: ${dadosEmpresaAtual.documento}`;
+    if (usuarioAtual && usuarioAtual.email) {
+        const usuarioNomeExibicao = usuarioAtual.email.split('@')[0];
+        const infoLogado = document.getElementById('infoUsuarioLogado');
+        if (infoLogado) infoLogado.innerText = `${usuarioNomeExibicao} (${cargoUser === 'admin_mercado' ? 'Admin' : 'Caixa'})`;
+    }
+    
+    if (dadosEmpresaAtual) {
+        const tituloEmpresa = document.getElementById('tituloAppEmpresa');
+        const badgeEmpresa = document.getElementById('badgeEmpresaLogada');
+        if (tituloEmpresa) tituloEmpresa.innerText = dadosEmpresaAtual.nome_mercado;
+        if (badgeEmpresa) badgeEmpresa.innerText = `CNPJ: ${dadosEmpresaAtual.documento}`;
+    }
     
     const btnAdminMenu = document.getElementById('btnAdminMenu');
-    if(btnAdminMenu) btnAdminMenu.classList.toggle('hidden', cargoUser !== 'admin_mercado');
+    if (btnAdminMenu) btnAdminMenu.classList.toggle('hidden', cargoUser !== 'admin_mercado');
     
-    document.getElementById('telaLogin').classList.add('hidden');
-    document.getElementById('appPrincipal').classList.remove('hidden');
+    const telaLogin = document.getElementById('telaLogin');
+    const appPrincipal = document.getElementById('appPrincipal');
+    if (telaLogin) telaLogin.classList.add('hidden');
+    if (appPrincipal) appPrincipal.classList.remove('hidden');
+    
     carregarProdutosCache(); 
     focarBusca();
 }
@@ -249,20 +282,25 @@ async function realizarLogout() {
 
 function focarBusca() { 
     const input = document.getElementById('inputBusca');
-    if(input) input.focus(); 
+    if (input) input.focus(); 
 }
 
 function gerenciarCaixaModal(tipo) {
     acaoCaixaAtual = tipo;
     const modal = document.getElementById('modalCaixa');
-    document.getElementById('tituloModalCaixa').innerText = tipo === 'abrir' ? 'Abertura de Caixa' : 'Fechamento de Caixa';
-    document.getElementById('resumoFechamentoCaixa').classList.toggle('hidden', tipo === 'abrir');
-    if (tipo === 'fechar') document.getElementById('valFaturamentoOperador').innerText = `R$ ${faturamentoDia.toFixed(2)}`;
-    modal.classList.remove('hidden');
+    const tituloModal = document.getElementById('tituloModalCaixa');
+    const resumoFechamento = document.getElementById('resumoFechamentoCaixa');
+    const valFatOp = document.getElementById('valFaturamentoOperador');
+
+    if (tituloModal) tituloModal.innerText = tipo === 'abrir' ? 'Abertura de Caixa' : 'Fechamento de Caixa';
+    if (resumoFechamento) resumoFechamento.classList.toggle('hidden', tipo === 'abrir');
+    if (tipo === 'fechar' && valFatOp) valFatOp.innerText = `R$ ${faturamentoDia.toFixed(2)}`;
+    if (modal) modal.classList.remove('hidden');
 }
 
 function fecharModalCaixa() { 
-    document.getElementById('modalCaixa').classList.add('hidden'); 
+    const modal = document.getElementById('modalCaixa');
+    if (modal) modal.classList.add('hidden'); 
 }
 
 function confirmarAcaoCaixa() {
@@ -277,13 +315,13 @@ function confirmarAcaoCaixa() {
     if (!caixaAberto) { 
         faturamentoDia = 0; 
         const txtFat = document.getElementById('txtFaturamentoDia');
-        if(txtFat) txtFat.innerText = 'R$ 0,00'; 
+        if (txtFat) txtFat.innerText = 'R$ 0,00'; 
     }
     fecharModalCaixa();
 }
 
 async function carregarProdutosCache() {
-    if(!empresaAtualId) return;
+    if (!empresaAtualId) return;
     const { data } = await supabaseClient.from('produtos').select('*').eq('empresa_id', empresaAtualId).order('nome', { ascending: true });
     if (data) produtosCache = data;
 }
@@ -315,10 +353,10 @@ function adicionarItemVendaPorObjeto(prodStr) {
 
 function tratarAdicaoProduto(produto) {
     const painel = document.getElementById('painelSugestoes');
-    if(painel) painel.classList.add('hidden');
+    if (painel) painel.classList.add('hidden');
     
     const inputBusca = document.getElementById('inputBusca');
-    if(inputBusca) {
+    if (inputBusca) {
         inputBusca.value = '';
         inputBusca.focus();
     }
@@ -365,19 +403,28 @@ function abrirModalPesagemManual(produto) {
         modal = divModal;
     }
 
-    document.getElementById('lblNomeProdutoPeso').innerText = produto.nome;
-    document.getElementById('lblPrecoKgProduto').innerText = `Preço por KG: R$ ${Number(produto.preco).toFixed(2)}`;
-    document.getElementById('inputPesoKg').value = '';
-    document.getElementById('lblValorCalculadoPeso').innerText = 'R$ 0,00';
-    modal.classList.remove('hidden');
-    setTimeout(() => document.getElementById('inputPesoKg').focus(), 100);
+    const lblNome = document.getElementById('lblNomeProdutoPeso');
+    const lblPreco = document.getElementById('lblPrecoKgProduto');
+    const inputPeso = document.getElementById('inputPesoKg');
+    const lblValorCalc = document.getElementById('lblValorCalculadoPeso');
+
+    if (lblNome) lblNome.innerText = produto.nome;
+    if (lblPreco) lblPreco.innerText = `Preço por KG: R$ ${Number(produto.preco).toFixed(2)}`;
+    if (inputPeso) inputPeso.value = '';
+    if (lblValorCalc) lblValorCalc.innerText = 'R$ 0,00';
+    if (modal) modal.classList.remove('hidden');
+    
+    setTimeout(() => {
+        if (inputPeso) inputPeso.focus();
+    }, 100);
 }
 
 function calcularValorParcialPeso(pesoStr) {
     const peso = parseFloat(pesoStr) || 0;
-    if (produtoEmPesagemAtual) {
+    const lblValorCalc = document.getElementById('lblValorCalculadoPeso');
+    if (produtoEmPesagemAtual && lblValorCalc) {
         const total = peso * produtoEmPesagemAtual.preco;
-        document.getElementById('lblValorCalculadoPeso').innerText = `R$ ${total.toFixed(2)}`;
+        lblValorCalc.innerText = `R$ ${total.toFixed(2)}`;
     }
 }
 
@@ -389,7 +436,8 @@ function fecharModalPesagemManual() {
 }
 
 function confirmarAdicaoPeso() {
-    const peso = parseFloat(document.getElementById('inputPesoKg').value) || 0;
+    const inputPeso = document.getElementById('inputPesoKg');
+    const peso = inputPeso ? parseFloat(inputPeso.value) || 0 : 0;
     if (peso <= 0) {
         alert('Informe um peso válido em KG.');
         return;
@@ -435,12 +483,17 @@ function tratarEnterBuscaCaixa(e) {
 function atualizarTabelaVenda() {
     const tbody = document.getElementById('tabelaItensVenda');
     const contador = document.getElementById('contadorItens');
-    if(contador) contador.innerText = `${itensVenda.length} itens`;
+    const txtSubtotal = document.getElementById('txtSubtotal');
+    const txtTotal = document.getElementById('txtTotal');
+
+    if (contador) contador.innerText = `${itensVenda.length} itens`;
     
+    if (!tbody) return;
+
     if (itensVenda.length === 0) { 
         tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-slate-400">Nenhum produto adicionado na venda.</td></tr>'; 
-        document.getElementById('txtSubtotal').innerText = 'R$ 0,00'; 
-        document.getElementById('txtTotal').innerText = 'R$ 0,00'; 
+        if (txtSubtotal) txtSubtotal.innerText = 'R$ 0,00'; 
+        if (txtTotal) txtTotal.innerText = 'R$ 0,00'; 
         return; 
     }
     
@@ -462,8 +515,8 @@ function atualizarTabelaVenda() {
         </tr>`;
     });
     tbody.innerHTML = html;
-    document.getElementById('txtSubtotal').innerText = `R$ ${total.toFixed(2)}`;
-    document.getElementById('txtTotal').innerText = `R$ ${total.toFixed(2)}`;
+    if (txtSubtotal) txtSubtotal.innerText = `R$ ${total.toFixed(2)}`;
+    if (txtTotal) txtTotal.innerText = `R$ ${total.toFixed(2)}`;
 }
 
 function alterarQtd(i, qtd) { 
@@ -472,20 +525,24 @@ function alterarQtd(i, qtd) {
 }
 
 function salvarPinAdmin() {
-    const pin = document.getElementById('inputAdminPinConfig').value.trim();
-    if(!pin) { alert('Informe um PIN válido.'); return; }
+    const inputPin = document.getElementById('inputAdminPinConfig');
+    const pin = inputPin ? inputPin.value.trim() : '';
+    if (!pin) { alert('Informe um PIN válido.'); return; }
     localStorage.setItem('pdv_admin_pin_' + empresaAtualId, pin); 
     alert('PIN salvo com sucesso!');
 }
 
 function solicitarRemocaoItem(i) {
     indiceItemParaRemover = i; 
-    document.getElementById('inputPinAutorizacion').value = '';
-    document.getElementById('modalAutorizacaoAdmin').classList.remove('hidden');
+    const inputPinAuth = document.getElementById('inputPinAutorizacion');
+    const modalAuth = document.getElementById('modalAutorizacaoAdmin');
+    if (inputPinAuth) inputPinAuth.value = '';
+    if (modalAuth) modalAuth.classList.remove('hidden');
 }
 
 function confirmarAutorizacaoPin() {
-    const pin = document.getElementById('inputPinAutorizacion').value.trim();
+    const inputPinAuth = document.getElementById('inputPinAutorizacion');
+    const pin = inputPinAuth ? inputPinAuth.value.trim() : '';
     const pinSalvo = localStorage.getItem('pdv_admin_pin_' + empresaAtualId) || '123456';
     if (pin === pinSalvo) {
         if (indiceItemParaRemover !== null) { 
@@ -499,7 +556,8 @@ function confirmarAutorizacaoPin() {
 }
 
 function fecharModalAutorizacao() { 
-    document.getElementById('modalAutorizacaoAdmin').classList.add('hidden'); 
+    const modal = document.getElementById('modalAutorizacaoAdmin');
+    if (modal) modal.classList.add('hidden'); 
 }
 
 function abrirModalCancelarItem() {
@@ -508,12 +566,15 @@ function abrirModalCancelarItem() {
     itensVenda.forEach((item, index) => {
         html += `<div class="p-3 flex justify-between items-center hover:bg-slate-50 cursor-pointer border-b" onclick="fecharModalCancelarItem(); solicitarRemocaoItem(${index});"> <div><span class="font-semibold text-slate-800">${item.nome}</span></div> <button class="text-rose-600 text-xs border border-rose-200 rounded px-2 py-1">Remover</button> </div>`;
     });
-    document.getElementById('listaItensParaCancelar').innerHTML = html;
-    document.getElementById('modalCancelarItem').classList.remove('hidden');
+    const listaCancelar = document.getElementById('listaItensParaCancelar');
+    const modalCancelar = document.getElementById('modalCancelarItem');
+    if (listaCancelar) listaCancelar.innerHTML = html;
+    if (modalCancelar) modalCancelar.classList.remove('hidden');
 }
 
 function fecharModalCancelarItem() { 
-    document.getElementById('modalCancelarItem').classList.add('hidden'); 
+    const modal = document.getElementById('modalCancelarItem');
+    if (modal) modal.classList.add('hidden'); 
 }
 
 function cancelarVenda() { 
@@ -535,14 +596,14 @@ async function finalizarVenda() {
         itens: itensVenda 
     }]);
     
-    if(error) {
+    if (error) {
         alert('Erro ao registrar venda: ' + error.message);
         return;
     }
 
     faturamentoDia += total; 
     const txtFat = document.getElementById('txtFaturamentoDia');
-    if(txtFat) txtFat.innerText = `R$ ${faturamentoDia.toFixed(2)}`;
+    if (txtFat) txtFat.innerText = `R$ ${faturamentoDia.toFixed(2)}`;
     
     itensVenda = []; 
     atualizarTabelaVenda(); 
@@ -554,16 +615,16 @@ function mudarAbaAdmin(aba) {
     ['Produtos', 'Operadores', 'Historico'].forEach(a => {
         const conteudo = document.getElementById(`conteudoAba${a}`);
         const btn = document.getElementById(`btnAba${a}`);
-        if(conteudo) conteudo.classList.add('hidden');
-        if(btn) btn.className = 'px-3 py-1.5 text-xs font-bold bg-slate-200 text-slate-700 rounded-lg';
+        if (conteudo) conteudo.classList.add('hidden');
+        if (btn) btn.className = 'px-3 py-1.5 text-xs font-bold bg-slate-200 text-slate-700 rounded-lg';
     });
     
     const activeAba = aba.charAt(0).toUpperCase() + aba.slice(1);
     const conteudoAtivo = document.getElementById(`conteudoAba${activeAba}`);
     const btnAtivo = document.getElementById(`btnAba${activeAba}`);
     
-    if(conteudoAtivo) conteudoAtivo.classList.remove('hidden');
-    if(btnAtivo) btnAtivo.className = 'px-3 py-1.5 text-xs font-bold bg-emerald-600 text-white rounded-lg';
+    if (conteudoAtivo) conteudoAtivo.classList.remove('hidden');
+    if (btnAtivo) btnAtivo.className = 'px-3 py-1.5 text-xs font-bold bg-emerald-600 text-white rounded-lg';
     
     if (aba === 'operadores') carregarOperadoresLoja();
     if (aba === 'historico') carregarHistoricoAdmin();
@@ -572,16 +633,18 @@ function mudarAbaAdmin(aba) {
 function abrirPainelAdmin() { 
     renderizarTabelaAdmin(produtosCache); 
     mudarAbaAdmin('produtos'); 
-    document.getElementById('modalAdmin').classList.remove('hidden'); 
+    const modalAdmin = document.getElementById('modalAdmin');
+    if (modalAdmin) modalAdmin.classList.remove('hidden'); 
 }
 
 function fecharPainelAdmin() { 
-    document.getElementById('modalAdmin').classList.add('hidden'); 
+    const modalAdmin = document.getElementById('modalAdmin');
+    if (modalAdmin) modalAdmin.classList.add('hidden'); 
 }
 
 function renderizarTabelaAdmin(lista) {
     const tbody = document.getElementById('tabelaAdminProdutos');
-    if(!tbody) return;
+    if (!tbody) return;
     
     let html = '';
     lista.forEach(p => {
@@ -604,45 +667,64 @@ function filtrarTabelaAdmin(t) {
 }
 
 function abrirModalNovoProdutoAdmin() {
-    document.getElementById('formProdId').value = ''; 
-    document.getElementById('formNome').value = '';
-    document.getElementById('formCodigo').value = ''; 
-    document.getElementById('formPreco').value = '';
-    document.getElementById('formEstoque').value = '';
-    
-    let selectUnidade = document.getElementById('formUnidade');
-    if(selectUnidade) selectUnidade.value = 'UN';
+    const prodId = document.getElementById('formProdId');
+    const nome = document.getElementById('formNome');
+    const codigo = document.getElementById('formCodigo');
+    const preco = document.getElementById('formPreco');
+    const estoque = document.getElementById('formEstoque');
+    const selectUnidade = document.getElementById('formUnidade');
+    const modalForm = document.getElementById('modalFormProduto');
 
-    document.getElementById('modalFormProduto').classList.remove('hidden');
+    if (prodId) prodId.value = ''; 
+    if (nome) nome.value = '';
+    if (codigo) codigo.value = ''; 
+    if (preco) preco.value = '';
+    if (estoque) estoque.value = '';
+    if (selectUnidade) selectUnidade.value = 'UN';
+
+    if (modalForm) modalForm.classList.remove('hidden');
 }
 
 function abrirEditarProdutoAdmin(id, nome, cod, preco, est, unidade = 'UN') {
-    document.getElementById('formProdId').value = id; 
-    document.getElementById('formNome').value = nome;
-    document.getElementById('formCodigo').value = cod; 
-    document.getElementById('formPreco').value = preco;
-    document.getElementById('formEstoque').value = est; 
-    
-    let selectUnidade = document.getElementById('formUnidade');
-    if(selectUnidade) selectUnidade.value = unidade;
+    const prodId = document.getElementById('formProdId');
+    const inputNome = document.getElementById('formNome');
+    const inputCodigo = document.getElementById('formCodigo');
+    const inputPreco = document.getElementById('formPreco');
+    const inputEstoque = document.getElementById('formEstoque');
+    const selectUnidade = document.getElementById('formUnidade');
+    const modalForm = document.getElementById('modalFormProduto');
 
-    document.getElementById('modalFormProduto').classList.remove('hidden');
+    if (prodId) prodId.value = id; 
+    if (inputNome) inputNome.value = nome;
+    if (inputCodigo) inputCodigo.value = cod; 
+    if (inputPreco) inputPreco.value = preco;
+    if (inputEstoque) inputEstoque.value = est; 
+    if (selectUnidade) selectUnidade.value = unidade;
+
+    if (modalForm) modalForm.classList.remove('hidden');
 }
 
 function fecharFormProduto() { 
-    document.getElementById('modalFormProduto').classList.add('hidden'); 
+    const modal = document.getElementById('modalFormProduto');
+    if (modal) modal.classList.add('hidden'); 
 }
 
 async function salvarProdutoAdmin() {
-    const id = document.getElementById('formProdId').value;
+    const prodId = document.getElementById('formProdId');
+    const nome = document.getElementById('formNome');
+    const codigo = document.getElementById('formCodigo');
+    const preco = document.getElementById('formPreco');
+    const estoque = document.getElementById('formEstoque');
     const selectUnidade = document.getElementById('formUnidade');
+
+    const id = prodId ? prodId.value : '';
     const unidadeProd = selectUnidade ? selectUnidade.value : 'UN';
 
     const p = { 
-        nome: document.getElementById('formNome').value, 
-        codigo: document.getElementById('formCodigo').value, 
-        preco: parseFloat(document.getElementById('formPreco').value) || 0, 
-        estoque: parseInt(document.getElementById('formEstoque').value) || 0,
+        nome: nome ? nome.value : '', 
+        codigo: codigo ? codigo.value : '', 
+        preco: preco ? parseFloat(preco.value) || 0 : 0, 
+        estoque: estoque ? parseInt(estoque.value) || 0 : 0,
         unidade: unidadeProd
     };
     
@@ -680,7 +762,7 @@ async function carregarOperadoresLoja() {
         });
     }
     const tabelaOps = document.getElementById('tabelaOperadoresLoja');
-    if(tabelaOps) tabelaOps.innerHTML = html || '<tr><td colspan="5" class="p-4 text-center text-slate-400">Nenhum operador indexado.</td></tr>';
+    if (tabelaOps) tabelaOps.innerHTML = html || '<tr><td colspan="5" class="p-4 text-center text-slate-400">Nenhum operador indexado.</td></tr>';
 }
 
 async function excluirOperadorLoja(id) { 
@@ -691,20 +773,25 @@ async function excluirOperadorLoja(id) {
 }
 
 function abrirModalNovoOperador() { 
-    document.getElementById('modalNovoOperador').classList.remove('hidden'); 
+    const modal = document.getElementById('modalNovoOperador');
+    if (modal) modal.classList.remove('hidden'); 
 }
 
 function fecharModalNovoOperador() { 
-    document.getElementById('modalNovoOperador').classList.add('hidden'); 
+    const modal = document.getElementById('modalNovoOperador');
+    if (modal) modal.classList.add('hidden'); 
 }
 
 async function salvarNovoOperador() {
-    const email = document.getElementById('novoOpEmail').value.trim();
-    const password = document.getElementById('novoOpSenha').value.trim();
+    const inputEmail = document.getElementById('novoOpEmail');
+    const inputSenha = document.getElementById('novoOpSenha');
+    const email = inputEmail ? inputEmail.value.trim() : '';
+    const password = inputSenha ? inputSenha.value.trim() : '';
+
     if (!email || !password) { alert('Preencha os campos de acesso provisório.'); return; }
     
     const { data, error } = await supabaseClient.auth.signUp({ email, password });
-    if(error) { alert('Erro ao criar usuário: ' + error.message); return; }
+    if (error) { alert('Erro ao criar usuário: ' + error.message); return; }
     
     if (data && data.user) {
         await supabaseClient.from('usuarios_empresas').insert([{ user_id: data.user.id, empresa_id: empresaAtualId, cargo: 'operador' }]);
@@ -731,18 +818,20 @@ function renderizarHistoricoVendas() {
         </tr>`;
     });
     const tabelaHist = document.getElementById('tabelaHistoricoVendas');
-    if(tabelaHist) tabelaHist.innerHTML = html || '<tr><td colspan="4" class="p-4 text-center text-slate-400">Nenhuma venda registrada nos últimos dias.</td></tr>';
+    if (tabelaHist) tabelaHist.innerHTML = html || '<tr><td colspan="4" class="p-4 text-center text-slate-400">Nenhuma venda registrada nos últimos dias.</td></tr>';
 }
 
 async function abrirLeitorCamera() {
     origemLeitor = 'busca';
-    document.getElementById('modalCamera').classList.remove('hidden');
+    const modalCam = document.getElementById('modalCamera');
+    if (modalCam) modalCam.classList.remove('hidden');
     await iniciarCameraComHtml5Qrcode();
 }
 
 async function escanearCameraAdmin() {
     origemLeitor = 'admin';
-    document.getElementById('modalCamera').classList.remove('hidden');
+    const modalCam = document.getElementById('modalCamera');
+    if (modalCam) modalCam.classList.remove('hidden');
     await iniciarCameraComHtml5Qrcode();
 }
 
@@ -774,7 +863,7 @@ async function iniciarCameraComHtml5Qrcode() {
                     }
                 } else if (origemLeitor === 'admin') {
                     const inputCodigo = document.getElementById('formCodigo');
-                    if(inputCodigo) inputCodigo.value = decodedText;
+                    if (inputCodigo) inputCodigo.value = decodedText;
                 }
             },
             () => {}
@@ -796,5 +885,5 @@ async function fecharLeitorCamera() {
         html5QrcodeInstance = null;
     }
     const modalCamera = document.getElementById('modalCamera');
-    if(modalCamera) modalCamera.classList.add('hidden');
+    if (modalCamera) modalCamera.classList.add('hidden');
 }
