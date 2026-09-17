@@ -175,49 +175,92 @@
 
     <!-- PAINEL ADMINISTRATIVO -->
     <div id="modalAdmin" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-xl max-w-5xl w-full p-6 shadow-2xl max-h-[90vh] flex flex-col">
+        <div class="bg-white rounded-xl max-w-6xl w-full p-6 shadow-2xl max-h-[92vh] flex flex-col">
             <div class="flex justify-between items-center border-b pb-3 mb-4">
                 <div>
-                    <h3 class="text-xl font-bold text-slate-800">Painel Administrativo & Controle de Estoque</h3>
-                    <p class="text-xs text-slate-500">Gestão centralizada de mercadorias, preços, faturamento e PIN de segurança.</p>
+                    <h3 class="text-xl font-bold text-slate-800">Painel Administrativo & Gestão de Vendas (Plano Básica - 15 Dias)</h3>
+                    <p class="text-xs text-slate-500">Controle de estoque, PIN de segurança e histórico de faturamento por operador.</p>
                 </div>
                 <button onclick="fecharPainelAdmin()" class="text-slate-400 hover:text-slate-600 p-2"><i class="fa-solid fa-xmark text-2xl"></i></button>
             </div>
 
-            <!-- CONFIGURAÇÃO DE PIN DE GERÊNCIA (6 DÍGITOS) -->
-            <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4 flex flex-wrap justify-between items-center">
-                <div>
-                    <h4 class="text-sm font-bold text-amber-900"><i class="fa-solid fa-key mr-1.5"></i> PIN de Autorização de Cancelamento (6 Dígitos)</h4>
-                    <p class="text-xs text-amber-700">Defina um PIN numérico para liberar cancelamentos de itens no caixa sem expor sua senha.</p>
+            <!-- ABAS DO PAINEL ADMIN -->
+            <div class="flex space-x-2 border-b border-slate-200 mb-4 pb-2">
+                <button onclick="mudarAbaAdmin('produtos')" id="btnAbaProdutos" class="px-4 py-2 text-sm font-bold bg-emerald-600 text-white rounded-lg transition shadow">Controle de Produtos</button>
+                <button onclick="mudarAbaAdmin('historico')" id="btnAbaHistorico" class="px-4 py-2 text-sm font-bold bg-slate-200 text-slate-700 rounded-lg transition">Histórico & Faturamento (15 Dias)</button>
+            </div>
+
+            <!-- CONTEÚDO DA ABA: PRODUTOS -->
+            <div id="conteudoAbaProdutos" class="flex-1 flex flex-col overflow-hidden">
+                <!-- CONFIGURAÇÃO DE PIN DE GERÊNCIA (6 DÍGITOS) -->
+                <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-3 flex flex-wrap justify-between items-center">
+                    <div>
+                        <h4 class="text-xs font-bold text-amber-900"><i class="fa-solid fa-key mr-1.5"></i> PIN de Autorização de Cancelamento (6 Dígitos)</h4>
+                        <p class="text-[11px] text-amber-700">Defina o PIN numérico para liberar cancelamentos de itens no caixa.</p>
+                    </div>
+                    <div class="flex space-x-2 mt-1 sm:mt-0">
+                        <input type="password" maxlength="6" id="inputAdminPinConfig" placeholder="Ex: 123456" class="border border-amber-300 rounded px-2.5 py-1 text-xs w-28 text-center tracking-widest font-bold focus:outline-none focus:border-amber-500">
+                        <button onclick="salvarPinAdmin()" class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1 rounded text-xs font-semibold transition shadow">Salvar PIN</button>
+                    </div>
                 </div>
-                <div class="flex space-x-2 mt-2 sm:mt-0">
-                    <input type="password" maxlength="6" id="inputAdminPinConfig" placeholder="Ex: 123456" class="border border-amber-300 rounded px-3 py-1.5 text-sm w-32 text-center tracking-widest font-bold focus:outline-none focus:border-amber-500">
-                    <button onclick="salvarPinAdmin()" class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded text-sm font-semibold transition shadow">Salvar PIN</button>
+
+                <div class="flex flex-wrap gap-2 justify-between items-center mb-3">
+                    <input type="text" id="buscaAdmin" oninput="filtrarTabelaAdmin(this.value)" placeholder="Pesquisar por nome ou código..." class="border border-slate-300 rounded px-3 py-2 text-sm w-72 focus:outline-none focus:border-emerald-500">
+                    
+                    <button onclick="abrirModalNovoProdutoAdmin()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center space-x-2 shadow">
+                        <i class="fa-solid fa-plus text-base"></i><span>Cadastrar Novo Produto</span>
+                    </button>
+                </div>
+
+                <div class="flex-1 overflow-y-auto border border-slate-200 rounded-lg">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-100 text-xs text-slate-500 uppercase border-b border-slate-200 sticky top-0">
+                                <th class="p-3">Código</th>
+                                <th class="p-3">Nome do Produto</th>
+                                <th class="p-3">Preço (R$)</th>
+                                <th class="p-3">Estoque</th>
+                                <th class="p-3 text-center">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabelaAdminProdutos" class="divide-y divide-slate-100 text-sm"></tbody>
+                    </table>
                 </div>
             </div>
 
-            <div class="flex flex-wrap gap-2 justify-between items-center mb-4">
-                <input type="text" id="buscaAdmin" oninput="filtrarTabelaAdmin(this.value)" placeholder="Pesquisar por nome ou código..." class="border border-slate-300 rounded px-3 py-2 text-sm w-72 focus:outline-none focus:border-emerald-500">
-                
-                <button onclick="abrirModalNovoProdutoAdmin()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition flex items-center space-x-2 shadow">
-                    <i class="fa-solid fa-plus text-base"></i><span>Cadastrar Novo Produto</span>
-                </button>
+            <!-- CONTEÚDO DA ABA: HISTÓRICO DE VENDAS (15 DIAS POR OPERADOR) -->
+            <div id="conteudoAbaHistorico" class="hidden flex-1 flex flex-col overflow-hidden space-y-3">
+                <div class="bg-slate-50 border border-slate-200 rounded-lg p-3 flex flex-wrap justify-between items-center">
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-800"><i class="fa-solid fa-calendar-days text-emerald-600 mr-1.5"></i> Acompanhamento em Tempo Real (Retenção Automática de 15 Dias)</h4>
+                        <p class="text-[11px] text-slate-500">Faturamento segmentado por operador e filtrado por dia.</p>
+                    </div>
+                    <!-- Caixa de Opções: Dia 1 ao Dia 15 -->
+                    <div class="flex items-center space-x-2 mt-2 sm:mt-0">
+                        <label class="text-xs font-semibold text-slate-600">Selecione o Dia:</label>
+                        <select id="selectFiltroDia" onchange="renderizarHistoricoVendas()" class="border border-slate-300 rounded px-3 py-1.5 text-xs bg-white font-bold text-emerald-700 focus:outline-none focus:border-emerald-500">
+                            <!-- Preenchido dinamicamente via JS -->
+                        </select>
+                    </div>
+                </div>
+
+                <div class="flex-1 overflow-y-auto border border-slate-200 rounded-lg">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-100 text-xs text-slate-500 uppercase border-b border-slate-200 sticky top-0">
+                                <th class="p-3">Data / Hora</th>
+                                <th class="p-3">Operador (Caixa)</th>
+                                <th class="p-3">Itens Vendidos</th>
+                                <th class="p-3 text-right">Valor Total (R$)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabelaHistoricoVendas" class="divide-y divide-slate-100 text-sm">
+                            <tr><td colspan="4" class="p-6 text-center text-slate-400">Carregando histórico...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
-            <div class="flex-1 overflow-y-auto border border-slate-200 rounded-lg">
-                <table class="w-full text-left border-collapse">
-                    <thead>
-                        <tr class="bg-slate-100 text-xs text-slate-500 uppercase border-b border-slate-200 sticky top-0">
-                            <th class="p-3">Código</th>
-                            <th class="p-3">Nome do Produto</th>
-                            <th class="p-3">Preço (R$)</th>
-                            <th class="p-3">Estoque</th>
-                            <th class="p-3 text-center">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tabelaAdminProdutos" class="divide-y divide-slate-100 text-sm"></tbody>
-                </table>
-            </div>
         </div>
     </div>
 
@@ -331,6 +374,7 @@
         let faturamentoDia = 0;
         let itensVenda = [];
         let produtosCache = [];
+        let historicoVendasCache = [];
         let html5QrCode = null;
         let origemLeitor = 'busca';
         let acaoCaixaAtual = 'abrir';
@@ -638,7 +682,7 @@
             atualizarTabelaVenda();
         }
 
-        // SEGURANÇA: VALIDAÇÃO POR PIN DE 6 DÍGITOS PARA REMOVER/CANCELAR ITENS
+        // SEGURANÇA: VALIDAÇÃO POR PIN DE 6 DÍGITOS
         function salvarPinAdmin() {
             const pin = document.getElementById('inputAdminPinConfig').value.trim();
             if (pin.length !== 6 || isNaN(pin)) {
@@ -689,7 +733,7 @@
             const errDiv = document.getElementById('erroAuthAdmin');
             errDiv.classList.add('hidden');
 
-            const pinSalvo = localStorage.getItem('pdv_admin_pin') || '123456'; // PIN padrão inicial caso não tenha configurado
+            const pinSalvo = localStorage.getItem('pdv_admin_pin') || '123456';
 
             if (pinInformado === pinSalvo) {
                 if (indiceItemParaRemover !== null && indiceItemParaRemover >= 0) {
@@ -729,10 +773,18 @@
                     await supabaseClient.from('produtos').update({ estoque: novoEstoque }).eq('id', item.id);
                 }
                 
+                // Salvar histórico da venda no Supabase vinculando o operador atual
+                const operadorEmail = usuarioAtual ? usuarioAtual.email : 'Desconhecido';
+                await supabaseClient.from('vendas').insert([{
+                    operador: operadorEmail,
+                    valor_total: valorVenda,
+                    itens: JSON.parse(JSON.stringify(itensVenda))
+                }]);
+
                 faturamentoDia += valorVenda;
                 document.getElementById('txtFaturamentoDia').innerText = `R$ ${faturamentoDia.toFixed(2)}`;
 
-                alert('Venda finalizada e estoque atualizado com sucesso!');
+                alert('Venda finalizada e salva no histórico com sucesso!');
                 itensVenda = [];
                 atualizarTabelaVenda();
                 await carregarProdutosCache();
@@ -743,10 +795,32 @@
             }
         }
 
+        // ABAS DO PAINEL ADMINISTRATIVO
+        function mudarAbaAdmin(aba) {
+            const btnProd = document.getElementById('btnAbaProdutos');
+            const btnHist = document.getElementById('btnAbaHistorico');
+            const contProd = document.getElementById('conteudoAbaProdutos');
+            const contHist = document.getElementById('conteudoAbaHistorico');
+
+            if (aba === 'produtos') {
+                btnProd.className = 'px-4 py-2 text-sm font-bold bg-emerald-600 text-white rounded-lg transition shadow';
+                btnHist.className = 'px-4 py-2 text-sm font-bold bg-slate-200 text-slate-700 rounded-lg transition';
+                contProd.classList.remove('hidden');
+                contHist.classList.add('hidden');
+            } else {
+                btnHist.className = 'px-4 py-2 text-sm font-bold bg-emerald-600 text-white rounded-lg transition shadow';
+                btnProd.className = 'px-4 py-2 text-sm font-bold bg-slate-200 text-slate-700 rounded-lg transition';
+                contHist.classList.remove('hidden');
+                contProd.classList.add('hidden');
+                carregarHistoricoAdmin();
+            }
+        }
+
         // PAINEL ADMINISTRATIVO
         async function abrirPainelAdmin() {
             await carregarProdutosCache();
             renderizarTabelaAdmin(produtosCache);
+            mudarAbaAdmin('produtos');
             document.getElementById('modalAdmin').classList.remove('hidden');
         }
         function fecharPainelAdmin() { document.getElementById('modalAdmin').classList.add('hidden'); }
@@ -774,6 +848,81 @@
             const termoLower = termo.toLowerCase();
             const filtrados = produtosCache.filter(p => p.nome.toLowerCase().includes(termoLower) || (p.codigo && p.codigo.toLowerCase().includes(termoLower)));
             renderizarTabelaAdmin(filtrados);
+        }
+
+        // CARREGAR HISTÓRICO COM FILTRAGEM DE 15 DIAS E LIMPEZA AUTOMÁTICA
+        async function carregarHistoricoAdmin() {
+            try {
+                const tbody = document.getElementById('tabelaHistoricoVendas');
+                tbody.innerHTML = '<tr><td colspan="4" class="p-6 text-center text-slate-400">Buscando histórico...</td></tr>';
+
+                // Data de corte de 15 dias atrás
+                const dataLimite = new Date();
+                dataLimite.setDate(dataLimite.getDate() - 15);
+
+                // Opcional: Limpar automaticamente do banco vendas com mais de 15 dias (regra do plano básico)
+                await supabaseClient.from('vendas').delete().lt('created_at', dataLimite.toISOString());
+
+                // Buscar vendas dos últimos 15 dias ordenadas da mais recente para a mais antiga
+                const { data, error } = await supabaseClient.from('vendas').select('*').gte('created_at', dataLimite.toISOString()).order('created_at', { ascending: false });
+                
+                if (error) throw error;
+                
+                historicoVendasCache = data || [];
+                popularSelectDias();
+                renderizarHistoricoVendas();
+            } catch (e) {
+                console.error(e);
+                document.getElementById('tabelaHistoricoVendas').innerHTML = '<tr><td colspan="4" class="p-6 text-center text-rose-500">Erro ao carregar histórico. Verifique se a tabela "vendas" foi criada no Supabase.</td></tr>';
+            }
+        }
+
+        function popularSelectDias() {
+            const select = document.getElementById('selectFiltroDia');
+            let html = '<option value="todos">Todos os Dias (15 dias recentes)</option>';
+            
+            // Gerar opções de Dia 1 até Dia 15 com base nas datas disponíveis
+            for (let i = 1; i <= 15; i++) {
+                const d = new Date();
+                d.setDate(d.getDate() - (i - 1));
+                const dataFormatada = d.toLocaleDateString('pt-BR');
+                html += `<option value="${d.toISOString().slice(0, 10)}">Dia ${i} (${dataFormatada})</option>`;
+            }
+            select.innerHTML = html;
+        }
+
+        function renderizarHistoricoVendas() {
+            const tbody = document.getElementById('tabelaHistoricoVendas');
+            const filtroDia = document.getElementById('selectFiltroDia').value;
+
+            let filtradas = historicoVendasCache;
+            if (filtroDia !== 'todos') {
+                filtradas = historicoVendasCache.filter(v => v.created_at.startsWith(filtroDia));
+            }
+
+            if (filtradas.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="p-6 text-center text-slate-400">Nenhuma venda registrada neste período.</td></tr>';
+                return;
+            }
+
+            let html = '';
+            filtradas.forEach(v => {
+                const dataObj = new Date(v.created_at);
+                const dataStr = dataObj.toLocaleString('pt-BR');
+                
+                let listaItensStr = '';
+                if (Array.isArray(v.itens)) {
+                    listaItensStr = v.itens.map(i => `${i.qtd}x ${i.nome}`).join(', ');
+                }
+
+                html += `<tr class="border-b border-slate-100 hover:bg-slate-50 text-xs">
+                    <td class="p-3 text-slate-500">${dataStr}</td>
+                    <td class="p-3 font-semibold text-emerald-700">user > ${v.operador}</td>
+                    <td class="p-3 text-slate-700 max-w-xs truncate" title="${listaItensStr}">${listaItensStr}</td>
+                    <td class="p-3 text-right font-bold text-slate-900">R$ ${Number(v.valor_total).toFixed(2)}</td>
+                </tr>`;
+            });
+            tbody.innerHTML = html;
         }
 
         function abrirModalNovoProdutoAdmin() {
