@@ -278,10 +278,10 @@
         </div>
     </div>
 
-    <!-- SCRIPT DO SISTEMA CORRIGIDO COM VARIÁVEIS ANTES DAS FUNÇÕES -->
+    <!-- SCRIPT DO SISTEMA COM AS CREDENCIAIS REAIS DO SUPABASE -->
     <script>
-        const SUPABASE_URL = 'SUA_SUPABASE_URL_AQUI';
-        const SUPABASE_KEY = 'SUA_SUPABASE_ANON_KEY_AQUI';
+        const SUPABASE_URL = 'https://vbdglgmxaywntmjriccf.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiZGdsZ214YXl3bnRtanJpY2NmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk1ODgzOTEsImV4cCI6MjEwNTE2NDM5MX0.S_IUvajnn7Qk7yNtkfBru9xsOjUkKhkJ0J0doikrWSs';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         // VARIÁVEIS GLOBAIS DECLARADAS PRIMEIRO
@@ -295,7 +295,7 @@
         let origemLeitor = 'busca';
         let acaoCaixaAtual = 'abrir';
 
-        // GERENCIAR TELAS DA AUTENTICAÇÃO (AGORA 100% FUNCIONAL)
+        // GERENCIAR TELAS DA AUTENTICAÇÃO
         function alternarTelaAuth(modo) {
             modoTelaAuth = modo;
             const titulo = document.getElementById('tituloAuth');
@@ -364,13 +364,12 @@
                 if (modoTelaAuth === 'login' || modoTelaAuth === 'admin') {
                     if (!senha) { mostrarFeedback('Por favor, informe a senha.', 'rose'); return; }
                     
-                    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, senha });
+                    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password: senha });
                     if (error) throw error;
                     
                     usuarioAtual = data.user;
                     const emailUser = usuarioAtual.email.toLowerCase();
                     
-                    // Validação para painel administrativo
                     if (modoTelaAuth === 'admin') {
                         if (!emailUser.includes('admin') && emailUser !== 'ageu62aa@gmail.com') {
                             await supabaseClient.auth.signOut();
@@ -384,16 +383,10 @@
                     if (!senha || senha.length < 6) { mostrarFeedback('A senha deve ter no mínimo 6 caracteres.', 'rose'); return; }
                     
                     const tipoPerfil = document.getElementById('selectTipoPerfil').value;
-                    let emailFinal = email;
-                    
-                    // Se escolheu admin na criação, prefixa/organiza com tag admin para validação
-                    if (tipoPerfil === 'admin' && !email.toLowerCase().includes('admin')) {
-                        // Opcional: garante identificação gerencial no banco
-                    }
 
                     const { data, error } = await supabaseClient.auth.signUp({ 
-                        email: emailFinal, 
-                        senha,
+                        email: email, 
+                        password: senha,
                         options: { data: { perfil: tipoPerfil } }
                     });
                     if (error) throw error;
@@ -424,7 +417,6 @@
             const email = usuarioAtual.email.toLowerCase();
             document.getElementById('infoUsuarioLogado').innerText = email;
             
-            // Libera botão de administração se for admin
             if (email.includes('admin') || email === 'ageu62aa@gmail.com') {
                 document.getElementById('btnAdminMenu').classList.remove('hidden');
             }
