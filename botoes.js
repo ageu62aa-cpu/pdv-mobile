@@ -1,5 +1,5 @@
 // ==========================================
-// MÓDULO DE INTERFACE, BOTÕES E AÇÕES (CORRIGIDO)
+// MÓDULO DE INTERFACE, BOTÕES E AÇÕES (ATUALIZADO)
 // ==========================================
 
 async function instalarPwaApp() {
@@ -253,7 +253,7 @@ function concluirLoginSucesso(cargoUser) {
     if (usuarioAtual && usuarioAtual.email) {
         const usuarioNomeExibicao = usuarioAtual.email.split('@')[0];
         const infoLogado = document.getElementById('infoUsuarioLogado');
-        if (infoLogado) infoLogado.innerText = `${usuarioNomeExibicao} (${cargoUser === 'admin_mercado' ? 'Admin' : 'Caixa'})`;
+        if (infoLogado) infoLogado.innerHTML = `<i class="fa-solid fa-user text-emerald-400 mr-1"></i> ${usuarioNomeExibicao} (${cargoUser === 'admin_mercado' ? 'Admin' : 'Caixa'})`;
     }
     
     if (dadosEmpresaAtual) {
@@ -634,12 +634,14 @@ function abrirPainelAdmin() {
     renderizarTabelaAdmin(produtosCache); 
     mudarAbaAdmin('produtos'); 
     const modalAdmin = document.getElementById('modalAdmin');
+    if (modalAdmin) modalAdmin.classList.add('flex');
     if (modalAdmin) modalAdmin.classList.remove('hidden'); 
 }
 
 function fecharPainelAdmin() { 
     const modalAdmin = document.getElementById('modalAdmin');
     if (modalAdmin) modalAdmin.classList.add('hidden'); 
+    if (modalAdmin) modalAdmin.classList.remove('flex');
 }
 
 function renderizarTabelaAdmin(lista) {
@@ -752,10 +754,14 @@ async function carregarOperadoresLoja() {
     let html = '';
     if (data) {
         data.forEach(op => {
+            const statusCaixaBadge = caixaAberto 
+                ? '<span class="bg-emerald-100 text-emerald-800 text-xs px-2 py-0.5 rounded-full font-bold">ABERTO</span>' 
+                : '<span class="bg-amber-100 text-amber-800 text-xs px-2 py-0.5 rounded-full font-bold">FECHADO</span>';
+
             html += `<tr class="border-b">
                 <td class="p-3 text-xs">${op.user_id}</td>
                 <td class="p-3">${op.cargo}</td>
-                <td class="p-3 text-center"><span class="bg-emerald-100 text-emerald-800 text-xs px-2 py-0.5 rounded-full font-bold">ATIVO</span></td>
+                <td class="p-3 text-center">${statusCaixaBadge}</td>
                 <td class="p-3 font-bold text-emerald-600">Disponível no Faturamento</td>
                 <td class="p-3 text-center"><button onclick="excluirOperadorLoja('${op.user_id}')" class="text-rose-600"><i class="fa-solid fa-trash"></i></button></td>
             </tr>`;
@@ -844,9 +850,9 @@ async function iniciarCameraComHtml5Qrcode() {
         
         html5QrcodeInstance = new Html5Qrcode("videoPreviewCamera");
         const config = {
-            fps: 15,
-            qrbox: { width: 280, height: 160 },
-            experimentalFeatures: { useBarCodeDetectorIfSupported: true }
+            fps: 10,
+            qrbox: { width: 250, height: 150 },
+            aspectRatio: 1.0
         };
         
         await html5QrcodeInstance.start(
@@ -855,11 +861,11 @@ async function iniciarCameraComHtml5Qrcode() {
             (decodedText) => {
                 fecharLeitorCamera();
                 if (origemLeitor === 'busca') {
-                    const p = produtosCache.find(prod => prod.codigo === decodedText);
+                    const p = produtosCache.find(prod => (prod.codigo && prod.codigo === decodedText) || prod.nome.toLowerCase().includes(decodedText.toLowerCase()));
                     if (p) { 
                         tratarAdicaoProduto(p); 
                     } else { 
-                        alert(`Código mapeado (${decodedText}) mas não cadastrado no estoque.`); 
+                        alert(`Código/QR lido (${decodedText}), mas produto não encontrado no estoque.`); 
                     }
                 } else if (origemLeitor === 'admin') {
                     const inputCodigo = document.getElementById('formCodigo');
@@ -869,8 +875,8 @@ async function iniciarCameraComHtml5Qrcode() {
             () => {}
         );
     } catch (err) {
-        console.error("Erro no módulo HTML5 QR Code:", err);
-        alert("Câmera indisponível no momento. Certifique-se de dar permissões de vídeo no navegador.");
+        console.error("Erro ao iniciar câmera:", err);
+        alert("Não foi possível acessar a câmera do dispositivo. Verifique as permissões do navegador.");
         fecharLeitorCamera();
     }
 }
