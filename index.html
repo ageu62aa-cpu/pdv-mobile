@@ -12,38 +12,51 @@
 </head>
 <body class="bg-slate-100 min-h-screen text-slate-800 flex flex-col justify-between">
 
-    <!-- TELA DE LOGIN / CADASTRO / RECUPERAÇÃO -->
+    <!-- TELA DE LOGIN / AUTENTICAÇÃO -->
     <div id="telaLogin" class="fixed inset-0 bg-slate-900 z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl max-w-md w-full p-8 shadow-2xl">
+        <div class="bg-white rounded-2xl max-w-md w-full p-8 shadow-2xl relative">
             
-            <div class="text-center mb-6">
-                <i class="fa-solid fa-cash-register text-4xl text-emerald-600 mb-2"></i>
-                <h2 class="text-2xl font-bold text-slate-900">PDV-VS Enterprise</h2>
+            <!-- Botão discreto para Área do Administrador no topo -->
+            <div class="absolute top-4 right-4">
+                <button onclick="alternarTelaAuth('admin')" class="text-xs text-slate-400 hover:text-slate-700 transition flex items-center space-x-1" title="Acesso Restrito Admin">
+                    <i class="fa-solid fa-lock text-[10px]"></i><span>Admin</span>
+                </button>
+            </div>
+
+            <div class="text-center mb-6 mt-2">
+                <i id="iconeAuth" class="fa-solid fa-cash-register text-4xl text-emerald-600 mb-2"></i>
+                <h2 id="tituloAuth" class="text-2xl font-bold text-slate-900">PDV-VS Enterprise</h2>
                 <p id="subtituloAuth" class="text-xs text-slate-500">Sistema de Gestão Comercial e PDV</p>
             </div>
 
-            <!-- ABAS DE NAVEGAÇÃO DA AUTENTICAÇÃO -->
-            <div id="abasAuth" class="flex rounded-lg bg-slate-100 p-1 mb-6 text-xs font-semibold">
-                <button onclick="alternarModoAuth('login')" id="tabLogin" class="flex-1 py-2 rounded-md bg-white text-slate-800 shadow-sm transition">Entrar</button>
-                <button onclick="alternarModoAuth('cadastro')" id="tabCadastro" class="flex-1 py-2 rounded-md text-slate-500 hover:text-slate-800 transition">Criar Conta</button>
-                <button onclick="alternarModoAuth('recuperar')" id="tabRecuperar" class="flex-1 py-2 rounded-md text-slate-500 hover:text-slate-800 transition">Recuperar</button>
-            </div>
-
+            <!-- FORMULÁRIO DINÂMICO DE AUTENTICAÇÃO -->
             <div class="space-y-4">
                 <div>
-                    <label class="block text-xs font-semibold text-slate-600 mb-1">E-mail Profissional</label>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">E-mail de Acesso</label>
                     <input type="email" id="authEmail" placeholder="seu.email@empresa.com" class="w-full border border-slate-300 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:border-emerald-500">
                 </div>
-                <div id="grupoSenha">
+                <div id="divAuthSenha">
                     <label class="block text-xs font-semibold text-slate-600 mb-1">Senha</label>
                     <input type="password" id="authSenha" placeholder="••••••••" class="w-full border border-slate-300 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:border-emerald-500">
                 </div>
 
-                <button id="btnAcaoAuth" onclick="executarAcaoAuth()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-lg shadow transition text-sm">
+                <button id="btnAcaoAuth" onclick="processarAutenticacao()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-lg shadow transition text-sm">
                     Acessar Sistema
                 </button>
 
-                <div id="feedbackAuth" class="text-xs text-center hidden"></div>
+                <div id="feedbackAuth" class="text-xs text-center hidden font-semibold"></div>
+
+                <!-- LINKS AUXILIARES DISCRETOS -->
+                <div id="linksAuxiliares" class="flex justify-between items-center pt-2 text-xs text-slate-500 border-t border-slate-100">
+                    <button onclick="alternarTelaAuth('cadastro')" class="hover:text-emerald-600 transition">Criar nova conta</button>
+                    <button onclick="alternarTelaAuth('recuperar')" class="hover:text-emerald-600 transition">Esqueci minha senha</button>
+                </div>
+
+                <div id="linkVoltarLogin" class="hidden text-center pt-2 border-t border-slate-100">
+                    <button onclick="alternarTelaAuth('login')" class="text-xs font-semibold text-slate-600 hover:text-slate-900 transition">
+                        <i class="fa-solid fa-arrow-left mr-1"></i> Voltar ao Login Normal
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -72,9 +85,7 @@
         <!-- CONTAINER PRINCIPAL -->
         <main class="flex-1 p-4 grid grid-cols-1 lg:grid-cols-3 gap-4 max-w-7xl mx-auto w-full">
             
-            <!-- COLUNA ESQUERDA: BUSCA E ITENS -->
             <section class="lg:col-span-2 flex flex-col space-y-4">
-                
                 <div class="bg-white p-4 rounded-lg shadow relative">
                     <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Pesquisar Produto (Nome ou Código - Min. 4 letras)</label>
                     <div class="flex space-x-2 relative items-center">
@@ -113,10 +124,8 @@
                         </table>
                     </div>
                 </div>
-
             </section>
 
-            <!-- COLUNA DIREITA: RESUMO -->
             <section class="bg-white p-6 rounded-lg shadow flex flex-col justify-between">
                 <div>
                     <h2 class="text-lg font-bold text-slate-800 border-b pb-2 mb-4">Resumo da Venda</h2>
@@ -265,8 +274,9 @@
         const SUPABASE_KEY = 'SUA_SUPABASE_ANON_KEY_AQUI';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+        // VARIÁVEIS GLOBAIS DECLARADAS CORRETAMENTE ANTES DE USO
         let usuarioAtual = null;
-        let modoAuthAtual = 'login'; // 'login', 'cadastro', 'recuperar'
+        let modoTelaAuth = 'login'; // 'login', 'cadastro', 'recuperar', 'admin'
         let caixaAberto = false;
         let faturamentoDia = 0;
         let itensVenda = [];
@@ -275,88 +285,121 @@
         let origemLeitor = 'busca';
         let acaoCaixaAtual = 'abrir';
 
-        // ALTERNAR ABAS DE AUTENTICAÇÃO
-        function alternarModoAuth(modo) {
-            modoAuthAtual = modo;
-            const tabLogin = document.getElementById('tabLogin');
-            const tabCadastro = document.getElementById('tabCadastro');
-            const tabRecuperar = document.getElementById('tabRecuperar');
-            const grupoSenha = document.getElementById('grupoSenha');
-            const btnAcao = document.getElementById('btnAcaoAuth');
+        // GERENCIAR TELAS DA AUTENTICAÇÃO
+        function alternarTelaAuth(modo) {
+            modoTelaAuth = modo;
+            const titulo = document.getElementById('tituloAuth');
             const subtitulo = document.getElementById('subtituloAuth');
+            const icone = document.getElementById('iconeAuth');
+            const btnAcao = document.getElementById('btnAcaoAuth');
+            const divSenha = document.getElementById('divAuthSenha');
+            const linksAux = document.getElementById('linksAuxiliares');
+            const linkVoltar = document.getElementById('linkVoltarLogin');
             const feedback = document.getElementById('feedbackAuth');
             feedback.classList.add('hidden');
 
-            tabLogin.className = "flex-1 py-2 rounded-md text-slate-500 hover:text-slate-800 transition";
-            tabCadastro.className = "flex-1 py-2 rounded-md text-slate-500 hover:text-slate-800 transition";
-            tabRecuperar.className = "flex-1 py-2 rounded-md text-slate-500 hover:text-slate-800 transition";
-
             if (modo === 'login') {
-                tabLogin.className = "flex-1 py-2 rounded-md bg-white text-slate-800 shadow-sm transition";
-                grupoSenha.classList.remove('hidden');
-                btnAcao.innerText = "Acessar Sistema";
-                subtitulo.innerText = "Entre com suas credenciais autorizadas";
+                titulo.innerText = 'PDV-VS Enterprise';
+                subtitulo.innerText = 'Sistema de Gestão Comercial e PDV';
+                icone.className = 'fa-solid fa-cash-register text-4xl text-emerald-600 mb-2';
+                btnAcao.innerText = 'Acessar Sistema';
+                divSenha.classList.remove('hidden');
+                linksAux.classList.remove('hidden');
+                linkVoltar.classList.add('hidden');
+            } else if (modo === 'admin') {
+                titulo.innerText = 'Área do Administrador';
+                subtitulo.innerText = 'Acesso restrito à gerência e estoque';
+                icone.className = 'fa-solid fa-lock text-4xl text-amber-600 mb-2';
+                btnAcao.innerText = 'Entrar como Admin';
+                divSenha.classList.remove('hidden');
+                linksAux.classList.add('hidden');
+                linkVoltar.classList.remove('hidden');
             } else if (modo === 'cadastro') {
-                tabCadastro.className = "flex-1 py-2 rounded-md bg-white text-slate-800 shadow-sm transition";
-                grupoSenha.classList.remove('hidden');
-                btnAcao.innerText = "Criar Minha Conta";
-                subtitulo.innerText = "Cadastre sua nova empresa ou operador";
+                titulo.innerText = 'Criar Nova Conta';
+                subtitulo.innerText = 'Cadastre sua empresa ou operador';
+                icone.className = 'fa-solid fa-user-plus text-4xl text-blue-600 mb-2';
+                btnAcao.innerText = 'Cadastrar Conta';
+                divSenha.classList.remove('hidden');
+                linksAux.classList.add('hidden');
+                linkVoltar.classList.remove('hidden');
             } else if (modo === 'recuperar') {
-                tabRecuperar.className = "flex-1 py-2 rounded-md bg-white text-slate-800 shadow-sm transition";
-                grupoSenha.classList.add('hidden');
-                btnAcao.innerText = "Enviar Instruções de Troca";
-                subtitulo.innerText = "Recupere sua senha via e-mail";
+                titulo.innerText = 'Recuperar Senha';
+                subtitulo.innerText = 'Enviaremos um link de redefinição para seu e-mail';
+                icone.className = 'fa-solid fa-key text-4xl text-indigo-600 mb-2';
+                btnAcao.innerText = 'Enviar Instruções';
+                divSenha.classList.add('hidden');
+                linksAux.classList.add('hidden');
+                linkVoltar.classList.remove('hidden');
             }
         }
 
-        // EXECUTAR LOGIN, CADASTRO OU RECUPERAÇÃO
-        async function executarAcaoAuth() {
+        // PROCESSAR AÇÃO DE AUTH
+        async function processarAutenticacao() {
             const email = document.getElementById('authEmail').value.trim();
             const senha = document.getElementById('authSenha').value.trim();
             const feedback = document.getElementById('feedbackAuth');
             feedback.classList.add('hidden');
 
             if (!email) {
-                mostrarFeedbackAuth('Informe o e-mail de acesso.', 'rose');
+                mostrarFeedback('Informe o e-mail.', 'rose');
                 return;
             }
 
             try {
-                if (modoAuthAtual === 'login') {
-                    if (!senha) { mostrarFeedbackAuth('Informe a senha.', 'rose'); return; }
+                if (modoTelaAuth === 'login' || modoTelaAuth === 'admin') {
+                    if (!senha) { mostrarFeedback('Informe a senha.', 'rose'); return; }
+                    
                     const { data, error } = await supabaseClient.auth.signInWithPassword({ email, senha });
                     if (error) throw error;
+                    
                     usuarioAtual = data.user;
-                    concluirAutenticacao();
+                    const emailUser = usuarioAtual.email.toLowerCase();
+                    
+                    // Validação rigida para painel administrativo
+                    if (modoTelaAuth === 'admin') {
+                        if (!emailUser.includes('admin') && emailUser !== 'ageu62aa@gmail.com') {
+                            await supabaseClient.auth.signOut();
+                            throw new Error('Este e-mail não possui privilégios administrativos!');
+                        }
+                    }
+
+                    concluirLoginSucesso();
                 } 
-                else if (modoAuthAtual === 'cadastro') {
-                    if (!senha || senha.length < 6) { mostrarFeedbackAuth('A senha deve ter pelo menos 6 caracteres.', 'rose'); return; }
-                    const { data, error } = await supabaseClient.auth.signUp({ email, senha });
+                else if (modoTelaAuth === 'cadastro') {
+                    if (!senha || senha.length < 6) { mostrarFeedback('A senha deve ter no mínimo 6 caracteres.', 'rose'); return; }
+                    const { error } = await supabaseClient.auth.signUp({ email, senha });
                     if (error) throw error;
-                    alert('Conta criada com sucesso! Verifique seu e-mail ou faça o login.');
-                    alternarModoAuth('login');
+                    alert('Conta criada com sucesso! Faça login para entrar.');
+                    alternarTelaAuth('login');
                 } 
-                else if (modoAuthAtual === 'recuperar') {
+                else if (modoTelaAuth === 'recuperar') {
                     const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
                         redirectTo: window.location.origin
                     });
                     if (error) throw error;
-                    mostrarFeedbackAuth('E-mail de recuperação enviado com sucesso! Verifique sua caixa de entrada.', 'emerald');
+                    mostrarFeedback('E-mail de recuperação enviado com sucesso!', 'emerald');
                 }
             } catch (e) {
-                mostrarFeedbackAuth(e.message || 'Erro na operação. Verifique os dados.', 'rose');
+                mostrarFeedback(e.message || 'Erro na operação.', 'rose');
             }
         }
 
-        function mostrarFeedbackAuth(msg, cor) {
+        function mostrarFeedback(msg, cor) {
             const fb = document.getElementById('feedbackAuth');
             fb.innerText = msg;
-            fb.className = `text-xs text-center text-${cor}-600 font-semibold`;
+            fb.className = `text-xs text-center text-${cor}-600 font-semibold mt-2`;
             fb.classList.remove('hidden');
         }
 
-        function concluirAutenticacao() {
-            verificarPermissoesUsuario();
+        function concluirLoginSucesso() {
+            const email = usuarioAtual.email.toLowerCase();
+            document.getElementById('infoUsuarioLogado').innerText = email;
+            
+            // Exibe botão de administração apenas para administradores reais
+            if (email.includes('admin') || email === 'ageu62aa@gmail.com') {
+                document.getElementById('btnAdminMenu').classList.remove('hidden');
+            }
+
             document.getElementById('telaLogin').classList.add('hidden');
             document.getElementById('appPrincipal').classList.remove('hidden');
             carregarProdutosCache();
@@ -365,15 +408,6 @@
         async function realizarLogout() {
             await supabaseClient.auth.signOut();
             location.reload();
-        }
-
-        function verificarPermissoesUsuario() {
-            const email = usuarioAtual.email.toLowerCase();
-            document.getElementById('infoUsuarioLogado').innerText = email;
-            // Libera painel administrativo para administradores
-            if (email.includes('admin') || email === 'ageu62aa@gmail.com') {
-                document.getElementById('btnAdminMenu').classList.remove('hidden');
-            }
         }
 
         // ATALHOS DE TECLADO (F1, F2, F5, F7, F9)
