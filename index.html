@@ -26,7 +26,6 @@
                 <i id="iconeAuth" class="fa-solid fa-cash-register text-4xl text-emerald-600 mb-2"></i>
                 <h2 id="tituloAuth" class="text-2xl font-bold text-slate-900">PDV-VS Enterprise</h2>
                 <p id="subtituloAuth" class="text-xs text-slate-500">Sistema de Gestão Comercial e PDV</p>
-                <!-- Assinatura em destaque profissional -->
                 <div class="mt-2 inline-block bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full">
                     <span class="text-[11px] font-bold text-emerald-800 tracking-wider uppercase">Powered by Vancely Software</span>
                 </div>
@@ -81,14 +80,14 @@
                 <!-- Rodapé com gatilho secreto para o Super Admin (clique 5 vezes) -->
                 <div class="text-center pt-3 border-t border-slate-100">
                     <p id="gatilhoSuperAdmin" class="text-[10px] text-slate-400 cursor-pointer select-none" title="Versão do Sistema">
-                        Versão 2.4.0 • Vancely Software © 2026
+                        Versão 2.5.0 • Vancely Software © 2026
                     </p>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- TELA DE LOGIN SUPER ADMIN (Oculta para o dono) -->
+    <!-- TELA DE LOGIN SUPER ADMIN -->
     <div id="telaLoginSuperAdmin" class="hidden fixed inset-0 bg-slate-950 z-50 flex items-center justify-center p-4">
         <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-8 shadow-2xl relative text-white">
             <div class="text-center mb-6">
@@ -271,15 +270,16 @@
         <div class="bg-white rounded-xl max-w-6xl w-full p-6 shadow-2xl max-h-[92vh] flex flex-col">
             <div class="flex justify-between items-center border-b pb-3 mb-4">
                 <div>
-                    <h3 class="text-xl font-bold text-slate-800">Painel Administrativo & Gestão de Vendas (15 Dias)</h3>
-                    <p class="text-xs text-slate-500">Controle de estoque, PIN de segurança e histórico de faturamento por operador.</p>
+                    <h3 class="text-xl font-bold text-slate-800">Painel Administrativo & Gestão do Estabelecimento</h3>
+                    <p class="text-xs text-slate-500">Controle de estoque, operadores, PIN de segurança e faturamento.</p>
                 </div>
                 <button onclick="fecharPainelAdmin()" class="text-slate-400 hover:text-slate-600 p-2"><i class="fa-solid fa-xmark text-2xl"></i></button>
             </div>
 
             <!-- ABAS DO PAINEL ADMIN -->
-            <div class="flex space-x-2 border-b border-slate-200 mb-4 pb-2">
+            <div class="flex space-x-2 border-b border-slate-200 mb-4 pb-2 overflow-x-auto">
                 <button onclick="mudarAbaAdmin('produtos')" id="btnAbaProdutos" class="px-4 py-2 text-sm font-bold bg-emerald-600 text-white rounded-lg transition shadow">Controle de Produtos</button>
+                <button onclick="mudarAbaAdmin('operadores')" id="btnAbaOperadores" class="px-4 py-2 text-sm font-bold bg-slate-200 text-slate-700 rounded-lg transition">Funcionários / Operadores</button>
                 <button onclick="mudarAbaAdmin('historico')" id="btnAbaHistorico" class="px-4 py-2 text-sm font-bold bg-slate-200 text-slate-700 rounded-lg transition">Histórico & Faturamento (15 Dias)</button>
             </div>
 
@@ -319,6 +319,34 @@
                 </div>
             </div>
 
+            <!-- CONTEÚDO DA ABA: OPERADORES DA LOJA -->
+            <div id="conteudoAbaOperadores" class="hidden flex-1 flex flex-col overflow-hidden space-y-3">
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 flex flex-wrap justify-between items-center">
+                    <div>
+                        <h4 class="text-xs font-bold text-blue-900"><i class="fa-solid fa-users-gear mr-1.5"></i> Gestão de Equipe e Caixas</h4>
+                        <p class="text-[11px] text-blue-700">Cadastre operadores exclusivos para a sua empresa sem misturar com outros clientes.</p>
+                    </div>
+                    <button onclick="abrirModalNovoOperador()" class="bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-2 rounded text-xs font-semibold transition shadow flex items-center space-x-1.5">
+                        <i class="fa-solid fa-user-plus"></i><span>Cadastrar Operador</span>
+                    </button>
+                </div>
+
+                <div class="flex-1 overflow-y-auto border border-slate-200 rounded-lg">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-100 text-xs text-slate-500 uppercase border-b border-slate-200 sticky top-0">
+                                <th class="p-3">E-mail do Funcionário</th>
+                                <th class="p-3">Cargo na Loja</th>
+                                <th class="p-3 text-center">Data de Cadastro</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabelaOperadoresLoja" class="divide-y divide-slate-100 text-sm">
+                            <tr><td colspan="3" class="p-6 text-center text-slate-400">Carregando equipe...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
             <!-- CONTEÚDO DA ABA: HISTÓRICO DE VENDAS -->
             <div id="conteudoAbaHistorico" class="hidden flex-1 flex flex-col overflow-hidden space-y-3">
                 <div class="bg-slate-50 border border-slate-200 rounded-lg p-3 flex flex-wrap justify-between items-center">
@@ -348,6 +376,29 @@
                         </tbody>
                     </table>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE CADASTRO DE NOVO OPERADOR -->
+    <div id="modalNovoOperador" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg max-w-md w-full p-6 shadow-xl">
+            <h3 class="text-lg font-bold mb-2 text-slate-800"><i class="fa-solid fa-user-plus text-blue-600 mr-2"></i>Cadastrar Novo Operador</h3>
+            <p class="text-xs text-slate-500 mb-4">O funcionário poderá logar na tela principal com este e-mail e senha.</p>
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">E-mail do Funcionário</label>
+                    <input type="email" id="novoOpEmail" placeholder="caixa1@sualoja.com" class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500" onfocus="this.select()">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Senha Provisória</label>
+                    <input type="password" id="novoOpSenha" placeholder="Mínimo 6 caracteres" class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500" onfocus="this.select()">
+                </div>
+            </div>
+            <div id="feedbackNovoOp" class="text-xs font-semibold mt-2 hidden"></div>
+            <div class="mt-6 flex justify-end space-x-2">
+                <button onclick="fecharModalNovoOperador()" class="px-4 py-2 bg-slate-200 text-slate-700 rounded text-sm hover:bg-slate-300">Cancelar</button>
+                <button onclick="salvarNovoOperador()" class="px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 font-semibold shadow">Cadastrar Operador</button>
             </div>
         </div>
     </div>
@@ -448,13 +499,14 @@
 
     <!-- SCRIPT DO SISTEMA -->
     <script>
-        const SUPABASE_URL = 'https://vbdglgmxaywntmjriccf.supabase.co';
+        const SUPABASE_URL = '';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiZGdsZ214YXl3bnRtanJpY2NmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk1ODgzOTEsImV4cCI6MjEwNTE2NDM5MX0.S_IUvajnn7Qk7yNtkfBru9xsOjUkKhkJ0J0doikrWSs';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         let usuarioAtual = null;
         let empresaAtualId = null;
         let dadosEmpresaAtual = null;
+        let cargoUsuarioAtual = null;
         let modoTelaAuth = 'login'; 
         let caixaAberto = false;
         let faturamentoDia = 0;
@@ -466,7 +518,7 @@
         let acaoCaixaAtual = 'abrir';
         let indiceItemParaRemover = null;
 
-        // GATILHO SECRETO SUPER ADMIN (5 CLIQUE NO RODAPÉ)
+        // GATILHO SECRETO SUPER ADMIN (5 CLIQUES NO RODAPÉ)
         let cliquesSecretos = 0;
         document.getElementById('gatilhoSuperAdmin').addEventListener('click', () => {
             cliquesSecretos++;
@@ -531,8 +583,8 @@
             let html = '';
             lista.forEach(emp => {
                 const statusBadge = emp.ativo 
-                    ? '<span class="bg-emerald-100 text-emerald-800 text-xs px-2.5 py-1 rounded-full font-bold">🟢 ATIVO</span>' 
-                    : '<span class="bg-rose-100 text-rose-800 text-xs px-2.5 py-1 rounded-full font-bold">🔴 BLOQUEADO</span>';
+                    ? '<span class="bg-emerald-100 text-emerald-800 text-xs px-2.5 py-1 rounded-full font-bold">ATIVO</span>' 
+                    : '<span class="bg-rose-100 text-rose-800 text-xs px-2.5 py-1 rounded-full font-bold">BLOQUEADO</span>';
                 
                 const btnAcaoTexto = emp.ativo ? 'Bloquear Inadimplente' : 'Ativar Acesso';
                 const btnAcaoClass = emp.ativo ? 'bg-rose-600 hover:bg-rose-700 text-white' : 'bg-emerald-600 hover:bg-emerald-700 text-white';
@@ -726,7 +778,6 @@
 
         async function validarVinculoEmpresaUsuario() {
             try {
-                // Buscar qual empresa este usuário pertence
                 const { data: vincData, error: vincError } = await supabaseClient
                     .from('usuarios_empresas')
                     .select('empresa_id, cargo')
@@ -738,9 +789,8 @@
                 }
 
                 empresaAtualId = vincData.empresa_id;
-                const cargoUser = vincData.cargo;
+                cargoUsuarioAtual = vincData.cargo;
 
-                // Verificar se a empresa está ATIVA ou BLOQUEADA por inadimplência
                 const { data: empData, error: empError } = await supabaseClient
                     .from('empresas')
                     .select('*')
@@ -757,7 +807,7 @@
                 }
 
                 dadosEmpresaAtual = empData;
-                concluirLoginSucesso(cargoUser);
+                concluirLoginSucesso(cargoUsuarioAtual);
             } catch (e) {
                 await supabaseClient.auth.signOut();
                 mostrarFeedback(e.message, 'rose');
@@ -773,12 +823,15 @@
 
         function concluirLoginSucesso(cargoUser) {
             const email = usuarioAtual.email.toLowerCase();
-            document.getElementById('infoUsuarioLogado').innerText = email;
+            document.getElementById('infoUsuarioLogado').innerText = `${email} (${cargoUser === 'admin_mercado' ? 'Admin' : 'Operador'})`;
             document.getElementById('tituloAppEmpresa').innerText = dadosEmpresaAtual.nome_mercado;
             document.getElementById('badgeEmpresaLogada').innerText = `CNPJ/CPF: ${dadosEmpresaAtual.documento}`;
             
-            if (cargoUser === 'admin_mercado' || email.includes('admin') || email === 'ageu62aa@gmail.com') {
+            // Exibe o botão de Administração APENAS se for o Admin da loja
+            if (cargoUser === 'admin_mercado') {
                 document.getElementById('btnAdminMenu').classList.remove('hidden');
+            } else {
+                document.getElementById('btnAdminMenu').classList.add('hidden');
             }
 
             document.getElementById('telaLogin').classList.add('hidden');
@@ -1064,20 +1117,30 @@
 
         function mudarAbaAdmin(aba) {
             const btnProd = document.getElementById('btnAbaProdutos');
+            const btnOp = document.getElementById('btnAbaOperadores');
             const btnHist = document.getElementById('btnAbaHistorico');
             const contProd = document.getElementById('conteudoAbaProdutos');
+            const contOp = document.getElementById('conteudoAbaOperadores');
             const contHist = document.getElementById('conteudoAbaHistorico');
+
+            // Reseta todas as abas
+            btnProd.className = 'px-4 py-2 text-sm font-bold bg-slate-200 text-slate-700 rounded-lg transition';
+            btnOp.className = 'px-4 py-2 text-sm font-bold bg-slate-200 text-slate-700 rounded-lg transition';
+            btnHist.className = 'px-4 py-2 text-sm font-bold bg-slate-200 text-slate-700 rounded-lg transition';
+            contProd.classList.add('hidden');
+            contOp.classList.add('hidden');
+            contHist.classList.add('hidden');
 
             if (aba === 'produtos') {
                 btnProd.className = 'px-4 py-2 text-sm font-bold bg-emerald-600 text-white rounded-lg transition shadow';
-                btnHist.className = 'px-4 py-2 text-sm font-bold bg-slate-200 text-slate-700 rounded-lg transition';
                 contProd.classList.remove('hidden');
-                contHist.classList.add('hidden');
+            } else if (aba === 'operadores') {
+                btnOp.className = 'px-4 py-2 text-sm font-bold bg-blue-600 text-white rounded-lg transition shadow';
+                contOp.classList.remove('hidden');
+                carregarOperadoresLoja();
             } else {
                 btnHist.className = 'px-4 py-2 text-sm font-bold bg-emerald-600 text-white rounded-lg transition shadow';
-                btnProd.className = 'px-4 py-2 text-sm font-bold bg-slate-200 text-slate-700 rounded-lg transition';
                 contHist.classList.remove('hidden');
-                contProd.classList.add('hidden');
                 carregarHistoricoAdmin();
             }
         }
@@ -1089,6 +1152,99 @@
             document.getElementById('modalAdmin').classList.remove('hidden');
         }
         function fecharPainelAdmin() { document.getElementById('modalAdmin').classList.add('hidden'); }
+
+        // GESTÃO DE OPERADORES DA LOJA (DENTRO DO PAINEL DO ADMIN)
+        async function carregarOperadoresLoja() {
+            try {
+                const tbody = document.getElementById('tabelaOperadoresLoja');
+                tbody.innerHTML = '<tr><td colspan="3" class="p-6 text-center text-slate-400">Buscando equipe da empresa...</td></tr>';
+
+                // Busca os vínculos e join com os IDs de auth ou lista via tabela usuarios_empresas
+                const { data, error } = await supabaseClient
+                    .from('usuarios_empresas')
+                    .select('*')
+                    .eq('empresa_id', empresaAtualId);
+
+                if (error) throw error;
+
+                if (!data || data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="3" class="p-6 text-center text-slate-400">Nenhum funcionário cadastrado além de você.</td></tr>';
+                    return;
+                }
+
+                let html = '';
+                data.forEach(op => {
+                    const cargoBadge = op.cargo === 'admin_mercado' 
+                        ? '<span class="bg-amber-100 text-amber-800 text-xs px-2 py-0.5 rounded font-bold">Administrador</span>' 
+                        : '<span class="bg-emerald-100 text-emerald-800 text-xs px-2 py-0.5 rounded font-bold">Operador de Caixa</span>';
+                    
+                    html += `<tr class="border-b border-slate-100 hover:bg-slate-50">
+                        <td class="p-3 font-medium text-slate-800">Funcionário ID: ${op.user_id.slice(0, 8)}...</td>
+                        <td class="p-3">${cargoBadge}</td>
+                        <td class="p-3 text-center text-xs text-slate-500">${new Date(op.created_at).toLocaleDateString('pt-BR')}</td>
+                    </tr>`;
+                });
+                tbody.innerHTML = html;
+            } catch (e) {
+                console.error(e);
+                document.getElementById('tabelaOperadoresLoja').innerHTML = '<tr><td colspan="3" class="p-6 text-center text-rose-500">Erro ao carregar equipe.</td></tr>';
+            }
+        }
+
+        function abrirModalNovoOperador() {
+            document.getElementById('novoOpEmail').value = '';
+            document.getElementById('novoOpSenha').value = '';
+            document.getElementById('feedbackNovoOp').classList.add('hidden');
+            document.getElementById('modalNovoOperador').classList.remove('hidden');
+        }
+
+        function fecharModalNovoOperador() {
+            document.getElementById('modalNovoOperador').classList.add('hidden');
+        }
+
+        async function salvarNovoOperador() {
+            const email = document.getElementById('novoOpEmail').value.trim();
+            const senha = document.getElementById('novoOpSenha').value.trim();
+            const fb = document.getElementById('feedbackNovoOp');
+            fb.classList.add('hidden');
+
+            if (!email || !senha || senha.length < 6) {
+                fb.innerText = 'Informe um e-mail válido e senha com pelo menos 6 caracteres.';
+                fb.className = 'text-xs font-semibold mt-2 text-rose-600';
+                fb.classList.remove('hidden');
+                return;
+            }
+
+            try {
+                // 1. Criar o usuário no Supabase Auth com cargo de operador
+                const { data: authData, error: authError } = await supabaseClient.auth.signUp({
+                    email: email,
+                    password: senha,
+                    options: { data: { perfil: 'operador' } }
+                });
+
+                if (authError) throw authError;
+                const novoUserId = authData.user?.id;
+                if (!novoUserId) throw new Error('Erro ao criar credenciais do operador.');
+
+                // 2. Vincular automaticamente à empresa do Admin logado
+                const { error: vincError } = await supabaseClient.from('usuarios_empresas').insert([{
+                    user_id: novoUserId,
+                    empresa_id: empresaAtualId,
+                    cargo: 'operador'
+                }]);
+
+                if (vincError) throw vincError;
+
+                alert('Operador cadastrado com sucesso!');
+                fecharModalNovoOperador();
+                carregarOperadoresLoja();
+            } catch (e) {
+                fb.innerText = e.message || 'Erro ao registrar operador.';
+                fb.className = 'text-xs font-semibold mt-2 text-rose-600';
+                fb.classList.remove('hidden');
+            }
+        }
 
         function renderizarTabelaAdmin(lista) {
             const tbody = document.getElementById('tabelaAdminProdutos');
@@ -1180,7 +1336,7 @@
 
                 html += `<tr class="border-b border-slate-100 hover:bg-slate-50 text-xs">
                     <td class="p-3 text-slate-500">${dataStr}</td>
-                    <td class="p-3 font-semibold text-emerald-700">user > ${v.operador}</td>
+                    <td class="p-3 font-semibold text-emerald-700">${v.operador}</td>
                     <td class="p-3 text-slate-700 max-w-xs truncate" title="${listaItensStr}">${listaItensStr}</td>
                     <td class="p-3 text-right font-bold text-slate-900">R$ ${Number(v.valor_total).toFixed(2)}</td>
                 </tr>`;
