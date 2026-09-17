@@ -191,8 +191,10 @@
 
             <div class="flex flex-wrap gap-2 justify-between items-center mb-4">
                 <input type="text" id="buscaAdmin" oninput="filtrarTabelaAdmin(this.value)" placeholder="Pesquisar por nome ou código..." class="border border-slate-300 rounded px-3 py-2 text-sm w-72 focus:outline-none focus:border-emerald-500">
-                <button onclick="abrirModalNovoProdutoAdmin()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded text-sm font-semibold transition flex items-center space-x-1.5">
-                    <i class="fa-solid fa-plus"></i><span>Cadastrar Novo Produto</span>
+                
+                <!-- BOTÃO NOVO PRODUTO COM SÍMBOLO DE MAIS VERDE -->
+                <button onclick="abrirModalNovoProdutoAdmin()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition flex items-center space-x-2 shadow">
+                    <i class="fa-solid fa-plus text-base"></i><span>Cadastrar Novo Produto</span>
                 </button>
             </div>
 
@@ -278,13 +280,12 @@
         </div>
     </div>
 
-    <!-- SCRIPT DO SISTEMA COM AS CREDENCIAIS REAIS DO SUPABASE -->
+    <!-- SCRIPT DO SISTEMA -->
     <script>
         const SUPABASE_URL = 'https://vbdglgmxaywntmjriccf.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiZGdsZ214YXl3bnRtanJpY2NmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk1ODgzOTEsImV4cCI6MjEwNTE2NDM5MX0.S_IUvajnn7Qk7yNtkfBru9xsOjUkKhkJ0J0doikrWSs';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // VARIÁVEIS GLOBAIS DECLARADAS PRIMEIRO
         let usuarioAtual = null;
         let modoTelaAuth = 'login'; 
         let caixaAberto = false;
@@ -295,7 +296,6 @@
         let origemLeitor = 'busca';
         let acaoCaixaAtual = 'abrir';
 
-        // GERENCIAR TELAS DA AUTENTICAÇÃO
         function alternarTelaAuth(modo) {
             modoTelaAuth = modo;
             const titulo = document.getElementById('tituloAuth');
@@ -348,7 +348,6 @@
             }
         }
 
-        // PROCESSAR AÇÃO DE AUTH NO SUPABASE
         async function processarAutenticacao() {
             const email = document.getElementById('authEmail').value.trim();
             const senha = document.getElementById('authSenha').value.trim();
@@ -369,11 +368,16 @@
                     
                     usuarioAtual = data.user;
                     const emailUser = usuarioAtual.email.toLowerCase();
+                    const perfilMeta = usuarioAtual.user_metadata?.perfil;
                     
+                    // Validação de Admin (por metadado salvo, e-mail admin ou e-mail pessoal)
                     if (modoTelaAuth === 'admin') {
-                        if (!emailUser.includes('admin') && emailUser !== 'ageu62aa@gmail.com') {
+                        const ehAdminPorPerfil = perfilMeta === 'admin';
+                        const ehAdminPorEmail = emailUser.includes('admin') || emailUser === 'ageu62aa@gmail.com';
+
+                        if (!ehAdminPorPerfil && !ehAdminPorEmail) {
                             await supabaseClient.auth.signOut();
-                            throw new Error('Acesso negado: Este e-mail não possui privilégios de Administrador!');
+                            throw new Error('Acesso negado: Esta conta não possui privilégios de Administrador!');
                         }
                     }
 
@@ -415,9 +419,11 @@
 
         function concluirLoginSucesso() {
             const email = usuarioAtual.email.toLowerCase();
+            const perfilMeta = usuarioAtual.user_metadata?.perfil;
             document.getElementById('infoUsuarioLogado').innerText = email;
             
-            if (email.includes('admin') || email === 'ageu62aa@gmail.com') {
+            // Libera o botão administrativo se for admin no metadado ou e-mail correspondente
+            if (perfilMeta === 'admin' || email.includes('admin') || email === 'ageu62aa@gmail.com') {
                 document.getElementById('btnAdminMenu').classList.remove('hidden');
             }
 
@@ -431,7 +437,6 @@
             location.reload();
         }
 
-        // ATALHOS DE TECLADO
         window.addEventListener('keydown', (e) => {
             if (document.getElementById('appPrincipal').classList.contains('hidden')) return;
             if (e.key === 'F1') { e.preventDefault(); gerenciarCaixaModal('abrir'); }
@@ -443,7 +448,6 @@
 
         function focarBusca() { document.getElementById('inputBusca').focus(); }
 
-        // GESTÃO DE CAIXA
         function gerenciarCaixaModal(tipo) {
             acaoCaixaAtual = tipo;
             const modal = document.getElementById('modalCaixa');
@@ -485,7 +489,6 @@
             fecharModalCaixa();
         }
 
-        // PRODUTOS E VENDAS
         async function carregarProdutosCache() {
             try {
                 const { data, error } = await supabaseClient.from('produtos').select('*').order('nome', { ascending: true });
@@ -598,7 +601,7 @@
             }
         }
 
-        // PAINEL ADMINISTRATIVO
+        // PAINEL ADMINISTRATIVO COM LIXEIRA E CONFIRMAÇÃO DE EXCLUSÃO
         async function abrirPainelAdmin() {
             await carregarProdutosCache();
             renderizarTabelaAdmin(produtosCache);
@@ -618,7 +621,7 @@
                     <td class="p-3 font-semibold text-slate-800">${p.estoque}</td>
                     <td class="p-3 text-center space-x-3">
                         <button onclick="abrirEditarProdutoAdmin(${p.id}, '${p.nome}', '${p.codigo || ''}', ${p.preco}, ${p.estoque})" class="text-blue-600 hover:text-blue-800" title="Editar"><i class="fa-solid fa-pen"></i></button>
-                        <button onclick="excluirProdutoAdmin(${p.id})" class="text-rose-600 hover:text-rose-800" title="Excluir"><i class="fa-solid fa-trash"></i></button>
+                        <button onclick="excluirProdutoAdmin(${p.id}, '${p.nome}')" class="text-rose-600 hover:text-rose-800 p-1" title="Excluir Produto"><i class="fa-solid fa-trash-can"></i></button>
                     </td>
                 </tr>`;
             });
@@ -671,10 +674,19 @@
             }
         }
 
-        async function excluirProdutoAdmin(id) {
-            if (!confirm('Deseja excluir este produto?')) return;
+        async function excluirProdutoAdmin(id, nomeProduto) {
+            // Janela de confirmação profissional com lixeira
+            const confirmacao = confirm(`Tem certeza que deseja excluir o item "${nomeProduto}" do estoque?`);
+            if (!confirmacao) return;
+
             const { error } = await supabaseClient.from('produtos').delete().eq('id', id);
-            if (!error) { await carregarProdutosCache(); renderizarTabelaAdmin(produtosCache); }
+            if (!error) {
+                alert('Produto excluído com sucesso!');
+                await carregarProdutosCache();
+                renderizarTabelaAdmin(produtosCache);
+            } else {
+                alert('Erro ao excluir o produto.');
+            }
         }
 
         // CÂMERA
