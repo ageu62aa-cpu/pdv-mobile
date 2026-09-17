@@ -1,7 +1,7 @@
 // ==========================================
 // CONFIGURAÇÃO SUPABASE CORRIGIDA
 // ==========================================
-const SUPABASE_URL = 'https://vbdglglmxaywntmjriccf.supabase.co';
+const SUPABASE_URL = 'https://vbdglgmxaywntmjriccf.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiZGdsZ214YXl3bnRtanJpY2NmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk1ODgzOTEsImV4cCI6MjEwNTE2NDM5MX0.S_IUvajnn7Qk7yNtkfBru9xsOjUkKhkJ0J0doikrWSs';
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
