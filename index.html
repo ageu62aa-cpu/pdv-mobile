@@ -80,7 +80,7 @@
                 <!-- Rodapé com gatilho secreto para o Super Admin (clique 5 vezes) -->
                 <div class="text-center pt-3 border-t border-slate-100">
                     <p id="gatilhoSuperAdmin" class="text-[10px] text-slate-400 cursor-pointer select-none" title="Versão do Sistema">
-                        Versão 2.5.0 • Vancely Software © 2026
+                        Versão 2.5.1 • Vancely Software © 2026
                     </p>
                 </div>
             </div>
@@ -499,7 +499,7 @@
 
     <!-- SCRIPT DO SISTEMA -->
     <script>
-        const SUPABASE_URL = '';
+        const SUPABASE_URL = 'https://vbdglgmxaywntmjriccf.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiZGdsZ214YXl3bnRtanJpY2NmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk1ODgzOTEsImV4cCI6MjEwNTE2NDM5MX0.S_IUvajnn7Qk7yNtkfBru9xsOjUkKhkJ0J0doikrWSs';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -1159,7 +1159,6 @@
                 const tbody = document.getElementById('tabelaOperadoresLoja');
                 tbody.innerHTML = '<tr><td colspan="3" class="p-6 text-center text-slate-400">Buscando equipe da empresa...</td></tr>';
 
-                // Busca os vínculos e join com os IDs de auth ou lista via tabela usuarios_empresas
                 const { data, error } = await supabaseClient
                     .from('usuarios_empresas')
                     .select('*')
@@ -1216,7 +1215,6 @@
             }
 
             try {
-                // 1. Criar o usuário no Supabase Auth com cargo de operador
                 const { data: authData, error: authError } = await supabaseClient.auth.signUp({
                     email: email,
                     password: senha,
@@ -1227,7 +1225,6 @@
                 const novoUserId = authData.user?.id;
                 if (!novoUserId) throw new Error('Erro ao criar credenciais do operador.');
 
-                // 2. Vincular automaticamente à empresa do Admin logado
                 const { error: vincError } = await supabaseClient.from('usuarios_empresas').insert([{
                     user_id: novoUserId,
                     empresa_id: empresaAtualId,
