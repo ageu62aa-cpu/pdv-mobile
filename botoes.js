@@ -837,6 +837,7 @@ async function abrirLeitorCamera() {
 async function escanearCameraAdmin() {
     origemLeitor = 'admin';
     const modalCam = document.getElementById('modalCamera');
+    if (modalCam) modalCam.classList.add('flex');
     if (modalCam) modalCam.classList.remove('hidden');
     await iniciarCameraComHtml5Qrcode();
 }
@@ -891,5 +892,8 @@ async function fecharLeitorCamera() {
         html5QrcodeInstance = null;
     }
     const modalCamera = document.getElementById('modalCamera');
-    if (modalCamera) modalCamera.classList.add('hidden');
+    if (modalCamera) {
+        modalCamera.classList.add('hidden');
+        modalCamera.classList.remove('flex');
+    }
 }

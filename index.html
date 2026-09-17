@@ -89,7 +89,7 @@
                     <button onclick="alternarTelaAuth('login')" class="text-xs font-semibold text-slate-600 hover:text-slate-900 transition"><i class="fa-solid fa-arrow-left mr-1"></i> Voltar ao Login Normal</button>
                 </div>
                 <div class="text-center pt-3 border-t border-slate-100">
-                    <p id="gatilhoSuperAdmin" class="text-[10px] text-slate-400 cursor-pointer select-none">Versão 2.6.8 Balança Manual • Vancely Software © 2026</p>
+                    <p id="gatilhoSuperAdmin" class="text-[10px] text-slate-400 cursor-pointer select-none">Versão 2.6.9 Realtime • Vancely Software © 2026</p>
                 </div>
             </div>
         </div>
@@ -287,7 +287,7 @@
                             <tr>
                                 <th class="p-3">E-mail</th>
                                 <th class="p-3">Cargo</th>
-                                <th class="p-3 text-center">Status</th>
+                                <th class="p-3 text-center">Status Caixa</th>
                                 <th class="p-3">Permissão</th>
                                 <th class="p-3 text-center">Ação</th>
                             </tr>
@@ -299,6 +299,10 @@
 
             <!-- ABA HISTÓRICO -->
             <div id="conteudoAbaHistorico" class="hidden flex-1 flex flex-col overflow-hidden">
+                <div class="p-3 bg-slate-50 border-b mb-3 rounded-lg flex justify-between items-center text-xs">
+                    <span>Faturamento Total Acompanhado em Tempo Real:</span>
+                    <strong id="txtFaturamentoAdminRealtime" class="text-emerald-700 text-sm">R$ 0,00</strong>
+                </div>
                 <div class="overflow-y-auto flex-1 border rounded-lg">
                     <table class="w-full text-left border-collapse text-sm">
                         <thead class="bg-slate-50 border-b text-xs text-slate-600 sticky top-0">
@@ -358,17 +362,39 @@
         </div>
     </div>
 
-    <!-- MODAL DE CAIXA (ABERTURA / FECHAMENTO) -->
-    <div id="modalCaixa" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-3">
-        <div class="bg-white rounded-xl max-w-sm w-full p-5 shadow-2xl">
-            <h3 id="tituloModalCaixa" class="font-bold text-base mb-3 text-slate-900">Movimento de Caixa</h3>
-            <div id="resumoFechamentoCaixa" class="hidden mb-3 bg-slate-50 p-3 rounded border text-xs">
-                <p>Faturamento apurado no turno: <strong id="valFaturamentoOperador" class="text-emerald-700">R$ 0,00</strong></p>
+    <!-- MODAL DE CAIXA PROFISSIONAL (ABERTURA / FECHAMENTO) -->
+    <div id="modalCaixa" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 text-slate-800 animate-scaleUp">
+            <div class="flex justify-between items-center mb-4 border-b pb-3">
+                <h3 id="tituloModalCaixa" class="font-bold text-lg text-slate-900 flex items-center gap-2">
+                    <i class="fa-solid fa-cash-register text-emerald-600"></i> Abertura de Caixa
+                </h3>
+                <button onclick="fecharModalCaixa()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
-            <p class="text-xs text-slate-500 mb-4">Confirme a operação de abertura ou encerramento do terminal de caixa corrente.</p>
-            <div class="flex justify-end space-x-2">
-                <button onclick="fecharModalCaixa()" class="bg-slate-200 text-slate-700 px-3 py-2 rounded text-xs font-bold">Cancelar</button>
-                <button onclick="confirmarAcaoCaixa()" class="bg-emerald-600 text-white px-4 py-2 rounded text-xs font-bold shadow">Confirmar</button>
+
+            <!-- Conteúdo para Abertura de Caixa -->
+            <div id="secaoAbrirCaixa" class="space-y-4">
+                <p class="text-xs text-slate-500">Informe o valor em dinheiro disponível no gaveteiro como fundo de troco inicial para iniciar as operações de venda.</p>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">VALOR DO TROCO INICIAL (R$)</label>
+                    <input type="number" step="0.01" id="inputTrocoInicial" placeholder="0.00" class="w-full p-3 border rounded-xl text-lg font-bold text-emerald-700 focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-slate-50">
+                </div>
+            </div>
+
+            <!-- Conteúdo para Fechamento de Caixa -->
+            <div id="resumoFechamentoCaixa" class="hidden space-y-3">
+                <div class="bg-slate-50 p-4 rounded-xl border space-y-2">
+                    <div class="flex justify-between text-sm">
+                        <span class="text-slate-500">Faturamento do Operador:</span>
+                        <span id="valFaturamentoOperador" class="font-bold text-slate-800">R$ 0,00</span>
+                    </div>
+                </div>
+                <p class="text-xs text-slate-500">Deseja realmente encerrar e fechar o terminal de caixa?</p>
+            </div>
+
+            <div class="flex space-x-3 mt-6">
+                <button onclick="fecharModalCaixa()" class="w-1/2 bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 rounded-xl font-bold text-sm transition">Cancelar</button>
+                <button onclick="confirmarAcaoCaixa()" class="w-1/2 bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-bold text-sm shadow-lg shadow-emerald-600/20 transition">Confirmar</button>
             </div>
         </div>
     </div>
