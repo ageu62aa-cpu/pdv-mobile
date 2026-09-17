@@ -266,6 +266,14 @@ function concluirLoginSucesso(cargoUser) {
     const btnAdminMenu = document.getElementById('btnAdminMenu');
     if (btnAdminMenu) btnAdminMenu.classList.toggle('hidden', cargoUser !== 'admin_mercado');
     
+    // Restaurar estado do caixa salvo para este usuário/caixa específico
+    const statusCaixaSalvo = localStorage.getItem(`pdv_caixa_aberto_${empresaAtualId}_${usuarioAtual.id}`);
+    if (statusCaixaSalvo === 'true') {
+        caixaAberto = true;
+    }
+
+    atualizarBadgesCaixaInterface();
+
     const telaLogin = document.getElementById('telaLogin');
     const appPrincipal = document.getElementById('appPrincipal');
     if (telaLogin) telaLogin.classList.add('hidden');
@@ -291,11 +299,29 @@ function gerenciarCaixaModal(tipo) {
     const tituloModal = document.getElementById('tituloModalCaixa');
     const resumoFechamento = document.getElementById('resumoFechamentoCaixa');
     const valFatOp = document.getElementById('valFaturamentoOperador');
+    const inputValorCaixa = document.getElementById('inputValorCaixa'); // Se houver input de valor inicial
 
     if (tituloModal) tituloModal.innerText = tipo === 'abrir' ? 'Abertura de Caixa' : 'Fechamento de Caixa';
     if (resumoFechamento) resumoFechamento.classList.toggle('hidden', tipo === 'abrir');
     if (tipo === 'fechar' && valFatOp) valFatOp.innerText = `R$ ${faturamentoDia.toFixed(2)}`;
+    if (inputValorCaixa) inputValorCaixa.value = '';
+    
     if (modal) modal.classList.remove('hidden');
+    setTimeout(() => {
+        if (inputValorCaixa) {
+            inputValorCaixa.focus();
+        } else {
+            const btnConfirmarCaixa = document.getElementById('btnConfirmarCaixaModal');
+            if (btnConfirmarCaixa) btnConfirmarCaixa.focus();
+        }
+    }, 100);
+}
+
+function tratarEnterModalCaixa(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        confirmarAcaoCaixa();
+    }
 }
 
 function fecharModalCaixa() { 
@@ -305,6 +331,24 @@ function fecharModalCaixa() {
 
 function confirmarAcaoCaixa() {
     caixaAberto = (acaoCaixaAtual === 'abrir');
+    
+    // Salva o status individual do caixa no localStorage por empresa e usuário logado
+    if (usuarioAtual && empresaAtualId) {
+        localStorage.setItem(`pdv_caixa_aberto_${empresaAtualId}_${usuarioAtual.id}`, caixaAberto ? 'true' : 'false');
+    }
+
+    atualizarBadgesCaixaInterface();
+
+    if (!caixaAberto) { 
+        faturamentoDia = 0; 
+        const txtFat = document.getElementById('txtFaturamentoDia');
+        if (txtFat) txtFat.innerText = 'R$ 0,00'; 
+    }
+    fecharModalCaixa();
+    focarBusca();
+}
+
+function atualizarBadgesCaixaInterface() {
     const badges = document.querySelectorAll('.badgeCaixaStatus');
     badges.forEach(b => {
         b.innerText = caixaAberto ? 'ABERTO' : 'FECHADO';
@@ -312,12 +356,6 @@ function confirmarAcaoCaixa() {
             ? 'badgeCaixaStatus text-xs bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-3 py-1.5 rounded font-semibold' 
             : 'badgeCaixaStatus text-xs bg-amber-500/20 text-amber-300 border border-amber-500/30 px-3 py-1.5 rounded font-semibold';
     });
-    if (!caixaAberto) { 
-        faturamentoDia = 0; 
-        const txtFat = document.getElementById('txtFaturamentoDia');
-        if (txtFat) txtFat.innerText = 'R$ 0,00'; 
-    }
-    fecharModalCaixa();
 }
 
 async function carregarProdutosCache() {
@@ -387,7 +425,7 @@ function abrirModalPesagemManual(produto) {
                 </div>
                 <div class="mb-4">
                     <label class="block text-xs font-bold text-slate-600 mb-1">PESO NA BALANÇA (KG)</label>
-                    <input type="number" step="0.001" id="inputPesoKg" placeholder="Ex: 0.750" oninput="calcularValorParcialPeso(this.value)" class="w-full p-3 border rounded-lg text-lg font-bold text-emerald-700 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                    <input type="number" step="0.001" id="inputPesoKg" placeholder="Ex: 0.750" oninput="calcularValorParcialPeso(this.value)" onkeydown="tratarEnterModalPesagem(event)" class="w-full p-3 border rounded-lg text-lg font-bold text-emerald-700 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
                 </div>
                 <div class="mb-5 bg-emerald-50 border border-emerald-200 p-3 rounded-lg flex justify-between items-center">
                     <span class="text-xs font-bold text-emerald-800">VALOR TOTAL:</span>
@@ -425,6 +463,13 @@ function calcularValorParcialPeso(pesoStr) {
     if (produtoEmPesagemAtual && lblValorCalc) {
         const total = peso * produtoEmPesagemAtual.preco;
         lblValorCalc.innerText = `R$ ${total.toFixed(2)}`;
+    }
+}
+
+function tratarEnterModalPesagem(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        confirmarAdicaoPeso();
     }
 }
 
@@ -527,9 +572,9 @@ function alterarQtd(i, qtd) {
 function salvarPinAdmin() {
     const inputPin = document.getElementById('inputAdminPinConfig');
     const pin = inputPin ? inputPin.value.trim() : '';
-    if (!pin) { alert('Informe um PIN válido.'); return; }
+    if (!pin || pin.length < 4) { alert('Informe um PIN válido de pelo menos 4 dígitos.'); return; }
     localStorage.setItem('pdv_admin_pin_' + empresaAtualId, pin); 
-    alert('PIN salvo com sucesso!');
+    alert('PIN gerencial atualizado com sucesso!');
 }
 
 function solicitarRemocaoItem(i) {
@@ -538,6 +583,16 @@ function solicitarRemocaoItem(i) {
     const modalAuth = document.getElementById('modalAutorizacaoAdmin');
     if (inputPinAuth) inputPinAuth.value = '';
     if (modalAuth) modalAuth.classList.remove('hidden');
+    setTimeout(() => {
+        if (inputPinAuth) inputPinAuth.focus();
+    }, 100);
+}
+
+function tratarEnterModalAutorizacao(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        confirmarAutorizacaoPin();
+    }
 }
 
 function confirmarAutorizacaoPin() {
@@ -550,14 +605,20 @@ function confirmarAutorizacaoPin() {
             atualizarTabelaVenda(); 
         }
         fecharModalAutorizacao();
+        focarBusca();
     } else { 
         alert('PIN gerencial incorreto!'); 
+        if (inputPinAuth) {
+            inputPinAuth.value = '';
+            inputPinAuth.focus();
+        }
     }
 }
 
 function fecharModalAutorizacao() { 
     const modal = document.getElementById('modalAutorizacaoAdmin');
     if (modal) modal.classList.add('hidden'); 
+    focarBusca();
 }
 
 function abrirModalCancelarItem() {
@@ -575,6 +636,7 @@ function abrirModalCancelarItem() {
 function fecharModalCancelarItem() { 
     const modal = document.getElementById('modalCancelarItem');
     if (modal) modal.classList.add('hidden'); 
+    focarBusca();
 }
 
 function cancelarVenda() { 
@@ -612,7 +674,7 @@ async function finalizarVenda() {
 }
 
 function mudarAbaAdmin(aba) {
-    ['Produtos', 'Operadores', 'Historico'].forEach(a => {
+    ['Produtos', 'Operadores', 'Historico', 'Configuracoes'].forEach(a => {
         const conteudo = document.getElementById(`conteudoAba${a}`);
         const btn = document.getElementById(`btnAba${a}`);
         if (conteudo) conteudo.classList.add('hidden');
@@ -628,6 +690,12 @@ function mudarAbaAdmin(aba) {
     
     if (aba === 'operadores') carregarOperadoresLoja();
     if (aba === 'historico') carregarHistoricoAdmin();
+    if (aba === 'configuracoes') {
+        const inputPinConfig = document.getElementById('inputAdminPinConfig');
+        if (inputPinConfig) {
+            inputPinConfig.value = localStorage.getItem('pdv_admin_pin_' + empresaAtualId) || '123456';
+        }
+    }
 }
 
 function abrirPainelAdmin() { 
@@ -642,6 +710,7 @@ function fecharPainelAdmin() {
     const modalAdmin = document.getElementById('modalAdmin');
     if (modalAdmin) modalAdmin.classList.add('hidden'); 
     if (modalAdmin) modalAdmin.classList.remove('flex');
+    focarBusca();
 }
 
 function renderizarTabelaAdmin(lista) {
@@ -754,7 +823,8 @@ async function carregarOperadoresLoja() {
     let html = '';
     if (data) {
         data.forEach(op => {
-            const statusCaixaBadge = caixaAberto 
+            const opCaixaAberto = localStorage.getItem(`pdv_caixa_aberto_${empresaAtualId}_${op.user_id}`) === 'true';
+            const statusCaixaBadge = opCaixaAberto 
                 ? '<span class="bg-emerald-100 text-emerald-800 text-xs px-2 py-0.5 rounded-full font-bold">ABERTO</span>' 
                 : '<span class="bg-amber-100 text-amber-800 text-xs px-2 py-0.5 rounded-full font-bold">FECHADO</span>';
 

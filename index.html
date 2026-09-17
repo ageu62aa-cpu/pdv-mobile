@@ -89,7 +89,7 @@
                     <button onclick="alternarTelaAuth('login')" class="text-xs font-semibold text-slate-600 hover:text-slate-900 transition"><i class="fa-solid fa-arrow-left mr-1"></i> Voltar ao Login Normal</button>
                 </div>
                 <div class="text-center pt-3 border-t border-slate-100">
-                    <p id="gatilhoSuperAdmin" class="text-[10px] text-slate-400 cursor-pointer select-none">Versão 2.6.9 Realtime • Vancely Software © 2026</p>
+                    <p id="gatilhoSuperAdmin" class="text-[10px] text-slate-400 cursor-pointer select-none">Versão 2.7.0 Realtime • Vancely Software © 2026</p>
                 </div>
             </div>
         </div>
@@ -108,6 +108,7 @@
             </div>
             <div class="flex items-center space-x-2">
                 <span class="badgeCaixaStatus text-xs bg-amber-500/20 text-amber-300 border border-amber-500/30 px-3 py-1.5 rounded font-semibold">FECHADO</span>
+                <span id="infoUsuarioLogado" class="text-xs text-slate-300 hidden sm:inline"></span>
                 <button id="btnAdminMenu" onclick="abrirPainelAdmin()" class="hidden bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded text-xs font-bold transition flex items-center space-x-1.5"><i class="fa-solid fa-user-shield text-emerald-400"></i><span>Admin</span></button>
                 <button onclick="realizarLogout()" class="bg-rose-900/40 hover:bg-rose-900 text-rose-200 px-2.5 py-1.5 rounded text-xs font-bold transition" title="Sair"><i class="fa-solid fa-power-off"></i></button>
             </div>
@@ -247,10 +248,11 @@
                 <h3 class="font-bold text-lg text-slate-900"><i class="fa-solid fa-user-shield text-emerald-600 mr-2"></i> Painel Administrativo do Estabelecimento</h3>
                 <button onclick="fecharPainelAdmin()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-xl"></i></button>
             </div>
-            <div class="flex space-x-2 border-b pb-3 mb-3">
+            <div class="flex space-x-2 border-b pb-3 mb-3 overflow-x-auto">
                 <button id="btnAbaProdutos" onclick="mudarAbaAdmin('produtos')" class="px-3 py-1.5 text-xs font-bold bg-emerald-600 text-white rounded-lg">Produtos</button>
                 <button id="btnAbaOperadores" onclick="mudarAbaAdmin('operadores')" class="px-3 py-1.5 text-xs font-bold bg-slate-200 text-slate-700 rounded-lg">Operadores</button>
                 <button id="btnAbaHistorico" onclick="mudarAbaAdmin('historico')" class="px-3 py-1.5 text-xs font-bold bg-slate-200 text-slate-700 rounded-lg">Histórico de Vendas</button>
+                <button id="btnAbaConfiguracoes" onclick="mudarAbaAdmin('configuracoes')" class="px-3 py-1.5 text-xs font-bold bg-slate-200 text-slate-700 rounded-lg">Configurações & PIN</button>
             </div>
             
             <!-- ABA PRODUTOS -->
@@ -317,6 +319,19 @@
                     </table>
                 </div>
             </div>
+
+            <!-- ABA CONFIGURAÇÕES & PIN -->
+            <div id="conteudoAbaConfiguracoes" class="hidden flex-1 flex flex-col p-4 space-y-4 overflow-y-auto">
+                <h3 class="font-bold text-sm text-slate-800 border-b pb-2"><i class="fa-solid fa-key text-emerald-600 mr-1"></i> Configurações de Segurança do Administrador</h3>
+                <div class="max-w-md space-y-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">PIN Gerencial de Autorização (Cancelamento de Itens)</label>
+                        <input type="password" id="inputAdminPinConfig" maxlength="6" class="w-full p-2.5 border rounded-lg text-sm font-bold tracking-widest text-slate-800" placeholder="Ex: 123456">
+                        <span class="text-[11px] text-slate-400 mt-1 block">Insira um PIN numérico para proteger ações restritas no PDV.</span>
+                    </div>
+                    <button onclick="salvarPinAdmin()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-lg text-xs font-bold shadow">Salvar Novo PIN Gerencial</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -374,10 +389,10 @@
 
             <!-- Conteúdo para Abertura de Caixa -->
             <div id="secaoAbrirCaixa" class="space-y-4">
-                <p class="text-xs text-slate-500">Informe o valor em dinheiro disponível no gaveteiro como fundo de troco inicial para iniciar as operações de venda.</p>
+                <p class="text-xs text-slate-500">Informe o valor em dinheiro disponível no gaveteiro como fundo de troco inicial e pressione Enter.</p>
                 <div>
                     <label class="block text-xs font-bold text-slate-600 mb-1">VALOR DO TROCO INICIAL (R$)</label>
-                    <input type="number" step="0.01" id="inputTrocoInicial" placeholder="0.00" class="w-full p-3 border rounded-xl text-lg font-bold text-emerald-700 focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-slate-50">
+                    <input type="number" step="0.01" id="inputValorCaixa" onkeydown="tratarEnterModalCaixa(event)" placeholder="0.00" class="w-full p-3 border rounded-xl text-lg font-bold text-emerald-700 focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-slate-50">
                 </div>
             </div>
 
@@ -394,7 +409,7 @@
 
             <div class="flex space-x-3 mt-6">
                 <button onclick="fecharModalCaixa()" class="w-1/2 bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 rounded-xl font-bold text-sm transition">Cancelar</button>
-                <button onclick="confirmarAcaoCaixa()" class="w-1/2 bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-bold text-sm shadow-lg shadow-emerald-600/20 transition">Confirmar</button>
+                <button id="btnConfirmarCaixaModal" onclick="confirmarAcaoCaixa()" class="w-1/2 bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-bold text-sm shadow-lg shadow-emerald-600/20 transition">Confirmar</button>
             </div>
         </div>
     </div>
@@ -404,8 +419,8 @@
         <div class="bg-white rounded-xl max-w-xs w-full p-5 shadow-2xl text-center">
             <i class="fa-solid fa-user-shield text-3xl text-emerald-500 mb-2"></i>
             <h3 class="font-bold text-sm mb-1">Autorização Gerencial</h3>
-            <p class="text-xs text-slate-500 mb-3">Digite o PIN do administrador para remover o item.</p>
-            <input type="password" id="inputPinAutorizacion" placeholder="PIN de Acesso" class="w-full p-2 border rounded text-center text-lg tracking-widest mb-3 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            <p class="text-xs text-slate-500 mb-3">Digite o PIN do administrador e pressione Enter.</p>
+            <input type="password" id="inputPinAutorizacion" onkeydown="tratarEnterModalAutorizacao(event)" placeholder="PIN de Acesso" class="w-full p-2 border rounded text-center text-lg tracking-widest mb-3 focus:outline-none focus:ring-2 focus:ring-emerald-500">
             <div class="flex space-x-2">
                 <button onclick="fecharModalAutorizacao()" class="w-1/2 bg-slate-200 text-slate-700 py-2 rounded text-xs font-bold">Cancelar</button>
                 <button onclick="confirmarAutorizacaoPin()" class="w-1/2 bg-emerald-600 text-white py-2 rounded text-xs font-bold shadow">Autorizar</button>
