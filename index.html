@@ -39,12 +39,12 @@
 
                 <div>
                     <label class="block text-xs font-semibold text-slate-600 mb-1">E-mail de Acesso</label>
-                    <input type="email" id="authEmail" placeholder="seu.email@empresa.com" class="w-full border border-slate-300 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:border-emerald-500">
+                    <input type="email" id="authEmail" placeholder="seu.email@empresa.com" onkeydown="tratarEnterLogin(event)" class="w-full border border-slate-300 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:border-emerald-500">
                 </div>
                 
                 <div id="divAuthSenha">
                     <label class="block text-xs font-semibold text-slate-600 mb-1">Senha</label>
-                    <input type="password" id="authSenha" placeholder="••••••••" class="w-full border border-slate-300 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:border-emerald-500">
+                    <input type="password" id="authSenha" placeholder="••••••••" onkeydown="tratarEnterLogin(event)" class="w-full border border-slate-300 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:border-emerald-500">
                 </div>
 
                 <button id="btnAcaoAuth" onclick="processarAutenticacao()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-lg shadow transition text-sm">
@@ -91,13 +91,14 @@
             
             <section class="lg:col-span-2 flex flex-col space-y-4">
                 <div class="bg-white p-4 rounded-lg shadow relative">
-                    <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Pesquisar Produto (Nome ou Código)</label>
+                    <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Caixa / Pesquisa Rápida (Código de Barras ou Nome)</label>
                     <div class="flex space-x-2 relative items-center">
                         <div class="relative flex-1">
-                            <input type="text" id="inputBusca" placeholder="Digite o nome ou código de barras..." 
+                            <input type="text" id="inputBusca" placeholder="Bipe o código de barras ou digite o nome/código e aperte Enter..." 
                                 oninput="aoDigitarBusca(this.value)"
+                                onkeydown="tratarEnterBuscaCaixa(event)"
                                 class="w-full border border-slate-300 rounded px-3 py-2.5 pl-9 pr-10 focus:outline-none focus:border-emerald-500 text-sm">
-                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-3.5 text-slate-400"></i>
+                            <i class="fa-solid fa-barcode absolute left-3 top-3.5 text-slate-400"></i>
                             <button onclick="abrirLeitorCamera()" class="absolute right-3 top-2.5 text-slate-400 hover:text-slate-700 transition" title="Escanear com Câmera">
                                 <i class="fa-solid fa-camera text-lg"></i>
                             </button>
@@ -165,6 +166,7 @@
             <button onclick="gerenciarCaixaModal('abrir')" class="bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded border border-slate-700 transition"><span class="text-emerald-400 font-bold">[F1]</span> Abrir Caixa</button>
             <button onclick="gerenciarCaixaModal('fechar')" class="bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded border border-slate-700 transition"><span class="text-amber-400 font-bold">[F2]</span> Fechar Caixa</button>
             <button onclick="focarBusca()" class="bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded border border-slate-700 transition"><span class="text-blue-400 font-bold">[F5]</span> Localizar Item</button>
+            <button onclick="abrirModalCancelarItem()" class="bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded border border-slate-700 transition"><span class="text-rose-400 font-bold">[F6]</span> Cancelar Item</button>
             <button onclick="cancelarVenda()" class="bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded border border-slate-700 transition"><span class="text-rose-400 font-bold">[F7]</span> Cancelar Venda</button>
             <button onclick="finalizarVenda()" class="bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded border border-slate-700 transition"><span class="text-emerald-400 font-bold">[F9]</span> Finalizar Venda</button>
         </footer>
@@ -177,9 +179,21 @@
             <div class="flex justify-between items-center border-b pb-3 mb-4">
                 <div>
                     <h3 class="text-xl font-bold text-slate-800">Painel Administrativo & Controle de Estoque</h3>
-                    <p class="text-xs text-slate-500">Gestão centralizada de mercadorias, preços e faturamento.</p>
+                    <p class="text-xs text-slate-500">Gestão centralizada de mercadorias, preços, faturamento e PIN de segurança.</p>
                 </div>
                 <button onclick="fecharPainelAdmin()" class="text-slate-400 hover:text-slate-600 p-2"><i class="fa-solid fa-xmark text-2xl"></i></button>
+            </div>
+
+            <!-- CONFIGURAÇÃO DE PIN DE GERÊNCIA (6 DÍGITOS) -->
+            <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4 flex flex-wrap justify-between items-center">
+                <div>
+                    <h4 class="text-sm font-bold text-amber-900"><i class="fa-solid fa-key mr-1.5"></i> PIN de Autorização de Cancelamento (6 Dígitos)</h4>
+                    <p class="text-xs text-amber-700">Defina um PIN numérico para liberar cancelamentos de itens no caixa sem expor sua senha.</p>
+                </div>
+                <div class="flex space-x-2 mt-2 sm:mt-0">
+                    <input type="password" maxlength="6" id="inputAdminPinConfig" placeholder="Ex: 123456" class="border border-amber-300 rounded px-3 py-1.5 text-sm w-32 text-center tracking-widest font-bold focus:outline-none focus:border-amber-500">
+                    <button onclick="salvarPinAdmin()" class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded text-sm font-semibold transition shadow">Salvar PIN</button>
+                </div>
             </div>
 
             <div class="flex flex-wrap gap-2 justify-between items-center mb-4">
@@ -207,7 +221,7 @@
         </div>
     </div>
 
-    <!-- MODAL DE CADASTRO/EDIÇÃO DE PRODUTO (COM SELEÇÃO AUTOMÁTICA AO CLICAR) -->
+    <!-- MODAL DE CADASTRO/EDIÇÃO DE PRODUTO -->
     <div id="modalFormProduto" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
         <div class="bg-white rounded-lg max-w-md w-full p-6 shadow-xl">
             <h3 id="tituloModalProd" class="text-lg font-bold mb-4 text-slate-800">Cadastrar Novo Produto</h3>
@@ -239,6 +253,39 @@
                 <button onclick="fecharFormProduto()" class="px-4 py-2 bg-slate-200 text-slate-700 rounded text-sm hover:bg-slate-300">Cancelar</button>
                 <button onclick="salvarProdutoAdmin()" class="px-4 py-2 bg-emerald-600 text-white rounded text-sm hover:bg-emerald-700 font-semibold shadow">Salvar no Banco</button>
             </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE AUTORIZAÇÃO POR PIN (6 DÍGITOS) -->
+    <div id="modalAutorizacaoAdmin" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-xl max-w-sm w-full p-6 shadow-2xl text-center">
+            <div class="mb-4">
+                <i class="fa-solid fa-shield-halved text-4xl text-amber-600 mb-2"></i>
+                <h3 class="text-lg font-bold text-slate-800">Autorização do Gerente</h3>
+                <p class="text-xs text-slate-500">Digite o PIN de 6 dígitos para autorizar o cancelamento do item.</p>
+            </div>
+            <div class="space-y-3">
+                <input type="password" maxlength="6" id="inputPinAutorizacion" placeholder="••••••" class="w-full border-2 border-amber-400 rounded-lg px-3 py-3 text-center text-2xl font-bold tracking-widest focus:outline-none focus:border-amber-600" onkeydown="tratarEnterPin(event)">
+                <div id="erroAuthAdmin" class="text-xs text-rose-600 hidden font-semibold"></div>
+            </div>
+            <div class="mt-6 flex space-x-2">
+                <button onclick="fecharModalAutorizacao()" class="flex-1 px-4 py-2.5 bg-slate-200 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-300">Cancelar</button>
+                <button onclick="confirmarAutorizacaoPin()" class="flex-1 px-4 py-2.5 bg-amber-600 text-white rounded-lg text-sm font-semibold hover:bg-amber-700 shadow">Autorizar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE CANCELAR ITEM ESPECÍFICO (F6) -->
+    <div id="modalCancelarItem" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl">
+            <h3 class="text-lg font-bold mb-1 text-slate-800">Cancelar Item da Venda (F6)</h3>
+            <p class="text-xs text-slate-500 mb-4">Selecione na lista abaixo o item que deseja remover da venda atual.</p>
+            
+            <div class="max-h-60 overflow-y-auto border rounded-lg divide-y divide-slate-100 mb-4" id="listaItensParaCancelar">
+                <!-- Preenchido via JS -->
+            </div>
+
+            <button onclick="fecharModalCancelarItem()" class="w-full px-4 py-2.5 bg-slate-200 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-300">Fechar</button>
         </div>
     </div>
 
@@ -287,6 +334,7 @@
         let html5QrCode = null;
         let origemLeitor = 'busca';
         let acaoCaixaAtual = 'abrir';
+        let indiceItemParaRemover = null;
 
         function alternarTelaAuth(modo) {
             modoTelaAuth = modo;
@@ -337,6 +385,13 @@
                 linksAux.classList.add('hidden');
                 linkVoltar.classList.remove('hidden');
                 divTipoPerfil.classList.add('hidden');
+            }
+        }
+
+        function tratarEnterLogin(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                processarAutenticacao();
             }
         }
 
@@ -420,6 +475,7 @@
             document.getElementById('telaLogin').classList.add('hidden');
             document.getElementById('appPrincipal').classList.remove('hidden');
             carregarProdutosCache();
+            focarBusca();
         }
 
         async function realizarLogout() {
@@ -432,6 +488,7 @@
             if (e.key === 'F1') { e.preventDefault(); gerenciarCaixaModal('abrir'); }
             if (e.key === 'F2') { e.preventDefault(); gerenciarCaixaModal('fechar'); }
             if (e.key === 'F5') { e.preventDefault(); focarBusca(); }
+            if (e.key === 'F6') { e.preventDefault(); abrirModalCancelarItem(); }
             if (e.key === 'F7') { e.preventDefault(); cancelarVenda(); }
             if (e.key === 'F9') { e.preventDefault(); finalizarVenda(); }
         });
@@ -492,8 +549,8 @@
 
             const termoLower = termo.toLowerCase();
             const filtrados = produtosCache.filter(p => 
-                (p.nome && p.nome.toLowerCase().includes(termoLower)) || 
-                (p.codigo && p.codigo.toLowerCase().includes(termoLower))
+                (p.codigo && p.codigo.toLowerCase().includes(termoLower)) || 
+                (p.nome && p.nome.toLowerCase().includes(termoLower))
             );
 
             if (filtrados.length === 0) {
@@ -513,9 +570,26 @@
             painel.classList.remove('hidden');
         }
 
+        function tratarEnterBuscaCaixa(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const termo = document.getElementById('inputBusca').value.trim();
+                if (!termo) return;
+
+                const encontrado = produtosCache.find(p => (p.codigo && p.codigo.toLowerCase() === termo.toLowerCase()) || (p.nome && p.nome.toLowerCase().includes(termo.toLowerCase())));
+                
+                if (encontrado) {
+                    adicionarItemVenda(encontrado);
+                } else {
+                    alert('Produto não encontrado!');
+                }
+            }
+        }
+
         function adicionarItemVenda(produto) {
             document.getElementById('painelSugestoes').classList.add('hidden');
             document.getElementById('inputBusca').value = '';
+            document.getElementById('inputBusca').focus();
 
             const existente = itensVenda.find(i => i.id === produto.id);
             if (existente) {
@@ -548,7 +622,7 @@
                     <td class="p-3"><input type="number" min="1" value="${item.qtd}" onchange="alterarQtd(${index}, this.value)" class="w-16 border rounded px-2 py-1 text-sm text-center" onfocus="this.select()"></td>
                     <td class="p-3 text-slate-600">R$ ${Number(item.preco).toFixed(2)}</td>
                     <td class="p-3 font-semibold text-slate-800">R$ ${subTotalItem.toFixed(2)}</td>
-                    <td class="p-3 text-center"><button onclick="removerItem(${index})" class="text-rose-500 hover:text-rose-700 px-2 py-1"><i class="fa-solid fa-trash"></i></button></td>
+                    <td class="p-3 text-center"><button onclick="solicitarRemocaoItem(${index})" class="text-rose-500 hover:text-rose-700 px-2 py-1" title="Excluir Item"><i class="fa-solid fa-trash"></i></button></td>
                 </tr>`;
             });
             tbody.innerHTML = html;
@@ -564,8 +638,85 @@
             atualizarTabelaVenda();
         }
 
-        function removerItem(index) { itensVenda.splice(index, 1); atualizarTabelaVenda(); }
-        function cancelarVenda() { itensVenda = []; atualizarTabelaVenda(); }
+        // SEGURANÇA: VALIDAÇÃO POR PIN DE 6 DÍGITOS PARA REMOVER/CANCELAR ITENS
+        function salvarPinAdmin() {
+            const pin = document.getElementById('inputAdminPinConfig').value.trim();
+            if (pin.length !== 6 || isNaN(pin)) {
+                alert('O PIN de gerência deve conter exatamente 6 números!');
+                return;
+            }
+            localStorage.setItem('pdv_admin_pin', pin);
+            alert('PIN de autorização salvo com sucesso neste navegador!');
+            document.getElementById('inputAdminPinConfig').value = '';
+        }
+
+        function solicitarRemocaoItem(index) {
+            indiceItemParaRemover = index;
+            document.getElementById('inputPinAutorizacion').value = '';
+            document.getElementById('erroAuthAdmin').classList.add('hidden');
+            document.getElementById('modalAutorizacaoAdmin').classList.remove('hidden');
+            setTimeout(() => document.getElementById('inputPinAutorizacion').focus(), 100);
+        }
+
+        function abrirModalCancelarItem() {
+            if (itensVenda.length === 0) {
+                alert('Não há itens na venda atual para cancelar.');
+                return;
+            }
+            let html = '';
+            itensVenda.forEach((item, index) => {
+                html += `<div class="p-3 flex justify-between items-center hover:bg-slate-50 cursor-pointer" onclick="fecharModalCancelarItem(); solicitarRemocaoItem(${index});">
+                    <div><span class="font-semibold text-slate-800">${item.nome}</span><span class="text-xs text-slate-400 block">Qtd: ${item.qtd} | R$ ${(item.qtd * item.preco).toFixed(2)}</span></div>
+                    <button class="text-rose-600 hover:text-rose-800 text-xs font-semibold px-2 py-1 border border-rose-200 rounded">Selecionar</button>
+                </div>`;
+            });
+            document.getElementById('listaItensParaCancelar').innerHTML = html;
+            document.getElementById('modalCancelarItem').classList.remove('hidden');
+        }
+
+        function fecharModalCancelarItem() { document.getElementById('modalCancelarItem').classList.add('hidden'); }
+        function fecharModalAutorizacao() { document.getElementById('modalAutorizacaoAdmin').classList.add('hidden'); }
+
+        function tratarEnterPin(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                confirmarAutorizacaoPin();
+            }
+        }
+
+        function confirmarAutorizacaoPin() {
+            const pinInformado = document.getElementById('inputPinAutorizacion').value.trim();
+            const errDiv = document.getElementById('erroAuthAdmin');
+            errDiv.classList.add('hidden');
+
+            const pinSalvo = localStorage.getItem('pdv_admin_pin') || '123456'; // PIN padrão inicial caso não tenha configurado
+
+            if (pinInformado === pinSalvo) {
+                if (indiceItemParaRemover !== null && indiceItemParaRemover >= 0) {
+                    itensVenda.splice(indiceItemParaRemover, 1);
+                    atualizarTabelaVenda();
+                    alert('Item cancelado com autorização do PIN gerencial.');
+                }
+                fecharModalAutorizacao();
+                indiceItemParaRemover = null;
+            } else {
+                errDiv.innerText = 'PIN incorreto! Verifique com o gerente.';
+                errDiv.classList.remove('hidden');
+            }
+        }
+
+        function cancelarVenda() {
+            if (itensVenda.length === 0) {
+                alert('A venda já está vazia.');
+                return;
+            }
+            const confirmacao = confirm('Deseja realmente cancelar toda a compra? Todos os itens atuais serão removidos.');
+            if (confirmacao) {
+                itensVenda = [];
+                atualizarTabelaVenda();
+                alert('Venda cancelada com sucesso.');
+            }
+        }
 
         async function finalizarVenda() {
             if (!caixaAberto) { alert('O caixa precisa estar aberto! Pressione [F1].'); return; }
@@ -585,6 +736,7 @@
                 itensVenda = [];
                 atualizarTabelaVenda();
                 await carregarProdutosCache();
+                focarBusca();
             } catch (e) {
                 console.error(e);
                 alert('Erro ao finalizar venda.');
@@ -646,7 +798,6 @@
 
         function fecharFormProduto() { document.getElementById('modalFormProduto').classList.add('hidden'); }
 
-        // BOTÃO SALVAR NO BANCO COM VALIDAÇÃO E COMUNICAÇÃO SUPABASE CORRIGIDA
         async function salvarProdutoAdmin() {
             const id = document.getElementById('formProdId').value;
             const nome = document.getElementById('formNome').value.trim();
@@ -715,7 +866,9 @@
                     fecharLeitorCamera();
                     if (origemLeitor === 'busca') {
                         document.getElementById('inputBusca').value = code;
-                        aoDigitarBusca(code);
+                        const encontrado = produtosCache.find(p => p.codigo === code);
+                        if (encontrado) adicionarItemVenda(encontrado);
+                        else aoDigitarBusca(code);
                     } else {
                         document.getElementById('formCodigo').value = code;
                     }
