@@ -1,5 +1,5 @@
 // ==========================================
-// MÓDULO DE INTERFACE, BOTÕES E AÇÕES (ATUALIZADO)
+// MÓDULO DE INTERFACE, BOTÕES E AÇÕES (PDV-VS)
 // ==========================================
 
 async function instalarPwaApp() {
