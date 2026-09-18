@@ -1,8 +1,16 @@
 // ==========================================
-// MÓDULO DE INTERFACE, BOTÕES E AÇÕES (PDV-VS) - v1.0.1
+// MÓDULO DE INTERFACE, BOTÕES E AÇÕES (PDV-VS) - v1.0.2
 // ==========================================
 
-const VERSAO_SISTEMA = "v1.0.1";
+const VERSAO_SISTEMA = "v1.0.2";
+let deferredPrompt = null;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    const btnInstalar = document.getElementById('btnInstalarPwa');
+    if (btnInstalar) btnInstalar.classList.remove('hidden');
+});
 
 async function instalarPwaApp() {
     if (deferredPrompt) {
@@ -244,7 +252,38 @@ function concluirLoginSucesso(cargoUser) {
     if (appPrincipal) appPrincipal.classList.remove('hidden');
     
     carregarProdutosCache(); 
+    iniciarSincronizacaoRealtime();
     focarBusca();
+}
+
+// ==========================================
+// SINCRONIZAÇÃO EM TEMPO REAL (PC E MOBILE)
+// ==========================================
+
+function iniciarSincronizacaoRealtime() {
+    if (!empresaAtualId) return;
+
+    supabaseClient
+        .channel('public:produtos_sync')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'produtos', filter: `empresa_id=eq.${empresaAtualId}` }, async () => {
+            console.log('PDV-VS: Mudança de estoque detectada em outro dispositivo!');
+            await carregarProdutosCache();
+            if (typeof renderizarTabelaAdmin === 'function') {
+                renderizarTabelaAdmin(produtosCache);
+            }
+            atualizarTabelaVenda();
+        })
+        .subscribe();
+
+    supabaseClient
+        .channel('public:empresas_sync')
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'empresas', filter: `id=eq.${empresaAtualId}` }, payload => {
+            if (payload.new && payload.new.ativo === false) {
+                alert('PDV-VS: Este estabelecimento foi bloqueado.');
+                location.reload();
+            }
+        })
+        .subscribe();
 }
 
 // ==========================================

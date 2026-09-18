@@ -4,7 +4,7 @@
 const SUPABASE_URL = 'https://vbdglgmxaywntmjriccf.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiZGdsZ214YXl3bnRtanJpY2NmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk1ODgzOTEsImV4cCI6MjEwNTE2NDM5MX0.S_IUvajnn7Qk7yNtkfBru9xsOjUkKhkJ0J0doikrWSs';
 
-// Configurando o cliente Supabase com persistência baseada na preferência "Manter-me conectado" ou localStorage
+// Configurando o cliente Supabase com persistência otimizada
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
     auth: {
         persistSession: true,
@@ -19,20 +19,17 @@ let historicoVendasCache = [], html5QrcodeInstance = null, origemLeitor = 'busca
 let acaoCaixaAtual = 'abrir', indiceItemParaRemover = null, deferredPrompt = null;
 let produtoEmPesagemAtual = null; 
 let cliquesSecretos = 0;
+let canalRealtimeSupabase = null;
 
 // ==========================================
 // INICIALIZAÇÃO E PWA (CONSOLIDADO)
 // ==========================================
 window.addEventListener('DOMContentLoaded', async () => {
-    // 1. Restaurar Sessão do Supabase considerando a preferência de persistência
+    // 1. Restaurar Sessão do Supabase
     try {
         const lembrarConectado = localStorage.getItem('pdv_lembrar_conectado') === 'true';
-        if (!lembrarConectado) {
-            // Se o usuário não marcou "manter-me conectado", podemos opcionalmente limpar caso tenha fechado o browser, 
-            // mas mantemos a sessão ativa se o token for válido.
-        }
-
         const { data: { session } } = await supabaseClient.auth.getSession();
+        
         if (session && session.user) { 
             usuarioAtual = session.user; 
             if (typeof validarVinculoEmpresaUsuario === 'function') {
@@ -70,7 +67,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 });
 
 // ==========================================
-// INSTALAÇÃO PWA
+// INSTALAÇÃO PWA (CAPTURA GLOBAL)
 // ==========================================
 window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault(); 
@@ -78,6 +75,33 @@ window.addEventListener('beforeinstallprompt', (e) => {
     const btnInstalar = document.getElementById('btnInstalarPwa');
     if (btnInstalar) btnInstalar.classList.remove('hidden');
 });
+
+// ==========================================
+// SINCRONIZAÇÃO EM TEMPO REAL (PC E SMARTPHONE)
+// ==========================================
+function iniciarSincronizacaoRealtime() {
+    if (!empresaAtualId) return;
+    
+    if (canalRealtimeSupabase) {
+        supabaseClient.removeChannel(canalRealtimeSupabase);
+    }
+
+    canalRealtimeSupabase = supabaseClient
+        .channel('public:produtos_e_vendas')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'produtos', filter: `empresa_id=eq.${empresaAtualId}` }, (payload) => {
+            console.log('Atualização de produto detectada via Realtime:', payload);
+            if (typeof carregarProdutosDaLoja === 'function') {
+                carregarProdutosDaLoja();
+            }
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'caixas', filter: `empresa_id=eq.${empresaAtualId}` }, (payload) => {
+            console.log('Atualização de caixa detectada via Realtime:', payload);
+            if (typeof verificarStatusCaixaIndividual === 'function') {
+                verificarStatusCaixaIndividual();
+            }
+        })
+        .subscribe();
+}
 
 // ==========================================
 // ATALHOS GLOBAIS DE TECLADO DO PDV
