@@ -93,6 +93,12 @@
                     <input type="password" id="authSenha" placeholder="••••••••" onkeydown="tratarEnterLogin(event)" class="w-full border border-slate-300 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:border-emerald-500">
                 </div>
                 
+                <!-- Checkbox Manter-me conectado -->
+                <div id="divLembrarConectado" class="flex items-center space-x-2 pt-1">
+                    <input type="checkbox" id="checkLembrarConectado" checked class="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500">
+                    <label for="checkLembrarConectado" class="text-xs text-slate-600 select-none cursor-pointer">Manter-me conectado</label>
+                </div>
+
                 <button id="btnAcaoAuth" onclick="processarAutenticacao()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-lg shadow transition text-sm">Acessar Sistema</button>
                 
                 <div id="feedbackAuth" class="text-xs text-center hidden font-semibold"></div>
@@ -294,7 +300,7 @@
                 </div>
             </div>
 
-            <!-- ABA OPERADORES (ADMIN + OPERADORES COM STATUS INDIVIDUAL) -->
+            <!-- ABA OPERADORES -->
             <div id="conteudoAbaOperadores" class="hidden flex-1 flex flex-col overflow-hidden">
                 <div class="flex justify-between mb-3 items-center">
                     <p class="text-xs text-slate-500">Gerencie o Administrador e os operadores. O status de caixa funciona de forma independente para cada um.</p>
@@ -315,7 +321,7 @@
                 </div>
             </div>
 
-            <!-- ABA HISTÓRICO & FATURAMENTO (JANELAS POR DIA - 15 DIAS) -->
+            <!-- ABA HISTÓRICO & FATURAMENTO -->
             <div id="conteudoAbaHistorico" class="hidden flex-1 flex flex-col overflow-hidden space-y-3">
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div class="bg-emerald-50 border border-emerald-200 p-3 rounded-xl">
@@ -332,15 +338,29 @@
                     </div>
                 </div>
                 <div class="overflow-y-auto flex-1 border rounded-lg divide-y" id="containerJanelasFaturamentoDiario">
-                    <!-- Preenchido dinamicamente por janelas agrupadas por dia com expansão de itens -->
                     <div class="p-6 text-center text-slate-400">Carregando faturamento dos últimos 15 dias...</div>
                 </div>
             </div>
 
             <!-- ABA CONFIGURAÇÕES & PIN -->
             <div id="conteudoAbaConfiguracoes" class="hidden flex-1 flex flex-col p-4 space-y-4 overflow-y-auto">
-                <h3 class="font-bold text-sm text-slate-800 border-b pb-2"><i class="fa-solid fa-key text-emerald-600 mr-1"></i> Configurações de Segurança do Administrador</h3>
-                <div class="max-w-md space-y-3">
+                <h3 class="font-bold text-sm text-slate-800 border-b pb-2"><i class="fa-solid fa-key text-emerald-600 mr-1"></i> Configurações do Estabelecimento</h3>
+                
+                <!-- Edição Autônoma do Nome da Empresa -->
+                <div class="max-w-md space-y-3 bg-slate-50 p-4 rounded-xl border">
+                    <h4 class="font-bold text-xs text-slate-700 uppercase">Alterar Dados do Estabelecimento</h4>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">Nome do Estabelecimento</label>
+                        <input type="text" id="inputAdminNomeEmpresaConfig" class="w-full p-2.5 border rounded-lg text-sm bg-white" placeholder="Nome da Loja">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">WhatsApp de Suporte</label>
+                        <input type="text" id="inputAdminWhatsappConfig" class="w-full p-2.5 border rounded-lg text-sm bg-white" placeholder="(92) 99999-9999">
+                    </div>
+                    <button onclick="salvarConfiguracoesEmpresaAdmin()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-xs font-bold shadow">Salvar Dados da Loja</button>
+                </div>
+
+                <div class="max-w-md space-y-3 pt-2">
                     <div>
                         <label class="block text-xs font-bold text-slate-600 mb-1">PIN Gerencial de Autorização (Cancelamento de Itens)</label>
                         <input type="password" id="inputAdminPinConfig" maxlength="6" class="w-full p-2.5 border rounded-lg text-sm font-bold tracking-widest text-slate-800" placeholder="Ex: 123456">

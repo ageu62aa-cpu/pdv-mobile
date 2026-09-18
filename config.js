@@ -1,9 +1,17 @@
 // ==========================================
-// CONFIGURAÇÃO SUPABASE E VARIÁVEIS GLOBAIS
+// CONFIGURAÇÃO SUPABASE E VARIÁVEIS GLOBAIS (PDV-VS)
 // ==========================================
 const SUPABASE_URL = 'https://vbdglgmxaywntmjriccf.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiZGdsZ214YXl3bnRtanJpY2NmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk1ODgzOTEsImV4cCI6MjEwNTE2NDM5MX0.S_IUvajnn7Qk7yNtkfBru9xsOjUkKhkJ0J0doikrWSs';
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// Configurando o cliente Supabase com persistência baseada na preferência "Manter-me conectado" ou localStorage
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+    auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true
+    }
+});
 
 let usuarioAtual = null, empresaAtualId = null, dadosEmpresaAtual = null, cargoUsuarioAtual = null;
 let modoTelaAuth = 'login', caixaAberto = false, faturamentoDia = 0, itensVenda = [], produtosCache = [];
@@ -16,8 +24,14 @@ let cliquesSecretos = 0;
 // INICIALIZAÇÃO E PWA (CONSOLIDADO)
 // ==========================================
 window.addEventListener('DOMContentLoaded', async () => {
-    // 1. Restaurar Sessão do Supabase
+    // 1. Restaurar Sessão do Supabase considerando a preferência de persistência
     try {
+        const lembrarConectado = localStorage.getItem('pdv_lembrar_conectado') === 'true';
+        if (!lembrarConectado) {
+            // Se o usuário não marcou "manter-me conectado", podemos opcionalmente limpar caso tenha fechado o browser, 
+            // mas mantemos a sessão ativa se o token for válido.
+        }
+
         const { data: { session } } = await supabaseClient.auth.getSession();
         if (session && session.user) { 
             usuarioAtual = session.user; 
@@ -26,7 +40,7 @@ window.addEventListener('DOMContentLoaded', async () => {
             }
         }
     } catch (e) { 
-        console.error("Erro ao restaurar sessão:", e); 
+        console.error("PDV-VS Erro ao restaurar sessão:", e); 
     }
 
     // 2. Configurar Gatilho Secreto Super Admin

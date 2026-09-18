@@ -1,8 +1,8 @@
 // ==========================================
-// MÓDULO DE INTERFACE, BOTÕES E AÇÕES (PDV-VS) - v1.0.0
+// MÓDULO DE INTERFACE, BOTÕES E AÇÕES (PDV-VS) - v1.0.1
 // ==========================================
 
-const VERSAO_SISTEMA = "v1.0.0";
+const VERSAO_SISTEMA = "v1.0.1";
 
 async function instalarPwaApp() {
     if (deferredPrompt) {
@@ -18,97 +18,9 @@ async function instalarPwaApp() {
     }
 }
 
-function fecharTelaSuperAdmin() { 
-    const tela = document.getElementById('telaLoginSuperAdmin');
-    if (tela) tela.classList.add('hidden'); 
-}
-
-async function logarSuperAdmin() {
-    const emailEl = document.getElementById('superAdminEmail');
-    const senhaEl = document.getElementById('superAdminSenha');
-    const fb = document.getElementById('feedbackSuperAdmin');
-    
-    if (fb) fb.classList.add('hidden');
-    
-    const email = emailEl ? emailEl.value.trim() : '';
-    const senha = senhaEl ? senhaEl.value.trim() : '';
-    
-    if (email === 'vancely@admin.com' && senha === '123456') {
-        fecharTelaSuperAdmin(); 
-        await abrirSuperAdminMaster();
-    } else {
-        if (fb) {
-            fb.innerText = 'PDV-VS: Credenciais inválidas. Verifique o e-mail e senha de Super Admin.'; 
-            fb.classList.remove('hidden');
-        }
-    }
-}
-
-async function abrirSuperAdminMaster() {
-    const modal = document.getElementById('modalSuperAdminMaster');
-    if (modal) modal.classList.remove('hidden');
-    await carregarListaClientesSuperAdmin();
-}
-
-function fecharSuperAdminMaster() { 
-    const modal = document.getElementById('modalSuperAdminMaster');
-    if (modal) modal.classList.add('hidden'); 
-}
-
-async function carregarListaClientesSuperAdmin() {
-    const tbody = document.getElementById('tabelaClientesSuperAdmin');
-    if (!tbody) return;
-    try {
-        tbody.innerHTML = '<tr><td colspan="5" class="p-6 text-center text-slate-400">Buscando estabelecimentos...</td></tr>';
-        const { data, error } = await supabaseClient.from('empresas').select('*').order('created_at', { ascending: false });
-        if (error) throw error;
-        
-        window.listaEmpresasCache = data || [];
-        renderizarTabelaSuperAdmin(window.listaEmpresasCache);
-    } catch (e) {
-        tbody.innerHTML = '<tr><td colspan="5" class="p-6 text-center text-rose-500">PDV-VS: Erro ao carregar dados.</td></tr>';
-    }
-}
-
-function renderizarTabelaSuperAdmin(lista) {
-    const tbody = document.getElementById('tabelaClientesSuperAdmin');
-    if (!tbody) return;
-    if (!lista || lista.length === 0) { 
-        tbody.innerHTML = '<tr><td colspan="5" class="p-6 text-center text-slate-400">Nenhum estabelecimento cadastrado.</td></tr>'; 
-        return; 
-    }
-    
-    let html = '';
-    lista.forEach(emp => {
-        const statusBadge = emp.ativo 
-            ? '<span class="bg-emerald-100 text-emerald-800 text-xs px-2 py-0.5 rounded-full font-bold">ATIVO</span>' 
-            : '<span class="bg-rose-100 text-rose-800 text-xs px-2 py-0.5 rounded-full font-bold">BLOQUEADO</span>';
-        
-        html += `<tr class="border-b hover:bg-slate-50">
-            <td class="p-3 font-bold">${emp.nome_mercado}</td>
-            <td class="p-3">${emp.responsavel || '-'}</td>
-            <td class="p-3 text-xs">${emp.documento} <br><span class="text-slate-400">${emp.whatsapp || ''}</span></td>
-            <td class="p-3 text-xs">${emp.email_admin}</td>
-            <td class="p-3 text-center">
-                <button onclick="alternarStatusEmpresa('${emp.id}', ${emp.ativo})" class="${emp.ativo ? 'bg-rose-600 hover:bg-rose-700' : 'bg-emerald-600 hover:bg-emerald-700'} text-white px-3 py-1 rounded text-xs font-semibold shadow transition">
-                    ${emp.ativo ? 'Bloquear' : 'Ativar'}
-                </button>
-            </td>
-        </tr>`;
-    });
-    tbody.innerHTML = html;
-}
-
-async function alternarStatusEmpresa(empresaId, statusAtual) {
-    if (!confirm(`PDV-VS: Deseja realmente alterar o status comercial deste estabelecimento?`)) return;
-    const { error } = await supabaseClient.from('empresas').update({ ativo: !statusAtual }).eq('id', empresaId);
-    if (!error) { 
-        alert('PDV-VS: Status atualizado com sucesso!'); 
-        await carregarListaClientesSuperAdmin(); 
-    } else {
-        alert('PDV-VS: Erro ao atualizar status: ' + error.message);
-    }
-}
+// ==========================================
+// FLUXO DE LOGIN, CADASTRO E ADMIN
+// ==========================================
 
 function alternarTelaAuth(modo) {
     modoTelaAuth = modo;
@@ -152,6 +64,18 @@ function alternarTelaAuth(modo) {
         if (fields.doc) fields.doc.classList.remove('hidden');
         if (fields.endereco) fields.endereco.classList.remove('hidden');
         if (fields.links) fields.links.classList.add('hidden');
+    } else if (modo === 'admin') {
+        if (fields.titulo) fields.titulo.innerText = 'Super Admin Master'; 
+        if (fields.subtitulo) fields.subtitulo.innerText = 'Acesso Restrito ao Desenvolvedor';
+        if (fields.btn) fields.btn.innerText = 'Entrar como Super Admin';
+        if (fields.icone) fields.icone.className = 'fa-solid fa-shield-halved text-4xl text-purple-600 mb-2';
+        if (fields.divSenha) fields.divSenha.classList.remove('hidden'); 
+        if (fields.links) fields.links.classList.add('hidden');
+        if (fields.voltar) fields.voltar.classList.remove('hidden'); 
+        if (fields.perfil) fields.perfil.classList.add('hidden');
+        if (fields.mercado) fields.mercado.classList.add('hidden'); 
+        if (fields.doc) fields.doc.classList.add('hidden');
+        if (fields.endereco) fields.endereco.classList.add('hidden');
     }
 }
 
@@ -168,7 +92,16 @@ async function processarAutenticacao() {
     if (!email) { mostrarFeedback('PDV-VS: Por favor, informe o e-mail.', 'rose'); return; }
 
     try {
-        if (modoTelaAuth === 'login' || modoTelaAuth === 'admin') {
+        if (modoTelaAuth === 'admin') {
+            if (email === 'vancely@admin.com' && senha === '123456') {
+                await abrirSuperAdminMaster();
+            } else {
+                mostrarFeedback('PDV-VS: Credenciais de Super Admin inválidas.', 'rose');
+            }
+            return;
+        }
+
+        if (modoTelaAuth === 'login') {
             const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password: senha });
             if (error) throw error;
             usuarioAtual = data.user; 
@@ -230,6 +163,25 @@ async function processarAutenticacao() {
     }
 }
 
+async function solicitarRecuperacaoSenha() {
+    const emailEl = document.getElementById('authEmail');
+    const email = emailEl ? emailEl.value.trim() : '';
+    if (!email) {
+        mostrarFeedback('PDV-VS: Digite seu e-mail no campo acima para recuperar a senha.', 'amber');
+        if (emailEl) emailEl.focus();
+        return;
+    }
+    try {
+        const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+            redirectTo: window.location.href,
+        });
+        if (error) throw error;
+        mostrarFeedback('PDV-VS: E-mail de recuperação enviado com sucesso! Verifique sua caixa de entrada.', 'emerald');
+    } catch (e) {
+        mostrarFeedback('PDV-VS: Erro ao solicitar recuperação: ' + e.message, 'rose');
+    }
+}
+
 async function validarVinculoEmpresaUsuario() {
     try {
         const { data: vincData, error: vincError } = await supabaseClient.from('usuarios_empresas').select('empresa_id, cargo').eq('user_id', usuarioAtual.id).single();
@@ -281,7 +233,6 @@ function concluirLoginSucesso(cargoUser) {
     const btnAdminMenu = document.getElementById('btnAdminMenu');
     if (btnAdminMenu) btnAdminMenu.classList.toggle('hidden', cargoUser !== 'admin_mercado');
     
-    // Status de caixa individual por usuário e empresa
     const statusCaixaSalvo = localStorage.getItem(`pdv_caixa_aberto_${empresaAtualId}_${usuarioAtual.id}`);
     caixaAberto = (statusCaixaSalvo === 'true');
 
@@ -295,6 +246,77 @@ function concluirLoginSucesso(cargoUser) {
     carregarProdutosCache(); 
     focarBusca();
 }
+
+// ==========================================
+// PAINEL SUPER ADMIN MASTER
+// ==========================================
+
+async function abrirSuperAdminMaster() {
+    const modal = document.getElementById('modalSuperAdminMaster');
+    if (modal) modal.classList.remove('hidden');
+    await carregarListaClientesSuperAdmin();
+}
+
+function fecharSuperAdminMaster() { 
+    const modal = document.getElementById('modalSuperAdminMaster');
+    if (modal) modal.classList.add('hidden'); 
+    alternarTelaAuth('login');
+}
+
+async function carregarListaClientesSuperAdmin() {
+    const tbody = document.getElementById('tabelaClientesSuperAdmin');
+    if (!tbody) return;
+    try {
+        tbody.innerHTML = '<tr><td colspan="5" class="p-6 text-center text-slate-400">Buscando estabelecimentos...</td></tr>';
+        const { data, error } = await supabaseClient.from('empresas').select('*').order('created_at', { ascending: false });
+        if (error) throw error;
+        
+        window.listaEmpresasCache = data || [];
+        renderizarTabelaSuperAdmin(window.listaEmpresasCache);
+    } catch (e) {
+        tbody.innerHTML = '<tr><td colspan="5" class="p-6 text-center text-rose-500">PDV-VS: Erro ao carregar dados.</td></tr>';
+    }
+}
+
+function renderizarTabelaSuperAdmin(lista) {
+    const tbody = document.getElementById('tabelaClientesSuperAdmin');
+    if (!tbody) return;
+    if (!lista || lista.length === 0) { 
+        tbody.innerHTML = '<tr><td colspan="5" class="p-6 text-center text-slate-400">Nenhum estabelecimento cadastrado.</td></tr>'; 
+        return; 
+    }
+    
+    let html = '';
+    lista.forEach(emp => {
+        html += `<tr class="border-b hover:bg-slate-50">
+            <td class="p-3 font-bold">${emp.nome_mercado}</td>
+            <td class="p-3">${emp.responsavel || '-'}</td>
+            <td class="p-3 text-xs">${emp.documento} <br><span class="text-slate-400">${emp.whatsapp || ''}</span></td>
+            <td class="p-3 text-xs">${emp.email_admin}</td>
+            <td class="p-3 text-center">
+                <button onclick="alternarStatusEmpresa('${emp.id}', ${emp.ativo})" class="${emp.ativo ? 'bg-rose-600 hover:bg-rose-700' : 'bg-emerald-600 hover:bg-emerald-700'} text-white px-3 py-1 rounded text-xs font-semibold shadow transition">
+                    ${emp.ativo ? 'Bloquear' : 'Ativar'}
+                </button>
+            </td>
+        </tr>`;
+    });
+    tbody.innerHTML = html;
+}
+
+async function alternarStatusEmpresa(empresaId, statusAtual) {
+    if (!confirm(`PDV-VS: Deseja realmente alterar o status comercial deste estabelecimento?`)) return;
+    const { error } = await supabaseClient.from('empresas').update({ ativo: !statusAtual }).eq('id', empresaId);
+    if (!error) { 
+        alert('PDV-VS: Status atualizado com sucesso!'); 
+        await carregarListaClientesSuperAdmin(); 
+    } else {
+        alert('PDV-VS: Erro ao atualizar status: ' + error.message);
+    }
+}
+
+// ==========================================
+// CAIXA E OPERAÇÕES DO PDV
+// ==========================================
 
 async function atualizarPaginaCompleta() {
     if (confirm('PDV-VS: Deseja atualizar e sincronizar todos os dados do sistema?')) {
@@ -415,6 +437,10 @@ function atualizarBadgesCaixaInterface() {
             : 'badgeCaixaStatus text-xs bg-amber-500/20 text-amber-300 border border-amber-500/30 px-3 py-1.5 rounded font-semibold';
     });
 }
+
+// ==========================================
+// PRODUTOS, PESAGEM E CARRINHO
+// ==========================================
 
 async function carregarProdutosCache() {
     if (!empresaAtualId) return;
@@ -626,6 +652,10 @@ function alterarQtd(i, qtd) {
     if (q > 0) { itensVenda[i].qtd = q; atualizarTabelaVenda(); } 
 }
 
+// ==========================================
+// SEGURANÇA E AUTORIZAÇÕES DE ITENS
+// ==========================================
+
 function salvarPinAdmin() {
     const inputPin = document.getElementById('inputAdminPinConfig');
     const pin = inputPin ? inputPin.value.trim() : '';
@@ -736,6 +766,10 @@ async function finalizarVenda() {
     alert('PDV-VS: Venda concluída e estoque atualizado com sucesso!');
     focarBusca();
 }
+
+// ==========================================
+// PAINEL ADMINISTRATIVO DA LOJA
+// ==========================================
 
 function mudarAbaAdmin(aba) {
     ['Produtos', 'Operadores', 'Historico', 'Configuracoes'].forEach(a => {
@@ -1010,12 +1044,11 @@ function renderizarHistoricoVendasPorJanelasDiarias() {
     let totalSemanal = 0;
     const hojeStr = new Date().toDateString();
 
-    // Agrupar vendas por dia (YYYY-MM-DD)
     const gruposPorDia = {};
     historicoVendasCache.forEach(v => {
         total15Dias += v.valor_total;
         const dataVenda = new Date(v.created_at);
-        const diaKey = dataVenda.toISOString().split('T')[0]; // YYYY-MM-DD
+        const diaKey = dataVenda.toISOString().split('T')[0];
 
         if (dataVenda.toDateString() === hojeStr) {
             totalHoje += v.valor_total;
@@ -1082,6 +1115,10 @@ function renderizarHistoricoVendasPorJanelasDiarias() {
 
     container.innerHTML = htmlJanelas;
 }
+
+// ==========================================
+// LEITOR DE CÂMERA (QR / CÓDIGO DE BARRAS)
+// ==========================================
 
 async function abrirLeitorCamera() {
     origemLeitor = 'busca';
