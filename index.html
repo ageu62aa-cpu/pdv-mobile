@@ -3,11 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PDV-VS | Vancely Software Automação Comercial</title>
-    <meta name="theme-color" content="#0f172a">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="PDV-VS">
+    <title>PDV-VS Enterprise - v1.0.0</title>
+    <meta name="theme-color" content="#047857">
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
@@ -15,23 +12,14 @@
     <!-- FontAwesome para Ícones -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <!-- Biblioteca HTML5 QR Code para Câmera -->
+    <!-- Biblioteca HTML5 QR Code para Câmera (Com suporte aprimorado a EAN-13/EAN-8) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
     
     <!-- Supabase Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
-    <link rel="manifest" href="data:application/manifest+json;charset=utf-8,{
-        %22name%22: %22PDV-VS Enterprise Vancely Software%22,
-        %22short_name%22: %22PDV-VS%22,
-        %22start_url%22: %22./%22,
-        %22display%22: %22standalone%22,
-        %22background_color%22: %22%23f1f5f9%22,
-        %22theme_color%22: %22%230f172a%22,
-        %22icons%22: [%20{%20%22src%22:%20%22https://cdn-icons-png.flaticon.com/512/2897/2897785.png%22,%20%22sizes%22:%20%22512x512%22,%20%22type%22:%22image/png%22%20}%20]
-    }">
     <style>
-        html, body { overscroll-behavior-y: none; -webkit-overflow-scrolling: touch; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+        html, body { overscroll-behavior-y: none; -webkit-overflow-scrolling: touch; }
         input, select, button { font-size: 16px !important; }
         @keyframes scaleUp {
             from { transform: scale(0.95); opacity: 0; }
@@ -40,21 +28,22 @@
         .animate-scaleUp { animation: scaleUp 0.15s ease-out forwards; }
     </style>
 </head>
-<body class="bg-slate-100 min-h-screen text-slate-800 flex flex-col justify-between">
+<body class="bg-emerald-50/60 min-h-screen text-slate-800 flex flex-col justify-between">
 
     <!-- TELA DE LOGIN / AUTENTICAÇÃO -->
-    <div id="telaLogin" class="fixed inset-0 bg-slate-900 z-50 flex items-center justify-center p-4">
+    <div id="telaLogin" class="fixed inset-0 bg-emerald-950 z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl max-w-md w-full p-6 sm:p-8 shadow-2xl relative">
             <div class="absolute top-4 right-4 flex items-center space-x-2">
-                <button id="btnInstalarPwa" onclick="instalarPwaApp()" class="hidden text-xs bg-emerald-50 text-emerald-700 border border-emerald-300 px-2.5 py-1 rounded-lg transition flex items-center space-x-1"><i class="fa-solid fa-download"></i><span>Instalar App</span></button>
-                <button onclick="alternarTelaAuth('admin')" class="text-xs text-slate-400 hover:text-slate-700 transition flex items-center space-x-1 p-1"><i class="fa-solid fa-user-shield text-[10px] text-emerald-600"></i><span>Admin</span></button>
+                <button onclick="alternarTelaAuth('admin')" class="text-xs text-slate-400 hover:text-slate-700 transition flex items-center space-x-1 p-1" title="Acesso Super Admin"><i class="fa-solid fa-user-shield text-[11px] text-emerald-600"></i><span>Admin</span></button>
             </div>
             <div class="text-center mb-6 mt-2">
+                <!-- Ícone modernizado de Caixa Eletrônico / Registradora -->
                 <i id="iconeAuth" class="fa-solid fa-cash-register text-4xl text-emerald-600 mb-2"></i>
                 <h2 id="tituloAuth" class="text-xl sm:text-2xl font-bold text-slate-900">PDV-VS Enterprise</h2>
                 <p id="subtituloAuth" class="text-xs text-slate-500">Sistema de Gestão Comercial e PDV</p>
-                <div class="mt-2 inline-block bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full"><span class="text-[10px] sm:text-[11px] font-bold text-emerald-800 tracking-wider uppercase">Powered by Vancely Software</span></div>
+                <div class="mt-2 inline-block bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full"><span class="text-[10px] sm:text-[11px] font-bold text-emerald-800 tracking-wider uppercase">Versão 1.0.0 • Plano Comum</span></div>
             </div>
+            
             <div class="space-y-3.5">
                 <div id="divTipoPerfil" class="hidden">
                     <label class="block text-xs font-semibold text-slate-600 mb-1">Tipo de Acesso Desejado</label>
@@ -63,33 +52,60 @@
                         <option value="admin_mercado">Administrador do Estabelecimento</option>
                     </select>
                 </div>
+                
                 <div id="divNomeMercadoCadastro" class="hidden">
-                    <label class="block text-xs font-semibold text-slate-600 mb-1">Nome do Estabelecimento (Mercado)</label>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Nome do Estabelecimento (Loja)</label>
                     <input type="text" id="authNomeMercado" placeholder="Ex: Mercadinho do Magnata" class="w-full border border-slate-300 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:border-emerald-500">
                 </div>
+                
                 <div id="divDocumentoCadastro" class="hidden">
-                    <label class="block text-xs font-semibold text-slate-600 mb-1">CNPJ ou CPF</label>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">CNPJ ou CPF do Responsável</label>
                     <input type="text" id="authDocumento" placeholder="00.000.000/0001-00" class="w-full border border-slate-300 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:border-emerald-500">
                 </div>
+
+                <!-- Campos de Endereço e WhatsApp obrigatórios para novo estabelecimento -->
+                <div id="divCamposEnderecoCadastro" class="hidden space-y-3 pt-1">
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">CEP</label>
+                            <input type="text" id="authCep" placeholder="69000-000" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Nº do Imóvel</label>
+                            <input type="text" id="authNumeroImovel" placeholder="Ex: 123" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Endereço Completo</label>
+                        <input type="text" id="authEndereco" placeholder="Rua, Bairro, Cidade - UF" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">WhatsApp de Contato / Suporte</label>
+                        <input type="text" id="authWhatsapp" placeholder="(92) 99999-9999" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
+                    </div>
+                </div>
+
                 <div>
                     <label class="block text-xs font-semibold text-slate-600 mb-1">E-mail de Acesso</label>
                     <input type="email" id="authEmail" placeholder="seu.email@empresa.com" onkeydown="tratarEnterLogin(event)" class="w-full border border-slate-300 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:border-emerald-500">
                 </div>
+                
                 <div id="divAuthSenha">
                     <label class="block text-xs font-semibold text-slate-600 mb-1">Senha</label>
                     <input type="password" id="authSenha" placeholder="••••••••" onkeydown="tratarEnterLogin(event)" class="w-full border border-slate-300 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:border-emerald-500">
                 </div>
+                
                 <button id="btnAcaoAuth" onclick="processarAutenticacao()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-lg shadow transition text-sm">Acessar Sistema</button>
+                
                 <div id="feedbackAuth" class="text-xs text-center hidden font-semibold"></div>
+                
                 <div id="linksAuxiliares" class="flex justify-between items-center pt-2 text-xs text-slate-500 border-t border-slate-100">
                     <button onclick="alternarTelaAuth('cadastro')" class="hover:text-emerald-600 transition font-medium">Cadastrar Estabelecimento</button>
                     <button onclick="alternarTelaAuth('recuperar')" class="hover:text-emerald-600 transition">Esqueci a senha</button>
                 </div>
+                
                 <div id="linkVoltarLogin" class="hidden text-center pt-2 border-t border-slate-100">
                     <button onclick="alternarTelaAuth('login')" class="text-xs font-semibold text-slate-600 hover:text-slate-900 transition"><i class="fa-solid fa-arrow-left mr-1"></i> Voltar ao Login Normal</button>
-                </div>
-                <div class="text-center pt-3 border-t border-slate-100">
-                    <p id="gatilhoSuperAdmin" class="text-[10px] text-slate-400 cursor-pointer select-none">Versão 2.7.0 Realtime • Vancely Software © 2026</p>
                 </div>
             </div>
         </div>
@@ -97,20 +113,23 @@
 
     <!-- APLICAÇÃO PRINCIPAL (PDV) -->
     <div id="appPrincipal" class="hidden flex-1 flex flex-col justify-between">
-        <!-- Header PDV -->
-        <header class="bg-slate-900 text-white px-4 py-3 flex justify-between items-center shadow-md">
+        <!-- Cabeçalho com Verde Mais Forte -->
+        <header class="bg-emerald-700 text-white px-4 py-3 flex justify-between items-center shadow-md">
             <div class="flex items-center space-x-3">
-                <i class="fa-solid fa-cash-register text-xl text-emerald-400"></i>
+                <i class="fa-solid fa-cash-register text-2xl text-emerald-200"></i>
                 <div>
-                    <h1 id="tituloAppEmpresa" class="font-bold text-sm sm:text-base">PDV-VS Enterprise</h1>
-                    <span id="badgeEmpresaLogada" class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded font-mono">CNPJ: ...</span>
+                    <div class="flex items-center space-x-2">
+                        <h1 id="tituloAppEmpresa" class="font-bold text-sm sm:text-base">PDV-VS Enterprise</h1>
+                        <span id="badgeNumeroLoja" class="text-[10px] bg-emerald-800/80 text-emerald-200 px-1.5 py-0.5 rounded font-mono">Loja #...</span>
+                    </div>
+                    <span id="badgeEmpresaLogada" class="text-[10px] text-emerald-200">CNPJ: ...</span>
                 </div>
             </div>
             <div class="flex items-center space-x-2">
                 <span class="badgeCaixaStatus text-xs bg-amber-500/20 text-amber-300 border border-amber-500/30 px-3 py-1.5 rounded font-semibold">FECHADO</span>
-                <span id="infoUsuarioLogado" class="text-xs text-slate-300 hidden sm:inline"></span>
-                <button id="btnAdminMenu" onclick="abrirPainelAdmin()" class="hidden bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded text-xs font-bold transition flex items-center space-x-1.5"><i class="fa-solid fa-user-shield text-emerald-400"></i><span>Admin</span></button>
-                <button onclick="realizarLogout()" class="bg-rose-900/40 hover:bg-rose-900 text-rose-200 px-2.5 py-1.5 rounded text-xs font-bold transition" title="Sair"><i class="fa-solid fa-power-off"></i></button>
+                <span id="infoUsuarioLogado" class="text-xs text-emerald-100 hidden sm:inline"></span>
+                <button id="btnAdminMenu" onclick="abrirPainelAdmin()" class="hidden bg-emerald-800 hover:bg-emerald-900 text-white px-3 py-1.5 rounded text-xs font-bold transition flex items-center space-x-1.5"><i class="fa-solid fa-user-shield text-emerald-300"></i><span>Admin</span></button>
+                <button onclick="realizarLogout()" class="bg-rose-900/60 hover:bg-rose-900 text-rose-100 px-2.5 py-1.5 rounded text-xs font-bold transition" title="Sair"><i class="fa-solid fa-power-off"></i></button>
             </div>
         </header>
 
@@ -142,7 +161,7 @@
                             <thead class="bg-slate-50 text-slate-600 sticky top-0 border-b text-xs">
                                 <tr>
                                     <th class="p-2">Produto</th>
-                                    <th class="p-2 w-20">Qtd / Peso</th>
+                                    <th class="p-2 w-24">Qtd / Peso</th>
                                     <th class="p-2">Preço Unit.</th>
                                     <th class="p-2">Subtotal</th>
                                     <th class="p-2 text-center w-12"><i class="fa-solid fa-trash"></i></th>
@@ -164,8 +183,10 @@
                         <div class="flex justify-between text-sm text-slate-600"><span>Subtotal:</span><span id="txtSubtotal">R$ 0,00</span></div>
                         <div class="flex justify-between text-lg font-bold text-slate-900 border-t pt-2"><span>Total a Pagar:</span><span id="txtTotal" class="text-emerald-600">R$ 0,00</span></div>
                     </div>
-                    <div class="bg-slate-50 p-3 rounded-lg border text-xs space-y-1 mb-4">
-                        <div class="flex justify-between"><span>Faturamento Dia:</span><strong id="txtFaturamentoDia" class="text-emerald-700">R$ 0,00</strong></div>
+                    <!-- Faturamento do dia mais discreto para operador / visível para admin -->
+                    <div id="containerFaturamentoDiarioDiscreto" class="bg-slate-50 p-2.5 rounded-lg border text-[11px] space-y-1 mb-4 flex justify-between items-center text-slate-500">
+                        <span>Faturamento Diário:</span>
+                        <strong id="txtFaturamentoDia" class="text-slate-700 font-mono">R$ 0,00</strong>
                     </div>
                 </div>
 
@@ -175,7 +196,6 @@
                     <button onclick="cancelarVenda()" class="w-full bg-rose-50 hover:bg-rose-100 text-rose-700 py-2 rounded-lg text-xs font-semibold transition">[F7] Cancelar Compra</button>
                     <button onclick="finalizarVenda()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-xl shadow-lg transition text-base flex justify-center items-center space-x-2"><i class="fa-solid fa-check"></i><span>FINALIZAR VENDA [F9]</span></button>
                     
-                    <!-- F1 e F2 no Rodapé da Coluna -->
                     <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 mt-2">
                         <button onclick="gerenciarCaixaModal('abrir')" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 py-2 rounded-lg text-xs font-bold transition">[F1] Abrir Caixa</button>
                         <button onclick="gerenciarCaixaModal('fechar')" class="bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 py-2 rounded-lg text-xs font-bold transition">[F2] Fechar Caixa</button>
@@ -183,6 +203,15 @@
                 </div>
             </div>
         </main>
+
+        <!-- RODAPÉ COM BOTÃO DE SUPORTE WHATSAPP DISCRETO -->
+        <footer class="bg-white border-t py-2 px-4 text-center text-xs text-slate-500 flex justify-between items-center max-w-7xl mx-auto w-full">
+            <span>PDV-VS Enterprise © 2026 - Versão 1.0.0</span>
+            <a href="https://wa.me/" target="_blank" class="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1 rounded-full shadow flex items-center space-x-1 text-[11px] font-bold transition">
+                <i class="fa-brands fa-whatsapp text-xs"></i>
+                <span>Suporte</span>
+            </a>
+        </footer>
     </div>
 
     <!-- TELA DE LOGIN SUPER ADMIN -->
@@ -196,11 +225,11 @@
             <div class="space-y-4">
                 <div>
                     <label class="block text-xs font-semibold text-slate-300 mb-1">E-mail Master</label>
-                    <input type="email" id="superAdminEmail" placeholder="vancely@admin.com" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:border-amber-500">
+                    <input type="email" id="superAdminEmail" value="vancely@admin.com" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:border-amber-500">
                 </div>
                 <div>
                     <label class="block text-xs font-semibold text-slate-300 mb-1">Senha Master</label>
-                    <input type="password" id="superAdminSenha" placeholder="••••••••" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:border-amber-500">
+                    <input type="password" id="superAdminSenha" value="123456" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:border-amber-500">
                 </div>
                 <button onclick="logarSuperAdmin()" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 rounded-lg shadow transition text-sm">Entrar no Painel Master</button>
                 <div id="feedbackSuperAdmin" class="text-xs text-center hidden font-semibold text-rose-400"></div>
@@ -213,13 +242,8 @@
     <div id="modalSuperAdminMaster" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-2 sm:p-4">
         <div class="bg-white rounded-xl max-w-6xl w-full p-4 sm:p-6 shadow-2xl max-h-[95vh] flex flex-col">
             <div class="flex justify-between items-center border-b pb-3 mb-4">
-                <div>
-                    <h3 class="text-base sm:text-xl font-bold text-slate-900"><i class="fa-solid fa-shield-halved text-amber-600 mr-2"></i> Painel Super Admin (Gestão de Clientes)</h3>
-                </div>
+                <h3 class="text-base sm:text-xl font-bold text-slate-900"><i class="fa-solid fa-shield-halved text-amber-600 mr-2"></i> Painel Super Admin (Gestão de Clientes)</h3>
                 <button onclick="fecharSuperAdminMaster()" class="text-slate-400 hover:text-slate-600 p-2"><i class="fa-solid fa-xmark text-2xl"></i></button>
-            </div>
-            <div class="flex flex-col sm:flex-row justify-between items-stretch sm:items-center mb-3 gap-2">
-                <input type="text" id="buscaSuperAdmin" oninput="filtrarClientesSuperAdmin(this.value)" placeholder="Filtrar por nome do mercado..." class="border border-slate-300 rounded px-3 py-2 text-sm w-full sm:w-80 focus:outline-none focus:border-amber-500">
             </div>
             <div class="overflow-x-auto flex-1 border rounded-lg">
                 <table class="w-full text-left border-collapse text-sm">
@@ -227,14 +251,13 @@
                         <tr class="bg-slate-100 border-b text-slate-700">
                             <th class="p-3">Estabelecimento</th>
                             <th class="p-3">Responsável</th>
-                            <th class="p-3">Documento</th>
+                            <th class="p-3">Documento / WhatsApp</th>
                             <th class="p-3 text-xs">E-mail Admin</th>
-                            <th class="p-3 text-center">Status</th>
                             <th class="p-3 text-center">Ações</th>
                         </tr>
                     </thead>
                     <tbody id="tabelaClientesSuperAdmin">
-                        <tr><td colspan="6" class="p-6 text-center text-slate-400">Carregando dados...</td></tr>
+                        <tr><td colspan="5" class="p-6 text-center text-slate-400">Carregando dados...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -243,22 +266,23 @@
 
     <!-- PAINEL ADMINISTRATIVO DA LOJA -->
     <div id="modalAdmin" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-3">
-        <div class="bg-white rounded-2xl max-w-4xl w-full p-5 shadow-2xl max-h-[90vh] flex flex-col">
+        <div class="bg-white rounded-2xl max-w-5xl w-full p-5 shadow-2xl max-h-[90vh] flex flex-col">
             <div class="flex justify-between items-center border-b pb-3 mb-3">
                 <h3 class="font-bold text-lg text-slate-900"><i class="fa-solid fa-user-shield text-emerald-600 mr-2"></i> Painel Administrativo do Estabelecimento</h3>
                 <button onclick="fecharPainelAdmin()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-xl"></i></button>
             </div>
             <div class="flex space-x-2 border-b pb-3 mb-3 overflow-x-auto">
-                <button id="btnAbaProdutos" onclick="mudarAbaAdmin('produtos')" class="px-3 py-1.5 text-xs font-bold bg-emerald-600 text-white rounded-lg">Produtos</button>
-                <button id="btnAbaOperadores" onclick="mudarAbaAdmin('operadores')" class="px-3 py-1.5 text-xs font-bold bg-slate-200 text-slate-700 rounded-lg">Operadores</button>
-                <button id="btnAbaHistorico" onclick="mudarAbaAdmin('historico')" class="px-3 py-1.5 text-xs font-bold bg-slate-200 text-slate-700 rounded-lg">Histórico de Vendas</button>
+                <button id="btnAbaProdutos" onclick="mudarAbaAdmin('produtos')" class="px-3 py-1.5 text-xs font-bold bg-emerald-600 text-white rounded-lg">Produtos (Máx 800)</button>
+                <button id="btnAbaOperadores" onclick="mudarAbaAdmin('operadores')" class="px-3 py-1.5 text-xs font-bold bg-slate-200 text-slate-700 rounded-lg">Operador (Máx 1)</button>
+                <button id="btnAbaHistorico" onclick="mudarAbaAdmin('historico')" class="px-3 py-1.5 text-xs font-bold bg-slate-200 text-slate-700 rounded-lg">Faturamento & Histórico (15 dias)</button>
                 <button id="btnAbaConfiguracoes" onclick="mudarAbaAdmin('configuracoes')" class="px-3 py-1.5 text-xs font-bold bg-slate-200 text-slate-700 rounded-lg">Configurações & PIN</button>
             </div>
             
             <!-- ABA PRODUTOS -->
             <div id="conteudoAbaProdutos" class="flex-1 flex flex-col overflow-hidden">
-                <div class="flex justify-between mb-3 gap-2">
+                <div class="flex justify-between mb-3 gap-2 items-center">
                     <input type="text" oninput="filtrarTabelaAdmin(this.value)" placeholder="Buscar produto..." class="border rounded px-3 py-1.5 text-sm flex-1">
+                    <span id="contadorLimiteProdutosAdmin" class="text-xs font-bold text-slate-500">0 / 800 produtos</span>
                     <button onclick="abrirModalNovoProdutoAdmin()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded text-xs font-bold shadow"><i class="fa-solid fa-plus mr-1"></i> Novo Produto</button>
                 </div>
                 <div class="overflow-y-auto flex-1 border rounded-lg">
@@ -268,7 +292,7 @@
                                 <th class="p-2">Cód</th>
                                 <th class="p-2">Nome</th>
                                 <th class="p-2">Preço</th>
-                                <th class="p-2">Estoque</th>
+                                <th class="p-2">Estoque / Tipo</th>
                                 <th class="p-2 text-center">Ações</th>
                             </tr>
                         </thead>
@@ -279,9 +303,9 @@
 
             <!-- ABA OPERADORES -->
             <div id="conteudoAbaOperadores" class="hidden flex-1 flex flex-col overflow-hidden">
-                <div class="flex justify-between mb-3">
-                    <h4 class="text-xs font-bold text-slate-600 uppercase">Equipe Caixa</h4>
-                    <button onclick="abrirModalNovoOperador()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded text-xs font-bold shadow"><i class="fa-solid fa-user-plus mr-1"></i> Convidar Operador</button>
+                <div class="flex justify-between mb-3 items-center">
+                    <p class="text-xs text-slate-500">Plano Comum: Permitido apenas 1 operador além da conta do Administrador.</p>
+                    <button onclick="abrirModalNovoOperador()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded text-xs font-bold shadow"><i class="fa-solid fa-user-plus mr-1"></i> Adicionar Operador</button>
                 </div>
                 <div class="overflow-y-auto flex-1 border rounded-lg">
                     <table class="w-full text-left border-collapse text-sm">
@@ -290,7 +314,6 @@
                                 <th class="p-3">E-mail</th>
                                 <th class="p-3">Cargo</th>
                                 <th class="p-3 text-center">Status Caixa</th>
-                                <th class="p-3">Permissão</th>
                                 <th class="p-3 text-center">Ação</th>
                             </tr>
                         </thead>
@@ -299,18 +322,29 @@
                 </div>
             </div>
 
-            <!-- ABA HISTÓRICO -->
-            <div id="conteudoAbaHistorico" class="hidden flex-1 flex flex-col overflow-hidden">
-                <div class="p-3 bg-slate-50 border-b mb-3 rounded-lg flex justify-between items-center text-xs">
-                    <span>Faturamento Total Acompanhado em Tempo Real:</span>
-                    <strong id="txtFaturamentoAdminRealtime" class="text-emerald-700 text-sm">R$ 0,00</strong>
+            <!-- ABA HISTÓRICO & FATURAMENTO -->
+            <div id="conteudoAbaHistorico" class="hidden flex-1 flex flex-col overflow-hidden space-y-3">
+                <!-- Cards de Faturamento Requeridos -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div class="bg-emerald-50 border border-emerald-200 p-3 rounded-xl">
+                        <span class="text-[11px] text-emerald-800 font-bold block">FATURAMENTO DIÁRIO</span>
+                        <strong id="adminFatHoje" class="text-lg font-black text-emerald-700">R$ 0,00</strong>
+                    </div>
+                    <div class="bg-blue-50 border border-blue-200 p-3 rounded-xl">
+                        <span class="text-[11px] text-blue-800 font-bold block">FATURAMENTO SEMANAL</span>
+                        <strong id="adminFatSemanal" class="text-lg font-black text-blue-700">R$ 0,00</strong>
+                    </div>
+                    <div class="bg-slate-100 border p-3 rounded-xl">
+                        <span class="text-[11px] text-slate-700 font-bold block">TOTAL (15 DIAS RETENÇÃO)</span>
+                        <strong id="adminFatTotal15Dias" class="text-lg font-black text-slate-800">R$ 0,00</strong>
+                    </div>
                 </div>
                 <div class="overflow-y-auto flex-1 border rounded-lg">
                     <table class="w-full text-left border-collapse text-sm">
                         <thead class="bg-slate-50 border-b text-xs text-slate-600 sticky top-0">
                             <tr>
                                 <th class="p-3">Data / Hora</th>
-                                <th class="p-3">Operador</th>
+                                <th class="p-3">Operador / Responsável</th>
                                 <th class="p-3">Itens</th>
                                 <th class="p-3 text-right">Total</th>
                             </tr>
@@ -327,15 +361,14 @@
                     <div>
                         <label class="block text-xs font-bold text-slate-600 mb-1">PIN Gerencial de Autorização (Cancelamento de Itens)</label>
                         <input type="password" id="inputAdminPinConfig" maxlength="6" class="w-full p-2.5 border rounded-lg text-sm font-bold tracking-widest text-slate-800" placeholder="Ex: 123456">
-                        <span class="text-[11px] text-slate-400 mt-1 block">Insira um PIN numérico para proteger ações restritas no PDV.</span>
                     </div>
-                    <button onclick="salvarPinAdmin()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-lg text-xs font-bold shadow">Salvar Novo PIN Gerencial</button>
+                    <button onclick="salvarPinAdmin()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-lg text-xs font-bold shadow">Salvar PIN</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- MODAL FORMULÁRIO DE PRODUTO (Com suporte a KG) -->
+    <!-- MODAL FORMULÁRIO DE PRODUTO -->
     <div id="modalFormProduto" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-3">
         <div class="bg-white rounded-xl max-w-sm w-full p-5 shadow-2xl">
             <h3 class="font-bold text-base mb-4 text-slate-900">Gerenciar Produto</h3>
@@ -358,21 +391,21 @@
                         <input type="number" step="0.01" id="formPreco" class="w-full p-2 border rounded text-sm">
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-slate-600 mb-1">Estoque</label>
-                        <input type="number" id="formEstoque" class="w-full p-2 border rounded text-sm">
+                        <label class="block text-xs font-bold text-slate-600 mb-1">Estoque Inicial</label>
+                        <input type="number" step="0.001" id="formEstoque" class="w-full p-2 border rounded text-sm">
                     </div>
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-slate-600 mb-1">Unidade de Venda</label>
                     <select id="formUnidade" class="w-full p-2 border rounded text-sm bg-white">
                         <option value="UN">Unidade (UN)</option>
-                        <option value="KG">Quilo (KG - Balança Manual)</option>
+                        <option value="KG">Quilo / Peso (KG)</option>
                     </select>
                 </div>
             </div>
             <div class="flex justify-end space-x-2 mt-5">
                 <button onclick="fecharFormProduto()" class="bg-slate-200 text-slate-700 px-3 py-2 rounded text-xs font-bold">Cancelar</button>
-                <button onclick="salvarProdutoAdmin()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded text-xs font-bold shadow">Salvar Produto</button>
+                <button onclick="salvarProdutoAdmin()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded text-xs font-bold shadow">Salvar</button>
             </div>
         </div>
     </div>
@@ -382,45 +415,52 @@
         <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 text-slate-800 animate-scaleUp">
             <div class="flex justify-between items-center mb-4 border-b pb-3">
                 <h3 id="tituloModalCaixa" class="font-bold text-lg text-slate-900 flex items-center gap-2">
-                    <i class="fa-solid fa-cash-register text-emerald-600"></i> Abertura de Caixa
+                    <i class="fa-solid fa-cash-register text-emerald-600"></i> Gerenciar Caixa
                 </h3>
                 <button onclick="fecharModalCaixa()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
 
-            <!-- Conteúdo para Abertura de Caixa -->
             <div id="secaoAbrirCaixa" class="space-y-4">
-                <p class="text-xs text-slate-500">Informe o valor em dinheiro disponível no gaveteiro como fundo de troco inicial e pressione Enter.</p>
+                <p class="text-xs text-slate-500">Informe o valor em dinheiro disponível no gaveteiro como fundo de troco inicial.</p>
                 <div>
                     <label class="block text-xs font-bold text-slate-600 mb-1">VALOR DO TROCO INICIAL (R$)</label>
                     <input type="number" step="0.01" id="inputValorCaixa" onkeydown="tratarEnterModalCaixa(event)" placeholder="0.00" class="w-full p-3 border rounded-xl text-lg font-bold text-emerald-700 focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-slate-50">
                 </div>
             </div>
 
-            <!-- Conteúdo para Fechamento de Caixa -->
+            <!-- Resumo profissional do fechamento: Faturamento + Troco = Total Geral -->
             <div id="resumoFechamentoCaixa" class="hidden space-y-3">
-                <div class="bg-slate-50 p-4 rounded-xl border space-y-2">
-                    <div class="flex justify-between text-sm">
-                        <span class="text-slate-500">Faturamento do Operador:</span>
+                <div class="bg-slate-50 p-4 rounded-xl border space-y-2 text-xs">
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Faturamento Vendas:</span>
                         <span id="valFaturamentoOperador" class="font-bold text-slate-800">R$ 0,00</span>
                     </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Troco Inicial Declarado:</span>
+                        <span id="valTrocoInicialCaixa" class="font-bold text-slate-800">R$ 0,00</span>
+                    </div>
+                    <div class="flex justify-between text-emerald-700 font-black text-sm border-t pt-2">
+                        <span>Total Geral em Gaveta:</span>
+                        <span id="valTotalGeralCaixa">R$ 0,00</span>
+                    </div>
                 </div>
-                <p class="text-xs text-slate-500">Deseja realmente encerrar e fechar o terminal de caixa?</p>
+                <p class="text-xs text-slate-500">Confirme o encerramento do turno de caixa.</p>
             </div>
 
             <div class="flex space-x-3 mt-6">
                 <button onclick="fecharModalCaixa()" class="w-1/2 bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 rounded-xl font-bold text-sm transition">Cancelar</button>
-                <button id="btnConfirmarCaixaModal" onclick="confirmarAcaoCaixa()" class="w-1/2 bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-bold text-sm shadow-lg shadow-emerald-600/20 transition">Confirmar</button>
+                <button id="btnConfirmarCaixaModal" onclick="confirmarAcaoCaixa()" class="w-1/2 bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-bold text-sm shadow-lg transition">Confirmar</button>
             </div>
         </div>
     </div>
 
-    <!-- MODAL DE AUTORIZAÇÃO DE GERENTE (CANCELAR ITEM) -->
+    <!-- MODAL DE AUTORIZAÇÃO PIN ADMIN -->
     <div id="modalAutorizacaoAdmin" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-3">
         <div class="bg-white rounded-xl max-w-xs w-full p-5 shadow-2xl text-center">
             <i class="fa-solid fa-user-shield text-3xl text-emerald-500 mb-2"></i>
             <h3 class="font-bold text-sm mb-1">Autorização Gerencial</h3>
             <p class="text-xs text-slate-500 mb-3">Digite o PIN do administrador e pressione Enter.</p>
-            <input type="password" id="inputPinAutorizacion" onkeydown="tratarEnterModalAutorizacao(event)" placeholder="PIN de Acesso" class="w-full p-2 border rounded text-center text-lg tracking-widest mb-3 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            <input type="password" id="inputPinAutorizacion" onkeydown="tratarEnterModalAutorizacao(event)" placeholder="PIN" class="w-full p-2 border rounded text-center text-lg tracking-widest mb-3 focus:outline-none focus:ring-2 focus:ring-emerald-500">
             <div class="flex space-x-2">
                 <button onclick="fecharModalAutorizacao()" class="w-1/2 bg-slate-200 text-slate-700 py-2 rounded text-xs font-bold">Cancelar</button>
                 <button onclick="confirmarAutorizacaoPin()" class="w-1/2 bg-emerald-600 text-white py-2 rounded text-xs font-bold shadow">Autorizar</button>
@@ -442,35 +482,35 @@
     <!-- MODAL NOVO OPERADOR -->
     <div id="modalNovoOperador" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-3">
         <div class="bg-white rounded-xl max-w-sm w-full p-5 shadow-2xl">
-            <h3 class="font-bold text-base mb-3 text-slate-900">Novo Operador de Caixa</h3>
+            <h3 class="font-bold text-base mb-3 text-slate-900">Novo Operador (Plano Comum)</h3>
             <div class="space-y-3">
                 <div>
-                    <label class="block text-xs font-bold text-slate-600 mb-1">E-mail Provisório</label>
-                    <input type="email" id="novoOpEmail" class="w-full p-2 border rounded text-sm">
+                    <label class="block text-xs font-bold text-slate-600 mb-1">E-mail do Operador</label>
+                    <input type="email" id="novoOpEmail" class="w-full p-2 border rounded text-sm" placeholder="operador@loja.com">
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-slate-600 mb-1">Senha Inicial</label>
-                    <input type="password" id="novoOpSenha" class="w-full p-2 border rounded text-sm">
+                    <label class="block text-xs font-bold text-slate-600 mb-1">Senha Provisória</label>
+                    <input type="password" id="novoOpSenha" class="w-full p-2 border rounded text-sm" placeholder="••••••••">
                 </div>
             </div>
             <div class="flex justify-end space-x-2 mt-5">
                 <button onclick="fecharModalNovoOperador()" class="bg-slate-200 text-slate-700 px-3 py-2 rounded text-xs font-bold">Cancelar</button>
-                <button onclick="salvarNovoOperador()" class="bg-emerald-600 text-white px-4 py-2 rounded text-xs font-bold shadow">Cadastrar Operador</button>
+                <button onclick="salvarNovoOperador()" class="bg-emerald-600 text-white px-4 py-2 rounded text-xs font-bold shadow">Criar Operador</button>
             </div>
         </div>
     </div>
 
-    <!-- MODAL DE CÂMERA (QR/BARCODE SCANNER) -->
+    <!-- MODAL DE CÂMERA OTIMIZADO PARA EAN-13 / EAN-8 -->
     <div id="modalCamera" class="hidden fixed inset-0 bg-black/90 flex flex-col items-center justify-center z-50 p-4">
         <div class="max-w-md w-full bg-slate-900 border border-slate-800 rounded-2xl p-4 text-center text-white relative shadow-2xl">
             <h3 class="text-base font-bold mb-3"><i class="fa-solid fa-camera text-emerald-500 mr-2"></i> Leitor de Código de Barras</h3>
-            <div id="videoPreviewCamera" class="w-full h-64 bg-black rounded-lg overflow-hidden relative border border-slate-700"></div>
-            <p class="text-xs text-slate-400 mt-3">Aponte a câmera para o código de barras do produto.</p>
+            <div id="videoPreviewCamera" class="w-full h-72 bg-black rounded-lg overflow-hidden relative border border-slate-700"></div>
+            <p class="text-xs text-slate-400 mt-3">Aponte o código de barras (EAN-13 / EAN-8) para a câmera com boa iluminação.</p>
             <button onclick="fecharLeitorCamera()" class="mt-4 w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-2.5 rounded-lg text-sm transition">Fechar Câmera</button>
         </div>
     </div>
 
-    <!-- Scripts Fragmentados do PDV -->
+    <!-- Scripts do Sistema -->
     <script src="config.js"></script>
     <script src="botoes.js"></script>
 </body>

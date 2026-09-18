@@ -10,22 +10,48 @@ let modoTelaAuth = 'login', caixaAberto = false, faturamentoDia = 0, itensVenda 
 let historicoVendasCache = [], html5QrcodeInstance = null, origemLeitor = 'busca';
 let acaoCaixaAtual = 'abrir', indiceItemParaRemover = null, deferredPrompt = null;
 let produtoEmPesagemAtual = null; 
+let cliquesSecretos = 0;
 
 // ==========================================
-// INICIALIZAÇÃO E PWA
+// INICIALIZAÇÃO E PWA (CONSOLIDADO)
 // ==========================================
 window.addEventListener('DOMContentLoaded', async () => {
+    // 1. Restaurar Sessão do Supabase
     try {
         const { data: { session } } = await supabaseClient.auth.getSession();
         if (session && session.user) { 
             usuarioAtual = session.user; 
-            await validarVinculoEmpresaUsuario(); 
+            if (typeof validarVinculoEmpresaUsuario === 'function') {
+                await validarVinculoEmpresaUsuario(); 
+            }
         }
     } catch (e) { 
         console.error("Erro ao restaurar sessão:", e); 
     }
+
+    // 2. Configurar Gatilho Secreto Super Admin
+    const gatilho = document.getElementById('gatilhoSuperAdmin');
+    if (gatilho) {
+        gatilho.addEventListener('click', () => {
+            cliquesSecretos++;
+            if (cliquesSecretos >= 5) {
+                cliquesSecretos = 0;
+                const telaLoginAdmin = document.getElementById('telaLoginSuperAdmin');
+                if (telaLoginAdmin) {
+                    telaLoginAdmin.classList.remove('hidden');
+                    setTimeout(() => {
+                        const inputAdminEmail = document.getElementById('superAdminEmail');
+                        if (inputAdminEmail) inputAdminEmail.focus();
+                    }, 100);
+                }
+            }
+        });
+    }
 });
 
+// ==========================================
+// INSTALAÇÃO PWA
+// ==========================================
 window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault(); 
     deferredPrompt = e;
@@ -33,31 +59,17 @@ window.addEventListener('beforeinstallprompt', (e) => {
     if (btnInstalar) btnInstalar.classList.remove('hidden');
 });
 
-// Gatilho secreto Super Admin
-let cliquesSecretos = 0;
-document.addEventListener('DOMContentLoaded', () => {
-    const gatilho = document.getElementById('gatilhoSuperAdmin');
-    if (gatilho) {
-        gatilho.addEventListener('click', () => {
-            cliquesSecretos++;
-            if (cliquesSecretos >= 5) {
-                cliquesSecretos = 0;
-                document.getElementById('telaLoginSuperAdmin').classList.remove('hidden');
-                setTimeout(() => document.getElementById('superAdminEmail').focus(), 100);
-            }
-        });
-    }
-});
-
-// Atalhos globais de teclado do PDV
+// ==========================================
+// ATALHOS GLOBAIS DE TECLADO DO PDV
+// ==========================================
 window.addEventListener('keydown', (e) => {
     const appPrincipal = document.getElementById('appPrincipal');
     if (!appPrincipal || appPrincipal.classList.contains('hidden')) return;
     
-    if (e.key === 'F1') { e.preventDefault(); gerenciarCaixaModal('abrir'); }
-    if (e.key === 'F2') { e.preventDefault(); gerenciarCaixaModal('fechar'); }
-    if (e.key === 'F5') { e.preventDefault(); focarBusca(); }
-    if (e.key === 'F6') { e.preventDefault(); abrirModalCancelarItem(); }
-    if (e.key === 'F7') { e.preventDefault(); cancelarVenda(); }
-    if (e.key === 'F9') { e.preventDefault(); finalizarVenda(); }
+    if (e.key === 'F1') { e.preventDefault(); if (typeof gerenciarCaixaModal === 'function') gerenciarCaixaModal('abrir'); }
+    if (e.key === 'F2') { e.preventDefault(); if (typeof gerenciarCaixaModal === 'function') gerenciarCaixaModal('fechar'); }
+    if (e.key === 'F5') { e.preventDefault(); if (typeof focarBusca === 'function') focarBusca(); }
+    if (e.key === 'F6') { e.preventDefault(); if (typeof abrirModalCancelarItem === 'function') abrirModalCancelarItem(); }
+    if (e.key === 'F7') { e.preventDefault(); if (typeof cancelarVenda === 'function') cancelarVenda(); }
+    if (e.key === 'F9') { e.preventDefault(); if (typeof finalizarVenda === 'function') finalizarVenda(); }
 });

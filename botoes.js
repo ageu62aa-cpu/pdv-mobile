@@ -1,6 +1,8 @@
 // ==========================================
-// MÓDULO DE INTERFACE, BOTÕES E AÇÕES (PDV-VS)
+// MÓDULO DE INTERFACE, BOTÕES E AÇÕES (PDV-VS) - v1.0.0
 // ==========================================
+
+const VERSAO_SISTEMA = "v1.0.0";
 
 async function instalarPwaApp() {
     if (deferredPrompt) {
@@ -31,12 +33,13 @@ async function logarSuperAdmin() {
     const email = emailEl ? emailEl.value.trim() : '';
     const senha = senhaEl ? senhaEl.value.trim() : '';
     
+    // Credencial mestre única solicitada
     if (email === 'vancely@admin.com' && senha === 'vancely2026') {
         fecharTelaSuperAdmin(); 
         await abrirSuperAdminMaster();
     } else {
         if (fb) {
-            fb.innerText = 'Credenciais inválidas.'; 
+            fb.innerText = 'Credenciais inválidas. Verifique o e-mail e senha de Super Admin.'; 
             fb.classList.remove('hidden');
         }
     }
@@ -84,7 +87,7 @@ function renderizarTabelaSuperAdmin(lista) {
         
         html += `<tr class="border-b hover:bg-slate-50">
             <td class="p-3 font-bold">${emp.nome_mercado}</td>
-            <td class="p-3">${emp.responsavel}</td>
+            <td class="p-3">${emp.responsavel || '-'}</td>
             <td class="p-3">${emp.documento}</td>
             <td class="p-3 text-xs">${emp.email_admin}</td>
             <td class="p-3 text-center">${statusBadge}</td>
@@ -130,7 +133,8 @@ function alternarTelaAuth(modo) {
         voltar: document.getElementById('linkVoltarLogin'), 
         perfil: document.getElementById('divTipoPerfil'),
         mercado: document.getElementById('divNomeMercadoCadastro'), 
-        doc: document.getElementById('divDocumentoCadastro')
+        doc: document.getElementById('divDocumentoCadastro'),
+        dadosCompletos: document.getElementById('divDadosCompletosCadastro')
     };
     
     const fb = document.getElementById('feedbackAuth');
@@ -138,6 +142,7 @@ function alternarTelaAuth(modo) {
 
     if (modo === 'login') {
         if (fields.titulo) fields.titulo.innerText = 'PDV-VS Enterprise'; 
+        if (fields.subtitulo) fields.subtitulo.innerText = `Versão ${VERSAO_SISTEMA}`;
         if (fields.btn) fields.btn.innerText = 'Acessar Sistema';
         if (fields.icone) fields.icone.className = 'fa-solid fa-cash-register text-4xl text-emerald-600 mb-2';
         if (fields.divSenha) fields.divSenha.classList.remove('hidden'); 
@@ -146,20 +151,35 @@ function alternarTelaAuth(modo) {
         if (fields.perfil) fields.perfil.classList.add('hidden');
         if (fields.mercado) fields.mercado.classList.add('hidden'); 
         if (fields.doc) fields.doc.classList.add('hidden');
+        if (fields.dadosCompletos) fields.dadosCompletos.classList.add('hidden');
     } else if (modo === 'cadastro') {
         if (fields.titulo) fields.titulo.innerText = 'Novo Estabelecimento'; 
+        if (fields.subtitulo) fields.subtitulo.innerText = 'Cadastre sua loja (Plano Comum)';
         if (fields.btn) fields.btn.innerText = 'Criar Conta';
         if (fields.icone) fields.icone.className = 'fa-solid fa-store text-4xl text-blue-600 mb-2';
         if (fields.voltar) fields.voltar.classList.remove('hidden'); 
         if (fields.perfil) fields.perfil.classList.remove('hidden');
         if (fields.mercado) fields.mercado.classList.remove('hidden'); 
         if (fields.doc) fields.doc.classList.remove('hidden');
+        if (fields.dadosCompletos) fields.dadosCompletos.classList.remove('hidden');
         if (fields.links) fields.links.classList.add('hidden');
     }
 }
 
 function tratarEnterLogin(e) { 
     if (e.key === 'Enter') { e.preventDefault(); processarAutenticacao(); } 
+}
+
+function abrirEsqueciSenha() {
+    const email = prompt("Informe o e-mail cadastrado para redefinição de senha:");
+    if (!email) return;
+    supabaseClient.auth.resetPasswordForEmail(email.trim()).then(({ error }) => {
+        if (error) {
+            alert("Erro ao solicitar redefinição: " + error.message);
+        } else {
+            alert("Instruções de redefinição de senha enviadas para o seu e-mail.");
+        }
+    });
 }
 
 async function processarAutenticacao() {
@@ -180,10 +200,25 @@ async function processarAutenticacao() {
             const nomeMercadoEl = document.getElementById('authNomeMercado');
             const documentoEl = document.getElementById('authDocumento');
             const selectPerfilEl = document.getElementById('selectTipoPerfil');
+            
+            // Novos campos exigidos: CEP, Endereço, Número, WhatsApp
+            const cepEl = document.getElementById('authCep');
+            const enderecoEl = document.getElementById('authEndereco');
+            const numeroEl = document.getElementById('authNumeroImovel');
+            const whatsappEl = document.getElementById('authWhatsapp');
 
             const nomeMercado = nomeMercadoEl ? nomeMercadoEl.value.trim() : '';
             const documento = documentoEl ? documentoEl.value.trim() : '';
             const tipoPerfil = selectPerfilEl ? selectPerfilEl.value : 'operador';
+            const cep = cepEl ? cepEl.value.trim() : '';
+            const endereco = enderecoEl ? enderecoEl.value.trim() : '';
+            const numero = numeroEl ? numeroEl.value.trim() : '';
+            const whatsapp = whatsappEl ? whatsappEl.value.trim() : '';
+
+            if (!nomeMercado || !documento || !whatsapp) {
+                mostrarFeedback('Preencha o nome do mercado, documento e WhatsApp.', 'rose');
+                return;
+            }
 
             const { data: authData, error: authError } = await supabaseClient.auth.signUp({ 
                 email, 
@@ -198,6 +233,9 @@ async function processarAutenticacao() {
                 responsavel: prefixoResponsavel, 
                 documento, 
                 email_admin: email, 
+                cep,
+                endereco: `${endereco}, ${numero}`,
+                whatsapp,
                 ativo: true 
             }]).select().single();
             
@@ -209,7 +247,7 @@ async function processarAutenticacao() {
                 cargo: tipoPerfil 
             }]);
             
-            alert('Estabelecimento cadastrado! Faça o login para iniciar.'); 
+            alert('Estabelecimento cadastrado com sucesso! Faça o login para iniciar.'); 
             alternarTelaAuth('login');
         }
     } catch (e) { 
@@ -253,20 +291,19 @@ function concluirLoginSucesso(cargoUser) {
     if (usuarioAtual && usuarioAtual.email) {
         const usuarioNomeExibicao = usuarioAtual.email.split('@')[0];
         const infoLogado = document.getElementById('infoUsuarioLogado');
-        if (infoLogado) infoLogado.innerHTML = `<i class="fa-solid fa-user text-emerald-400 mr-1"></i> ${usuarioNomeExibicao} (${cargoUser === 'admin_mercado' ? 'Admin' : 'Caixa'})`;
+        if (infoLogado) infoLogado.innerHTML = `<i class="fa-solid fa-user text-emerald-300 mr-1"></i> ${usuarioNomeExibicao} (${cargoUser === 'admin_mercado' ? 'Admin' : 'Caixa'})`;
     }
     
     if (dadosEmpresaAtual) {
         const tituloEmpresa = document.getElementById('tituloAppEmpresa');
         const badgeEmpresa = document.getElementById('badgeEmpresaLogada');
         if (tituloEmpresa) tituloEmpresa.innerText = dadosEmpresaAtual.nome_mercado;
-        if (badgeEmpresa) badgeEmpresa.innerText = `CNPJ: ${dadosEmpresaAtual.documento}`;
+        if (badgeEmpresa) badgeEmpresa.innerText = `CNPJ: ${dadosEmpresaAtual.documento} | Loja: #${dadosEmpresaAtual.id.substring(0,6)}`;
     }
     
     const btnAdminMenu = document.getElementById('btnAdminMenu');
     if (btnAdminMenu) btnAdminMenu.classList.toggle('hidden', cargoUser !== 'admin_mercado');
     
-    // Restaurar estado do caixa salvo para este usuário/caixa específico
     const statusCaixaSalvo = localStorage.getItem(`pdv_caixa_aberto_${empresaAtualId}_${usuarioAtual.id}`);
     if (statusCaixaSalvo === 'true') {
         caixaAberto = true;
@@ -284,8 +321,14 @@ function concluirLoginSucesso(cargoUser) {
 }
 
 async function realizarLogout() { 
-    await supabaseClient.auth.signOut(); 
-    location.reload(); 
+    if (caixaAberto) {
+        alert('ATENÇÃO: Você não pode sair do sistema com o caixa aberto! Por favor, faça o fechamento do caixa antes de sair.');
+        return;
+    }
+    if (confirm('Deseja realmente encerrar a sessão?')) {
+        await supabaseClient.auth.signOut(); 
+        location.reload(); 
+    }
 }
 
 function focarBusca() { 
@@ -299,11 +342,17 @@ function gerenciarCaixaModal(tipo) {
     const tituloModal = document.getElementById('tituloModalCaixa');
     const resumoFechamento = document.getElementById('resumoFechamentoCaixa');
     const valFatOp = document.getElementById('valFaturamentoOperador');
-    const inputValorCaixa = document.getElementById('inputValorCaixa'); // Se houver input de valor inicial
+    const inputValorCaixa = document.getElementById('inputValorCaixa');
 
     if (tituloModal) tituloModal.innerText = tipo === 'abrir' ? 'Abertura de Caixa' : 'Fechamento de Caixa';
     if (resumoFechamento) resumoFechamento.classList.toggle('hidden', tipo === 'abrir');
-    if (tipo === 'fechar' && valFatOp) valFatOp.innerText = `R$ ${faturamentoDia.toFixed(2)}`;
+    
+    if (tipo === 'fechar' && valFatOp) {
+        valFatOp.innerText = `R$ ${faturamentoDia.toFixed(2)}`;
+        const totalComTroco = faturamentoDia + (valorTrocoAbertura || 0);
+        const lblTotalGeral = document.getElementById('valTotalGeralCaixa');
+        if (lblTotalGeral) lblTotalGeral.innerText = `R$ ${totalComTroco.toFixed(2)}`;
+    }
     if (inputValorCaixa) inputValorCaixa.value = '';
     
     if (modal) modal.classList.remove('hidden');
@@ -316,6 +365,9 @@ function gerenciarCaixaModal(tipo) {
         }
     }, 100);
 }
+
+let valorTrocoAbertura = 0;
+let horaAberturaCaixa = null;
 
 function tratarEnterModalCaixa(e) {
     if (e.key === 'Enter') {
@@ -330,20 +382,33 @@ function fecharModalCaixa() {
 }
 
 function confirmarAcaoCaixa() {
-    caixaAberto = (acaoCaixaAtual === 'abrir');
+    const inputValorCaixa = document.getElementById('inputValorCaixa');
+    const valorDigitado = inputValorCaixa ? parseFloat(inputValorCaixa.value) || 0 : 0;
+
+    if (acaoCaixaAtual === 'abrir') {
+        valorTrocoAbertura = valorDigitado;
+        horaAberturaCaixa = new Date();
+        caixaAberto = true;
+    } else {
+        // Fechamento de caixa profissional com detalhamento
+        const horaFechamento = new Date();
+        const totalArrecadado = faturamentoDia;
+        const totalGeralGaveta = totalArrecadado + valorTrocoAbertura;
+        
+        alert(`Caixa Fechado com Sucesso!\n- Abertura: ${horaAberturaCaixa ? horaAberturaCaixa.toLocaleTimeString() : 'N/A'}\n- Fechamento: ${horaFechamento.toLocaleTimeString()}\n- Troco Inicial: R$ ${valorTrocoAbertura.toFixed(2)}\n- Vendas (Operador): R$ ${totalArrecadado.toFixed(2)}\n- Total Geral em Gaveta: R$ ${totalGeralGaveta.toFixed(2)}`);
+        
+        caixaAberto = false;
+        valorTrocoAbertura = 0;
+        faturamentoDia = 0;
+        const txtFat = document.getElementById('txtFaturamentoDia');
+        if (txtFat) txtFat.innerText = 'R$ 0,00';
+    }
     
-    // Salva o status individual do caixa no localStorage por empresa e usuário logado
     if (usuarioAtual && empresaAtualId) {
         localStorage.setItem(`pdv_caixa_aberto_${empresaAtualId}_${usuarioAtual.id}`, caixaAberto ? 'true' : 'false');
     }
 
     atualizarBadgesCaixaInterface();
-
-    if (!caixaAberto) { 
-        faturamentoDia = 0; 
-        const txtFat = document.getElementById('txtFaturamentoDia');
-        if (txtFat) txtFat.innerText = 'R$ 0,00'; 
-    }
     fecharModalCaixa();
     focarBusca();
 }
@@ -374,7 +439,7 @@ function aoDigitarBusca(termo) {
     let html = '';
     filtrados.forEach(p => {
         const prodString = JSON.stringify(p).replace(/"/g, '&quot;');
-        html += `<div onclick="adicionarItemVendaPorObjeto('${prodString}')" class="p-3 hover:bg-slate-50 cursor-pointer border-b flex justify-between text-sm"> <div><span class="font-semibold text-slate-800">${p.nome}</span><span class="text-xs text-slate-400 block">Cód: ${p.codigo || 'N/A'} ${p.unidade === 'KG' ? '<span class="text-amber-600 font-bold">(Por Peso)</span>' : ''}</span></div> <b>R$ ${Number(p.preco).toFixed(2)} ${p.unidade === 'KG' ? '/kg' : ''}</b> </div>`;
+        html += `<div onclick="adicionarItemVendaPorObjeto('${prodString}')" class="p-3 hover:bg-slate-50 cursor-pointer border-b flex justify-between text-sm"> <div><span class="font-semibold text-slate-800">${p.nome}</span><span class="text-xs text-slate-400 block">Cód: ${p.codigo || 'N/A'} | Estoque: ${p.estoque} ${p.unidade === 'KG' ? '<span class="text-amber-600 font-bold">(Por Peso)</span>' : ''}</span></div> <b>R$ ${Number(p.preco).toFixed(2)} ${p.unidade === 'KG' ? '/kg' : ''}</b> </div>`;
     });
     painel.innerHTML = html || '<div class="p-3 text-xs text-slate-400">Nenhum produto encontrado.</div>';
     painel.classList.remove('hidden');
@@ -488,13 +553,14 @@ function confirmarAdicaoPeso() {
         return;
     }
     if (produtoEmPesagemAtual) {
+        // Para itens por KG, computamos tanto o peso quanto a contagem de 1 item fracionado/inteiro para baixa correta
         adicionarItemVendaDireto(produtoEmPesagemAtual, peso, true);
         fecharModalPesagemManual();
     }
 }
 
 function adicionarItemVendaDireto(produto, qtd, isPeso = false) {
-    const existente = itensVenda.find(i => i.id === produto.id && !isPeso); 
+    const existente = itensVenda.find(i => i.id === produto.id && i.isPeso === isPeso); 
     if (existente && !isPeso) { 
         existente.qtd += qtd; 
     } else { 
@@ -544,7 +610,7 @@ function atualizarTabelaVenda() {
     
     let html = '', total = 0;
     itensVenda.forEach((item, i) => {
-        const subtotalItem = item.qtd * item.preco;
+        const subtotalItem = item.isPeso ? (item.qtd * item.preco) : (item.qtd * item.preco);
         total += subtotalItem;
         
         const qtdDisplay = item.isPeso 
@@ -552,7 +618,7 @@ function atualizarTabelaVenda() {
             : `<input type="number" min="1" value="${item.qtd}" onchange="alterarQtd(${i}, this.value)" class="w-14 text-center border rounded">`;
 
         html += `<tr class="border-b">
-            <td class="p-2">${item.nome} ${item.isPeso ? '<span class="text-[10px] text-amber-600 block">Pesado manualmente</span>' : ''}</td>
+            <td class="p-2">${item.nome} ${item.isPeso ? '<span class="text-[10px] text-amber-600 block">Pesado (Baixa por Peso/Unidade)</span>' : ''}</td>
             <td class="p-2">${qtdDisplay}</td>
             <td class="p-2">R$ ${Number(item.preco).toFixed(2)}${item.isPeso ? '/kg' : ''}</td>
             <td class="p-2 font-bold">R$ ${subtotalItem.toFixed(2)}</td>
@@ -647,10 +713,11 @@ function cancelarVenda() {
 }
 
 async function finalizarVenda() {
-    if (!caixaAberto) { alert('O caixa precisa estar aberto! Pressione [F1].'); return; }
+    if (!caixaAberto) { alert('O caixa precisa estar aberto! Pressione [F1] ou abra o caixa.'); return; }
     if (itensVenda.length === 0) { alert('Adicione produtos antes de finalizar.'); return; }
     
-    let total = itensVenda.reduce((acc, item) => acc + (item.qtd * item.preco), 0);
+    let total = itensVenda.reduce((acc, item) => acc + (item.isPeso ? (item.qtd * item.preco) : (item.qtd * item.preco)), 0);
+    
     const { error } = await supabaseClient.from('vendas').insert([{ 
         empresa_id: empresaAtualId, 
         operador: usuarioAtual.email, 
@@ -663,13 +730,21 @@ async function finalizarVenda() {
         return;
     }
 
+    // Baixa de estoque correta para cada item vendido (unidade e peso)
+    for (const item of itensVenda) {
+        const baixaQtd = item.isPeso ? item.qtd : item.qtd;
+        const novoEstoque = Math.max(0, (item.estoque || 0) - baixaQtd);
+        await supabaseClient.from('produtos').update({ estoque: novoEstoque }).eq('id', item.id);
+    }
+
     faturamentoDia += total; 
     const txtFat = document.getElementById('txtFaturamentoDia');
     if (txtFat) txtFat.innerText = `R$ ${faturamentoDia.toFixed(2)}`;
     
     itensVenda = []; 
     atualizarTabelaVenda(); 
-    alert('Venda concluída e salva com sucesso!');
+    await carregarProdutosCache();
+    alert('Venda concluída e estoque atualizado com sucesso!');
     focarBusca();
 }
 
@@ -738,6 +813,12 @@ function filtrarTabelaAdmin(t) {
 }
 
 function abrirModalNovoProdutoAdmin() {
+    // Restrição do plano comum: limite de 800 produtos
+    if (produtosCache.length >= 800) {
+        alert('Aviso do Plano Comum: Você atingiu o limite máximo de 800 produtos cadastrados. Para cadastrar mais itens, faça o upgrade para a versão 2.0.');
+        return;
+    }
+
     const prodId = document.getElementById('formProdId');
     const nome = document.getElementById('formNome');
     const codigo = document.getElementById('formCodigo');
@@ -795,13 +876,17 @@ async function salvarProdutoAdmin() {
         nome: nome ? nome.value : '', 
         codigo: codigo ? codigo.value : '', 
         preco: preco ? parseFloat(preco.value) || 0 : 0, 
-        estoque: estoque ? parseInt(estoque.value) || 0 : 0,
+        estoque: estoque ? parseFloat(estoque.value) || 0 : 0,
         unidade: unidadeProd
     };
     
     if (id) { 
         await supabaseClient.from('produtos').update(p).eq('id', id); 
     } else { 
+        if (produtosCache.length >= 800) {
+            alert('Limite de 800 produtos do plano comum atingido.');
+            return;
+        }
         await supabaseClient.from('produtos').insert([{ ...p, empresa_id: empresaAtualId }]); 
     }
     
@@ -819,7 +904,7 @@ async function excluirProdutoAdmin(id) {
 }
 
 async function carregarOperadoresLoja() {
-    const { data } = await supabaseClient.from('usuarios_empresas').select('*').eq('empresa_id', empresaAtualId);
+    const { data } = await supabaseClient.from('usuarios_empresas').select('*').eq('empresa_id', empresaAtualId).eq('cargo', 'operador');
     let html = '';
     if (data) {
         data.forEach(op => {
@@ -830,15 +915,15 @@ async function carregarOperadoresLoja() {
 
             html += `<tr class="border-b">
                 <td class="p-3 text-xs">${op.user_id}</td>
-                <td class="p-3">${op.cargo}</td>
+                <td class="p-3 font-semibold">Operador Padrão (Plano Comum)</td>
                 <td class="p-3 text-center">${statusCaixaBadge}</td>
-                <td class="p-3 font-bold text-emerald-600">Disponível no Faturamento</td>
+                <td class="p-3 font-bold text-emerald-600">Ativo na Equipe</td>
                 <td class="p-3 text-center"><button onclick="excluirOperadorLoja('${op.user_id}')" class="text-rose-600"><i class="fa-solid fa-trash"></i></button></td>
             </tr>`;
         });
     }
     const tabelaOps = document.getElementById('tabelaOperadoresLoja');
-    if (tabelaOps) tabelaOps.innerHTML = html || '<tr><td colspan="5" class="p-4 text-center text-slate-400">Nenhum operador indexado.</td></tr>';
+    if (tabelaOps) tabelaOps.innerHTML = html || '<tr><td colspan="5" class="p-4 text-center text-slate-400">Nenhum operador cadastrado. O plano comum permite apenas 1 operador além do administrador.</td></tr>';
 }
 
 async function excluirOperadorLoja(id) { 
@@ -849,8 +934,15 @@ async function excluirOperadorLoja(id) {
 }
 
 function abrirModalNovoOperador() { 
-    const modal = document.getElementById('modalNovoOperador');
-    if (modal) modal.classList.remove('hidden'); 
+    // Validação da regra do plano comum: Permitir somente 1 operador além do admin
+    supabaseClient.from('usuarios_empresas').select('*', { count: 'exact', head: true }).eq('empresa_id', empresaAtualId).eq('cargo', 'operador').then(({ count }) => {
+        if (count >= 1) {
+            alert('Regra do Plano Comum: É permitido apenas 1 operador adicional além do Administrador.');
+            return;
+        }
+        const modal = document.getElementById('modalNovoOperador');
+        if (modal) modal.classList.remove('hidden'); 
+    });
 }
 
 function fecharModalNovoOperador() { 
@@ -873,28 +965,64 @@ async function salvarNovoOperador() {
         await supabaseClient.from('usuarios_empresas').insert([{ user_id: data.user.id, empresa_id: empresaAtualId, cargo: 'operador' }]);
         fecharModalNovoOperador(); 
         carregarOperadoresLoja();
+        alert('Operador cadastrado com sucesso!');
     }
 }
 
 async function carregarHistoricoAdmin() {
-    const { data } = await supabaseClient.from('vendas').select('*').eq('empresa_id', empresaAtualId).order('created_at', { ascending: false });
+    // Filtro estrito de retenção: ultimos 15 dias conforme diretriz do plano comum
+    const dataLimite = new Date();
+    dataLimite.setDate(dataLimite.getDate() - 15);
+
+    const { data } = await supabaseClient.from('vendas')
+        .select('*')
+        .eq('empresa_id', empresaAtualId)
+        .gte('created_at', dataLimite.toISOString())
+        .order('created_at', { ascending: false });
+
     historicoVendasCache = data || []; 
     renderizarHistoricoVendas();
 }
 
 function renderizarHistoricoVendas() {
     let html = '';
+    let total15Dias = 0;
+    let totalHoje = 0;
+    let totalSemanal = 0;
+
+    const hojeStr = new Date().toDateString();
+
     historicoVendasCache.forEach(v => {
+        total15Dias += v.valor_total;
+        const dataVenda = new Date(v.created_at);
+        if (dataVenda.toDateString() === hojeStr) {
+            totalHoje += v.valor_total;
+        }
+        // Faturamento semanal aproximado (últimos 7 dias)
+        if ((new Date() - dataVenda) / (1000 * 60 * 60 * 24) <= 7) {
+            totalSemanal += v.valor_total;
+        }
+
         const nomesItens = v.itens ? v.itens.map(i => i.isPeso ? `${i.nome} (${i.qtd.toFixed(3)}kg)` : `${i.nome} (x${i.qtd})`).join(', ') : '';
         html += `<tr class="border-b text-xs">
-            <td class="p-3">${new Date(v.created_at).toLocaleString()}</td>
+            <td class="p-3">${dataVenda.toLocaleString()}</td>
             <td class="p-3 font-semibold">${v.operador}</td>
             <td class="p-3 truncate max-w-xs">${nomesItens}</td>
             <td class="p-3 text-right font-bold">R$ ${v.valor_total.toFixed(2)}</td>
         </tr>`;
     });
+
     const tabelaHist = document.getElementById('tabelaHistoricoVendas');
-    if (tabelaHist) tabelaHist.innerHTML = html || '<tr><td colspan="4" class="p-4 text-center text-slate-400">Nenhuma venda registrada nos últimos dias.</td></tr>';
+    if (tabelaHist) tabelaHist.innerHTML = html || '<tr><td colspan="4" class="p-4 text-center text-slate-400">Nenhuma venda registrada nos últimos 15 dias.</td></tr>';
+
+    // Atualizar painéis de totais administrativos
+    const lblFatHoje = document.getElementById('adminFatHoje');
+    const lblFatSemanal = document.getElementById('adminFatSemanal');
+    const lblFatTotal = document.getElementById('adminFatTotal15Dias');
+
+    if (lblFatHoje) lblFatHoje.innerText = `R$ ${totalHoje.toFixed(2)}`;
+    if (lblFatSemanal) lblFatSemanal.innerText = `R$ ${totalSemanal.toFixed(2)}`;
+    if (lblFatTotal) lblFatTotal.innerText = `R$ ${total15Dias.toFixed(2)}`;
 }
 
 async function abrirLeitorCamera() {
@@ -921,8 +1049,8 @@ async function iniciarCameraComHtml5Qrcode() {
         
         html5QrcodeInstance = new Html5Qrcode("videoPreviewCamera");
         const config = {
-            fps: 10,
-            qrbox: { width: 250, height: 150 },
+            fps: 15,
+            qrbox: { width: 280, height: 160 },
             aspectRatio: 1.0
         };
         
@@ -932,22 +1060,22 @@ async function iniciarCameraComHtml5Qrcode() {
             (decodedText) => {
                 fecharLeitorCamera();
                 if (origemLeitor === 'busca') {
-                    const p = produtosCache.find(prod => (prod.codigo && prod.codigo === decodedText) || prod.nome.toLowerCase().includes(decodedText.toLowerCase()));
+                    const p = produtosCache.find(prod => (prod.codigo && prod.codigo.trim() === decodedText.trim()) || prod.nome.toLowerCase().includes(decodedText.toLowerCase()));
                     if (p) { 
                         tratarAdicaoProduto(p); 
                     } else { 
-                        alert(`Código/QR lido (${decodedText}), mas produto não encontrado no estoque.`); 
+                        alert(`Código lido (${decodedText}), mas nenhum produto correspondente foi encontrado.`); 
                     }
                 } else if (origemLeitor === 'admin') {
                     const inputCodigo = document.getElementById('formCodigo');
                     if (inputCodigo) inputCodigo.value = decodedText;
                 }
             },
-            () => {}
+            () => {} // Ignora erros menores de frame por segundo do leitor óptico
         );
     } catch (err) {
         console.error("Erro ao iniciar câmera:", err);
-        alert("Não foi possível acessar a câmera do dispositivo. Verifique as permissões do navegador.");
+        alert("Não foi possível acessar a câmera do dispositivo. Verifique as permissões de vídeo no navegador.");
         fecharLeitorCamera();
     }
 }
