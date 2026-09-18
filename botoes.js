@@ -14,7 +14,7 @@ async function instalarPwaApp() {
         }
         deferredPrompt = null;
     } else {
-        alert('Instale diretamente pelas configurações ou menu do seu navegador.');
+        alert('PDV-VS: Instale diretamente pelas configurações ou menu do seu navegador.');
     }
 }
 
@@ -33,13 +33,12 @@ async function logarSuperAdmin() {
     const email = emailEl ? emailEl.value.trim() : '';
     const senha = senhaEl ? senhaEl.value.trim() : '';
     
-    // Credencial mestre única solicitada
-    if (email === 'vancely@admin.com' && senha === 'vancely2026') {
+    if (email === 'vancely@admin.com' && senha === '123456') {
         fecharTelaSuperAdmin(); 
         await abrirSuperAdminMaster();
     } else {
         if (fb) {
-            fb.innerText = 'Credenciais inválidas. Verifique o e-mail e senha de Super Admin.'; 
+            fb.innerText = 'PDV-VS: Credenciais inválidas. Verifique o e-mail e senha de Super Admin.'; 
             fb.classList.remove('hidden');
         }
     }
@@ -60,14 +59,14 @@ async function carregarListaClientesSuperAdmin() {
     const tbody = document.getElementById('tabelaClientesSuperAdmin');
     if (!tbody) return;
     try {
-        tbody.innerHTML = '<tr><td colspan="6" class="p-6 text-center text-slate-400">Buscando estabelecimentos...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="p-6 text-center text-slate-400">Buscando estabelecimentos...</td></tr>';
         const { data, error } = await supabaseClient.from('empresas').select('*').order('created_at', { ascending: false });
         if (error) throw error;
         
         window.listaEmpresasCache = data || [];
         renderizarTabelaSuperAdmin(window.listaEmpresasCache);
     } catch (e) {
-        tbody.innerHTML = '<tr><td colspan="6" class="p-6 text-center text-rose-500">Erro ao carregar dados.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="p-6 text-center text-rose-500">PDV-VS: Erro ao carregar dados.</td></tr>';
     }
 }
 
@@ -75,7 +74,7 @@ function renderizarTabelaSuperAdmin(lista) {
     const tbody = document.getElementById('tabelaClientesSuperAdmin');
     if (!tbody) return;
     if (!lista || lista.length === 0) { 
-        tbody.innerHTML = '<tr><td colspan="6" class="p-6 text-center text-slate-400">Nenhum cadastrado.</td></tr>'; 
+        tbody.innerHTML = '<tr><td colspan="5" class="p-6 text-center text-slate-400">Nenhum estabelecimento cadastrado.</td></tr>'; 
         return; 
     }
     
@@ -88,11 +87,10 @@ function renderizarTabelaSuperAdmin(lista) {
         html += `<tr class="border-b hover:bg-slate-50">
             <td class="p-3 font-bold">${emp.nome_mercado}</td>
             <td class="p-3">${emp.responsavel || '-'}</td>
-            <td class="p-3">${emp.documento}</td>
+            <td class="p-3 text-xs">${emp.documento} <br><span class="text-slate-400">${emp.whatsapp || ''}</span></td>
             <td class="p-3 text-xs">${emp.email_admin}</td>
-            <td class="p-3 text-center">${statusBadge}</td>
             <td class="p-3 text-center">
-                <button onclick="alternarStatusEmpresa('${emp.id}', ${emp.ativo})" class="${emp.ativo ? 'bg-rose-600' : 'bg-emerald-600'} text-white px-2.5 py-1 rounded text-xs font-semibold shadow">
+                <button onclick="alternarStatusEmpresa('${emp.id}', ${emp.ativo})" class="${emp.ativo ? 'bg-rose-600 hover:bg-rose-700' : 'bg-emerald-600 hover:bg-emerald-700'} text-white px-3 py-1 rounded text-xs font-semibold shadow transition">
                     ${emp.ativo ? 'Bloquear' : 'Ativar'}
                 </button>
             </td>
@@ -101,23 +99,14 @@ function renderizarTabelaSuperAdmin(lista) {
     tbody.innerHTML = html;
 }
 
-function filtrarClientesSuperAdmin(termo) {
-    if (!window.listaEmpresasCache) return;
-    const termoLower = termo.toLowerCase();
-    const filtrados = window.listaEmpresasCache.filter(e => 
-        e.nome_mercado.toLowerCase().includes(termoLower) || e.documento.toLowerCase().includes(termoLower)
-    );
-    renderizarTabelaSuperAdmin(filtrados);
-}
-
 async function alternarStatusEmpresa(empresaId, statusAtual) {
-    if (!confirm(`Deseja realmente alterar o status comercial?`)) return;
+    if (!confirm(`PDV-VS: Deseja realmente alterar o status comercial deste estabelecimento?`)) return;
     const { error } = await supabaseClient.from('empresas').update({ ativo: !statusAtual }).eq('id', empresaId);
     if (!error) { 
-        alert('Status atualizado com sucesso!'); 
+        alert('PDV-VS: Status atualizado com sucesso!'); 
         await carregarListaClientesSuperAdmin(); 
     } else {
-        alert('Erro ao atualizar status: ' + error.message);
+        alert('PDV-VS: Erro ao atualizar status: ' + error.message);
     }
 }
 
@@ -134,7 +123,7 @@ function alternarTelaAuth(modo) {
         perfil: document.getElementById('divTipoPerfil'),
         mercado: document.getElementById('divNomeMercadoCadastro'), 
         doc: document.getElementById('divDocumentoCadastro'),
-        dadosCompletos: document.getElementById('divDadosCompletosCadastro')
+        endereco: document.getElementById('divCamposEnderecoCadastro')
     };
     
     const fb = document.getElementById('feedbackAuth');
@@ -151,7 +140,7 @@ function alternarTelaAuth(modo) {
         if (fields.perfil) fields.perfil.classList.add('hidden');
         if (fields.mercado) fields.mercado.classList.add('hidden'); 
         if (fields.doc) fields.doc.classList.add('hidden');
-        if (fields.dadosCompletos) fields.dadosCompletos.classList.add('hidden');
+        if (fields.endereco) fields.endereco.classList.add('hidden');
     } else if (modo === 'cadastro') {
         if (fields.titulo) fields.titulo.innerText = 'Novo Estabelecimento'; 
         if (fields.subtitulo) fields.subtitulo.innerText = 'Cadastre sua loja (Plano Comum)';
@@ -161,7 +150,7 @@ function alternarTelaAuth(modo) {
         if (fields.perfil) fields.perfil.classList.remove('hidden');
         if (fields.mercado) fields.mercado.classList.remove('hidden'); 
         if (fields.doc) fields.doc.classList.remove('hidden');
-        if (fields.dadosCompletos) fields.dadosCompletos.classList.remove('hidden');
+        if (fields.endereco) fields.endereco.classList.remove('hidden');
         if (fields.links) fields.links.classList.add('hidden');
     }
 }
@@ -170,25 +159,13 @@ function tratarEnterLogin(e) {
     if (e.key === 'Enter') { e.preventDefault(); processarAutenticacao(); } 
 }
 
-function abrirEsqueciSenha() {
-    const email = prompt("Informe o e-mail cadastrado para redefinição de senha:");
-    if (!email) return;
-    supabaseClient.auth.resetPasswordForEmail(email.trim()).then(({ error }) => {
-        if (error) {
-            alert("Erro ao solicitar redefinição: " + error.message);
-        } else {
-            alert("Instruções de redefinição de senha enviadas para o seu e-mail.");
-        }
-    });
-}
-
 async function processarAutenticacao() {
     const emailEl = document.getElementById('authEmail');
     const senhaEl = document.getElementById('authSenha');
     const email = emailEl ? emailEl.value.trim() : '';
     const senha = senhaEl ? senhaEl.value.trim() : '';
     
-    if (!email) { mostrarFeedback('Por favor, informe o e-mail.', 'rose'); return; }
+    if (!email) { mostrarFeedback('PDV-VS: Por favor, informe o e-mail.', 'rose'); return; }
 
     try {
         if (modoTelaAuth === 'login' || modoTelaAuth === 'admin') {
@@ -200,8 +177,6 @@ async function processarAutenticacao() {
             const nomeMercadoEl = document.getElementById('authNomeMercado');
             const documentoEl = document.getElementById('authDocumento');
             const selectPerfilEl = document.getElementById('selectTipoPerfil');
-            
-            // Novos campos exigidos: CEP, Endereço, Número, WhatsApp
             const cepEl = document.getElementById('authCep');
             const enderecoEl = document.getElementById('authEndereco');
             const numeroEl = document.getElementById('authNumeroImovel');
@@ -216,7 +191,7 @@ async function processarAutenticacao() {
             const whatsapp = whatsappEl ? whatsappEl.value.trim() : '';
 
             if (!nomeMercado || !documento || !whatsapp) {
-                mostrarFeedback('Preencha o nome do mercado, documento e WhatsApp.', 'rose');
+                mostrarFeedback('PDV-VS: Preencha o nome do mercado, documento e WhatsApp.', 'rose');
                 return;
             }
 
@@ -234,7 +209,7 @@ async function processarAutenticacao() {
                 documento, 
                 email_admin: email, 
                 cep,
-                endereco: `${endereco}, ${numero}`,
+                endereco: `${endereco}, nº ${numero}`,
                 whatsapp,
                 ativo: true 
             }]).select().single();
@@ -247,11 +222,11 @@ async function processarAutenticacao() {
                 cargo: tipoPerfil 
             }]);
             
-            alert('Estabelecimento cadastrado com sucesso! Faça o login para iniciar.'); 
+            alert('PDV-VS: Estabelecimento cadastrado com sucesso! Faça o login para iniciar.'); 
             alternarTelaAuth('login');
         }
     } catch (e) { 
-        mostrarFeedback(e.message, 'rose'); 
+        mostrarFeedback('PDV-VS: ' + e.message, 'rose'); 
     }
 }
 
@@ -266,7 +241,7 @@ async function validarVinculoEmpresaUsuario() {
         const { data: empData } = await supabaseClient.from('empresas').select('*').eq('id', empresaAtualId).single();
         if (empData.ativo === false) {
             await supabaseClient.auth.signOut(); 
-            alert('ACESSO SUSPENSO: Este estabelecimento encontra-se bloqueado por pendência financeira.'); 
+            alert('PDV-VS - ACESSO SUSPENSO: Este estabelecimento encontra-se bloqueado por pendência financeira.'); 
             location.reload(); 
             return;
         }
@@ -274,7 +249,7 @@ async function validarVinculoEmpresaUsuario() {
         concluirLoginSucesso(cargoUsuarioAtual);
     } catch (e) { 
         await supabaseClient.auth.signOut(); 
-        mostrarFeedback(e.message, 'rose'); 
+        mostrarFeedback('PDV-VS: ' + e.message, 'rose'); 
     }
 }
 
@@ -297,17 +272,18 @@ function concluirLoginSucesso(cargoUser) {
     if (dadosEmpresaAtual) {
         const tituloEmpresa = document.getElementById('tituloAppEmpresa');
         const badgeEmpresa = document.getElementById('badgeEmpresaLogada');
+        const badgeLoja = document.getElementById('badgeNumeroLoja');
         if (tituloEmpresa) tituloEmpresa.innerText = dadosEmpresaAtual.nome_mercado;
-        if (badgeEmpresa) badgeEmpresa.innerText = `CNPJ: ${dadosEmpresaAtual.documento} | Loja: #${dadosEmpresaAtual.id.substring(0,6)}`;
+        if (badgeEmpresa) badgeEmpresa.innerText = `CNPJ: ${dadosEmpresaAtual.documento}`;
+        if (badgeLoja) badgeLoja.innerText = `Loja #${dadosEmpresaAtual.id.substring(0,6)}`;
     }
     
     const btnAdminMenu = document.getElementById('btnAdminMenu');
     if (btnAdminMenu) btnAdminMenu.classList.toggle('hidden', cargoUser !== 'admin_mercado');
     
+    // Status de caixa individual por usuário e empresa
     const statusCaixaSalvo = localStorage.getItem(`pdv_caixa_aberto_${empresaAtualId}_${usuarioAtual.id}`);
-    if (statusCaixaSalvo === 'true') {
-        caixaAberto = true;
-    }
+    caixaAberto = (statusCaixaSalvo === 'true');
 
     atualizarBadgesCaixaInterface();
 
@@ -320,12 +296,24 @@ function concluirLoginSucesso(cargoUser) {
     focarBusca();
 }
 
+async function atualizarPaginaCompleta() {
+    if (confirm('PDV-VS: Deseja atualizar e sincronizar todos os dados do sistema?')) {
+        await carregarProdutosCache();
+        if (cargoUsuarioAtual === 'admin_mercado') {
+            await carregarHistoricoAdmin();
+            await carregarOperadoresLoja();
+        }
+        alert('PDV-VS: Dados sincronizados com sucesso!');
+        focarBusca();
+    }
+}
+
 async function realizarLogout() { 
     if (caixaAberto) {
-        alert('ATENÇÃO: Você não pode sair do sistema com o caixa aberto! Por favor, faça o fechamento do caixa antes de sair.');
+        alert('PDV-VS: ATENÇÃO! Você não pode sair do sistema com o caixa individual aberto. Faça o fechamento do caixa antes de sair.');
         return;
     }
-    if (confirm('Deseja realmente encerrar a sessão?')) {
+    if (confirm('PDV-VS: Deseja realmente encerrar a sessão?')) {
         await supabaseClient.auth.signOut(); 
         location.reload(); 
     }
@@ -340,28 +328,33 @@ function gerenciarCaixaModal(tipo) {
     acaoCaixaAtual = tipo;
     const modal = document.getElementById('modalCaixa');
     const tituloModal = document.getElementById('tituloModalCaixa');
+    const secaoAbrir = document.getElementById('secaoAbrirCaixa');
     const resumoFechamento = document.getElementById('resumoFechamentoCaixa');
     const valFatOp = document.getElementById('valFaturamentoOperador');
+    const valTrocoInicial = document.getElementById('valTrocoInicialCaixa');
+    const valTotalGeral = document.getElementById('valTotalGeralCaixa');
     const inputValorCaixa = document.getElementById('inputValorCaixa');
 
-    if (tituloModal) tituloModal.innerText = tipo === 'abrir' ? 'Abertura de Caixa' : 'Fechamento de Caixa';
+    if (tituloModal) tituloModal.innerHTML = tipo === 'abrir' ? '<i class="fa-solid fa-cash-register text-emerald-600"></i> Abertura de Caixa (Individual)' : '<i class="fa-solid fa-cash-register text-amber-600"></i> Fechamento de Caixa (Individual)';
+    if (secaoAbrir) secaoAbrir.classList.toggle('hidden', tipo === 'fechar');
     if (resumoFechamento) resumoFechamento.classList.toggle('hidden', tipo === 'abrir');
     
-    if (tipo === 'fechar' && valFatOp) {
-        valFatOp.innerText = `R$ ${faturamentoDia.toFixed(2)}`;
+    if (tipo === 'fechar') {
+        if (valFatOp) valFatOp.innerText = `R$ ${faturamentoDia.toFixed(2)}`;
+        if (valTrocoInicial) valTrocoInicial.innerText = `R$ ${(valorTrocoAbertura || 0).toFixed(2)}`;
         const totalComTroco = faturamentoDia + (valorTrocoAbertura || 0);
-        const lblTotalGeral = document.getElementById('valTotalGeralCaixa');
-        if (lblTotalGeral) lblTotalGeral.innerText = `R$ ${totalComTroco.toFixed(2)}`;
+        if (valTotalGeral) valTotalGeral.innerText = `R$ ${totalComTroco.toFixed(2)}`;
+    } else {
+        if (inputValorCaixa) inputValorCaixa.value = '';
     }
-    if (inputValorCaixa) inputValorCaixa.value = '';
     
     if (modal) modal.classList.remove('hidden');
     setTimeout(() => {
-        if (inputValorCaixa) {
+        if (tipo === 'abrir' && inputValorCaixa) {
             inputValorCaixa.focus();
         } else {
-            const btnConfirmarCaixa = document.getElementById('btnConfirmarCaixaModal');
-            if (btnConfirmarCaixa) btnConfirmarCaixa.focus();
+            const btnConfirmar = document.getElementById('btnConfirmarCaixaModal');
+            if (btnConfirmar) btnConfirmar.focus();
         }
     }, 100);
 }
@@ -389,13 +382,13 @@ function confirmarAcaoCaixa() {
         valorTrocoAbertura = valorDigitado;
         horaAberturaCaixa = new Date();
         caixaAberto = true;
+        alert('PDV-VS: Caixa aberto com sucesso!');
     } else {
-        // Fechamento de caixa profissional com detalhamento
         const horaFechamento = new Date();
         const totalArrecadado = faturamentoDia;
-        const totalGeralGaveta = totalArrecadado + valorTrocoAbertura;
+        const totalGeralGaveta = totalArrecadado + (valorTrocoAbertura || 0);
         
-        alert(`Caixa Fechado com Sucesso!\n- Abertura: ${horaAberturaCaixa ? horaAberturaCaixa.toLocaleTimeString() : 'N/A'}\n- Fechamento: ${horaFechamento.toLocaleTimeString()}\n- Troco Inicial: R$ ${valorTrocoAbertura.toFixed(2)}\n- Vendas (Operador): R$ ${totalArrecadado.toFixed(2)}\n- Total Geral em Gaveta: R$ ${totalGeralGaveta.toFixed(2)}`);
+        alert(`PDV-VS: Caixa Fechado com Sucesso!\n- Abertura: ${horaAberturaCaixa ? horaAberturaCaixa.toLocaleTimeString() : 'N/A'}\n- Fechamento: ${horaFechamento.toLocaleTimeString()}\n- Troco Inicial: R$ ${(valorTrocoAbertura || 0).toFixed(2)}\n- Vendas (Turno): R$ ${totalArrecadado.toFixed(2)}\n- Total Geral em Gaveta: R$ ${totalGeralGaveta.toFixed(2)}`);
         
         caixaAberto = false;
         valorTrocoAbertura = 0;
@@ -450,7 +443,7 @@ function adicionarItemVendaPorObjeto(prodStr) {
         const p = JSON.parse(prodStr.replace(/&quot;/g, '"'));
         tratarAdicaoProduto(p);
     } catch(err) {
-        console.error("Erro ao parsear item:", err);
+        console.error("PDV-VS Erro ao parsear item:", err);
     }
 }
 
@@ -549,11 +542,10 @@ function confirmarAdicaoPeso() {
     const inputPeso = document.getElementById('inputPesoKg');
     const peso = inputPeso ? parseFloat(inputPeso.value) || 0 : 0;
     if (peso <= 0) {
-        alert('Informe um peso válido em KG.');
+        alert('PDV-VS: Informe um peso válido em KG.');
         return;
     }
     if (produtoEmPesagemAtual) {
-        // Para itens por KG, computamos tanto o peso quanto a contagem de 1 item fracionado/inteiro para baixa correta
         adicionarItemVendaDireto(produtoEmPesagemAtual, peso, true);
         fecharModalPesagemManual();
     }
@@ -586,7 +578,7 @@ function tratarEnterBuscaCaixa(e) {
         } else {
             const pParcial = produtosCache.find(prod => prod.nome.toLowerCase().includes(termo) || (prod.codigo && prod.codigo.toLowerCase().includes(termo)));
             if (pParcial) tratarAdicaoProduto(pParcial);
-            else alert('Produto não encontrado!');
+            else alert('PDV-VS: Produto não encontrado!');
         }
     }
 }
@@ -598,7 +590,6 @@ function atualizarTabelaVenda() {
     const txtTotal = document.getElementById('txtTotal');
 
     if (contador) contador.innerText = `${itensVenda.length} itens`;
-    
     if (!tbody) return;
 
     if (itensVenda.length === 0) { 
@@ -610,7 +601,7 @@ function atualizarTabelaVenda() {
     
     let html = '', total = 0;
     itensVenda.forEach((item, i) => {
-        const subtotalItem = item.isPeso ? (item.qtd * item.preco) : (item.qtd * item.preco);
+        const subtotalItem = item.qtd * item.preco;
         total += subtotalItem;
         
         const qtdDisplay = item.isPeso 
@@ -618,11 +609,11 @@ function atualizarTabelaVenda() {
             : `<input type="number" min="1" value="${item.qtd}" onchange="alterarQtd(${i}, this.value)" class="w-14 text-center border rounded">`;
 
         html += `<tr class="border-b">
-            <td class="p-2">${item.nome} ${item.isPeso ? '<span class="text-[10px] text-amber-600 block">Pesado (Baixa por Peso/Unidade)</span>' : ''}</td>
+            <td class="p-2">${item.nome} ${item.isPeso ? '<span class="text-[10px] text-amber-600 block">Pesado (Baixa por Peso)</span>' : ''}</td>
             <td class="p-2">${qtdDisplay}</td>
             <td class="p-2">R$ ${Number(item.preco).toFixed(2)}${item.isPeso ? '/kg' : ''}</td>
             <td class="p-2 font-bold">R$ ${subtotalItem.toFixed(2)}</td>
-            <td class="p-2 text-center"><button onclick="solicitarRemocaoItem(${i})" class="text-rose-500"><i class="fa-solid fa-trash"></i></button></td>
+            <td class="p-2 text-center"><button onclick="solicitarRemocaoItem(${i})" class="text-rose-500 hover:text-rose-700"><i class="fa-solid fa-trash"></i></button></td>
         </tr>`;
     });
     tbody.innerHTML = html;
@@ -638,9 +629,9 @@ function alterarQtd(i, qtd) {
 function salvarPinAdmin() {
     const inputPin = document.getElementById('inputAdminPinConfig');
     const pin = inputPin ? inputPin.value.trim() : '';
-    if (!pin || pin.length < 4) { alert('Informe um PIN válido de pelo menos 4 dígitos.'); return; }
+    if (!pin || pin.length < 4) { alert('PDV-VS: Informe um PIN válido de pelo menos 4 dígitos.'); return; }
     localStorage.setItem('pdv_admin_pin_' + empresaAtualId, pin); 
-    alert('PIN gerencial atualizado com sucesso!');
+    alert('PDV-VS: PIN gerencial atualizado com sucesso!');
 }
 
 function solicitarRemocaoItem(i) {
@@ -673,7 +664,7 @@ function confirmarAutorizacaoPin() {
         fecharModalAutorizacao();
         focarBusca();
     } else { 
-        alert('PIN gerencial incorreto!'); 
+        alert('PDV-VS: PIN gerencial incorreto!'); 
         if (inputPinAuth) {
             inputPinAuth.value = '';
             inputPinAuth.focus();
@@ -688,7 +679,7 @@ function fecharModalAutorizacao() {
 }
 
 function abrirModalCancelarItem() {
-    if (itensVenda.length === 0) { alert('Não há itens na venda.'); return; }
+    if (itensVenda.length === 0) { alert('PDV-VS: Não há itens na venda.'); return; }
     let html = '';
     itensVenda.forEach((item, index) => {
         html += `<div class="p-3 flex justify-between items-center hover:bg-slate-50 cursor-pointer border-b" onclick="fecharModalCancelarItem(); solicitarRemocaoItem(${index});"> <div><span class="font-semibold text-slate-800">${item.nome}</span></div> <button class="text-rose-600 text-xs border border-rose-200 rounded px-2 py-1">Remover</button> </div>`;
@@ -706,17 +697,17 @@ function fecharModalCancelarItem() {
 }
 
 function cancelarVenda() { 
-    if (confirm('Deseja realmente cancelar toda a compra atual?')) { 
+    if (confirm('PDV-VS: Deseja realmente cancelar toda a compra atual?')) { 
         itensVenda = []; 
         atualizarTabelaVenda(); 
     } 
 }
 
 async function finalizarVenda() {
-    if (!caixaAberto) { alert('O caixa precisa estar aberto! Pressione [F1] ou abra o caixa.'); return; }
-    if (itensVenda.length === 0) { alert('Adicione produtos antes de finalizar.'); return; }
+    if (!caixaAberto) { alert('PDV-VS: O caixa individual precisa estar aberto! Pressione [F1] ou abra o caixa.'); return; }
+    if (itensVenda.length === 0) { alert('PDV-VS: Adicione produtos antes de finalizar.'); return; }
     
-    let total = itensVenda.reduce((acc, item) => acc + (item.isPeso ? (item.qtd * item.preco) : (item.qtd * item.preco)), 0);
+    let total = itensVenda.reduce((acc, item) => acc + (item.qtd * item.preco), 0);
     
     const { error } = await supabaseClient.from('vendas').insert([{ 
         empresa_id: empresaAtualId, 
@@ -726,14 +717,12 @@ async function finalizarVenda() {
     }]);
     
     if (error) {
-        alert('Erro ao registrar venda: ' + error.message);
+        alert('PDV-VS: Erro ao registrar venda: ' + error.message);
         return;
     }
 
-    // Baixa de estoque correta para cada item vendido (unidade e peso)
     for (const item of itensVenda) {
-        const baixaQtd = item.isPeso ? item.qtd : item.qtd;
-        const novoEstoque = Math.max(0, (item.estoque || 0) - baixaQtd);
+        const novoEstoque = Math.max(0, (item.estoque || 0) - item.qtd);
         await supabaseClient.from('produtos').update({ estoque: novoEstoque }).eq('id', item.id);
     }
 
@@ -744,7 +733,7 @@ async function finalizarVenda() {
     itensVenda = []; 
     atualizarTabelaVenda(); 
     await carregarProdutosCache();
-    alert('Venda concluída e estoque atualizado com sucesso!');
+    alert('PDV-VS: Venda concluída e estoque atualizado com sucesso!');
     focarBusca();
 }
 
@@ -773,23 +762,39 @@ function mudarAbaAdmin(aba) {
     }
 }
 
+async function recarregarDadosAdmin() {
+    await carregarProdutosCache();
+    renderizarTabelaAdmin(produtosCache);
+    if (cargoUsuarioAtual === 'admin_mercado') {
+        await carregarHistoricoAdmin();
+        await carregarOperadoresLoja();
+    }
+    alert('PDV-VS: Dados do painel administrativo atualizados com sucesso!');
+}
+
 function abrirPainelAdmin() { 
     renderizarTabelaAdmin(produtosCache); 
     mudarAbaAdmin('produtos'); 
     const modalAdmin = document.getElementById('modalAdmin');
-    if (modalAdmin) modalAdmin.classList.add('flex');
-    if (modalAdmin) modalAdmin.classList.remove('hidden'); 
+    if (modalAdmin) {
+        modalAdmin.classList.add('flex');
+        modalAdmin.classList.remove('hidden'); 
+    }
 }
 
 function fecharPainelAdmin() { 
     const modalAdmin = document.getElementById('modalAdmin');
-    if (modalAdmin) modalAdmin.classList.add('hidden'); 
-    if (modalAdmin) modalAdmin.classList.remove('flex');
+    if (modalAdmin) {
+        modalAdmin.classList.add('hidden'); 
+        modalAdmin.classList.remove('flex');
+    }
     focarBusca();
 }
 
 function renderizarTabelaAdmin(lista) {
     const tbody = document.getElementById('tabelaAdminProdutos');
+    const contadorProdutos = document.getElementById('contadorLimiteProdutosAdmin');
+    if (contadorProdutos) contadorProdutos.innerText = `${produtosCache.length} / 800 produtos`;
     if (!tbody) return;
     
     let html = '';
@@ -798,10 +803,10 @@ function renderizarTabelaAdmin(lista) {
             <td class="p-2 text-xs">${p.codigo || '-'}</td>
             <td class="p-2 font-medium">${p.nome} ${p.unidade === 'KG' ? '<span class="text-amber-600 text-[10px] font-bold">(KG)</span>' : ''}</td>
             <td class="p-2">R$ ${Number(p.preco).toFixed(2)}${p.unidade === 'KG' ? '/kg' : ''}</td>
-            <td class="p-2">${p.estoque}</td>
+            <td class="p-2">${p.estoque} ${p.unidade || 'UN'}</td>
             <td class="p-2 text-center">
-                <button onclick="abrirEditarProdutoAdmin(${p.id},'${p.nome}','${p.codigo || ''}',${p.preco},${p.estoque}, '${p.unidade || 'UN'}')" class="text-blue-500 mr-2"><i class="fa-solid fa-pen"></i></button>
-                <button onclick="excluirProdutoAdmin(${p.id})" class="text-rose-500"><i class="fa-solid fa-trash"></i></button>
+                <button onclick="abrirEditarProdutoAdmin(${p.id},'${p.nome}','${p.codigo || ''}',${p.preco},${p.estoque}, '${p.unidade || 'UN'}')" class="text-blue-500 hover:text-blue-700 mr-3"><i class="fa-solid fa-pen"></i></button>
+                <button onclick="excluirProdutoAdmin(${p.id})" class="text-rose-500 hover:text-rose-700"><i class="fa-solid fa-trash"></i></button>
             </td>
         </tr>`;
     });
@@ -813,9 +818,8 @@ function filtrarTabelaAdmin(t) {
 }
 
 function abrirModalNovoProdutoAdmin() {
-    // Restrição do plano comum: limite de 800 produtos
     if (produtosCache.length >= 800) {
-        alert('Aviso do Plano Comum: Você atingiu o limite máximo de 800 produtos cadastrados. Para cadastrar mais itens, faça o upgrade para a versão 2.0.');
+        alert('PDV-VS - Aviso do Plano Comum: Você atingiu o limite máximo de 800 produtos cadastrados.');
         return;
     }
 
@@ -884,7 +888,7 @@ async function salvarProdutoAdmin() {
         await supabaseClient.from('produtos').update(p).eq('id', id); 
     } else { 
         if (produtosCache.length >= 800) {
-            alert('Limite de 800 produtos do plano comum atingido.');
+            alert('PDV-VS: Limite de 800 produtos do plano comum atingido.');
             return;
         }
         await supabaseClient.from('produtos').insert([{ ...p, empresa_id: empresaAtualId }]); 
@@ -896,7 +900,7 @@ async function salvarProdutoAdmin() {
 }
 
 async function excluirProdutoAdmin(id) { 
-    if (confirm('Excluir este item permanentemente?')) { 
+    if (confirm('PDV-VS: Deseja excluir este item permanentemente?')) { 
         await supabaseClient.from('produtos').delete().eq('id', id); 
         await carregarProdutosCache(); 
         renderizarTabelaAdmin(produtosCache); 
@@ -904,40 +908,42 @@ async function excluirProdutoAdmin(id) {
 }
 
 async function carregarOperadoresLoja() {
-    const { data } = await supabaseClient.from('usuarios_empresas').select('*').eq('empresa_id', empresaAtualId).eq('cargo', 'operador');
+    const { data } = await supabaseClient.from('usuarios_empresas').select('*').eq('empresa_id', empresaAtualId);
     let html = '';
     if (data) {
         data.forEach(op => {
             const opCaixaAberto = localStorage.getItem(`pdv_caixa_aberto_${empresaAtualId}_${op.user_id}`) === 'true';
             const statusCaixaBadge = opCaixaAberto 
-                ? '<span class="bg-emerald-100 text-emerald-800 text-xs px-2 py-0.5 rounded-full font-bold">ABERTO</span>' 
-                : '<span class="bg-amber-100 text-amber-800 text-xs px-2 py-0.5 rounded-full font-bold">FECHADO</span>';
+                ? '<span class="bg-emerald-100 text-emerald-800 text-xs px-2.5 py-1 rounded-full font-bold">ABERTO</span>' 
+                : '<span class="bg-amber-100 text-amber-800 text-xs px-2.5 py-1 rounded-full font-bold">FECHADO</span>';
+            
+            const cargoNome = op.cargo === 'admin_mercado' ? 'Administrador' : 'Operador de Caixa';
 
             html += `<tr class="border-b">
-                <td class="p-3 text-xs">${op.user_id}</td>
-                <td class="p-3 font-semibold">Operador Padrão (Plano Comum)</td>
+                <td class="p-3 text-xs font-mono">${op.user_id}</td>
+                <td class="p-3 font-semibold text-slate-800">${cargoNome}</td>
                 <td class="p-3 text-center">${statusCaixaBadge}</td>
-                <td class="p-3 font-bold text-emerald-600">Ativo na Equipe</td>
-                <td class="p-3 text-center"><button onclick="excluirOperadorLoja('${op.user_id}')" class="text-rose-600"><i class="fa-solid fa-trash"></i></button></td>
+                <td class="p-3 text-center">
+                    ${op.cargo !== 'admin_mercado' ? `<button onclick="excluirOperadorLoja('${op.user_id}')" class="text-rose-600 hover:text-rose-800 text-xs font-bold"><i class="fa-solid fa-trash mr-1"></i> Remover</button>` : '<span class="text-xs text-slate-400">Principal</span>'}
+                </td>
             </tr>`;
         });
     }
     const tabelaOps = document.getElementById('tabelaOperadoresLoja');
-    if (tabelaOps) tabelaOps.innerHTML = html || '<tr><td colspan="5" class="p-4 text-center text-slate-400">Nenhum operador cadastrado. O plano comum permite apenas 1 operador além do administrador.</td></tr>';
+    if (tabelaOps) tabelaOps.innerHTML = html || '<tr><td colspan="4" class="p-4 text-center text-slate-400">Nenhum operador cadastrado.</td></tr>';
 }
 
 async function excluirOperadorLoja(id) { 
-    if (confirm('Remover operador da equipe?')) { 
+    if (confirm('PDV-VS: Deseja remover este operador da equipe?')) { 
         await supabaseClient.from('usuarios_empresas').delete().eq('user_id', id); 
         carregarOperadoresLoja(); 
     } 
 }
 
 function abrirModalNovoOperador() { 
-    // Validação da regra do plano comum: Permitir somente 1 operador além do admin
     supabaseClient.from('usuarios_empresas').select('*', { count: 'exact', head: true }).eq('empresa_id', empresaAtualId).eq('cargo', 'operador').then(({ count }) => {
         if (count >= 1) {
-            alert('Regra do Plano Comum: É permitido apenas 1 operador adicional além do Administrador.');
+            alert('PDV-VS - Regra do Plano Comum: É permitido apenas 1 operador adicional além do Administrador.');
             return;
         }
         const modal = document.getElementById('modalNovoOperador');
@@ -956,21 +962,20 @@ async function salvarNovoOperador() {
     const email = inputEmail ? inputEmail.value.trim() : '';
     const password = inputSenha ? inputSenha.value.trim() : '';
 
-    if (!email || !password) { alert('Preencha os campos de acesso provisório.'); return; }
+    if (!email || !password) { alert('PDV-VS: Preencha os campos de acesso provisório.'); return; }
     
     const { data, error } = await supabaseClient.auth.signUp({ email, password });
-    if (error) { alert('Erro ao criar usuário: ' + error.message); return; }
+    if (error) { alert('PDV-VS: Erro ao criar usuário: ' + error.message); return; }
     
     if (data && data.user) {
         await supabaseClient.from('usuarios_empresas').insert([{ user_id: data.user.id, empresa_id: empresaAtualId, cargo: 'operador' }]);
         fecharModalNovoOperador(); 
         carregarOperadoresLoja();
-        alert('Operador cadastrado com sucesso!');
+        alert('PDV-VS: Operador cadastrado com sucesso!');
     }
 }
 
 async function carregarHistoricoAdmin() {
-    // Filtro estrito de retenção: ultimos 15 dias conforme diretriz do plano comum
     const dataLimite = new Date();
     dataLimite.setDate(dataLimite.getDate() - 15);
 
@@ -981,48 +986,101 @@ async function carregarHistoricoAdmin() {
         .order('created_at', { ascending: false });
 
     historicoVendasCache = data || []; 
-    renderizarHistoricoVendas();
+    renderizarHistoricoVendasPorJanelasDiarias();
 }
 
-function renderizarHistoricoVendas() {
-    let html = '';
-    let total15Dias = 0;
-    let totalHoje = 0;
-    let totalSemanal = 0;
-
-    const hojeStr = new Date().toDateString();
-
-    historicoVendasCache.forEach(v => {
-        total15Dias += v.valor_total;
-        const dataVenda = new Date(v.created_at);
-        if (dataVenda.toDateString() === hojeStr) {
-            totalHoje += v.valor_total;
-        }
-        // Faturamento semanal aproximado (últimos 7 dias)
-        if ((new Date() - dataVenda) / (1000 * 60 * 60 * 24) <= 7) {
-            totalSemanal += v.valor_total;
-        }
-
-        const nomesItens = v.itens ? v.itens.map(i => i.isPeso ? `${i.nome} (${i.qtd.toFixed(3)}kg)` : `${i.nome} (x${i.qtd})`).join(', ') : '';
-        html += `<tr class="border-b text-xs">
-            <td class="p-3">${dataVenda.toLocaleString()}</td>
-            <td class="p-3 font-semibold">${v.operador}</td>
-            <td class="p-3 truncate max-w-xs">${nomesItens}</td>
-            <td class="p-3 text-right font-bold">R$ ${v.valor_total.toFixed(2)}</td>
-        </tr>`;
-    });
-
-    const tabelaHist = document.getElementById('tabelaHistoricoVendas');
-    if (tabelaHist) tabelaHist.innerHTML = html || '<tr><td colspan="4" class="p-4 text-center text-slate-400">Nenhuma venda registrada nos últimos 15 dias.</td></tr>';
-
-    // Atualizar painéis de totais administrativos
+function renderizarHistoricoVendasPorJanelasDiarias() {
+    const container = document.getElementById('containerJanelasFaturamentoDiario');
     const lblFatHoje = document.getElementById('adminFatHoje');
     const lblFatSemanal = document.getElementById('adminFatSemanal');
     const lblFatTotal = document.getElementById('adminFatTotal15Dias');
 
+    if (!container) return;
+
+    if (!historicoVendasCache || historicoVendasCache.length === 0) {
+        container.innerHTML = '<div class="p-6 text-center text-slate-400">Nenhuma venda registrada nos últimos 15 dias.</div>';
+        if (lblFatHoje) lblFatHoje.innerText = 'R$ 0,00';
+        if (lblFatSemanal) lblFatSemanal.innerText = 'R$ 0,00';
+        if (lblFatTotal) lblFatTotal.innerText = 'R$ 0,00';
+        return;
+    }
+
+    let total15Dias = 0;
+    let totalHoje = 0;
+    let totalSemanal = 0;
+    const hojeStr = new Date().toDateString();
+
+    // Agrupar vendas por dia (YYYY-MM-DD)
+    const gruposPorDia = {};
+    historicoVendasCache.forEach(v => {
+        total15Dias += v.valor_total;
+        const dataVenda = new Date(v.created_at);
+        const diaKey = dataVenda.toISOString().split('T')[0]; // YYYY-MM-DD
+
+        if (dataVenda.toDateString() === hojeStr) {
+            totalHoje += v.valor_total;
+        }
+        if ((new Date() - dataVenda) / (1000 * 60 * 60 * 24) <= 7) {
+            totalSemanal += v.valor_total;
+        }
+
+        if (!gruposPorDia[diaKey]) {
+            gruposPorDia[diaKey] = {
+                dataStr: dataVenda.toLocaleDateString('pt-BR'),
+                totalDia: 0,
+                vendas: []
+            };
+        }
+        gruposPorDia[diaKey].totalDia += v.valor_total;
+        gruposPorDia[diaKey].vendas.push(v);
+    });
+
     if (lblFatHoje) lblFatHoje.innerText = `R$ ${totalHoje.toFixed(2)}`;
     if (lblFatSemanal) lblFatSemanal.innerText = `R$ ${totalSemanal.toFixed(2)}`;
     if (lblFatTotal) lblFatTotal.innerText = `R$ ${total15Dias.toFixed(2)}`;
+
+    let htmlJanelas = '';
+    Object.keys(gruposPorDia).sort().reverse().forEach((diaKey, idx) => {
+        const grupo = gruposPorDia[diaKey];
+        const collapseId = `detalheDia_${idx}`;
+
+        let htmlItensVendasDia = '';
+        grupo.vendas.forEach(v => {
+            const horaVenda = new Date(v.created_at).toLocaleTimeString();
+            const itensDesc = v.itens ? v.itens.map(i => i.isPeso ? `${i.nome} (${i.qtd.toFixed(3)}kg)` : `${i.nome} (x${i.qtd})`).join(', ') : 'Itens diversos';
+            htmlItensVendasDia += `
+                <div class="py-2 px-3 bg-white border-b flex justify-between items-center text-xs">
+                    <div>
+                        <span class="font-bold text-slate-700">${horaVenda}</span> - <span class="text-slate-600">Op: ${v.operador}</span>
+                        <p class="text-[11px] text-slate-500 mt-0.5">${itensDesc}</p>
+                    </div>
+                    <span class="font-bold text-emerald-700">R$ ${v.valor_total.toFixed(2)}</span>
+                </div>
+            `;
+        });
+
+        htmlJanelas += `
+            <div class="bg-slate-50 border-b">
+                <div onclick="const el = document.getElementById('${collapseId}'); el.classList.toggle('hidden');" class="p-3.5 flex justify-between items-center cursor-pointer hover:bg-slate-100 transition">
+                    <div class="flex items-center space-x-2">
+                        <i class="fa-solid fa-calendar-day text-emerald-600"></i>
+                        <span class="font-bold text-slate-800 text-sm">Data: ${grupo.dataStr}</span>
+                        <span class="text-xs bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full font-semibold">${grupo.vendas.length} venda(s)</span>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <span class="font-black text-emerald-700 text-sm">R$ ${grupo.totalDia.toFixed(2)}</span>
+                        <i class="fa-solid fa-chevron-down text-xs text-slate-400"></i>
+                    </div>
+                </div>
+                <div id="${collapseId}" class="hidden pl-6 pr-3 pb-3 space-y-1 border-t bg-slate-100/60">
+                    <div class="py-1 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Detalhamento das Vendas do Dia</div>
+                    ${htmlItensVendasDia}
+                </div>
+            </div>
+        `;
+    });
+
+    container.innerHTML = htmlJanelas;
 }
 
 async function abrirLeitorCamera() {
@@ -1035,8 +1093,10 @@ async function abrirLeitorCamera() {
 async function escanearCameraAdmin() {
     origemLeitor = 'admin';
     const modalCam = document.getElementById('modalCamera');
-    if (modalCam) modalCam.classList.add('flex');
-    if (modalCam) modalCam.classList.remove('hidden');
+    if (modalCam) {
+        modalCam.classList.add('flex');
+        modalCam.classList.remove('hidden');
+    }
     await iniciarCameraComHtml5Qrcode();
 }
 
@@ -1048,11 +1108,7 @@ async function iniciarCameraComHtml5Qrcode() {
         }
         
         html5QrcodeInstance = new Html5Qrcode("videoPreviewCamera");
-        const config = {
-            fps: 15,
-            qrbox: { width: 280, height: 160 },
-            aspectRatio: 1.0
-        };
+        const config = { fps: 15, qrbox: { width: 280, height: 160 }, aspectRatio: 1.0 };
         
         await html5QrcodeInstance.start(
             { facingMode: "environment" },
@@ -1064,18 +1120,18 @@ async function iniciarCameraComHtml5Qrcode() {
                     if (p) { 
                         tratarAdicaoProduto(p); 
                     } else { 
-                        alert(`Código lido (${decodedText}), mas nenhum produto correspondente foi encontrado.`); 
+                        alert(`PDV-VS: Código lido (${decodedText}), mas nenhum produto correspondente foi encontrado.`); 
                     }
                 } else if (origemLeitor === 'admin') {
                     const inputCodigo = document.getElementById('formCodigo');
                     if (inputCodigo) inputCodigo.value = decodedText;
                 }
             },
-            () => {} // Ignora erros menores de frame por segundo do leitor óptico
+            () => {}
         );
     } catch (err) {
-        console.error("Erro ao iniciar câmera:", err);
-        alert("Não foi possível acessar a câmera do dispositivo. Verifique as permissões de vídeo no navegador.");
+        console.error("PDV-VS Erro ao iniciar câmera:", err);
+        alert("PDV-VS: Não foi possível acessar a câmera do dispositivo. Verifique as permissões de vídeo.");
         fecharLeitorCamera();
     }
 }
@@ -1085,7 +1141,7 @@ async function fecharLeitorCamera() {
         try {
             await html5QrcodeInstance.stop();
         } catch(e) {
-            console.error("Erro ao parar câmera:", e);
+            console.error("PDV-VS Erro ao parar câmera:", e);
         }
         html5QrcodeInstance = null;
     }

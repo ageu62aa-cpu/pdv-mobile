@@ -12,7 +12,7 @@
     <!-- FontAwesome para Ícones -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <!-- Biblioteca HTML5 QR Code para Câmera (Com suporte aprimorado a EAN-13/EAN-8) -->
+    <!-- Biblioteca HTML5 QR Code para Câmera -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
     
     <!-- Supabase Client -->
@@ -37,7 +37,6 @@
                 <button onclick="alternarTelaAuth('admin')" class="text-xs text-slate-400 hover:text-slate-700 transition flex items-center space-x-1 p-1" title="Acesso Super Admin"><i class="fa-solid fa-user-shield text-[11px] text-emerald-600"></i><span>Admin</span></button>
             </div>
             <div class="text-center mb-6 mt-2">
-                <!-- Ícone modernizado de Caixa Eletrônico / Registradora -->
                 <i id="iconeAuth" class="fa-solid fa-cash-register text-4xl text-emerald-600 mb-2"></i>
                 <h2 id="tituloAuth" class="text-xl sm:text-2xl font-bold text-slate-900">PDV-VS Enterprise</h2>
                 <p id="subtituloAuth" class="text-xs text-slate-500">Sistema de Gestão Comercial e PDV</p>
@@ -63,7 +62,6 @@
                     <input type="text" id="authDocumento" placeholder="00.000.000/0001-00" class="w-full border border-slate-300 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:border-emerald-500">
                 </div>
 
-                <!-- Campos de Endereço e WhatsApp obrigatórios para novo estabelecimento -->
                 <div id="divCamposEnderecoCadastro" class="hidden space-y-3 pt-1">
                     <div class="grid grid-cols-2 gap-2">
                         <div>
@@ -113,16 +111,17 @@
 
     <!-- APLICAÇÃO PRINCIPAL (PDV) -->
     <div id="appPrincipal" class="hidden flex-1 flex flex-col justify-between">
-        <!-- Cabeçalho com Verde Mais Forte -->
         <header class="bg-emerald-700 text-white px-4 py-3 flex justify-between items-center shadow-md">
             <div class="flex items-center space-x-3">
-                <i class="fa-solid fa-cash-register text-2xl text-emerald-200"></i>
-                <div>
-                    <div class="flex items-center space-x-2">
-                        <h1 id="tituloAppEmpresa" class="font-bold text-sm sm:text-base">PDV-VS Enterprise</h1>
-                        <span id="badgeNumeroLoja" class="text-[10px] bg-emerald-800/80 text-emerald-200 px-1.5 py-0.5 rounded font-mono">Loja #...</span>
+                <button onclick="atualizarPaginaCompleta()" class="text-emerald-200 hover:text-white transition flex items-center space-x-2 bg-emerald-800/60 hover:bg-emerald-800 px-2.5 py-1.5 rounded-lg" title="Atualizar Página">
+                    <i class="fa-solid fa-rotate text-lg"></i>
+                    <div class="text-left hidden sm:block">
+                        <h1 id="tituloAppEmpresa" class="font-bold text-xs leading-tight">PDV-VS Enterprise</h1>
+                        <span id="badgeNumeroLoja" class="text-[9px] text-emerald-200 font-mono">Loja #...</span>
                     </div>
-                    <span id="badgeEmpresaLogada" class="text-[10px] text-emerald-200">CNPJ: ...</span>
+                </button>
+                <div>
+                    <span id="badgeEmpresaLogada" class="text-[10px] text-emerald-200 block sm:hidden">CNPJ: ...</span>
                 </div>
             </div>
             <div class="flex items-center space-x-2">
@@ -133,11 +132,8 @@
             </div>
         </header>
 
-        <!-- Corpo Principal PDV -->
         <main class="flex-1 p-3 sm:p-4 max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <!-- Esquerda: Busca e Itens da Venda -->
             <div class="lg:col-span-2 flex flex-col space-y-3">
-                <!-- Caixa de Pesquisa / Código de Barras -->
                 <div class="bg-white p-3 rounded-xl shadow-sm border relative">
                     <div class="flex space-x-2">
                         <div class="relative flex-1">
@@ -146,11 +142,9 @@
                         </div>
                         <button onclick="abrirLeitorCamera()" class="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2.5 rounded-lg text-sm font-bold transition flex items-center space-x-1" title="Escanear com Câmera"><i class="fa-solid fa-camera"></i><span class="hidden sm:inline">Câmera</span></button>
                     </div>
-                    <!-- Painel de Sugestões de Busca -->
                     <div id="painelSugestoes" class="hidden absolute left-3 right-3 top-16 bg-white border border-slate-200 rounded-lg shadow-xl z-30 max-h-60 overflow-y-auto"></div>
                 </div>
 
-                <!-- Tabela de Produtos na Venda Atual -->
                 <div class="bg-white rounded-xl shadow-sm border flex-1 flex flex-col overflow-hidden">
                     <div class="p-3 bg-slate-50 border-b flex justify-between items-center">
                         <h2 class="font-bold text-xs uppercase tracking-wider text-slate-600">Itens da Compra Atual</h2>
@@ -175,7 +169,6 @@
                 </div>
             </div>
 
-            <!-- Direita: Totais e Atalhos de Ação -->
             <div class="bg-white p-4 rounded-xl shadow-sm border flex flex-col justify-between space-y-4">
                 <div>
                     <h2 class="font-bold text-xs uppercase tracking-wider text-slate-600 mb-3 border-b pb-2">Resumo da Venda</h2>
@@ -183,14 +176,12 @@
                         <div class="flex justify-between text-sm text-slate-600"><span>Subtotal:</span><span id="txtSubtotal">R$ 0,00</span></div>
                         <div class="flex justify-between text-lg font-bold text-slate-900 border-t pt-2"><span>Total a Pagar:</span><span id="txtTotal" class="text-emerald-600">R$ 0,00</span></div>
                     </div>
-                    <!-- Faturamento do dia mais discreto para operador / visível para admin -->
                     <div id="containerFaturamentoDiarioDiscreto" class="bg-slate-50 p-2.5 rounded-lg border text-[11px] space-y-1 mb-4 flex justify-between items-center text-slate-500">
                         <span>Faturamento Diário:</span>
                         <strong id="txtFaturamentoDia" class="text-slate-700 font-mono">R$ 0,00</strong>
                     </div>
                 </div>
 
-                <!-- Botões de Ação do PDV -->
                 <div class="space-y-2">
                     <button onclick="abrirModalCancelarItem()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 rounded-lg text-xs font-semibold transition">[F6] Cancelar Item</button>
                     <button onclick="cancelarVenda()" class="w-full bg-rose-50 hover:bg-rose-100 text-rose-700 py-2 rounded-lg text-xs font-semibold transition">[F7] Cancelar Compra</button>
@@ -204,9 +195,8 @@
             </div>
         </main>
 
-        <!-- RODAPÉ COM BOTÃO DE SUPORTE WHATSAPP DISCRETO -->
-        <footer class="bg-white border-t py-2 px-4 text-center text-xs text-slate-500 flex justify-between items-center max-w-7xl mx-auto w-full">
-            <span>PDV-VS Enterprise © 2026 - Versão 1.0.0</span>
+        <footer id="rodapeSistema" class="bg-white border-t py-2 px-4 text-center text-xs text-slate-500 flex justify-between items-center max-w-7xl mx-auto w-full">
+            <span>PDV-Vancely Software Enterprise | Versão 1.0.0 | Suporte Técnico Ativo</span>
             <a href="https://wa.me/" target="_blank" class="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1 rounded-full shadow flex items-center space-x-1 text-[11px] font-bold transition">
                 <i class="fa-brands fa-whatsapp text-xs"></i>
                 <span>Suporte</span>
@@ -268,12 +258,15 @@
     <div id="modalAdmin" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-3">
         <div class="bg-white rounded-2xl max-w-5xl w-full p-5 shadow-2xl max-h-[90vh] flex flex-col">
             <div class="flex justify-between items-center border-b pb-3 mb-3">
-                <h3 class="font-bold text-lg text-slate-900"><i class="fa-solid fa-user-shield text-emerald-600 mr-2"></i> Painel Administrativo do Estabelecimento</h3>
+                <div class="flex items-center space-x-3">
+                    <h3 class="font-bold text-lg text-slate-900"><i class="fa-solid fa-user-shield text-emerald-600 mr-2"></i> Painel Administrativo do Estabelecimento</h3>
+                    <button onclick="recarregarDadosAdmin()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded text-xs font-bold transition flex items-center space-x-1" title="Atualizar dados do painel"><i class="fa-solid fa-rotate text-emerald-600"></i><span>Refresh</span></button>
+                </div>
                 <button onclick="fecharPainelAdmin()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-xl"></i></button>
             </div>
             <div class="flex space-x-2 border-b pb-3 mb-3 overflow-x-auto">
                 <button id="btnAbaProdutos" onclick="mudarAbaAdmin('produtos')" class="px-3 py-1.5 text-xs font-bold bg-emerald-600 text-white rounded-lg">Produtos (Máx 800)</button>
-                <button id="btnAbaOperadores" onclick="mudarAbaAdmin('operadores')" class="px-3 py-1.5 text-xs font-bold bg-slate-200 text-slate-700 rounded-lg">Operador (Máx 1)</button>
+                <button id="btnAbaOperadores" onclick="mudarAbaAdmin('operadores')" class="px-3 py-1.5 text-xs font-bold bg-slate-200 text-slate-700 rounded-lg">Operadores & Status</button>
                 <button id="btnAbaHistorico" onclick="mudarAbaAdmin('historico')" class="px-3 py-1.5 text-xs font-bold bg-slate-200 text-slate-700 rounded-lg">Faturamento & Histórico (15 dias)</button>
                 <button id="btnAbaConfiguracoes" onclick="mudarAbaAdmin('configuracoes')" class="px-3 py-1.5 text-xs font-bold bg-slate-200 text-slate-700 rounded-lg">Configurações & PIN</button>
             </div>
@@ -301,19 +294,19 @@
                 </div>
             </div>
 
-            <!-- ABA OPERADORES -->
+            <!-- ABA OPERADORES (ADMIN + OPERADORES COM STATUS INDIVIDUAL) -->
             <div id="conteudoAbaOperadores" class="hidden flex-1 flex flex-col overflow-hidden">
                 <div class="flex justify-between mb-3 items-center">
-                    <p class="text-xs text-slate-500">Plano Comum: Permitido apenas 1 operador além da conta do Administrador.</p>
+                    <p class="text-xs text-slate-500">Gerencie o Administrador e os operadores. O status de caixa funciona de forma independente para cada um.</p>
                     <button onclick="abrirModalNovoOperador()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded text-xs font-bold shadow"><i class="fa-solid fa-user-plus mr-1"></i> Adicionar Operador</button>
                 </div>
                 <div class="overflow-y-auto flex-1 border rounded-lg">
                     <table class="w-full text-left border-collapse text-sm">
                         <thead class="bg-slate-50 border-b text-xs text-slate-600">
                             <tr>
-                                <th class="p-3">E-mail</th>
+                                <th class="p-3">Usuário / Responsável</th>
                                 <th class="p-3">Cargo</th>
-                                <th class="p-3 text-center">Status Caixa</th>
+                                <th class="p-3 text-center">Status Individual do Caixa</th>
                                 <th class="p-3 text-center">Ação</th>
                             </tr>
                         </thead>
@@ -322,9 +315,8 @@
                 </div>
             </div>
 
-            <!-- ABA HISTÓRICO & FATURAMENTO -->
+            <!-- ABA HISTÓRICO & FATURAMENTO (JANELAS POR DIA - 15 DIAS) -->
             <div id="conteudoAbaHistorico" class="hidden flex-1 flex flex-col overflow-hidden space-y-3">
-                <!-- Cards de Faturamento Requeridos -->
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div class="bg-emerald-50 border border-emerald-200 p-3 rounded-xl">
                         <span class="text-[11px] text-emerald-800 font-bold block">FATURAMENTO DIÁRIO</span>
@@ -339,18 +331,9 @@
                         <strong id="adminFatTotal15Dias" class="text-lg font-black text-slate-800">R$ 0,00</strong>
                     </div>
                 </div>
-                <div class="overflow-y-auto flex-1 border rounded-lg">
-                    <table class="w-full text-left border-collapse text-sm">
-                        <thead class="bg-slate-50 border-b text-xs text-slate-600 sticky top-0">
-                            <tr>
-                                <th class="p-3">Data / Hora</th>
-                                <th class="p-3">Operador / Responsável</th>
-                                <th class="p-3">Itens</th>
-                                <th class="p-3 text-right">Total</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tabelaHistoricoVendas"></tbody>
-                    </table>
+                <div class="overflow-y-auto flex-1 border rounded-lg divide-y" id="containerJanelasFaturamentoDiario">
+                    <!-- Preenchido dinamicamente por janelas agrupadas por dia com expansão de itens -->
+                    <div class="p-6 text-center text-slate-400">Carregando faturamento dos últimos 15 dias...</div>
                 </div>
             </div>
 
@@ -410,29 +393,28 @@
         </div>
     </div>
 
-    <!-- MODAL DE CAIXA PROFISSIONAL (ABERTURA / FECHAMENTO) -->
+    <!-- MODAL DE CAIXA PROFISSIONAL (INDIVIDUAL) -->
     <div id="modalCaixa" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 text-slate-800 animate-scaleUp">
             <div class="flex justify-between items-center mb-4 border-b pb-3">
                 <h3 id="tituloModalCaixa" class="font-bold text-lg text-slate-900 flex items-center gap-2">
-                    <i class="fa-solid fa-cash-register text-emerald-600"></i> Gerenciar Caixa
+                    <i class="fa-solid fa-cash-register text-emerald-600"></i> Gerenciar Caixa (Individual)
                 </h3>
                 <button onclick="fecharModalCaixa()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
 
             <div id="secaoAbrirCaixa" class="space-y-4">
-                <p class="text-xs text-slate-500">Informe o valor em dinheiro disponível no gaveteiro como fundo de troco inicial.</p>
+                <p class="text-xs text-slate-500">Informe o valor em dinheiro disponível para abertura do seu caixa individual (fundo de troco).</p>
                 <div>
                     <label class="block text-xs font-bold text-slate-600 mb-1">VALOR DO TROCO INICIAL (R$)</label>
                     <input type="number" step="0.01" id="inputValorCaixa" onkeydown="tratarEnterModalCaixa(event)" placeholder="0.00" class="w-full p-3 border rounded-xl text-lg font-bold text-emerald-700 focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-slate-50">
                 </div>
             </div>
 
-            <!-- Resumo profissional do fechamento: Faturamento + Troco = Total Geral -->
             <div id="resumoFechamentoCaixa" class="hidden space-y-3">
                 <div class="bg-slate-50 p-4 rounded-xl border space-y-2 text-xs">
                     <div class="flex justify-between">
-                        <span class="text-slate-500">Faturamento Vendas:</span>
+                        <span class="text-slate-500">Faturamento Vendas (Turno):</span>
                         <span id="valFaturamentoOperador" class="font-bold text-slate-800">R$ 0,00</span>
                     </div>
                     <div class="flex justify-between">
@@ -444,7 +426,7 @@
                         <span id="valTotalGeralCaixa">R$ 0,00</span>
                     </div>
                 </div>
-                <p class="text-xs text-slate-500">Confirme o encerramento do turno de caixa.</p>
+                <p class="text-xs text-slate-500">Confirme o encerramento do seu turno de caixa individual.</p>
             </div>
 
             <div class="flex space-x-3 mt-6">
@@ -500,12 +482,12 @@
         </div>
     </div>
 
-    <!-- MODAL DE CÂMERA OTIMIZADO PARA EAN-13 / EAN-8 -->
+    <!-- MODAL DE CÂMERA -->
     <div id="modalCamera" class="hidden fixed inset-0 bg-black/90 flex flex-col items-center justify-center z-50 p-4">
         <div class="max-w-md w-full bg-slate-900 border border-slate-800 rounded-2xl p-4 text-center text-white relative shadow-2xl">
             <h3 class="text-base font-bold mb-3"><i class="fa-solid fa-camera text-emerald-500 mr-2"></i> Leitor de Código de Barras</h3>
             <div id="videoPreviewCamera" class="w-full h-72 bg-black rounded-lg overflow-hidden relative border border-slate-700"></div>
-            <p class="text-xs text-slate-400 mt-3">Aponte o código de barras (EAN-13 / EAN-8) para a câmera com boa iluminação.</p>
+            <p class="text-xs text-slate-400 mt-3">Aponte o código de barras (EAN-13 / EAN-8) para a câmera.</p>
             <button onclick="fecharLeitorCamera()" class="mt-4 w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-2.5 rounded-lg text-sm transition">Fechar Câmera</button>
         </div>
     </div>

@@ -47,6 +47,12 @@ window.addEventListener('DOMContentLoaded', async () => {
             }
         });
     }
+
+    // 3. Atualizar Rodapé Padrão do Sistema
+    const rodape = document.getElementById('rodapeSistema');
+    if (rodape) {
+        rodape.innerHTML = 'PDV-Vancely Software Enterprise | Versão 1.0.0 | Suporte Técnico Ativo';
+    }
 });
 
 // ==========================================
