@@ -19,17 +19,32 @@ function configurarEventoPWA() {
         e.preventDefault();
         deferredPrompt = e;
         
-        // Exibe o ícone de instalação discreto se disponível na tela
-        const btnInstalar = document.getElementById('btnInstalarPWA');
+        // Exibe o botão de instalação se disponível
+        const btnInstalar = document.getElementById('btnInstalarApp');
         if (btnInstalar) {
             btnInstalar.classList.remove('hidden');
         }
     });
+
+    window.addEventListener('appinstalled', () => {
+        const btnInstalar = document.getElementById('btnInstalarApp');
+        if (btnInstalar) btnInstalar.classList.add('hidden');
+        deferredPrompt = null;
+        console.log('PWA instalado com sucesso!');
+    });
+
+    // Se já estiver em modo standalone (instalado), esconde o botão
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+        const btnInstalar = document.getElementById('btnInstalarApp');
+        if (btnInstalar) btnInstalar.classList.add('hidden');
+    }
 }
 
 window.instalarPWA = async function() {
+    const btnInstalar = document.getElementById('btnInstalarApp');
+    
     if (!deferredPrompt) {
-        alert("O aplicativo já está instalado ou o seu navegador gerencia a instalação pelo menu de opções/barra de endereços.");
+        alert("O aplicativo já está instalado ou o seu navegador gerencia a instalação pelo menu de opções/barra de endereços (ícone de monitor na barra URL).");
         return;
     }
     
@@ -41,7 +56,6 @@ window.instalarPWA = async function() {
     }
     deferredPrompt = null;
     
-    const btnInstalar = document.getElementById('btnInstalarPWA');
     if (btnInstalar) {
         btnInstalar.classList.add('hidden');
     }
@@ -52,7 +66,8 @@ function inicializarEventosPDV() {
     document.addEventListener('keydown', (e) => {
         if (e.key === 'F5') {
             e.preventDefault();
-            document.getElementById('inputBusca').focus();
+            const inputBusca = document.getElementById('inputBusca');
+            if (inputBusca) inputBusca.focus();
         } else if (e.key === 'F9') {
             e.preventDefault();
             finalizarVenda();
@@ -67,6 +82,8 @@ function inicializarEventosPDV() {
 // --- BUSCA E ADIÇÃO DE PRODUTOS ---
 window.aoDigitarBusca = async function(termo) {
     const painel = document.getElementById('painelSugestoes');
+    if (!painel) return;
+    
     if (!termo || termo.trim().length < 2) {
         painel.classList.add('hidden');
         return;
@@ -123,7 +140,8 @@ window.tratarEnterBuscaCaixa = async function(e) {
             if (data && data.length > 0) {
                 adicionarProdutoAoCarrinho(data[0]);
                 e.target.value = '';
-                document.getElementById('painelSugestoes').classList.add('hidden');
+                const painel = document.getElementById('painelSugestoes');
+                if (painel) painel.classList.add('hidden');
             } else {
                 alert("Produto não encontrado!");
             }
@@ -154,6 +172,7 @@ window.adicionarProdutoAoCarrinho = function(produto) {
 
 window.renderizarCarrinho = function() {
     const tbody = document.getElementById('tabelaItensVenda');
+    if (!tbody) return;
     tbody.innerHTML = '';
 
     if (window.carrinhoVenda.length === 0) {
@@ -231,7 +250,9 @@ window.finalizarVenda = async function() {
     
     await carregarMaquininhasParaVenda();
     
-    document.getElementById('modalFinalizarVenda').classList.remove('hidden');
+    const modal = document.getElementById('modalFinalizarVenda');
+    if (modal) modal.classList.remove('hidden');
+    
     selecionarFormaPagamento('dinheiro');
     
     const totalGeral = calcularTotalCarrinho();
@@ -240,7 +261,8 @@ window.finalizarVenda = async function() {
 }
 
 window.fecharModalFinalizarVenda = function() {
-    document.getElementById('modalFinalizarVenda').classList.add('hidden');
+    const modal = document.getElementById('modalFinalizarVenda');
+    if (modal) modal.classList.add('hidden');
 }
 
 window.selecionarFormaPagamento = function(tipo) {
@@ -264,19 +286,19 @@ window.selecionarFormaPagamento = function(tipo) {
     const divParcelas = document.getElementById('divSeletorParcelas');
     
     if (tipo === 'debito' || tipo === 'credito') {
-        secaoCartao.classList.remove('hidden');
-        secaoDinheiro.classList.add('hidden');
+        if (secaoCartao) secaoCartao.classList.remove('hidden');
+        if (secaoDinheiro) secaoDinheiro.classList.add('hidden');
         if (tipo === 'credito') {
-            divParcelas.classList.remove('hidden');
+            if (divParcelas) divParcelas.classList.remove('hidden');
         } else {
-            divParcelas.classList.add('hidden');
+            if (divParcelas) divParcelas.classList.add('hidden');
         }
     } else {
-        secaoCartao.classList.add('hidden');
+        if (secaoCartao) secaoCartao.classList.add('hidden');
         if (tipo === 'dinheiro') {
-            secaoDinheiro.classList.remove('hidden');
+            if (secaoDinheiro) secaoDinheiro.classList.remove('hidden');
         } else {
-            secaoDinheiro.classList.add('hidden');
+            if (secaoDinheiro) secaoDinheiro.classList.add('hidden');
         }
     }
     recalcularTotalComTaxasMaquininha();
@@ -294,6 +316,8 @@ async function carregarMaquininhasParaVenda() {
         maquininhasCadastradasLoja = data || [];
         
         const select = document.getElementById('selectMaquininhaVenda');
+        if (!select) return;
+        
         select.innerHTML = '<option value="">Selecione uma maquininha cadastrada...</option>';
         
         maquininhasCadastradasLoja.forEach(m => {
@@ -312,14 +336,16 @@ window.recalcularTotalComTaxasMaquininha = function() {
         taxaPercentual = 0;
     } 
     else if (formaPagamentoAtual === 'debito' || formaPagamentoAtual === 'credito') {
-        const idMaq = document.getElementById('selectMaquininhaVenda').value;
+        const selectMaq = document.getElementById('selectMaquininhaVenda');
+        const idMaq = selectMaq ? selectMaq.value : '';
         const maq = maquininhasCadastradasLoja.find(m => m.id == idMaq);
         
         if (maq) {
             if (formaPagamentoAtual === 'debito') {
                 taxaPercentual = Number(maq.taxa_debito) || 0;
             } else if (formaPagamentoAtual === 'credito') {
-                const parcelas = document.getElementById('selectParcelasVenda').value;
+                const selectParcelas = document.getElementById('selectParcelasVenda');
+                const parcelas = selectParcelas ? selectParcelas.value : '1';
                 if (parcelas == '1') taxaPercentual = Number(maq.taxa_credito_avista) || 0;
                 else if (parcelas == '2') taxaPercentual = Number(maq.taxa_2x) || 0;
                 else if (parcelas == '3') taxaPercentual = Number(maq.taxa_3x) || 0;
@@ -332,15 +358,23 @@ window.recalcularTotalComTaxasMaquininha = function() {
     const valorTaxa = (totalOriginal * taxaPercentual) / 100;
     const totalComJuros = totalOriginal + valorTaxa;
     
-    document.getElementById('txtTaxaAplicadaInfo').innerText = `${taxaPercentual.toFixed(2)}% (R$ ${valorTaxa.toFixed(2)})`;
-    document.getElementById('modalValFinalComJuros').innerText = `R$ ${totalComJuros.toFixed(2)}`;
+    const elTaxa = document.getElementById('txtTaxaAplicadaInfo');
+    const elFinal = document.getElementById('modalValFinalComJuros');
+    
+    if (elTaxa) elTaxa.innerText = `${taxaPercentual.toFixed(2)}% (R$ ${valorTaxa.toFixed(2)})`;
+    if (elFinal) elFinal.innerText = `R$ ${totalComJuros.toFixed(2)}`;
 }
 
 window.calcularTrocoCaixa = function() {
     const totalOriginal = calcularTotalCarrinho();
-    const recebido = Number(document.getElementById('inputValorRecebido').value) || 0;
+    const inputRecebido = document.getElementById('inputValorRecebido');
+    const recebido = inputRecebido ? Number(inputRecebido.value) || 0 : 0;
     const troco = recebido - totalOriginal;
-    document.getElementById('txtTrocoDevolver').innerText = troco >= 0 ? `R$ ${troco.toFixed(2)}` : `R$ 0,00`;
+    
+    const txtTroco = document.getElementById('txtTrocoDevolver');
+    if (txtTroco) {
+        txtTroco.innerText = troco >= 0 ? `R$ ${troco.toFixed(2)}` : `R$ 0,00`;
+    }
 }
 
 window.confirmarConclusaoVenda = async function() {
