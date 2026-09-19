@@ -11,32 +11,36 @@ import {
 import { carregarProdutosCache } from './produtos.js';
 import { carregarHistoricoAdmin, carregarOperadoresLoja } from './admin.js';
 
+let valorTrocoAbertura = 0;
+let horaAberturaCaixa = null;
+
 // Função para checar o status e faturamento real do caixa individual direto no Supabase
 export async function verificarStatusCaixaServidor() {
     if (!empresaAtualId || !usuarioAtual) return;
     try {
-        // Busca o status e faturamento específico do usuário/operador atual logado
+        // Busca o status e faturamento específico do usuário/operador atual logado na tabela 'caixas'
         const { data, error } = await supabaseClient
-            .from('operadores_caixa') // Ajuste para a sua tabela de controle por operador/usuário se necessário
-            .select('caixa_aberto, faturamento_dia')
+            .from('caixas')
+            .select('status, valor_abertura, faturamento_dia')
             .eq('empresa_id', empresaAtualId)
-            .eq('email', usuarioAtual.email)
-            .single();
+            .eq('user_id', usuarioAtual.id)
+            .eq('status', 'ABERTO')
+            .maybeSingle();
 
         if (!error && data) {
-            const statusNoBanco = Boolean(data.caixa_aberto);
+            setCaixaAberto(true);
+            valorTrocoAbertura = Number(data.valor_abertura) || 0;
             const fatNoBanco = Number(data.faturamento_dia) || 0;
-
-            if (statusNoBanco !== caixaAberto) {
-                setCaixaAberto(statusNoBanco);
-                atualizarBadgesCaixaInterface();
-            }
 
             if (fatNoBanco !== faturamentoDia) {
                 setFaturamentoDia(fatNoBanco);
                 const txtFat = document.getElementById('txtFaturamentoDia');
                 if (txtFat) txtFat.innerText = `R$ ${fatNoBanco.toFixed(2)}`;
             }
+            atualizarBadgesCaixaInterface();
+        } else {
+            setCaixaAberto(false);
+            atualizarBadgesCaixaInterface();
         }
     } catch (err) {
         console.error('Erro ao verificar status do caixa no servidor:', err);
@@ -54,15 +58,17 @@ export function iniciarRealtimeCaixa() {
             {
                 event: '*',
                 schema: 'public',
-                table: 'operadores_caixa', // Tabela onde fica o status individual de cada operador
+                table: 'caixas', // Tabela dedicada ao controle de caixas individuais
                 filter: `empresa_id=eq.${empresaAtualId}`
             },
             (payload) => {
                 console.log('Mudança detectada no Realtime:', payload);
-                // Se a alteração pertencer ao usuário logado ou se for admin visualizando tudo
-                if (payload.new && payload.new.email === usuarioAtual?.email) {
-                    const novoStatus = Boolean(payload.new.caixa_aberto);
+                
+                // Se a alteração pertencer ao usuário logado atual
+                if (payload.new && payload.new.user_id === usuarioAtual?.id) {
+                    const novoStatus = payload.new.status === 'ABERTO';
                     const novoFat = Number(payload.new.faturamento_dia) || 0;
+                    valorTrocoAbertura = Number(payload.new.valor_abertura) || 0;
 
                     if (novoStatus !== caixaAberto) {
                         setCaixaAberto(novoStatus);
@@ -160,9 +166,6 @@ export function gerenciarCaixaModal(tipo) {
     }, 100);
 }
 
-let valorTrocoAbertura = 0;
-let horaAberturaCaixa = null;
-
 export function tratarEnterModalCaixa(e) {
     if (e.key === 'Enter') {
         e.preventDefault();
@@ -178,14 +181,51 @@ export function fecharModalCaixa() {
 export async function confirmarAcaoCaixa() {
     const inputValorCaixa = document.getElementById('inputValorCaixa');
     const valorDigitado = inputValorCaixa ? parseFloat(inputValorCaixa.value) || 0 : 0;
-    let novoEstadoCaixa = false;
-    let novoFaturamentoParaSalvar = faturamentoDia;
+
+    if (!empresaAtualId || !usuarioAtual) {
+        alert('PDV-VS: Erro: Sessão do usuário ou empresa não identificada.');
+        return;
+    }
 
     if (acaoCaixaAtual === 'abrir') {
         valorTrocoAbertura = valorDigitado;
         horaAberturaCaixa = new Date();
-        novoEstadoCaixa = true;
+
+        // Insere ou atualiza o registro de caixa como ABERTO na tabela 'caixas'
+        const { error } = await supabaseClient
+            .from('caixas')
+            .upsert({ 
+                empresa_id: empresaAtualId,
+                user_id: usuarioAtual.id,
+                status: 'ABERTO',
+                valor_abertura: valorTrocoAbertura,
+                faturamento_dia: 0,
+                data_abertura: new Date().toISOString(),
+                data_fechamento: null,
+                updated_at: new Date().toISOString()
+            }, { onConflict: 'empresa_id,user_id,status' }); // Ajuste conforme restrição única se houver
+
+        if (error) {
+            console.error('Erro ao abrir caixa no banco:', error);
+            // Fallback caso upsert dê conflito por chave primária genérica: tenta inserir diretamente
+            const { error: errInsert } = await supabaseClient
+                .from('caixas')
+                .insert({ 
+                    empresa_id: empresaAtualId,
+                    user_id: usuarioAtual.id,
+                    status: 'ABERTO',
+                    valor_abertura: valorTrocoAbertura,
+                    faturamento_dia: 0,
+                    data_abertura: new Date().toISOString()
+                });
+            if (errInsert) {
+                alert('PDV-VS: Erro ao salvar abertura do caixa no banco de dados: ' + errInsert.message);
+                return;
+            }
+        }
+
         setCaixaAberto(true);
+        setFaturamentoDia(0);
         alert('PDV-VS: Caixa aberto com sucesso!');
     } else {
         const horaFechamento = new Date();
@@ -194,30 +234,29 @@ export async function confirmarAcaoCaixa() {
         
         alert(`PDV-VS: Caixa Fechado com Sucesso!\n- Abertura: ${horaAberturaCaixa ? horaAberturaCaixa.toLocaleTimeString() : 'N/A'}\n- Fechamento: ${horaFechamento.toLocaleTimeString()}\n- Troco Inicial: R$ ${(valorTrocoAbertura || 0).toFixed(2)}\n- Vendas (Turno): R$ ${totalArrecadado.toFixed(2)}\n- Total Geral em Gaveta: R$ ${totalGeralGaveta.toFixed(2)}`);
         
-        novoEstadoCaixa = false;
+        // Atualiza o caixa atual para FECHADO no Supabase
+        const { error } = await supabaseClient
+            .from('caixas')
+            .update({ 
+                status: 'FECHADO',
+                valor_fechamento: totalGeralGaveta,
+                data_fechamento: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            })
+            .eq('empresa_id', empresaAtualId)
+            .eq('user_id', usuarioAtual.id)
+            .eq('status', 'ABERTO');
+
+        if (error) {
+            console.error('Erro ao fechar caixa no banco:', error);
+            alert('PDV-VS: Erro ao registrar o fechamento do caixa no banco de dados.');
+        }
+
         setCaixaAberto(false);
         valorTrocoAbertura = 0;
-        novoFaturamentoParaSalvar = 0;
         setFaturamentoDia(0);
         const txtFat = document.getElementById('txtFaturamentoDia');
         if (txtFat) txtFat.innerText = 'R$ 0,00';
-    }
-    
-    // Salva imediatamente na tabela individual do operador/usuário no Supabase
-    if (empresaAtualId && usuarioAtual) {
-        const { error } = await supabaseClient
-            .from('operadores_caixa')
-            .update({ 
-                caixa_aberto: novoEstadoCaixa,
-                faturamento_dia: novoFaturamentoParaSalvar
-            })
-            .eq('empresa_id', empresaAtualId)
-            .eq('email', usuarioAtual.email);
-            
-        if (error) {
-            console.error('Erro ao atualizar caixa individual no banco:', error);
-            alert('PDV-VS: Erro ao salvar status do caixa no banco de dados.');
-        }
     }
     
     atualizarBadgesCaixaInterface();
@@ -306,7 +345,7 @@ export function fecharModalCancelarItem() {
 }
 
 export function cancelarVenda() { 
-    if (confirm('PDV-VS: Deseja realmente cancelar toda a compra toàn?')) { 
+    if (confirm('PDV-VS: Deseja realmente cancelar toda a compra?')) { 
         setItensVenda([]); 
         atualizarTabelaVenda(); 
     } 
@@ -340,13 +379,17 @@ export async function finalizarVenda() {
     const txtFat = document.getElementById('txtFaturamentoDia');
     if (txtFat) txtFat.innerText = `R$ ${novoFat.toFixed(2)}`;
 
-    // Atualiza o faturamento em tempo real na tabela de operadores no Supabase
+    // Atualiza o faturamento atual na tabela de caixas no Supabase
     if (empresaAtualId && usuarioAtual) {
         await supabaseClient
-            .from('operadores_caixa')
-            .update({ faturamento_dia: novoFat })
+            .from('caixas')
+            .update({ 
+                faturamento_dia: novoFat,
+                updated_at: new Date().toISOString()
+            })
             .eq('empresa_id', empresaAtualId)
-            .eq('email', usuarioAtual.email);
+            .eq('user_id', usuarioAtual.id)
+            .eq('status', 'ABERTO');
     }
 
     setItensVenda([]); 
