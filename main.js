@@ -407,3 +407,40 @@ async function carregarFaturamentoDiarioResumo() {
         console.error("Erro ao carregar faturamento diário:", e);
     }
 }
+// Exemplo do que adicionar no final do seu main.js:
+window.tratarEnterLogin = tratarEnterLogin;
+window.processarAutenticacao = processarAutenticacao;
+window.alternarTelaAuth = alternarTelaAuth;
+window.solicitarRecuperacaoSenha = solicitarRecuperacaoSenha;
+window.atualizarPaginaCompleta = atualizarPaginaCompleta;
+window.realizarLogout = realizarLogout;
+window.aoDigitarBusca = aoDigitarBusca;
+window.tratarEnterBuscaCaixa = tratarEnterBuscaCaixa;
+window.abrirLeitorCamera = abrirLeitorCamera;
+window.abrirModalCancelarItem = abrirModalCancelarItem;
+window.cancelarVenda = cancelarVenda;
+window.finalizarVenda = finalizarVenda;
+window.gerenciarCaixaModal = gerenciarCaixaModal;
+window.abrirPainelAdmin = abrirPainelAdmin;
+window.mudarAbaAdmin = mudarAbaAdmin;
+window.filtrarTabelaAdmin = filtrarTabelaAdmin;
+window.abrirModalNovoProdutoAdmin = abrirModalNovoProdutoAdmin;
+window.recarregarDadosAdmin = recarregarDadosAdmin;
+window.fecharPainelAdmin = fecharPainelAdmin;
+window.abrirModalNovoOperador = abrirModalNovoOperador;
+window.abrirModalNovaMaquininha = abrirModalNovaMaquininha;
+window.salvarConfiguracoesEmpresaAdmin = salvarConfiguracoesEmpresaAdmin;
+window.salvarPinAdmin = salivarPinAdmin; // ou o nome correto da sua função
+window.selecionarFormaPagamento = selecionarFormaPagamento;
+window.recalcularTotalComTaxasMaquininha = recalcularTotalComTaxasMaquininha;
+window.calcularTrocoCaixa = calcularTrocoCaixa;
+window.fecharModalFinalizarVenda = fecharModalFinalizarVenda;
+window.confirmarConclusaoVenda = confirmarConclusaoVenda;
+window.fecharFormProduto = fecharFormProduto;
+window.salvarProdutoAdmin = salvarProdutoAdmin;
+window.escanearCameraAdmin = escanearCameraAdmin;
+window.fecharModalNovaMaquininha = maquininha => ... // garanta que as funções globais usadas no HTML estejam aqui
+window.salvarNovaMaquininha = salvarNovaMaquininha;
+window.tratarEnterModalCaixa = tratarEnterModalCaixa;
+window.fecharModalCaixa = fecharModalCaixa;
+window.confirmarAcaoCaixa = confirmarAcaoCaixa;
