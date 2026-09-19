@@ -40,12 +40,3 @@ export function setHistoricoVendasCache(val) { historicoVendasCache = val; }
 export function setOrigemLeitor(val) { origemLeitor = val; }
 export function setHtml5QrcodeInstance(val) { html5QrcodeInstance = val; }
 export function setListaEmpresasCache(val) { listaEmpresasCache = val; }
-// Expondo funções para o escopo global (para o HTML / onclick funcionar)
-window.alternarTelaAuth = alternarTelaAuth;
-window.tratarEnterLogin = tratarEnterLogin;
-window.processarAutenticacao = processarAutenticacao;
-window.solicitarRecuperacaoSenha = solicitarRecuperacaoSenha;
-window.abrirSuperAdminMaster = abrirSuperAdminMaster;
-window.fecharSuperAdminMaster = fecharSuperAdminMaster;
-window.alternarStatusEmpresa = alternarStatusEmpresa;
-window.instalarPwaApp = instalarPwaApp;

@@ -353,12 +353,19 @@ export function renderizarHistoricoVendasPorJanelasDiarias() {
 
     container.innerHTML = htmlJanelas;
 }
-// Expondo funções para o escopo global (para o HTML / onclick funcionar)
-window.alternarTelaAuth = alternarTelaAuth;
-window.tratarEnterLogin = tratarEnterLogin;
-window.processarAutenticacao = processarAutenticacao;
-window.solicitarRecuperacaoSenha = solicitarRecuperacaoSenha;
-window.abrirSuperAdminMaster = abrirSuperAdminMaster;
-window.fecharSuperAdminMaster = fecharSuperAdminMaster;
-window.alternarStatusEmpresa = alternarStatusEmpresa;
-window.instalarPwaApp = instalarPwaApp;
+
+// Expondo funções administrativas para o escopo global (para o HTML / onclick funcionar)
+window.mudarAbaAdmin = mudarAbaAdmin;
+window.recarregarDadosAdmin = recarregarDadosAdmin;
+window.abrirPainelAdmin = abrirPainelAdmin;
+window.fecharPainelAdmin = fecharPainelAdmin;
+window.filtrarTabelaAdmin = filtrarTabelaAdmin;
+window.abrirModalNovoProdutoAdmin = abrirModalNovoProdutoAdmin;
+window.abrirEditarProdutoAdmin = abrirEditarProdutoAdmin;
+window.fecharFormProduto = fecharFormProduto;
+window.salvarProdutoAdmin = salvarProdutoAdmin;
+window.excluirProdutoAdmin = excluirProdutoAdmin;
+window.excluirOperadorLoja = excluirOperadorLoja;
+window.abrirModalNovoOperador = abrirModalNovoOperador;
+window.fecharModalNovoOperador = fecharModalNovoOperador;
+window.salvarNovoOperador = salvarNovoOperador;

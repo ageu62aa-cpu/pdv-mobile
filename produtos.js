@@ -174,12 +174,11 @@ export function tratarEnterBuscaCaixa(e) {
         }
     }
 }
-// Expondo funções para o escopo global (para o HTML / onclick funcionar)
-window.alternarTelaAuth = alternarTelaAuth;
-window.tratarEnterLogin = tratarEnterLogin;
-window.processarAutenticacao = processarAutenticacao;
-window.solicitarRecuperacaoSenha = solicitarRecuperacaoSenha;
-window.abrirSuperAdminMaster = abrirSuperAdminMaster;
-window.fecharSuperAdminMaster = fecharSuperAdminMaster;
-window.alternarStatusEmpresa = alternarStatusEmpresa;
-window.instalarPwaApp = instalarPwaApp;
+
+// Expondo funções deste módulo para o escopo global (para os eventos HTML funcionarem)
+window.adicionarItemVendaPorObjeto = adicionarItemVendaPorObjeto;
+window.fecharModalPesagemManual = fecharModalPesagemManual;
+window.calcularValorParcialPeso = calcularValorParcialPeso;
+window.tratarEnterModalPesagem = tratarEnterModalPesagem;
+window.confirmarAdicaoPeso = confirmarAdicaoPeso;
+window.tratarEnterBuscaCaixa = tratarEnterBuscaCaixa;

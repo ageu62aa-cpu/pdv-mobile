@@ -347,6 +347,7 @@ export async function alternarStatusEmpresa(empresaId, statusAtual) {
         alert('PDV-VS: Erro ao atualizar status: ' + error.message);
     }
 }
+
 // Expondo funções para o escopo global (para o HTML / onclick funcionar)
 window.alternarTelaAuth = alternarTelaAuth;
 window.tratarEnterLogin = tratarEnterLogin;
