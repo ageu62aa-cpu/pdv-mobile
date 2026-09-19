@@ -37,7 +37,7 @@
             
             <!-- Botões do Topo Direito (Admin + Instalação PWA Discreta ao lado do ícone) -->
             <div class="absolute top-4 right-4 flex items-center space-x-2">
-                <!-- Botão de Instalação PWA Discreto (Aparece automaticamente quando disponível) -->
+                <!-- Botão de Instalação PWA Discreto -->
                 <button id="btnInstalarPwaLogin" onclick="instalarAppPwa()" class="hidden bg-amber-100 hover:bg-amber-200 text-amber-800 border border-amber-300 px-2 py-1 rounded-lg text-xs font-bold transition flex items-center space-x-1 shadow-sm" title="Instalar Aplicativo">
                     <i class="fa-solid fa-download text-amber-600"></i>
                     <span>Instalar App</span>
@@ -548,59 +548,7 @@
         </div>
     </div>
 
-    <!-- Scripts do Sistema com type="module" corrigido nos scripts principais ou carregados corretamente -->
-    <script src="config.js"></script>
-    <script src="state.js"></script>
-    <script src="auth.js"></script>
-    <script src="caixa.js"></script>
-    <script src="camera.js"></script>
-    <script src="produtos.js"></script>
-    <script src="admin.js"></script>
-    <script src="main.js"></script>
-
-    <script>
-        // Captura do Evento PWA para exibir o botão discreto ao lado do ícone de caixa
-        let deferredPrompt = null;
-
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            deferredPrompt = e;
-            
-            // Exibir botão discreto na tela de login (ao lado do icone/Admin)
-            const btnPwaLogin = document.getElementById('btnInstalarPwaLogin');
-            if (btnPwaLogin) btnPwaLogin.classList.remove('hidden');
-
-            // Exibir botão no header caso já esteja logado
-            const btnPwaHeader = document.getElementById('btnInstalarPwaHeader');
-            if (btnPwaHeader) btnPwaHeader.classList.remove('hidden');
-        });
-
-        function instalarAppPwa() {
-            if (deferredPrompt) {
-                deferredPrompt.prompt();
-                deferredPrompt.userChoice.then((choiceResult) => {
-                    if (choiceResult.outcome === 'accepted') {
-                        console.log('Usuário aceitou a instalação do PWA');
-                    }
-                    deferredPrompt = null;
-                    const btnPwaLogin = document.getElementById('btnInstalarPwaLogin');
-                    if (btnPwaLogin) btnPwaLogin.classList.add('hidden');
-                    const btnPwaHeader = document.getElementById('btnInstalarPwaHeader');
-                    if (btnPwaHeader) btnPwaHeader.classList.add('hidden');
-                });
-            } else {
-                alert('O aplicativo já está instalado ou o seu navegador não suporta instalação direta neste momento. Use o menu do navegador (três pontinhos) e clique em "Instalar aplicativo" ou "Adicionar à Tela Inicial".');
-            }
-        }
-
-        // Registo do Service Worker
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js')
-                    .then(reg => console.log('Service Worker registado com sucesso!', reg.scope))
-                    .catch(err => console.log('Erro ao registar Service Worker:', err));
-            });
-        }
-    </script>
+    <!-- CARREGAMENTO ÚNICO DO SCRIPT PRINCIPAL COMO MÓDULO (Resolve o erro de variáveis duplicadas e imports) -->
+    <script type="module" src="main.js"></script>
 </body>
 </html>
