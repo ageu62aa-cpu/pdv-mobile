@@ -44,7 +44,7 @@ function inicializarEventosPDV() {
     });
 }
 
-// --- AUTENTICAÇÃO E TELAS ---
+// --- AUTENTICAÇÃO E SUPABASE ---
 window.tratarEnterLogin = function(e) {
     if (e.key === 'Enter') {
         window.processarAutenticacao();
@@ -52,8 +52,40 @@ window.tratarEnterLogin = function(e) {
 }
 
 window.processarAutenticacao = async function() {
-    console.log("Processando autenticação...");
-    // Implemente a lógica de login aqui caso esteja noutroum script
+    const emailInput = document.getElementById('inputEmailLogin');
+    const senhaInput = document.getElementById('inputSenhaLogin');
+    
+    if (!emailInput || !senhaInput) return;
+    
+    const email = emailInput.value.trim();
+    const senha = senhaInput.value.trim();
+
+    if (!email || !senha) {
+        alert("Por favor, preencha o e-mail e a senha.");
+        return;
+    }
+
+    try {
+        console.log("A autenticar com o Supabase...");
+        const { data, error } = await window.supabaseClient.auth.signInWithPassword({
+            email: email,
+            password: senha
+        });
+
+        if (error) throw error;
+
+        if (data && data.user) {
+            localStorage.setItem('pdv_usuario_email', data.user.email);
+            // Defina o ID da loja correspondente conforme a sua tabela de operadores/lojas
+            localStorage.setItem('pdv_loja_id', data.user.id); 
+            
+            alert("Login efetuado com sucesso!");
+            window.location.reload();
+        }
+    } catch (e) {
+        console.error("Erro no login:", e);
+        alert("Erro ao autenticar: " + (e.message || e));
+    }
 }
 
 window.alternarTelaAuth = function() {
