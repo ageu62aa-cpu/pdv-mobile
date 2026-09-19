@@ -156,7 +156,8 @@ export async function processarAutenticacao() {
                 cep,
                 endereco: `${endereco}, nº ${numero}`,
                 whatsapp,
-                ativo: true 
+                ativo: true,
+                caixa_aberto: false
             }]).select().single();
             
             if (empError) throw empError;
@@ -211,7 +212,10 @@ export async function validarVinculoEmpresaUsuario() {
         }
         setDadosEmpresaAtual(empData); 
 
-        // CRIAÇÃO E REGISTRO DO TOKEN DE SESSÃO ÚNICA
+        // Define o status do caixa diretamente do banco de dados da empresa
+        setCaixaAberto(empData.caixa_aberto === true);
+
+        // REGISTRA O TOKEN DE SESSÃO ÚNICA
         const novoTokenSessao = 'sessao_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
         setTokenSessaoAtual(novoTokenSessao);
 
@@ -255,9 +259,6 @@ export function concluirLoginSucesso(cargoUser) {
     
     const btnAdminMenu = document.getElementById('btnAdminMenu');
     if (btnAdminMenu) btnAdminMenu.classList.toggle('hidden', cargoUser !== 'admin_mercado');
-    
-    const statusCaixaSalvo = localStorage.getItem(`pdv_caixa_aberto_${empresaAtualId}_${usuarioAtual.id}`);
-    setCaixaAberto(statusCaixaSalvo === 'true');
 
     atualizarBadgesCaixaInterface();
 
@@ -268,11 +269,10 @@ export function concluirLoginSucesso(cargoUser) {
     
     carregarProdutosCache(); 
     iniciarSincronizacaoRealtime();
-    iniciarMonitoramentoSessaoUnica(); // Ativa a verificação de sessão única
+    iniciarMonitoramentoSessaoUnica();
     focarBusca();
 }
 
-// MONITORAMENTO CONTÍNUO DE SESSÃO ÚNICA (Derruba se logar em outro aparelho)
 function iniciarMonitoramentoSessaoUnica() {
     setInterval(async () => {
         if (!usuarioAtual || !tokenSessaoAtual) return;
@@ -291,7 +291,7 @@ function iniciarMonitoramentoSessaoUnica() {
         } catch (err) {
             console.error('Erro ao verificar sessão única:', err);
         }
-    }, 10000); // Verifica a cada 10 segundos
+    }, 10000);
 }
 
 export function iniciarSincronizacaoRealtime() {
@@ -309,12 +309,21 @@ export function iniciarSincronizacaoRealtime() {
         })
         .subscribe();
 
+    // Sincronização em tempo real do status da empresa (bloqueio e estado do caixa)
     supabaseClient
         .channel('public:empresas_sync')
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'empresas', filter: `id=eq.${empresaAtualId}` }, payload => {
-            if (payload.new && payload.new.ativo === false) {
-                alert('PDV-VS: Este estabelecimento foi bloqueado.');
-                location.reload();
+            if (payload.new) {
+                if (payload.new.ativo === false) {
+                    alert('PDV-VS: Este estabelecimento foi bloqueado.');
+                    location.reload();
+                    return;
+                }
+                // Atualiza o estado do caixa em tempo real caso mude em outro aparelho
+                if (payload.new.caixa_aberto !== undefined) {
+                    setCaixaAberto(payload.new.caixa_aberto);
+                    atualizarBadgesCaixaInterface();
+                }
             }
         })
         .subscribe();
@@ -383,7 +392,7 @@ export async function alternarStatusEmpresa(empresaId, statusAtual) {
     }
 }
 
-// Expondo funções para o escopo global (para o HTML / onclick funcionar)
+// Expondo funções para o escopo global
 window.alternarTelaAuth = alternarTelaAuth;
 window.tratarEnterLogin = tratarEnterLogin;
 window.processarAutenticacao = processarAutenticacao;

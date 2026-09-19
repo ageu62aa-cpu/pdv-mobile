@@ -11,30 +11,6 @@ import {
 import { carregarProdutosCache } from './produtos.js';
 import { carregarHistoricoAdmin, carregarOperadoresLoja } from './admin.js';
 
-// Sincronização em tempo real entre abas / dispositivos com o mesmo login
-window.addEventListener('storage', (event) => {
-    if (empresaAtualId && usuarioAtual) {
-        const chaveCaixa = `pdv_caixa_aberto_${empresaAtualId}_${usuarioAtual.id}`;
-        const chaveFat = `pdv_faturamento_${empresaAtualId}_${usuarioAtual.id}`;
-        
-        if (event.key === chaveCaixa) {
-            const novoEstado = event.newValue === 'true';
-            if (caixaAberto !== novoEstado) {
-                setCaixaAberto(novoEstado);
-                atualizarBadgesCaixaInterface();
-            }
-        }
-        if (event.key === chaveFat) {
-            const novoFat = parseFloat(event.newValue) || 0;
-            if (faturamentoDia !== novoFat) {
-                setFaturamentoDia(novoFat);
-                const txtFat = document.getElementById('txtFaturamentoDia');
-                if (txtFat) txtFat.innerText = `R$ ${novoFat.toFixed(2)}`;
-            }
-        }
-    }
-});
-
 export async function atualizarPaginaCompleta() {
     if (confirm('PDV-VS: Deseja atualizar e sincronizar todos os dados do sistema?')) {
         await carregarProdutosCache();
@@ -113,7 +89,7 @@ export function fecharModalCaixa() {
     if (modal) modal.classList.add('hidden'); 
 }
 
-export function confirmarAcaoCaixa() {
+export async function confirmarAcaoCaixa() {
     const inputValorCaixa = document.getElementById('inputValorCaixa');
     const valorDigitado = inputValorCaixa ? parseFloat(inputValorCaixa.value) || 0 : 0;
 
@@ -121,6 +97,16 @@ export function confirmarAcaoCaixa() {
         valorTrocoAbertura = valorDigitado;
         horaAberturaCaixa = new Date();
         setCaixaAberto(true);
+
+        // Atualiza o status do caixa diretamente no Supabase para sincronizar entre dispositivos
+        if (empresaAtualId) {
+            const { error } = await supabaseClient
+                .from('empresas')
+                .update({ caixa_aberto: true })
+                .eq('id', empresaAtualId);
+            if (error) console.error('Erro ao atualizar caixa no banco:', error);
+        }
+
         alert('PDV-VS: Caixa aberto com sucesso!');
     } else {
         const horaFechamento = new Date();
@@ -134,13 +120,17 @@ export function confirmarAcaoCaixa() {
         setFaturamentoDia(0);
         const txtFat = document.getElementById('txtFaturamentoDia');
         if (txtFat) txtFat.innerText = 'R$ 0,00';
+
+        // Atualiza o status do caixa como fechado no Supabase
+        if (empresaAtualId) {
+            const { error } = await supabaseClient
+                .from('empresas')
+                .update({ caixa_aberto: false })
+                .eq('id', empresaAtualId);
+            if (error) console.error('Erro ao atualizar caixa no banco:', error);
+        }
     }
     
-    if (usuarioAtual && empresaAtualId) {
-        localStorage.setItem(`pdv_caixa_aberto_${empresaAtualId}_${usuarioAtual.id}`, caixaAberto ? 'true' : 'false');
-        localStorage.setItem(`pdv_faturamento_${empresaAtualId}_${usuarioAtual.id}`, faturamentoDia);
-    }
-
     atualizarBadgesCaixaInterface();
     fecharModalCaixa();
     focarBusca();
@@ -217,7 +207,7 @@ export function abrirModalCancelarItem() {
     const listaCancelar = document.getElementById('listaItensParaCancelar');
     const modalCancelar = document.getElementById('modalCancelarItem');
     if (listaCancelar) listaCancelar.innerHTML = html;
-    if (modalCancelar) modalCancelar.classList.add('hidden'); // Ajustado para fechar ou abrir corretamente conforme a lógica original
+    if (modalCancelar) modalCancelar.classList.remove('hidden');
 }
 
 export function fecharModalCancelarItem() { 
@@ -260,10 +250,6 @@ export async function finalizarVenda() {
     setFaturamentoDia(novoFat); 
     const txtFat = document.getElementById('txtFaturamentoDia');
     if (txtFat) txtFat.innerText = `R$ ${novoFat.toFixed(2)}`;
-    
-    if (usuarioAtual && empresaAtualId) {
-        localStorage.setItem(`pdv_faturamento_${empresaAtualId}_${usuarioAtual.id}`, novoFat);
-    }
 
     setItensVenda([]); 
     atualizarTabelaVenda(); 
