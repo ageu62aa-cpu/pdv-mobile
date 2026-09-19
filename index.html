@@ -131,8 +131,8 @@
                 </div>
             </div>
             <div class="flex items-center space-x-2">
-                <!-- BOTÃO DE INSTALAÇÃO PWA (AGORA INCLUÍDO NO TOPO) -->
-                <button id="btnInstalarApp" class="hidden bg-amber-500 hover:bg-amber-600 text-slate-950 px-2.5 py-1.5 rounded text-xs font-black transition flex items-center space-x-1 shadow" title="Instalar Aplicativo">
+                <!-- BOTÃO DE INSTALAÇÃO PWA (FORÇADO A APARECER SE O NAVEGADOR SUPORTAR) -->
+                <button id="btnInstalarApp" onclick="instalarPWA()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 px-3 py-1.5 rounded text-xs font-black transition flex items-center space-x-1 shadow animate-bounce" title="Instalar Aplicativo">
                     <i class="fa-solid fa-download"></i><span>Instalar App</span>
                 </button>
                 
@@ -226,7 +226,6 @@
                 <button onclick="fecharPainelAdmin()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-xl"></i></button>
             </div>
             
-            <!-- ABAS DO PAINEL ADMIN (COM A ABA MAQUININHAS ADICIONADA) -->
             <div class="flex space-x-2 border-b pb-3 mb-3 overflow-x-auto">
                 <button id="btnAbaProdutos" onclick="mudarAbaAdmin('produtos')" class="px-3 py-1.5 text-xs font-bold bg-emerald-600 text-white rounded-lg">Produtos (Máx 800)</button>
                 <button id="btnAbaOperadores" onclick="mudarAbaAdmin('operadores')" class="px-3 py-1.5 text-xs font-bold bg-slate-200 text-slate-700 rounded-lg">Operadores & Status</button>
@@ -235,7 +234,6 @@
                 <button id="btnAbaConfiguracoes" onclick="mudarAbaAdmin('configuracoes')" class="px-3 py-1.5 text-xs font-bold bg-slate-200 text-slate-700 rounded-lg">Configurações & PIN</button>
             </div>
             
-            <!-- ABA PRODUTOS -->
             <div id="conteudoAbaProdutos" class="flex-1 flex flex-col overflow-hidden">
                 <div class="flex justify-between mb-3 gap-2 items-center">
                     <input type="text" oninput="filtrarTabelaAdmin(this.value)" placeholder="Buscar produto..." class="border rounded px-3 py-1.5 text-sm flex-1">
@@ -258,7 +256,6 @@
                 </div>
             </div>
 
-            <!-- ABA OPERADORES -->
             <div id="conteudoAbaOperadores" class="hidden flex-1 flex flex-col overflow-hidden">
                 <div class="flex justify-between mb-3 items-center">
                     <p class="text-xs text-slate-500">Gerencie o Administrador e os operadores.</p>
@@ -279,12 +276,11 @@
                 </div>
             </div>
 
-            <!-- ABA MAQUININHAS & TAXAS (NOVA) -->
             <div id="conteudoAbaMaquininhas" class="hidden flex-1 flex flex-col overflow-hidden space-y-3">
                 <div class="flex justify-between items-center bg-slate-50 p-3 rounded-xl border">
                     <div>
                         <h4 class="font-bold text-xs text-slate-800 uppercase">Cadastro de Maquininhas de Cartão</h4>
-                        <p class="text-[11px] text-slate-500">Cadastre as operadoras (Stone, Ton, PagSeguro) e configure as taxas de débito e crédito.</p>
+                        <p class="text-[11px] text-slate-500">Cadastre as operadoras e configure as taxas de débito, crédito e parcelamento.</p>
                     </div>
                     <button onclick="abrirModalNovaMaquininha()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-lg text-xs font-bold shadow flex items-center space-x-1.5">
                         <i class="fa-solid fa-plus"></i><span>Nova Maquininha</span>
@@ -307,7 +303,6 @@
                 </div>
             </div>
 
-            <!-- ABA HISTÓRICO & FATURAMENTO -->
             <div id="conteudoAbaHistorico" class="hidden flex-1 flex flex-col overflow-hidden space-y-3">
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div class="bg-emerald-50 border border-emerald-200 p-3 rounded-xl">
@@ -328,7 +323,6 @@
                 </div>
             </div>
 
-            <!-- ABA CONFIGURAÇÕES & PIN -->
             <div id="conteudoAbaConfiguracoes" class="hidden flex-1 flex flex-col p-4 space-y-4 overflow-y-auto">
                 <h3 class="font-bold text-sm text-slate-800 border-b pb-2"><i class="fa-solid fa-key text-emerald-600 mr-1"></i> Configurações do Estabelecimento</h3>
                 <div class="max-w-md space-y-3 bg-slate-50 p-4 rounded-xl border">
@@ -354,7 +348,78 @@
         </div>
     </div>
 
-    <!-- MODAL FORMULÁRIO DE PRODUTO -->
+    <!-- MODAL DE FINALIZAÇÃO DE VENDA COM OPÇÕES DE PAGAMENTO E MAQUININHAS (NOVO) -->
+    <div id="modalFinalizarVenda" class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl animate-scaleUp space-y-4">
+            <div class="flex justify-between items-center border-b pb-3">
+                <h3 class="font-bold text-lg text-slate-900"><i class="fa-solid fa-cash-register text-emerald-600 mr-2"></i> Finalizar Venda</h3>
+                <button onclick="fecharModalFinalizarVenda()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+
+            <div class="bg-slate-50 p-3 rounded-xl border flex justify-between items-center">
+                <span class="text-xs font-bold text-slate-600 uppercase">Valor Total dos Produtos:</span>
+                <span id="modalValTotalOriginal" class="text-base font-bold text-slate-800">R$ 0,00</span>
+            </div>
+
+            <!-- BOTÕES DE SELEÇÃO RÁPIDA DA FORMA DE PAGAMENTO -->
+            <div>
+                <label class="block text-xs font-bold text-slate-600 mb-2">Forma de Pagamento</label>
+                <div class="grid grid-cols-4 gap-2">
+                    <button type="button" onclick="selecionarFormaPagamento('dinheiro')" id="btnFormaDinheiro" class="py-2.5 px-2 bg-emerald-600 text-white text-xs font-bold rounded-lg shadow transition text-center">Dinheiro</button>
+                    <button type="button" onclick="selecionarFormaPagamento('pix')" id="btnFormaPix" class="py-2.5 px-2 bg-slate-100 text-slate-700 text-xs font-bold rounded-lg hover:bg-slate-200 transition text-center">PIX</button>
+                    <button type="button" onclick="selecionarFormaPagamento('debito')" id="btnFormaDebito" class="py-2.5 px-2 bg-slate-100 text-slate-700 text-xs font-bold rounded-lg hover:bg-slate-200 transition text-center">Débito</button>
+                    <button type="button" onclick="selecionarFormaPagamento('credito')" id="btnFormaCredito" class="py-2.5 px-2 bg-slate-100 text-slate-700 text-xs font-bold rounded-lg hover:bg-slate-200 transition text-center">Crédito</button>
+                </div>
+            </div>
+
+            <!-- SEÇÃO ESPECÍFICA PARA CARTÃO (EXIBE MAQUININHAS E JUROS) -->
+            <div id="secaoOpcoesCartao" class="hidden space-y-3 bg-blue-50/50 p-3.5 rounded-xl border border-blue-100">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Selecionar Maquininha</label>
+                    <select id="selectMaquininhaVenda" onchange="recalcularTotalComTaxasMaquininha()" class="w-full p-2.5 border rounded-lg text-sm bg-white font-medium">
+                        <option value="">Selecione uma maquininha cadastrada...</option>
+                    </select>
+                </div>
+                <div id="divSeletorParcelas" class="hidden">
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Condição de Parcelamento</label>
+                    <select id="selectParcelasVenda" onchange="recalcularTotalComTaxasMaquininha()" class="w-full p-2.5 border rounded-lg text-sm bg-white">
+                        <option value="1">Crédito à Vista</option>
+                        <option value="2">2x com Juros</option>
+                        <option value="3">3x com Juros</option>
+                        <option value="6">6x com Juros</option>
+                        <option value="12">12x com Juros</option>
+                    </select>
+                </div>
+                <div class="flex justify-between items-center text-xs pt-1 border-t border-blue-200">
+                    <span class="text-blue-900 font-semibold">Taxa / Juros Aplicados:</span>
+                    <span id="txtTaxaAplicadaInfo" class="font-bold text-blue-700">0.00% (R$ 0,00)</span>
+                </div>
+            </div>
+
+            <!-- SEÇÃO DINHEIRO (TROCO) -->
+            <div id="secaoDinheiroTroco" class="space-y-2">
+                <label class="block text-xs font-bold text-slate-600">Valor Recebido em Dinheiro (R$)</label>
+                <input type="number" step="0.01" id="inputValorRecebido" oninput="calcularTrocoCaixa()" placeholder="0.00" class="w-full p-3 border rounded-xl text-lg font-bold text-emerald-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                <div class="flex justify-between items-center bg-slate-50 p-2.5 rounded-lg border text-xs">
+                    <span class="font-bold text-slate-600">Troco a Devolver:</span>
+                    <strong id="txtTrocoDevolver" class="text-emerald-700 text-sm font-black font-mono">R$ 0,00</strong>
+                </div>
+            </div>
+
+            <!-- VALOR FINAL COM JUROS -->
+            <div class="bg-emerald-50 p-3 rounded-xl border border-emerald-200 flex justify-between items-center">
+                <span class="font-bold text-xs text-emerald-900 uppercase">Valor Final a Cobrar do Cliente:</span>
+                <span id="modalValFinalComJuros" class="text-lg font-black text-emerald-700 font-mono">R$ 0,00</span>
+            </div>
+
+            <div class="flex space-x-2 pt-2">
+                <button onclick="fecharModalFinalizarVenda()" class="w-1/2 bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 rounded-xl font-bold text-xs transition">Cancelar</button>
+                <button onclick="confirmarConclusaoVenda()" class="w-1/2 bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-bold text-xs shadow-lg transition">Concluir Venda</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- OUTROS MODAIS (Produto, Maquininha, Caixa, etc) -->
     <div id="modalFormProduto" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-3">
         <div class="bg-white rounded-xl max-w-sm w-full p-5 shadow-2xl">
             <h3 class="font-bold text-base mb-4 text-slate-900">Gerenciar Produto</h3>
@@ -396,7 +461,6 @@
         </div>
     </div>
 
-    <!-- MODAL DE CADASTRO DE MAQUININHA (NOVO) -->
     <div id="modalNovaMaquininha" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-3">
         <div class="bg-white rounded-xl max-w-md w-full p-5 shadow-2xl space-y-4">
             <h3 class="font-bold text-base text-slate-900 border-b pb-2">Cadastrar Maquininha e Taxas</h3>
@@ -444,7 +508,6 @@
         </div>
     </div>
 
-    <!-- MODAL DE CAIXA PROFISSIONAL -->
     <div id="modalCaixa" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 text-slate-800 animate-scaleUp">
             <div class="flex justify-between items-center mb-4 border-b pb-3">
@@ -474,62 +537,6 @@
                 <button onclick="fecharModalCaixa()" class="w-1/2 bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 rounded-xl font-bold text-sm transition">Cancelar</button>
                 <button id="btnConfirmarCaixaModal" onclick="confirmarAcaoCaixa()" class="w-1/2 bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-bold text-sm shadow-lg transition">Confirmar</button>
             </div>
-        </div>
-    </div>
-
-    <!-- MODAL DE AUTORIZAÇÃO PIN ADMIN -->
-    <div id="modalAutorizacaoAdmin" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-3">
-        <div class="bg-white rounded-xl max-w-xs w-full p-5 shadow-2xl text-center">
-            <i class="fa-solid fa-user-shield text-3xl text-emerald-500 mb-2"></i>
-            <h3 class="font-bold text-sm mb-1">Autorização Gerencial</h3>
-            <p class="text-xs text-slate-500 mb-3">Digite o PIN do administrador e pressione Enter.</p>
-            <input type="password" id="inputPinAutorizacion" onkeydown="tratarEnterModalAutorizacao(event)" placeholder="PIN" class="w-full p-2 border rounded text-center text-lg tracking-widest mb-3 focus:outline-none focus:ring-2 focus:ring-emerald-500">
-            <div class="flex space-x-2">
-                <button onclick="fecharModalAutorizacao()" class="w-1/2 bg-slate-200 text-slate-700 py-2 rounded text-xs font-bold">Cancelar</button>
-                <button onclick="confirmarAutorizacaoPin()" class="w-1/2 bg-emerald-600 text-white py-2 rounded text-xs font-bold shadow">Autorizar</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- MODAL LISTA CANCELAR ITEM -->
-    <div id="modalCancelarItem" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-3">
-        <div class="bg-white rounded-xl max-w-sm w-full p-5 shadow-2xl">
-            <div class="flex justify-between items-center mb-3">
-                <h3 class="font-bold text-sm">Selecionar Item para Cancelar</h3>
-                <button onclick="fecharModalCancelarItem()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-            <div id="listaItensParaCancelar" class="max-h-60 overflow-y-auto border rounded divide-y"></div>
-        </div>
-    </div>
-
-    <!-- MODAL NOVO OPERADOR -->
-    <div id="modalNovoOperador" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-3">
-        <div class="bg-white rounded-xl max-w-sm w-full p-5 shadow-2xl">
-            <h3 class="font-bold text-base mb-3 text-slate-900">Novo Operador</h3>
-            <div class="space-y-3">
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 mb-1">E-mail do Operador</label>
-                    <input type="email" id="novoOpEmail" class="w-full p-2 border rounded text-sm" placeholder="operador@loja.com">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 mb-1">Senha Provisória</label>
-                    <input type="password" id="novoOpSenha" class="w-full p-2 border rounded text-sm" placeholder="••••••••">
-                </div>
-            </div>
-            <div class="flex justify-end space-x-2 mt-5">
-                <button onclick="fecharModalNovoOperador()" class="bg-slate-200 text-slate-700 px-3 py-2 rounded text-xs font-bold">Cancelar</button>
-                <button onclick="salvarNovoOperador()" class="bg-emerald-600 text-white px-4 py-2 rounded text-xs font-bold shadow">Criar Operador</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- MODAL DE CÂMERA -->
-    <div id="modalCamera" class="hidden fixed inset-0 bg-black/90 flex flex-col items-center justify-center z-50 p-4">
-        <div class="max-w-md w-full bg-slate-900 border border-slate-800 rounded-2xl p-4 text-center text-white relative shadow-2xl">
-            <h3 class="text-base font-bold mb-3"><i class="fa-solid fa-camera text-emerald-500 mr-2"></i> Leitor de Código de Barras</h3>
-            <div id="videoPreviewCamera" class="w-full h-72 bg-black rounded-lg overflow-hidden relative border border-slate-700"></div>
-            <p class="text-xs text-slate-400 mt-3">Aponte o código de barras (EAN-13 / EAN-8) para a câmera.</p>
-            <button onclick="fecharLeitorCamera()" class="mt-4 w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-2.5 rounded-lg text-sm transition">Fechar Câmera</button>
         </div>
     </div>
 
