@@ -16,9 +16,7 @@ document.addEventListener("DOMContentLoaded", () => {
 // --- LÓGICA DO PWA (GERENCIADO PELA BARRA DE URL DO NAVEGADOR) ---
 function configurarEventoPWA() {
     window.addEventListener('beforeinstallprompt', (e) => {
-        // Impede o banner automático do navegador
         e.preventDefault();
-        // Armazena o evento caso queira utilizar no futuro
         deferredPrompt = e;
         console.log("PWA pronto para instalação pela barra de endereços do navegador.");
     });
@@ -30,7 +28,6 @@ function configurarEventoPWA() {
 }
 
 function inicializarEventosPDV() {
-    // Atalhos de Teclado Globais do PDV
     document.addEventListener('keydown', (e) => {
         if (e.key === 'F5') {
             e.preventDefault();
@@ -45,6 +42,36 @@ function inicializarEventosPDV() {
             fecharModalCaixa();
         }
     });
+}
+
+// --- AUTENTICAÇÃO E TELAS ---
+window.tratarEnterLogin = function(e) {
+    if (e.key === 'Enter') {
+        window.processarAutenticacao();
+    }
+}
+
+window.processarAutenticacao = async function() {
+    console.log("Processando autenticação...");
+    // Implemente a lógica de login aqui caso esteja noutroum script
+}
+
+window.alternarTelaAuth = function() {
+    console.log("Alternando tela de autenticação...");
+}
+
+window.solicitarRecuperacaoSenha = function() {
+    console.log("Solicitando recuperação de senha...");
+}
+
+window.atualizarPaginaCompleta = function() {
+    window.location.reload();
+}
+
+window.realizarLogout = function() {
+    localStorage.removeItem('pdv_loja_id');
+    localStorage.removeItem('pdv_usuario_email');
+    window.location.reload();
 }
 
 // --- BUSCA E ADIÇÃO DE PRODUTOS ---
@@ -407,40 +434,35 @@ async function carregarFaturamentoDiarioResumo() {
         console.error("Erro ao carregar faturamento diário:", e);
     }
 }
-// Exposição correta de funções no escopo global (window) para uso direto no HTML
-window.tratarEnterLogin = tratarEnterLogin;
-window.processarAutenticacao = processarAutenticacao;
-window.alternarTelaAuth = alternarTelaAuth;
-window.solicitarRecuperacaoSenha = solicitarRecuperacaoSenha;
-window.atualizarPaginaCompleta = atualizarPaginaCompleta;
-window.realizarLogout = realizarLogout;
-window.aoDigitarBusca = aoDigitarBusca;
-window.tratarEnterBuscaCaixa = tratarEnterBuscaCaixa;
-window.abrirLeitorCamera = abrirLeitorCamera;
-window.abrirModalCancelarItem = abrirModalCancelarItem;
-window.cancelarVenda = cancelarVenda;
-window.finalizarVenda = finalizarVenda;
-window.gerenciarCaixaModal = gerenciarCaixaModal;
-window.abrirPainelAdmin = abrirPainelAdmin;
-window.mudarAbaAdmin = mudarAbaAdmin;
-window.filtrarTabelaAdmin = filtrarTabelaAdmin;
-window.abrirModalNovoProdutoAdmin = abrirModalNovoProdutoAdmin;
-window.recarregarDadosAdmin = recarregarDadosAdmin;
-window.fecharPainelAdmin = fecharPainelAdmin;
-window.abrirModalNovoOperador = abrirModalNovoOperador;
-window.abrirModalNovaMaquininha = abrirModalNovaMaquininha;
-window.salvarConfiguracoesEmpresaAdmin = salvarConfiguracoesEmpresaAdmin;
-window.salvarPinAdmin = salvarPinAdmin; 
-window.selecionarFormaPagamento = selecionarFormaPagamento;
-window.recalcularTotalComTaxasMaquininha = recalcularTotalComTaxasMaquininha;
-window.calcularTrocoCaixa = calcularTrocoCaixa;
-window.fecharModalFinalizarVenda = fecharModalFinalizarVenda;
-window.confirmarConclusaoVenda = confirmarConclusaoVenda;
-window.fecharFormProduto = fecharFormProduto;
-window.salvarProdutoAdmin = salvarProdutoAdmin;
-window.escanearCameraAdmin = escanearCameraAdmin;
-window.fecharModalNovaMaquininha = fecharModalNovaMaquininha;
-window.salvarNovaMaquininha = salvarNovaMaquininha;
-window.tratarEnterModalCaixa = tratarEnterModalCaixa;
-window.fecharModalCaixa = fecharModalCaixa;
-window.confirmarAcaoCaixa = confirmarAcaoCaixa;
+
+// --- FUNÇÕES DE APOIO E PAINEL ADMIN / MODAIS ---
+window.abrirLeitorCamera = function() { console.log("Abrindo leitor de câmera..."); }
+window.abrirModalCancelarItem = function() { console.log("Abrindo modal cancelar item..."); }
+window.gerenciarCaixaModal = function() { console.log("Gerenciando caixa..."); }
+window.abrirPainelAdmin = function() { 
+    const painel = document.getElementById('painelAdmin');
+    if (painel) painel.classList.remove('hidden');
+}
+window.mudarAbaAdmin = function(aba) { console.log("Mudando para aba:", aba); }
+window.filtrarTabelaAdmin = function() {}
+window.abrirModalNovoProdutoAdmin = function() {}
+window.recarregarDadosAdmin = function() {}
+window.fecharPainelAdmin = function() { 
+    const painel = document.getElementById('painelAdmin');
+    if (painel) painel.classList.add('hidden');
+}
+window.abrirModalNovoOperador = function() {}
+window.abrirModalNovaMaquininha = function() {}
+window.salvarConfiguracoesEmpresaAdmin = function() {}
+window.salvarPinAdmin = function() {}
+window.fecharFormProduto = function() {}
+window.salvarProdutoAdmin = function() {}
+window.escanearCameraAdmin = function() {}
+window.fecharModalNovaMaquininha = function() {}
+window.salvarNovaMaquininha = function() {}
+window.tratarEnterModalCaixa = function() {}
+window.fecharModalCaixa = function() {
+    const modal = document.getElementById('modalCaixa');
+    if (modal) modal.classList.add('hidden');
+}
+window.confirmarAcaoCaixa = function() {}
