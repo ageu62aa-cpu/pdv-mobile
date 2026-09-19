@@ -11,29 +11,87 @@ import {
 import { carregarProdutosCache } from './produtos.js';
 import { carregarHistoricoAdmin, carregarOperadoresLoja } from './admin.js';
 
-// Função para checar o status real do caixa direto no Supabase (Garante sincronia total PC/Smartphone)
+// Função para checar o status e faturamento real do caixa individual direto no Supabase
 export async function verificarStatusCaixaServidor() {
-    if (!empresaAtualId) return;
+    if (!empresaAtualId || !usuarioAtual) return;
     try {
+        // Busca o status e faturamento específico do usuário/operador atual logado
         const { data, error } = await supabaseClient
-            .from('empresas')
-            .select('caixa_aberto')
-            .eq('id', empresaAtualId)
+            .from('operadores_caixa') // Ajuste para a sua tabela de controle por operador/usuário se necessário
+            .select('caixa_aberto, faturamento_dia')
+            .eq('empresa_id', empresaAtualId)
+            .eq('email', usuarioAtual.email)
             .single();
 
         if (!error && data) {
             const statusNoBanco = Boolean(data.caixa_aberto);
+            const fatNoBanco = Number(data.faturamento_dia) || 0;
+
             if (statusNoBanco !== caixaAberto) {
                 setCaixaAberto(statusNoBanco);
                 atualizarBadgesCaixaInterface();
             }
+
+            if (fatNoBanco !== faturamentoDia) {
+                setFaturamentoDia(fatNoBanco);
+                const txtFat = document.getElementById('txtFaturamentoDia');
+                if (txtFat) txtFat.innerText = `R$ ${fatNoBanco.toFixed(2)}`;
+            }
         }
     } catch (err) {
-        console.error('Erro ao verificar status do caixa:', err);
+        console.error('Erro ao verificar status do caixa no servidor:', err);
     }
 }
 
-// Verifica o status sempre que a aba/janela ganha foco (ex: alternar do PC para o celular)
+// Configurar escuta em Tempo Real (Supabase Realtime) para sincronização instantânea
+export function iniciarRealtimeCaixa() {
+    if (!empresaAtualId) return;
+    
+    supabaseClient
+        .channel('escuta_mudancas_caixa')
+        .on(
+            'postgres_changes',
+            {
+                event: '*',
+                schema: 'public',
+                table: 'operadores_caixa', // Tabela onde fica o status individual de cada operador
+                filter: `empresa_id=eq.${empresaAtualId}`
+            },
+            (payload) => {
+                console.log('Mudança detectada no Realtime:', payload);
+                // Se a alteração pertencer ao usuário logado ou se for admin visualizando tudo
+                if (payload.new && payload.new.email === usuarioAtual?.email) {
+                    const novoStatus = Boolean(payload.new.caixa_aberto);
+                    const novoFat = Number(payload.new.faturamento_dia) || 0;
+
+                    if (novoStatus !== caixaAberto) {
+                        setCaixaAberto(novoStatus);
+                        atualizarBadgesCaixaInterface();
+                    }
+
+                    if (novoFat !== faturamentoDia) {
+                        setFaturamentoDia(novoFat);
+                        const txtFat = document.getElementById('txtFaturamentoDia');
+                        if (txtFat) txtFat.innerText = `R$ ${novoFat.toFixed(2)}`;
+                    }
+                }
+
+                // Se o usuário atual for admin, atualiza também os dados gerenciais do painel
+                if (cargoUsuarioAtual === 'admin_mercado' && typeof carregarOperadoresLoja === 'function') {
+                    carregarOperadoresLoja();
+                    carregarHistoricoAdmin();
+                }
+            }
+        )
+        .subscribe();
+}
+
+// Inicializa o listener de tempo real logo ao carregar o módulo
+setTimeout(() => {
+    iniciarRealtimeCaixa();
+}, 1000);
+
+// Verifica o status sempre que a aba/janela ganha foco
 window.addEventListener('focus', () => {
     verificarStatusCaixaServidor();
 });
@@ -121,6 +179,7 @@ export async function confirmarAcaoCaixa() {
     const inputValorCaixa = document.getElementById('inputValorCaixa');
     const valorDigitado = inputValorCaixa ? parseFloat(inputValorCaixa.value) || 0 : 0;
     let novoEstadoCaixa = false;
+    let novoFaturamentoParaSalvar = faturamentoDia;
 
     if (acaoCaixaAtual === 'abrir') {
         valorTrocoAbertura = valorDigitado;
@@ -138,20 +197,25 @@ export async function confirmarAcaoCaixa() {
         novoEstadoCaixa = false;
         setCaixaAberto(false);
         valorTrocoAbertura = 0;
+        novoFaturamentoParaSalvar = 0;
         setFaturamentoDia(0);
         const txtFat = document.getElementById('txtFaturamentoDia');
         if (txtFat) txtFat.innerText = 'R$ 0,00';
     }
     
-    // Salva imediatamente no Supabase
-    if (empresaAtualId) {
+    // Salva imediatamente na tabela individual do operador/usuário no Supabase
+    if (empresaAtualId && usuarioAtual) {
         const { error } = await supabaseClient
-            .from('empresas')
-            .update({ caixa_aberto: novoEstadoCaixa })
-            .eq('id', empresaAtualId);
+            .from('operadores_caixa')
+            .update({ 
+                caixa_aberto: novoEstadoCaixa,
+                faturamento_dia: novoFaturamentoParaSalvar
+            })
+            .eq('empresa_id', empresaAtualId)
+            .eq('email', usuarioAtual.email);
             
         if (error) {
-            console.error('Erro ao atualizar caixa no banco:', error);
+            console.error('Erro ao atualizar caixa individual no banco:', error);
             alert('PDV-VS: Erro ao salvar status do caixa no banco de dados.');
         }
     }
@@ -242,7 +306,7 @@ export function fecharModalCancelarItem() {
 }
 
 export function cancelarVenda() { 
-    if (confirm('PDV-VS: Deseja realmente cancelar toda a compra atual?')) { 
+    if (confirm('PDV-VS: Deseja realmente cancelar toda a compra toàn?')) { 
         setItensVenda([]); 
         atualizarTabelaVenda(); 
     } 
@@ -275,6 +339,15 @@ export async function finalizarVenda() {
     setFaturamentoDia(novoFat); 
     const txtFat = document.getElementById('txtFaturamentoDia');
     if (txtFat) txtFat.innerText = `R$ ${novoFat.toFixed(2)}`;
+
+    // Atualiza o faturamento em tempo real na tabela de operadores no Supabase
+    if (empresaAtualId && usuarioAtual) {
+        await supabaseClient
+            .from('operadores_caixa')
+            .update({ faturamento_dia: novoFat })
+            .eq('empresa_id', empresaAtualId)
+            .eq('email', usuarioAtual.email);
+    }
 
     setItensVenda([]); 
     atualizarTabelaVenda(); 
