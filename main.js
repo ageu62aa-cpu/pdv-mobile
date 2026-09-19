@@ -13,53 +13,21 @@ document.addEventListener("DOMContentLoaded", () => {
     configurarEventoPWA();
 });
 
-// --- LÓGICA DO PWA (INSTALAÇÃO DISCRETA) ---
+// --- LÓGICA DO PWA (GERENCIADO PELA BARRA DE URL DO NAVEGADOR) ---
 function configurarEventoPWA() {
     window.addEventListener('beforeinstallprompt', (e) => {
+        // Impede o banner automático do navegador
         e.preventDefault();
+        // Armazena o evento caso queira utilizar no futuro
         deferredPrompt = e;
-        
-        // Exibe o botão de instalação se disponível
-        const btnInstalar = document.getElementById('btnInstalarApp');
-        if (btnInstalar) {
-            btnInstalar.classList.remove('hidden');
-        }
+        console.log("PWA pronto para instalação pela barra de endereços do navegador.");
     });
 
     window.addEventListener('appinstalled', () => {
-        const btnInstalar = document.getElementById('btnInstalarApp');
-        if (btnInstalar) btnInstalar.classList.add('hidden');
         deferredPrompt = null;
-        console.log('PWA instalado com sucesso!');
+        console.log('PWA instalado com sucesso pelo usuário!');
     });
-
-    // Se já estiver em modo standalone (instalado), esconde o botão
-    if (window.matchMedia('(display-mode: standalone)').matches) {
-        const btnInstalar = document.getElementById('btnInstalarApp');
-        if (btnInstalar) btnInstalar.classList.add('hidden');
-    }
 }
-
-window.instalarPWA = async function() {
-    const btnInstalar = document.getElementById('btnInstalarApp');
-    
-    if (!deferredPrompt) {
-        alert("O aplicativo já está instalado ou o seu navegador gerencia a instalação pelo menu de opções/barra de endereços (ícone de monitor na barra URL).");
-        return;
-    }
-    
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    
-    if (outcome === 'accepted') {
-        console.log('Usuário aceitou a instalação do PWA');
-    }
-    deferredPrompt = null;
-    
-    if (btnInstalar) {
-        btnInstalar.classList.add('hidden');
-    }
-};
 
 function inicializarEventosPDV() {
     // Atalhos de Teclado Globais do PDV
