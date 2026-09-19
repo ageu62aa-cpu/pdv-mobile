@@ -106,7 +106,7 @@
                 
                 <div id="linksAuxiliares" class="flex justify-between items-center pt-2 text-xs text-slate-500 border-t border-slate-100">
                     <button onclick="alternarTelaAuth('cadastro')" class="hover:text-emerald-600 transition font-medium">Cadastrar Estabelecimento</button>
-                    <button onclick="alternarTelaAuth('recuperar')" class="hover:text-emerald-600 transition">Esqueci a senha</button>
+                    <button onclick="solicitarRecuperacaoSenha()" class="hover:text-emerald-600 transition">Esqueci a senha</button>
                 </div>
                 
                 <div id="linkVoltarLogin" class="hidden text-center pt-2 border-t border-slate-100">
@@ -513,14 +513,14 @@
         </div>
     </div>
 
-    <!-- Scripts do Sistema Fragmentados (Ordem Correta de Dependências) -->
+    <!-- Scripts do Sistema como Módulos (Corrigido para evitar erro de escopo e import/export) -->
     <script src="config.js"></script>
     <script src="state.js"></script>
-    <script src="auth.js"></script>
-    <script src="caixa.js"></script>
-    <script src="camera.js"></script>
-    <script src="produtos.js"></script>
-    <script src="admin.js"></script>
-    <script src="main.js"></script>
+    <script type="module" src="auth.js"></script>
+    <script type="module" src="caixa.js"></script>
+    <script type="module" src="camera.js"></script>
+    <script type="module" src="produtos.js"></script>
+    <script type="module" src="admin.js"></script>
+    <script type="module" src="main.js"></script>
 </body>
 </html>
