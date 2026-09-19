@@ -34,11 +34,24 @@
     <!-- TELA DE LOGIN / AUTENTICAÇÃO -->
     <div id="telaLogin" class="fixed inset-0 bg-emerald-950 z-50 flex items-center justify-center p-4 overflow-y-auto">
         <div class="bg-white rounded-2xl max-w-md w-full p-6 sm:p-8 shadow-2xl relative my-auto max-h-[92vh] overflow-y-auto pb-12">
+            
+            <!-- Botões do Topo Direito (Admin + Instalação PWA Discreta ao lado do ícone) -->
             <div class="absolute top-4 right-4 flex items-center space-x-2">
-                <button onclick="alternarTelaAuth('admin')" class="text-xs text-slate-400 hover:text-slate-700 transition flex items-center space-x-1 p-1" title="Acesso Super Admin"><i class="fa-solid fa-user-shield text-[11px] text-emerald-600"></i><span>Admin</span></button>
+                <!-- Botão de Instalação PWA Discreto (Aparece automaticamente quando disponível) -->
+                <button id="btnInstalarPwaLogin" onclick="instalarAppPwa()" class="hidden bg-amber-100 hover:bg-amber-200 text-amber-800 border border-amber-300 px-2 py-1 rounded-lg text-xs font-bold transition flex items-center space-x-1 shadow-sm" title="Instalar Aplicativo">
+                    <i class="fa-solid fa-download text-amber-600"></i>
+                    <span>Instalar App</span>
+                </button>
+                <button onclick="alternarTelaAuth('admin')" class="text-xs text-slate-400 hover:text-slate-700 transition flex items-center space-x-1 p-1" title="Acesso Super Admin">
+                    <i class="fa-solid fa-user-shield text-[11px] text-emerald-600"></i>
+                    <span>Admin</span>
+                </button>
             </div>
+
             <div class="text-center mb-6 mt-2">
-                <i id="iconeAuth" class="fa-solid fa-cash-register text-4xl text-emerald-600 mb-2"></i>
+                <div class="inline-flex items-center justify-center space-x-2 mb-2">
+                    <i id="iconeAuth" class="fa-solid fa-cash-register text-4xl text-emerald-600"></i>
+                </div>
                 <h2 id="tituloAuth" class="text-xl sm:text-2xl font-bold text-slate-900">PDV-VS Enterprise</h2>
                 <p id="subtituloAuth" class="text-xs text-slate-500">Sistema de Gestão Comercial e PDV</p>
                 <div class="mt-2 inline-block bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full"><span class="text-[10px] sm:text-[11px] font-bold text-emerald-800 tracking-wider uppercase">Versão 1.0.2 • Vancely Software</span></div>
@@ -131,8 +144,8 @@
                 </div>
             </div>
             <div class="flex items-center space-x-2">
-                <!-- Botão de Instalação PWA Dinâmico -->
-                <button id="btnInstalarPwa" onclick="instalarAppPwa()" class="hidden bg-amber-500 hover:bg-amber-600 text-slate-950 px-3 py-1.5 rounded text-xs font-bold transition flex items-center space-x-1.5 shadow" title="Instalar Aplicativo">
+                <!-- Botão de Instalação PWA Dinâmico no Header -->
+                <button id="btnInstalarPwaHeader" onclick="instalarAppPwa()" class="hidden bg-amber-500 hover:bg-amber-600 text-slate-950 px-3 py-1.5 rounded text-xs font-bold transition flex items-center space-x-1.5 shadow" title="Instalar Aplicativo">
                     <i class="fa-solid fa-download"></i><span>Instalar App</span>
                 </button>
                 <span class="badgeCaixaStatus text-xs bg-amber-500/20 text-amber-300 border border-amber-500/30 px-3 py-1.5 rounded font-semibold">FECHADO</span>
@@ -535,7 +548,7 @@
         </div>
     </div>
 
-    <!-- Scripts do Sistema e Registro do PWA -->
+    <!-- Scripts do Sistema com type="module" corrigido nos scripts principais ou carregados corretamente -->
     <script src="config.js"></script>
     <script src="state.js"></script>
     <script src="auth.js"></script>
@@ -546,15 +559,20 @@
     <script src="main.js"></script>
 
     <script>
-        // Registrar Service Worker e gerenciar prompt de instalação do PWA
-        let deferredPrompt;
+        // Captura do Evento PWA para exibir o botão discreto ao lado do ícone de caixa
+        let deferredPrompt = null;
+
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
-            const btnInstalar = document.getElementById('btnInstalarPwa');
-            if (btnInstalar) {
-                btnInstalar.classList.remove('hidden');
-            }
+            
+            // Exibir botão discreto na tela de login (ao lado do icone/Admin)
+            const btnPwaLogin = document.getElementById('btnInstalarPwaLogin');
+            if (btnPwaLogin) btnPwaLogin.classList.remove('hidden');
+
+            // Exibir botão no header caso já esteja logado
+            const btnPwaHeader = document.getElementById('btnInstalarPwaHeader');
+            if (btnPwaHeader) btnPwaHeader.classList.remove('hidden');
         });
 
         function instalarAppPwa() {
@@ -562,22 +580,25 @@
                 deferredPrompt.prompt();
                 deferredPrompt.userChoice.then((choiceResult) => {
                     if (choiceResult.outcome === 'accepted') {
-                        console.log('Usuário aceitou instalar o PWA');
+                        console.log('Usuário aceitou a instalação do PWA');
                     }
                     deferredPrompt = null;
-                    const btnInstalar = document.getElementById('btnInstalarPwa');
-                    if (btnInstalar) {
-                        btnInstalar.classList.add('hidden');
-                    }
+                    const btnPwaLogin = document.getElementById('btnInstalarPwaLogin');
+                    if (btnPwaLogin) btnPwaLogin.classList.add('hidden');
+                    const btnPwaHeader = document.getElementById('btnInstalarPwaHeader');
+                    if (btnPwaHeader) btnPwaHeader.classList.add('hidden');
                 });
+            } else {
+                alert('O aplicativo já está instalado ou o seu navegador não suporta instalação direta neste momento. Use o menu do navegador (três pontinhos) e clique em "Instalar aplicativo" ou "Adicionar à Tela Inicial".');
             }
         }
 
+        // Registo do Service Worker
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js')
-                    .then(reg => console.log('Service Worker registrado com sucesso!', reg.scope))
-                    .catch(err => console.log('Erro ao registrar Service Worker:', err));
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('Service Worker registado com sucesso!', reg.scope))
+                    .catch(err => console.log('Erro ao registar Service Worker:', err));
             });
         }
     </script>
