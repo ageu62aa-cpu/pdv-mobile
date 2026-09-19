@@ -4,9 +4,10 @@
 
 import { 
     VERSAO_SISTEMA, deferredPrompt, modoTelaAuth, usuarioAtual, empresaAtualId, 
-    cargoUsuarioAtual, dadosEmpresaAtual, caixaAberto, setDeferredPrompt, 
-    setModoTelaAuth, setUsuarioAtual, setEmpresaAtualId, setCargoUsuarioAtual, 
-    setDadosEmpresaAtual, setCaixaAberto, setListaEmpresasCache, listaEmpresasCache 
+    cargoUsuarioAtual, dadosEmpresaAtual, caixaAberto, tokenSessaoAtual,
+    setDeferredPrompt, setModoTelaAuth, setUsuarioAtual, setEmpresaAtualId, 
+    setCargoUsuarioAtual, setDadosEmpresaAtual, setCaixaAberto, setTokenSessaoAtual,
+    setListaEmpresasCache, listaEmpresasCache 
 } from './state.js';
 import { carregarProdutosCache } from './produtos.js';
 import { atualizarBadgesCaixaInterface, focarBusca, atualizarTabelaVenda } from './caixa.js';
@@ -209,6 +210,17 @@ export async function validarVinculoEmpresaUsuario() {
             return;
         }
         setDadosEmpresaAtual(empData); 
+
+        // CRIAÇÃO E REGISTRO DO TOKEN DE SESSÃO ÚNICA
+        const novoTokenSessao = 'sessao_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
+        setTokenSessaoAtual(novoTokenSessao);
+
+        await supabaseClient.from('sessoes_ativas').upsert({
+            user_id: usuarioAtual.id,
+            token_sessao: novoTokenSessao,
+            updated_at: new Date()
+        });
+
         concluirLoginSucesso(cargoUsuarioAtual);
     } catch (e) { 
         await supabaseClient.auth.signOut(); 
@@ -256,7 +268,30 @@ export function concluirLoginSucesso(cargoUser) {
     
     carregarProdutosCache(); 
     iniciarSincronizacaoRealtime();
+    iniciarMonitoramentoSessaoUnica(); // Ativa a verificação de sessão única
     focarBusca();
+}
+
+// MONITORAMENTO CONTÍNUO DE SESSÃO ÚNICA (Derruba se logar em outro aparelho)
+function iniciarMonitoramentoSessaoUnica() {
+    setInterval(async () => {
+        if (!usuarioAtual || !tokenSessaoAtual) return;
+        try {
+            const { data, error } = await supabaseClient
+                .from('sessoes_ativas')
+                .select('token_sessao')
+                .eq('user_id', usuarioAtual.id)
+                .single();
+
+            if (error || !data || data.token_sessao !== tokenSessaoAtual) {
+                alert('PDV-VS: Sua conta foi acessada em outro dispositivo. Esta sessão foi encerrada.');
+                await supabaseClient.auth.signOut();
+                location.reload();
+            }
+        } catch (err) {
+            console.error('Erro ao verificar sessão única:', err);
+        }
+    }, 10000); // Verifica a cada 10 segundos
 }
 
 export function iniciarSincronizacaoRealtime() {

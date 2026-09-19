@@ -21,6 +21,7 @@ export let historicoVendasCache = [];
 export let origemLeitor = 'busca';
 export let html5QrcodeInstance = null;
 export let listaEmpresasCache = [];
+export let tokenSessaoAtual = null; // Novo: Armazena o token único da sessão ativa
 
 // Funções para alterar o estado quando necessário
 export function setDeferredPrompt(val) { deferredPrompt = val; }
@@ -40,3 +41,4 @@ export function setHistoricoVendasCache(val) { historicoVendasCache = val; }
 export function setOrigemLeitor(val) { origemLeitor = val; }
 export function setHtml5QrcodeInstance(val) { html5QrcodeInstance = val; }
 export function setListaEmpresasCache(val) { listaEmpresasCache = val; }
+export function setTokenSessaoAtual(val) { tokenSessaoAtual = val; } // Novo: Modificador do token de sessão
