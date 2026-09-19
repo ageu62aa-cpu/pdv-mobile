@@ -5,11 +5,47 @@
 window.carrinhoVenda = [];
 let formaPagamentoAtual = 'dinheiro'; // 'dinheiro', 'pix', 'debito', 'credito'
 let maquininhasCadastradasLoja = [];
+let deferredPrompt = null;
 
 document.addEventListener("DOMContentLoaded", () => {
     inicializarEventosPDV();
     carregarFaturamentoDiarioResumo();
+    configurarEventoPWA();
 });
+
+// --- LÓGICA DO PWA (INSTALAÇÃO DISCRETA) ---
+function configurarEventoPWA() {
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        
+        // Exibe o ícone de instalação discreto se disponível na tela
+        const btnInstalar = document.getElementById('btnInstalarPWA');
+        if (btnInstalar) {
+            btnInstalar.classList.remove('hidden');
+        }
+    });
+}
+
+window.instalarPWA = async function() {
+    if (!deferredPrompt) {
+        alert("O aplicativo já está instalado ou o seu navegador gerencia a instalação pelo menu de opções/barra de endereços.");
+        return;
+    }
+    
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    
+    if (outcome === 'accepted') {
+        console.log('Usuário aceitou a instalação do PWA');
+    }
+    deferredPrompt = null;
+    
+    const btnInstalar = document.getElementById('btnInstalarPWA');
+    if (btnInstalar) {
+        btnInstalar.classList.add('hidden');
+    }
+};
 
 function inicializarEventosPDV() {
     // Atalhos de Teclado Globais do PDV
@@ -193,7 +229,6 @@ window.finalizarVenda = async function() {
         return;
     }
     
-    // Carrega as maquininhas cadastradas para o select do modal
     await carregarMaquininhasParaVenda();
     
     document.getElementById('modalFinalizarVenda').classList.remove('hidden');
@@ -211,7 +246,6 @@ window.fecharModalFinalizarVenda = function() {
 window.selecionarFormaPagamento = function(tipo) {
     formaPagamentoAtual = tipo;
     
-    // Reseta visual dos botões (Dinheiro, PIX, Débito, Crédito)
     ['Dinheiro', 'Pix', 'Debito', 'Credito'].forEach(t => {
         const btn = document.getElementById(`btnForma${t}`);
         if (btn) {
@@ -225,7 +259,6 @@ window.selecionarFormaPagamento = function(tipo) {
         btnAtivo.className = "py-2.5 px-2 bg-emerald-600 text-white text-xs font-bold rounded-lg shadow transition text-center";
     }
     
-    // Visibilidade dos campos auxiliares
     const secaoCartao = document.getElementById('secaoOpcoesCartao');
     const secaoDinheiro = document.getElementById('secaoDinheiroTroco');
     const divParcelas = document.getElementById('divSeletorParcelas');
@@ -236,14 +269,14 @@ window.selecionarFormaPagamento = function(tipo) {
         if (tipo === 'credito') {
             divParcelas.classList.remove('hidden');
         } else {
-            divParcelas.classList.add('hidden'); // Débito não parcela
+            divParcelas.classList.add('hidden');
         }
     } else {
         secaoCartao.classList.add('hidden');
         if (tipo === 'dinheiro') {
             secaoDinheiro.classList.remove('hidden');
         } else {
-            secaoDinheiro.classList.add('hidden'); // PIX valor limpo sem troco
+            secaoDinheiro.classList.add('hidden');
         }
     }
     recalcularTotalComTaxasMaquininha();
@@ -319,7 +352,6 @@ window.confirmarConclusaoVenda = async function() {
     const operadorEmail = localStorage.getItem('pdv_usuario_email') || 'caixa';
 
     try {
-        // Grava a venda no Supabase
         const { error } = await window.supabaseClient
             .from('vendas')
             .insert([{

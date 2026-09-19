@@ -35,6 +35,10 @@
     <div id="telaLogin" class="fixed inset-0 bg-emerald-950 z-50 flex items-center justify-center p-4 overflow-y-auto">
         <div class="bg-white rounded-2xl max-w-md w-full p-6 sm:p-8 shadow-2xl relative my-auto max-h-[92vh] overflow-y-auto pb-12">
             <div class="absolute top-4 right-4 flex items-center space-x-2">
+                <!-- Ícone Discreto de Instalação na Tela de Login -->
+                <button id="btnInstalarPWA" onclick="instalarPWA()" class="hidden p-2 text-slate-600 hover:text-emerald-600 hover:bg-slate-100 rounded-lg transition" title="Instalar Aplicativo" aria-label="Instalar Aplicativo">
+                    <i class="fa-solid fa-download text-base"></i>
+                </button>
                 <button onclick="alternarTelaAuth('admin')" class="text-xs text-slate-400 hover:text-slate-700 transition flex items-center space-x-1 p-1" title="Acesso Super Admin"><i class="fa-solid fa-user-shield text-[11px] text-emerald-600"></i><span>Admin</span></button>
             </div>
             <div class="text-center mb-6 mt-2">
@@ -131,9 +135,9 @@
                 </div>
             </div>
             <div class="flex items-center space-x-2">
-                <!-- BOTÃO DE INSTALAÇÃO PWA (FORÇADO A APARECER SE O NAVEGADOR SUPORTAR) -->
-                <button id="btnInstalarApp" onclick="instalarPWA()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 px-3 py-1.5 rounded text-xs font-black transition flex items-center space-x-1 shadow animate-bounce" title="Instalar Aplicativo">
-                    <i class="fa-solid fa-download"></i><span>Instalar App</span>
+                <!-- BOTÃO DE INSTALAÇÃO PWA DISCRETO (COM ÍCONE E SETA) -->
+                <button id="btnInstalarPWA" onclick="instalarPWA()" class="hidden p-2 text-emerald-100 hover:text-white hover:bg-emerald-800 rounded-lg transition" title="Instalar Aplicativo" aria-label="Instalar Aplicativo">
+                    <i class="fa-solid fa-download text-base"></i>
                 </button>
                 
                 <span class="badgeCaixaStatus text-xs bg-amber-500/20 text-amber-300 border border-amber-500/30 px-3 py-1.5 rounded font-semibold">FECHADO</span>
@@ -348,7 +352,7 @@
         </div>
     </div>
 
-    <!-- MODAL DE FINALIZAÇÃO DE VENDA COM OPÇÕES DE PAGAMENTO E MAQUININHAS (NOVO) -->
+    <!-- MODAL DE FINALIZAÇÃO DE VENDA COM OPÇÕES DE PAGAMENTO E MAQUININHAS -->
     <div id="modalFinalizarVenda" class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl animate-scaleUp space-y-4">
             <div class="flex justify-between items-center border-b pb-3">
@@ -372,7 +376,7 @@
                 </div>
             </div>
 
-            <!-- SEÇÃO ESPECÍFICA PARA CARTÃO (EXIBE MAQUININHAS E JUROS) -->
+            <!-- SEÇÃO ESPECÍFICA PARA CARTÃO -->
             <div id="secaoOpcoesCartao" class="hidden space-y-3 bg-blue-50/50 p-3.5 rounded-xl border border-blue-100">
                 <div>
                     <label class="block text-xs font-bold text-slate-700 mb-1">Selecionar Maquininha</label>
@@ -419,7 +423,7 @@
         </div>
     </div>
 
-    <!-- OUTROS MODAIS (Produto, Maquininha, Caixa, etc) -->
+    <!-- OUTROS MODAIS -->
     <div id="modalFormProduto" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-3">
         <div class="bg-white rounded-xl max-w-sm w-full p-5 shadow-2xl">
             <h3 class="font-bold text-base mb-4 text-slate-900">Gerenciar Produto</h3>
