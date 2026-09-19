@@ -11,9 +11,37 @@ import {
 import { carregarProdutosCache } from './produtos.js';
 import { carregarHistoricoAdmin, carregarOperadoresLoja } from './admin.js';
 
+// Função para checar o status real do caixa direto no Supabase (Garante sincronia total PC/Smartphone)
+export async function verificarStatusCaixaServidor() {
+    if (!empresaAtualId) return;
+    try {
+        const { data, error } = await supabaseClient
+            .from('empresas')
+            .select('caixa_aberto')
+            .eq('id', empresaAtualId)
+            .single();
+
+        if (!error && data) {
+            const statusNoBanco = Boolean(data.caixa_aberto);
+            if (statusNoBanco !== caixaAberto) {
+                setCaixaAberto(statusNoBanco);
+                atualizarBadgesCaixaInterface();
+            }
+        }
+    } catch (err) {
+        console.error('Erro ao verificar status do caixa:', err);
+    }
+}
+
+// Verifica o status sempre que a aba/janela ganha foco (ex: alternar do PC para o celular)
+window.addEventListener('focus', () => {
+    verificarStatusCaixaServidor();
+});
+
 export async function atualizarPaginaCompleta() {
     if (confirm('PDV-VS: Deseja atualizar e sincronizar todos os dados do sistema?')) {
         await carregarProdutosCache();
+        await verificarStatusCaixaServidor();
         if (cargoUsuarioAtual === 'admin_mercado') {
             await carregarHistoricoAdmin();
             await carregarOperadoresLoja();
@@ -115,7 +143,7 @@ export async function confirmarAcaoCaixa() {
         if (txtFat) txtFat.innerText = 'R$ 0,00';
     }
     
-    // Atualiza imediatamente no Supabase para sincronizar com todos os aparelhos e perfis (Admin/Operador)
+    // Salva imediatamente no Supabase
     if (empresaAtualId) {
         const { error } = await supabaseClient
             .from('empresas')
@@ -123,7 +151,7 @@ export async function confirmarAcaoCaixa() {
             .eq('id', empresaAtualId);
             
         if (error) {
-            console.error('Erro ao sincronizar status do caixa no banco:', error);
+            console.error('Erro ao atualizar caixa no banco:', error);
             alert('PDV-VS: Erro ao salvar status do caixa no banco de dados.');
         }
     }
