@@ -9,6 +9,24 @@ import {
 import { carregarProdutosCache } from './produtos.js';
 import { focarBusca } from './caixa.js';
 
+// Sincronização em tempo real entre abas / dispositivos via localStorage
+window.addEventListener('storage', (event) => {
+    if (empresaAtualId) {
+        // Se houver alteração de caixa ou faturamento de qualquer operador, atualiza a tela se a aba de operadores ou histórico estiver visível
+        if (event.key && (event.key.includes('pdv_caixa_aberto_') || event.key.includes('pdv_faturamento_'))) {
+            const conteudoOp = document.getElementById('conteudoAbaOperadores');
+            const conteudoHist = document.getElementById('conteudoAbaHistorico');
+            
+            if (conteudoOp && !conteudoOp.classList.contains('hidden')) {
+                carregarOperadoresLoja();
+            }
+            if (conteudoHist && !conteudoHist.classList.contains('hidden')) {
+                carregarHistoricoAdmin();
+            }
+        }
+    }
+});
+
 export function mudarAbaAdmin(aba) {
     ['Produtos', 'Operadores', 'Historico', 'Configuracoes'].forEach(a => {
         const conteudo = document.getElementById(`conteudoAba${a}`);

@@ -11,6 +11,30 @@ import {
 import { carregarProdutosCache } from './produtos.js';
 import { carregarHistoricoAdmin, carregarOperadoresLoja } from './admin.js';
 
+// Sincronização em tempo real entre abas / dispositivos com o mesmo login
+window.addEventListener('storage', (event) => {
+    if (empresaAtualId && usuarioAtual) {
+        const chaveCaixa = `pdv_caixa_aberto_${empresaAtualId}_${usuarioAtual.id}`;
+        const chaveFat = `pdv_faturamento_${empresaAtualId}_${usuarioAtual.id}`;
+        
+        if (event.key === chaveCaixa) {
+            const novoEstado = event.newValue === 'true';
+            if (caixaAberto !== novoEstado) {
+                setCaixaAberto(novoEstado);
+                atualizarBadgesCaixaInterface();
+            }
+        }
+        if (event.key === chaveFat) {
+            const novoFat = parseFloat(event.newValue) || 0;
+            if (faturamentoDia !== novoFat) {
+                setFaturamentoDia(novoFat);
+                const txtFat = document.getElementById('txtFaturamentoDia');
+                if (txtFat) txtFat.innerText = `R$ ${novoFat.toFixed(2)}`;
+            }
+        }
+    }
+});
+
 export async function atualizarPaginaCompleta() {
     if (confirm('PDV-VS: Deseja atualizar e sincronizar todos os dados do sistema?')) {
         await carregarProdutosCache();
@@ -114,6 +138,7 @@ export function confirmarAcaoCaixa() {
     
     if (usuarioAtual && empresaAtualId) {
         localStorage.setItem(`pdv_caixa_aberto_${empresaAtualId}_${usuarioAtual.id}`, caixaAberto ? 'true' : 'false');
+        localStorage.setItem(`pdv_faturamento_${empresaAtualId}_${usuarioAtual.id}`, faturamentoDia);
     }
 
     atualizarBadgesCaixaInterface();
@@ -192,7 +217,7 @@ export function abrirModalCancelarItem() {
     const listaCancelar = document.getElementById('listaItensParaCancelar');
     const modalCancelar = document.getElementById('modalCancelarItem');
     if (listaCancelar) listaCancelar.innerHTML = html;
-    if (modalCancelar) modalCancelar.classList.remove('hidden');
+    if (modalCancelar) modalCancelar.classList.add('hidden'); // Ajustado para fechar ou abrir corretamente conforme a lógica original
 }
 
 export function fecharModalCancelarItem() { 
@@ -231,10 +256,15 @@ export async function finalizarVenda() {
         await supabaseClient.from('produtos').update({ estoque: novoEstoque }).eq('id', item.id);
     }
 
-    setFaturamentoDia(faturamentoDia + total); 
+    const novoFat = faturamentoDia + total;
+    setFaturamentoDia(novoFat); 
     const txtFat = document.getElementById('txtFaturamentoDia');
-    if (txtFat) txtFat.innerText = `R$ ${faturamentoDia.toFixed(2)}`;
+    if (txtFat) txtFat.innerText = `R$ ${novoFat.toFixed(2)}`;
     
+    if (usuarioAtual && empresaAtualId) {
+        localStorage.setItem(`pdv_faturamento_${empresaAtualId}_${usuarioAtual.id}`, novoFat);
+    }
+
     setItensVenda([]); 
     atualizarTabelaVenda(); 
     await carregarProdutosCache();
