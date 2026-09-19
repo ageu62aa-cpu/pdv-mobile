@@ -353,3 +353,12 @@ export function renderizarHistoricoVendasPorJanelasDiarias() {
 
     container.innerHTML = htmlJanelas;
 }
+// Expondo funções para o escopo global (para o HTML / onclick funcionar)
+window.alternarTelaAuth = alternarTelaAuth;
+window.tratarEnterLogin = tratarEnterLogin;
+window.processarAutenticacao = processarAutenticacao;
+window.solicitarRecuperacaoSenha = solicitarRecuperacaoSenha;
+window.abrirSuperAdminMaster = abrirSuperAdminMaster;
+window.fecharSuperAdminMaster = fecharSuperAdminMaster;
+window.alternarStatusEmpresa = alternarStatusEmpresa;
+window.instalarPwaApp = instalarPwaApp;
