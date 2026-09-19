@@ -1,20 +1,19 @@
-const CACHE_NAME = 'pdv-vs-v1';
+const CACHE_NAME = 'pdv-vs-v2';
 const urlsToCache = [
     '/',
     '/index.html',
-    'https://cdn.tailwindcss.com',
-    'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
-    'https://unpkg.com/@html5-qrcode/html5-qrcode',
-    'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css'
+    '/manifest.json'
+    // Adicione aqui outros arquivos locais se necessário (ex: /main.js, /style.css)
 ];
 
-// Instalação do Service Worker
+// Instalação do Service Worker (Apenas arquivos locais garantidos)
 self.addEventListener('install', event => {
     event.waitUntil(
         caches.open(CACHE_NAME)
             .then(cache => {
                 return cache.addAll(urlsToCache);
             })
+            .then(() => self.skipWaiting())
     );
 });
 
@@ -29,16 +28,30 @@ self.addEventListener('activate', event => {
                     }
                 })
             );
-        })
+        }).then(() => self.clients.claim())
     );
 });
 
-// Interceptação de requisições (Cache First)
+// Interceptação de requisições (Cache First com fallback para rede e cache dinâmico de CDNs)
 self.addEventListener('fetch', event => {
     event.respondWith(
         caches.match(event.request)
-            .then(response => {
-                return response || fetch(event.request);
+            .then(cachedResponse => {
+                if (cachedResponse) {
+                    return cachedResponse;
+                }
+                return fetch(event.request).then(networkResponse => {
+                    // Opcional: salva CDNs ou novas requisições dinamicamente no cache
+                    return caches.open(CACHE_NAME).then(cache => {
+                        cache.put(event.request, networkResponse.clone());
+                        return networkResponse;
+                    });
+                }).catch(() => {
+                    // Fallback caso esteja offline e o recurso não esteja no cache
+                    if (event.request.headers.get('accept').includes('text/html')) {
+                        return caches.match('/index.html');
+                    }
+                });
             })
     );
 });
