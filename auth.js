@@ -212,10 +212,8 @@ export async function validarVinculoEmpresaUsuario() {
         }
         setDadosEmpresaAtual(empData); 
 
-        // Define o status do caixa diretamente do banco de dados da empresa
         setCaixaAberto(empData.caixa_aberto === true);
 
-        // REGISTRA O TOKEN DE SESSÃO ÚNICA
         const novoTokenSessao = 'sessao_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
         setTokenSessaoAtual(novoTokenSessao);
 
@@ -309,7 +307,6 @@ export function iniciarSincronizacaoRealtime() {
         })
         .subscribe();
 
-    // Sincronização em tempo real do status da empresa (bloqueio e estado do caixa)
     supabaseClient
         .channel('public:empresas_sync')
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'empresas', filter: `id=eq.${empresaAtualId}` }, payload => {
@@ -319,7 +316,6 @@ export function iniciarSincronizacaoRealtime() {
                     location.reload();
                     return;
                 }
-                // Atualiza o estado do caixa em tempo real caso mude em outro aparelho
                 if (payload.new.caixa_aberto !== undefined) {
                     setCaixaAberto(payload.new.caixa_aberto);
                     atualizarBadgesCaixaInterface();
@@ -392,7 +388,6 @@ export async function alternarStatusEmpresa(empresaId, statusAtual) {
     }
 }
 
-// Expondo funções para o escopo global
 window.alternarTelaAuth = alternarTelaAuth;
 window.tratarEnterLogin = tratarEnterLogin;
 window.processarAutenticacao = processarAutenticacao;

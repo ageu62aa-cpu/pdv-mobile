@@ -31,9 +31,9 @@
 </head>
 <body class="bg-emerald-50/60 min-h-screen text-slate-800 flex flex-col justify-between">
 
-    <!-- TELA DE LOGIN / AUTENTICAÇÃO -->
-    <div id="telaLogin" class="fixed inset-0 bg-emerald-950 z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl max-w-md w-full p-6 sm:p-8 shadow-2xl relative">
+    <!-- TELA DE LOGIN / AUTENTICAÇÃO (Com scroll adaptado e margem inferior para o rodapé) -->
+    <div id="telaLogin" class="fixed inset-0 bg-emerald-950 z-50 flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 sm:p-8 shadow-2xl relative my-auto max-h-[92vh] overflow-y-auto pb-12">
             <div class="absolute top-4 right-4 flex items-center space-x-2">
                 <button onclick="alternarTelaAuth('admin')" class="text-xs text-slate-400 hover:text-slate-700 transition flex items-center space-x-1 p-1" title="Acesso Super Admin"><i class="fa-solid fa-user-shield text-[11px] text-emerald-600"></i><span>Admin</span></button>
             </div>
