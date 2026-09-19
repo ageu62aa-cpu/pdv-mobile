@@ -9,24 +9,6 @@ import {
 import { carregarProdutosCache } from './produtos.js';
 import { focarBusca } from './caixa.js';
 
-// Sincronização em tempo real entre abas / dispositivos via localStorage
-window.addEventListener('storage', (event) => {
-    if (empresaAtualId) {
-        // Se houver alteração de caixa ou faturamento de qualquer operador, atualiza a tela se a aba de operadores ou histórico estiver visível
-        if (event.key && (event.key.includes('pdv_caixa_aberto_') || event.key.includes('pdv_faturamento_'))) {
-            const conteudoOp = document.getElementById('conteudoAbaOperadores');
-            const conteudoHist = document.getElementById('conteudoAbaHistorico');
-            
-            if (conteudoOp && !conteudoOp.classList.contains('hidden')) {
-                carregarOperadoresLoja();
-            }
-            if (conteudoHist && !conteudoHist.classList.contains('hidden')) {
-                carregarHistoricoAdmin();
-            }
-        }
-    }
-});
-
 export function mudarAbaAdmin(aba) {
     ['Produtos', 'Operadores', 'Historico', 'Configuracoes'].forEach(a => {
         const conteudo = document.getElementById(`conteudoAba${a}`);
@@ -198,13 +180,42 @@ export async function excluirProdutoAdmin(id) {
 }
 
 export async function carregarOperadoresLoja() {
-    const { data } = await supabaseClient.from('usuarios_empresas').select('*').eq('empresa_id', empresaAtualId);
+    if (!empresaAtualId) return;
+
+    // Busca os operadores cadastrados na empresa
+    const { data: operadores, error } = await supabaseClient
+        .from('usuarios_empresas')
+        .select('*')
+        .eq('empresa_id', empresaAtualId);
+
+    if (error) {
+        console.error('Erro ao carregar operadores:', error);
+        return;
+    }
+
+    // Busca os caixas abertos atuais na tabela 'caixas'
+    const { data: caixasAbertos } = await supabaseClient
+        .from('caixas')
+        .select('user_id, status, faturamento_dia, valor_abertura')
+        .eq('empresa_id', empresaAtualId)
+        .eq('status', 'ABERTO');
+
+    const mapaCaixas = {};
+    if (caixasAbertos) {
+        caixasAbertos.forEach(c => {
+            mapaCaixas[c.user_id] = c;
+        });
+    }
+
     let html = '';
-    if (data) {
-        data.forEach(op => {
-            const opCaixaAberto = localStorage.getItem(`pdv_caixa_aberto_${empresaAtualId}_${op.user_id}`) === 'true';
+    if (operadores && operadores.length > 0) {
+        operadores.forEach(op => {
+            const caixaInfo = mapaCaixas[op.user_id];
+            const opCaixaAberto = !!caixaInfo;
+            const faturamentoAtual = caixaInfo ? Number(caixaInfo.faturamento_dia || 0) : 0;
+
             const statusCaixaBadge = opCaixaAberto 
-                ? '<span class="bg-emerald-100 text-emerald-800 text-xs px-2.5 py-1 rounded-full font-bold">ABERTO</span>' 
+                ? `<span class="bg-emerald-100 text-emerald-800 text-xs px-2.5 py-1 rounded-full font-bold">ABERTO (Fat: R$ ${faturamentoAtual.toFixed(2)})</span>` 
                 : '<span class="bg-amber-100 text-amber-800 text-xs px-2.5 py-1 rounded-full font-bold">FECHADO</span>';
             
             const cargoNome = op.cargo === 'admin_mercado' ? 'Administrador' : 'Operador de Caixa';
