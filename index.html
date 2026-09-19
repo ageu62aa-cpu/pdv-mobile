@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PDV-VS Enterprise - v1.0.0 | Vancely Software</title>
+    <title>PDV-VS Enterprise - v1.0.2 | Vancely Software</title>
     <meta name="theme-color" content="#047857">
     <meta name="author" content="Vancely Software">
     
@@ -35,17 +35,13 @@
     <div id="telaLogin" class="fixed inset-0 bg-emerald-950 z-50 flex items-center justify-center p-4 overflow-y-auto">
         <div class="bg-white rounded-2xl max-w-md w-full p-6 sm:p-8 shadow-2xl relative my-auto max-h-[92vh] overflow-y-auto pb-12">
             <div class="absolute top-4 right-4 flex items-center space-x-2">
-                <!-- Ícone Discreto de Instalação na Tela de Login -->
-                <button id="btnInstalarPWA" onclick="instalarPWA()" class="hidden p-2 text-slate-600 hover:text-emerald-600 hover:bg-slate-100 rounded-lg transition" title="Instalar Aplicativo" aria-label="Instalar Aplicativo">
-                    <i class="fa-solid fa-download text-base"></i>
-                </button>
                 <button onclick="alternarTelaAuth('admin')" class="text-xs text-slate-400 hover:text-slate-700 transition flex items-center space-x-1 p-1" title="Acesso Super Admin"><i class="fa-solid fa-user-shield text-[11px] text-emerald-600"></i><span>Admin</span></button>
             </div>
             <div class="text-center mb-6 mt-2">
                 <i id="iconeAuth" class="fa-solid fa-cash-register text-4xl text-emerald-600 mb-2"></i>
                 <h2 id="tituloAuth" class="text-xl sm:text-2xl font-bold text-slate-900">PDV-VS Enterprise</h2>
                 <p id="subtituloAuth" class="text-xs text-slate-500">Sistema de Gestão Comercial e PDV</p>
-                <div class="mt-2 inline-block bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full"><span class="text-[10px] sm:text-[11px] font-bold text-emerald-800 tracking-wider uppercase">Versão 1.0.0 • Vancely Software</span></div>
+                <div class="mt-2 inline-block bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full"><span class="text-[10px] sm:text-[11px] font-bold text-emerald-800 tracking-wider uppercase">Versão 1.0.2 • Vancely Software</span></div>
             </div>
             
             <div class="space-y-3.5">
@@ -135,9 +131,9 @@
                 </div>
             </div>
             <div class="flex items-center space-x-2">
-                <!-- BOTÃO DE INSTALAÇÃO PWA DISCRETO (COM ÍCONE E SETA) -->
-                <button id="btnInstalarPWA" onclick="instalarPWA()" class="hidden p-2 text-emerald-100 hover:text-white hover:bg-emerald-800 rounded-lg transition" title="Instalar Aplicativo" aria-label="Instalar Aplicativo">
-                    <i class="fa-solid fa-download text-base"></i>
+                <!-- BOTÃO DE INSTALAÇÃO PWA -->
+                <button id="btnInstalarApp" onclick="instalarPWA()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 px-3 py-1.5 rounded text-xs font-black transition flex items-center space-x-1 shadow animate-bounce" title="Instalar Aplicativo">
+                    <i class="fa-solid fa-download"></i><span>Instalar App</span>
                 </button>
                 
                 <span class="badgeCaixaStatus text-xs bg-amber-500/20 text-amber-300 border border-amber-500/30 px-3 py-1.5 rounded font-semibold">FECHADO</span>
@@ -211,7 +207,7 @@
         </main>
 
         <footer id="rodapeSistema" class="bg-white border-t py-2 px-4 text-center text-xs text-slate-500 flex justify-between items-center max-w-7xl mx-auto w-full">
-            <span>PDV-Vancely Software Enterprise | Versão 1.0.0 | Suporte Técnico Ativo</span>
+            <span>PDV-Vancely Software Enterprise | Versão 1.0.2 | Suporte Técnico Ativo</span>
             <a href="https://wa.me/" target="_blank" class="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1 rounded-full shadow flex items-center space-x-1 text-[11px] font-bold transition">
                 <i class="fa-brands fa-whatsapp text-xs"></i>
                 <span>Suporte</span>
@@ -352,7 +348,7 @@
         </div>
     </div>
 
-    <!-- MODAL DE FINALIZAÇÃO DE VENDA COM OPÇÕES DE PAGAMENTO E MAQUININHAS -->
+    <!-- MODAL DE FINALIZAÇÃO DE VENDA -->
     <div id="modalFinalizarVenda" class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl animate-scaleUp space-y-4">
             <div class="flex justify-between items-center border-b pb-3">
@@ -365,7 +361,6 @@
                 <span id="modalValTotalOriginal" class="text-base font-bold text-slate-800">R$ 0,00</span>
             </div>
 
-            <!-- BOTÕES DE SELEÇÃO RÁPIDA DA FORMA DE PAGAMENTO -->
             <div>
                 <label class="block text-xs font-bold text-slate-600 mb-2">Forma de Pagamento</label>
                 <div class="grid grid-cols-4 gap-2">
@@ -376,7 +371,6 @@
                 </div>
             </div>
 
-            <!-- SEÇÃO ESPECÍFICA PARA CARTÃO -->
             <div id="secaoOpcoesCartao" class="hidden space-y-3 bg-blue-50/50 p-3.5 rounded-xl border border-blue-100">
                 <div>
                     <label class="block text-xs font-bold text-slate-700 mb-1">Selecionar Maquininha</label>
@@ -400,7 +394,6 @@
                 </div>
             </div>
 
-            <!-- SEÇÃO DINHEIRO (TROCO) -->
             <div id="secaoDinheiroTroco" class="space-y-2">
                 <label class="block text-xs font-bold text-slate-600">Valor Recebido em Dinheiro (R$)</label>
                 <input type="number" step="0.01" id="inputValorRecebido" oninput="calcularTrocoCaixa()" placeholder="0.00" class="w-full p-3 border rounded-xl text-lg font-bold text-emerald-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-emerald-500">
@@ -410,7 +403,6 @@
                 </div>
             </div>
 
-            <!-- VALOR FINAL COM JUROS -->
             <div class="bg-emerald-50 p-3 rounded-xl border border-emerald-200 flex justify-between items-center">
                 <span class="font-bold text-xs text-emerald-900 uppercase">Valor Final a Cobrar do Cliente:</span>
                 <span id="modalValFinalComJuros" class="text-lg font-black text-emerald-700 font-mono">R$ 0,00</span>
@@ -546,7 +538,7 @@
 
     <!-- Scripts do Sistema como Módulos -->
     <script src="config.js"></script>
-    <script src="state.js"></script>
+    <script type="module" src="state.js"></script>
     <script type="module" src="auth.js"></script>
     <script type="module" src="caixa.js"></script>
     <script type="module" src="camera.js"></script>
