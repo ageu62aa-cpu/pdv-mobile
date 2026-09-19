@@ -10,7 +10,7 @@ import { carregarProdutosCache } from './produtos.js';
 import { focarBusca } from './caixa.js';
 
 export function mudarAbaAdmin(aba) {
-    ['Produtos', 'Operadores', 'Historico', 'Configuracoes'].forEach(a => {
+    ['Produtos', 'Operadores', 'Maquininhas', 'Historico', 'Configuracoes'].forEach(a => {
         const conteudo = document.getElementById(`conteudoAba${a}`);
         const btn = document.getElementById(`btnAba${a}`);
         if (conteudo) conteudo.classList.add('hidden');
@@ -25,6 +25,7 @@ export function mudarAbaAdmin(aba) {
     if (btnAtivo) btnAtivo.className = 'px-3 py-1.5 text-xs font-bold bg-emerald-600 text-white rounded-lg';
     
     if (aba === 'operadores') carregarOperadoresLoja();
+    if (aba === 'maquininhas') carregarMaquininhasAdmin();
     if (aba === 'historico') carregarHistoricoAdmin();
     if (aba === 'configuracoes') {
         const inputPinConfig = document.getElementById('inputAdminPinConfig');
@@ -40,6 +41,7 @@ export async function recarregarDadosAdmin() {
     if (cargoUsuarioAtual === 'admin_mercado') {
         await carregarHistoricoAdmin();
         await carregarOperadoresLoja();
+        await carregarMaquininhasAdmin();
     }
     alert('PDV-VS: Dados do painel administrativo atualizados com sucesso!');
 }
@@ -149,26 +151,35 @@ export async function salvarProdutoAdmin() {
     const unidadeProd = selectUnidade ? selectUnidade.value : 'UN';
 
     const p = { 
-        nome: nome ? nome.value : '', 
-        codigo: codigo ? codigo.value : '', 
+        empresa_id: empresaAtualId,
+        nome: nome ? nome.value.trim() : '', 
+        codigo: codigo ? codigo.value.trim() : '', 
         preco: preco ? parseFloat(preco.value) || 0 : 0, 
         estoque: estoque ? parseFloat(estoque.value) || 0 : 0,
         unidade: unidadeProd
     };
+
+    if (!p.nome) {
+        alert('PDV-VS: Informe o nome do produto.');
+        return;
+    }
     
     if (id) { 
-        await supabaseClient.from('produtos').update(p).eq('id', id); 
+        const { error } = await supabaseClient.from('produtos').update(p).eq('id', id); 
+        if (error) { alert('Erro ao atualizar produto: ' + error.message); return; }
     } else { 
         if (produtosCache.length >= 800) {
             alert('PDV-VS: Limite de 800 produtos do plano comum atingido.');
             return;
         }
-        await supabaseClient.from('produtos').insert([{ ...p, empresa_id: empresaAtualId }]); 
+        const { error } = await supabaseClient.from('produtos').insert([p]); 
+        if (error) { alert('Erro ao inserir produto: ' + error.message); return; }
     }
     
     fecharFormProduto(); 
     await carregarProdutosCache(); 
     renderizarTabelaAdmin(produtosCache);
+    alert('PDV-VS: Produto salvo com sucesso!');
 }
 
 export async function excluirProdutoAdmin(id) { 
@@ -179,32 +190,105 @@ export async function excluirProdutoAdmin(id) {
     } 
 }
 
+// ==========================================
+// GESTÃO DE MAQUININHAS E TAXAS DE CARTÃO
+// ==========================================
+export async function carregarMaquininhasAdmin() {
+    if (!empresaAtualId) return;
+    const { data, error } = await supabaseClient
+        .from('maquininhas_taxas')
+        .select('*')
+        .eq('empresa_id', empresaAtualId);
+
+    const tbody = document.getElementById('tabelaMaquininhasAdmin');
+    if (!tbody) return;
+
+    if (error || !data || data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-slate-400">Nenhuma maquininha cadastrada.</td></tr>';
+        return;
+    }
+
+    let html = '';
+    data.forEach(m => {
+        html += `<tr class="border-b">
+            <td class="p-3 font-bold text-slate-800">${m.nome_maquina}</td>
+            <td class="p-3">Débito: ${m.taxa_debito}% | Créd. À Vista: ${m.taxa_credito_avista}%</td>
+            <td class="p-3 text-xs text-slate-600">Parcelado configurado</td>
+            <td class="p-3 text-center">
+                <button onclick="window.excluirMaquininhaAdmin(${m.id})" class="text-rose-600 hover:text-rose-800 text-xs font-bold"><i class="fa-solid fa-trash"></i> Excluir</button>
+            </td>
+        </tr>`;
+    });
+    tbody.innerHTML = html;
+}
+
+export function abrirModalNovaMaquininha() {
+    const modal = document.getElementById('modalNovaMaquininha');
+    if (modal) modal.classList.remove('hidden');
+}
+
+export function fecharModalNovaMaquininha() {
+    const modal = document.getElementById('modalNovaMaquininha');
+    if (modal) modal.classList.add('hidden');
+}
+
+export async function salvarNovaMaquininha() {
+    const nome = document.getElementById('maqNome')?.value.trim();
+    const debito = parseFloat(document.getElementById('maqDebito')?.value) || 0;
+    const creditoAvista = parseFloat(document.getElementById('maqCreditoAvista')?.value) || 0;
+    const parcelas2x = parseFloat(document.getElementById('maq2x')?.value) || 0;
+    const parcelas3x = parseFloat(document.getElementById('maq3x')?.value) || 0;
+    const parcelas6x = parseFloat(document.getElementById('maq6x')?.value) || 0;
+    const parcelas12x = parseFloat(document.getElementById('maq12x')?.value) || 0;
+
+    if (!nome) { alert('Informe o nome da maquininha (Ex: Ton, Stone)'); return; }
+
+    const taxasObj = { "2": parcelas2x, "3": parcelas3x, "6": parcelas6x, "12": parcelas12x };
+
+    const { error } = await supabaseClient.from('maquininhas_taxas').insert([{
+        empresa_id: empresaAtualId,
+        nome_maquina: nome,
+        taxa_debito: debito,
+        taxa_credito_avista: creditoAvista,
+        taxas_parcelamento: taxasObj
+    }]);
+
+    if (error) {
+        alert('Erro ao salvar maquininha: ' + error.message);
+        return;
+    }
+
+    fecharModalNovaMaquininha();
+    carregarMaquininhasAdmin();
+    alert('Maquininha cadastrada com sucesso!');
+}
+
+export async function excluirMaquininhaAdmin(id) {
+    if (confirm('Deseja realmente excluir esta maquininha?')) {
+        await supabaseClient.from('maquininhas_taxas').delete().eq('id', id);
+        carregarMaquininhasAdmin();
+    }
+}
+
 export async function carregarOperadoresLoja() {
     if (!empresaAtualId) return;
 
-    // Busca os operadores cadastrados na empresa
     const { data: operadores, error } = await supabaseClient
         .from('usuarios_empresas')
         .select('*')
         .eq('empresa_id', empresaAtualId);
 
-    if (error) {
-        console.error('Erro ao carregar operadores:', error);
-        return;
-    }
+    if (error) return;
 
-    // Busca os caixas abertos atuais na tabela 'caixas'
     const { data: caixasAbertos } = await supabaseClient
         .from('caixas')
-        .select('user_id, status, faturamento_dia, valor_abertura')
+        .select('user_id, status, faturamento_dia')
         .eq('empresa_id', empresaAtualId)
         .eq('status', 'ABERTO');
 
     const mapaCaixas = {};
     if (caixasAbertos) {
-        caixasAbertos.forEach(c => {
-            mapaCaixas[c.user_id] = c;
-        });
+        caixasAbertos.forEach(c => { mapaCaixas[c.user_id] = c; });
     }
 
     let html = '';
@@ -383,7 +467,7 @@ export function renderizarHistoricoVendasPorJanelasDiarias() {
     container.innerHTML = htmlJanelas;
 }
 
-// Expondo funções administrativas para o escopo global (para o HTML / onclick funcionar)
+// Expondo funções globais
 window.mudarAbaAdmin = mudarAbaAdmin;
 window.recarregarDadosAdmin = recarregarDadosAdmin;
 window.abrirPainelAdmin = abrirPainelAdmin;
@@ -394,6 +478,11 @@ window.abrirEditarProdutoAdmin = abrirEditarProdutoAdmin;
 window.fecharFormProduto = fecharFormProduto;
 window.salvarProdutoAdmin = salvarProdutoAdmin;
 window.excluirProdutoAdmin = excluirProdutoAdmin;
+window.carregarMaquininhasAdmin = carregarMaquininhasAdmin;
+window.abrirModalNovaMaquininha = abrirModalNovaMaquininha;
+window.fecharModalNovaMaquininha = fecharModalNovaMaquininha;
+window.salvarNovaMaquininha = salvarNovaMaquininha;
+window.excluirMaquininhaAdmin = excluirMaquininhaAdmin;
 window.excluirOperadorLoja = excluirOperadorLoja;
 window.abrirModalNovoOperador = abrirModalNovoOperador;
 window.fecharModalNovoOperador = fecharModalNovoOperador;

@@ -31,7 +31,7 @@
 </head>
 <body class="bg-emerald-50/60 min-h-screen text-slate-800 flex flex-col justify-between">
 
-    <!-- TELA DE LOGIN / AUTENTICAÇÃO (Com scroll adaptado e margem inferior para o rodapé) -->
+    <!-- TELA DE LOGIN / AUTENTICAÇÃO -->
     <div id="telaLogin" class="fixed inset-0 bg-emerald-950 z-50 flex items-center justify-center p-4 overflow-y-auto">
         <div class="bg-white rounded-2xl max-w-md w-full p-6 sm:p-8 shadow-2xl relative my-auto max-h-[92vh] overflow-y-auto pb-12">
             <div class="absolute top-4 right-4 flex items-center space-x-2">
@@ -94,7 +94,6 @@
                     <input type="password" id="authSenha" placeholder="••••••••" onkeydown="tratarEnterLogin(event)" class="w-full border border-slate-300 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:border-emerald-500">
                 </div>
                 
-                <!-- Checkbox Manter-me conectado -->
                 <div id="divLembrarConectado" class="flex items-center space-x-2 pt-1">
                     <input type="checkbox" id="checkLembrarConectado" checked class="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500">
                     <label for="checkLembrarConectado" class="text-xs text-slate-600 select-none cursor-pointer">Manter-me conectado</label>
@@ -132,6 +131,11 @@
                 </div>
             </div>
             <div class="flex items-center space-x-2">
+                <!-- BOTÃO DE INSTALAÇÃO PWA (AGORA INCLUÍDO NO TOPO) -->
+                <button id="btnInstalarApp" class="hidden bg-amber-500 hover:bg-amber-600 text-slate-950 px-2.5 py-1.5 rounded text-xs font-black transition flex items-center space-x-1 shadow" title="Instalar Aplicativo">
+                    <i class="fa-solid fa-download"></i><span>Instalar App</span>
+                </button>
+                
                 <span class="badgeCaixaStatus text-xs bg-amber-500/20 text-amber-300 border border-amber-500/30 px-3 py-1.5 rounded font-semibold">FECHADO</span>
                 <span id="infoUsuarioLogado" class="text-xs text-emerald-100 hidden sm:inline"></span>
                 <button id="btnAdminMenu" onclick="abrirPainelAdmin()" class="hidden bg-emerald-800 hover:bg-emerald-900 text-white px-3 py-1.5 rounded text-xs font-bold transition flex items-center space-x-1.5"><i class="fa-solid fa-user-shield text-emerald-300"></i><span>Admin</span></button>
@@ -211,56 +215,6 @@
         </footer>
     </div>
 
-    <!-- TELA DE LOGIN SUPER ADMIN -->
-    <div id="telaLoginSuperAdmin" class="hidden fixed inset-0 bg-slate-950 z-50 flex items-center justify-center p-4">
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 sm:p-8 shadow-2xl relative text-white">
-            <div class="text-center mb-6">
-                <i class="fa-solid fa-user-secret text-4xl text-amber-500 mb-2"></i>
-                <h2 class="text-xl sm:text-2xl font-bold">Painel Super Admin</h2>
-                <p class="text-xs text-slate-400">Acesso Restrito ao Desenvolvedor (Vancely)</p>
-            </div>
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-xs font-semibold text-slate-300 mb-1">E-mail Master</label>
-                    <input type="email" id="superAdminEmail" value="vancely@admin.com" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:border-amber-500">
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-slate-300 mb-1">Senha Master</label>
-                    <input type="password" id="superAdminSenha" value="123456" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:border-amber-500">
-                </div>
-                <button onclick="logarSuperAdmin()" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 rounded-lg shadow transition text-sm">Entrar no Painel Master</button>
-                <div id="feedbackSuperAdmin" class="text-xs text-center hidden font-semibold text-rose-400"></div>
-                <div class="text-center pt-2"><button onclick="fecharTelaSuperAdmin()" class="text-xs text-slate-400 hover:text-white transition">Cancelar / Voltar</button></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- PAINEL SUPER ADMIN MESTRE -->
-    <div id="modalSuperAdminMaster" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-2 sm:p-4">
-        <div class="bg-white rounded-xl max-w-6xl w-full p-4 sm:p-6 shadow-2xl max-h-[95vh] flex flex-col">
-            <div class="flex justify-between items-center border-b pb-3 mb-4">
-                <h3 class="text-base sm:text-xl font-bold text-slate-900"><i class="fa-solid fa-shield-halved text-amber-600 mr-2"></i> Painel Super Admin (Gestão de Clientes)</h3>
-                <button onclick="fecharSuperAdminMaster()" class="text-slate-400 hover:text-slate-600 p-2"><i class="fa-solid fa-xmark text-2xl"></i></button>
-            </div>
-            <div class="overflow-x-auto flex-1 border rounded-lg">
-                <table class="w-full text-left border-collapse text-sm">
-                    <thead>
-                        <tr class="bg-slate-100 border-b text-slate-700">
-                            <th class="p-3">Estabelecimento</th>
-                            <th class="p-3">Responsável</th>
-                            <th class="p-3">Documento / WhatsApp</th>
-                            <th class="p-3 text-xs">E-mail Admin</th>
-                            <th class="p-3 text-center">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tabelaClientesSuperAdmin">
-                        <tr><td colspan="5" class="p-6 text-center text-slate-400">Carregando dados...</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
     <!-- PAINEL ADMINISTRATIVO DA LOJA -->
     <div id="modalAdmin" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-3">
         <div class="bg-white rounded-2xl max-w-5xl w-full p-5 shadow-2xl max-h-[90vh] flex flex-col">
@@ -271,10 +225,13 @@
                 </div>
                 <button onclick="fecharPainelAdmin()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-xl"></i></button>
             </div>
+            
+            <!-- ABAS DO PAINEL ADMIN (COM A ABA MAQUININHAS ADICIONADA) -->
             <div class="flex space-x-2 border-b pb-3 mb-3 overflow-x-auto">
                 <button id="btnAbaProdutos" onclick="mudarAbaAdmin('produtos')" class="px-3 py-1.5 text-xs font-bold bg-emerald-600 text-white rounded-lg">Produtos (Máx 800)</button>
                 <button id="btnAbaOperadores" onclick="mudarAbaAdmin('operadores')" class="px-3 py-1.5 text-xs font-bold bg-slate-200 text-slate-700 rounded-lg">Operadores & Status</button>
-                <button id="btnAbaHistorico" onclick="mudarAbaAdmin('historico')" class="px-3 py-1.5 text-xs font-bold bg-slate-200 text-slate-700 rounded-lg">Faturamento & Histórico (15 dias)</button>
+                <button id="btnAbaMaquininhas" onclick="mudarAbaAdmin('maquininhas')" class="px-3 py-1.5 text-xs font-bold bg-slate-200 text-slate-700 rounded-lg">Maquininhas & Taxas</button>
+                <button id="btnAbaHistorico" onclick="mudarAbaAdmin('historico')" class="px-3 py-1.5 text-xs font-bold bg-slate-200 text-slate-700 rounded-lg">Faturamento & Histórico</button>
                 <button id="btnAbaConfiguracoes" onclick="mudarAbaAdmin('configuracoes')" class="px-3 py-1.5 text-xs font-bold bg-slate-200 text-slate-700 rounded-lg">Configurações & PIN</button>
             </div>
             
@@ -304,7 +261,7 @@
             <!-- ABA OPERADORES -->
             <div id="conteudoAbaOperadores" class="hidden flex-1 flex flex-col overflow-hidden">
                 <div class="flex justify-between mb-3 items-center">
-                    <p class="text-xs text-slate-500">Gerencie o Administrador e os operadores. O status de caixa funciona de forma independente para cada um.</p>
+                    <p class="text-xs text-slate-500">Gerencie o Administrador e os operadores.</p>
                     <button onclick="abrirModalNovoOperador()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded text-xs font-bold shadow"><i class="fa-solid fa-user-plus mr-1"></i> Adicionar Operador</button>
                 </div>
                 <div class="overflow-y-auto flex-1 border rounded-lg">
@@ -318,6 +275,34 @@
                             </tr>
                         </thead>
                         <tbody id="tabelaOperadoresLoja"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ABA MAQUININHAS & TAXAS (NOVA) -->
+            <div id="conteudoAbaMaquininhas" class="hidden flex-1 flex flex-col overflow-hidden space-y-3">
+                <div class="flex justify-between items-center bg-slate-50 p-3 rounded-xl border">
+                    <div>
+                        <h4 class="font-bold text-xs text-slate-800 uppercase">Cadastro de Maquininhas de Cartão</h4>
+                        <p class="text-[11px] text-slate-500">Cadastre as operadoras (Stone, Ton, PagSeguro) e configure as taxas de débito e crédito.</p>
+                    </div>
+                    <button onclick="abrirModalNovaMaquininha()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-lg text-xs font-bold shadow flex items-center space-x-1.5">
+                        <i class="fa-solid fa-plus"></i><span>Nova Maquininha</span>
+                    </button>
+                </div>
+                <div class="overflow-y-auto flex-1 border rounded-lg">
+                    <table class="w-full text-left border-collapse text-sm">
+                        <thead class="bg-slate-50 border-b text-xs text-slate-600">
+                            <tr>
+                                <th class="p-3">Maquininha / Operadora</th>
+                                <th class="p-3">Taxas Base (Débito / À Vista)</th>
+                                <th class="p-3">Parcelamento</th>
+                                <th class="p-3 text-center">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabelaMaquininhasAdmin">
+                            <tr><td colspan="4" class="p-4 text-center text-slate-400">Nenhuma maquininha cadastrada.</td></tr>
+                        </tbody>
                     </table>
                 </div>
             </div>
@@ -346,8 +331,6 @@
             <!-- ABA CONFIGURAÇÕES & PIN -->
             <div id="conteudoAbaConfiguracoes" class="hidden flex-1 flex flex-col p-4 space-y-4 overflow-y-auto">
                 <h3 class="font-bold text-sm text-slate-800 border-b pb-2"><i class="fa-solid fa-key text-emerald-600 mr-1"></i> Configurações do Estabelecimento</h3>
-                
-                <!-- Edição Autônoma do Nome da Empresa -->
                 <div class="max-w-md space-y-3 bg-slate-50 p-4 rounded-xl border">
                     <h4 class="font-bold text-xs text-slate-700 uppercase">Alterar Dados do Estabelecimento</h4>
                     <div>
@@ -360,7 +343,6 @@
                     </div>
                     <button onclick="salvarConfiguracoesEmpresaAdmin()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-xs font-bold shadow">Salvar Dados da Loja</button>
                 </div>
-
                 <div class="max-w-md space-y-3 pt-2">
                     <div>
                         <label class="block text-xs font-bold text-slate-600 mb-1">PIN Gerencial de Autorização (Cancelamento de Itens)</label>
@@ -414,12 +396,60 @@
         </div>
     </div>
 
-    <!-- MODAL DE CAIXA PROFISSIONAL (INDIVIDUAL) -->
+    <!-- MODAL DE CADASTRO DE MAQUININHA (NOVO) -->
+    <div id="modalNovaMaquininha" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-3">
+        <div class="bg-white rounded-xl max-w-md w-full p-5 shadow-2xl space-y-4">
+            <h3 class="font-bold text-base text-slate-900 border-b pb-2">Cadastrar Maquininha e Taxas</h3>
+            <div class="space-y-3 max-h-[75vh] overflow-y-auto pr-1">
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">Nome da Maquininha / Operadora</label>
+                    <input type="text" id="maqNome" class="w-full p-2.5 border rounded-lg text-sm bg-white" placeholder="Ex: Ton, Stone, PagSeguro">
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">Taxa Débito (%)</label>
+                        <input type="number" step="0.01" id="maqDebito" class="w-full p-2 border rounded text-sm" placeholder="1.99">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">Crédito à Vista (%)</label>
+                        <input type="number" step="0.01" id="maqCreditoAvista" class="w-full p-2 border rounded text-sm" placeholder="3.10">
+                    </div>
+                </div>
+                <div class="border-t pt-2">
+                    <span class="block text-xs font-bold text-slate-700 mb-2">Taxas de Parcelamento (Juros % por parcela)</span>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[11px] text-slate-500">Parcela 2x (%)</label>
+                            <input type="number" step="0.01" id="maq2x" class="w-full p-2 border rounded text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] text-slate-500">Parcela 3x (%)</label>
+                            <input type="number" step="0.01" id="maq3x" class="w-full p-2 border rounded text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] text-slate-500">Parcela 6x (%)</label>
+                            <input type="number" step="0.01" id="maq6x" class="w-full p-2 border rounded text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] text-slate-500">Parcela 12x (%)</label>
+                            <input type="number" step="0.01" id="maq12x" class="w-full p-2 border rounded text-sm">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="flex justify-end space-x-2 pt-2 border-t">
+                <button onclick="fecharModalNovaMaquininha()" class="bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-xs font-bold">Cancelar</button>
+                <button onclick="salvarNovaMaquininha()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-xs font-bold shadow">Salvar Maquininha</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE CAIXA PROFISSIONAL -->
     <div id="modalCaixa" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 text-slate-800 animate-scaleUp">
             <div class="flex justify-between items-center mb-4 border-b pb-3">
                 <h3 id="tituloModalCaixa" class="font-bold text-lg text-slate-900 flex items-center gap-2">
-                    <i class="fa-solid fa-cash-register text-emerald-600"></i> Gerenciar Caixa (Individual)
+                    <i class="fa-solid fa-cash-register text-emerald-600"></i> Gerenciar Caixa
                 </h3>
                 <button onclick="fecharModalCaixa()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
@@ -434,20 +464,10 @@
 
             <div id="resumoFechamentoCaixa" class="hidden space-y-3">
                 <div class="bg-slate-50 p-4 rounded-xl border space-y-2 text-xs">
-                    <div class="flex justify-between">
-                        <span class="text-slate-500">Faturamento Vendas (Turno):</span>
-                        <span id="valFaturamentoOperador" class="font-bold text-slate-800">R$ 0,00</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-slate-500">Troco Inicial Declarado:</span>
-                        <span id="valTrocoInicialCaixa" class="font-bold text-slate-800">R$ 0,00</span>
-                    </div>
-                    <div class="flex justify-between text-emerald-700 font-black text-sm border-t pt-2">
-                        <span>Total Geral em Gaveta:</span>
-                        <span id="valTotalGeralCaixa">R$ 0,00</span>
-                    </div>
+                    <div class="flex justify-between"><span class="text-slate-500">Faturamento Vendas:</span><span id="valFaturamentoOperador" class="font-bold text-slate-800">R$ 0,00</span></div>
+                    <div class="flex justify-between"><span class="text-slate-500">Troco Inicial:</span><span id="valTrocoInicialCaixa" class="font-bold text-slate-800">R$ 0,00</span></div>
+                    <div class="flex justify-between text-emerald-700 font-black text-sm border-t pt-2"><span>Total Geral em Gaveta:</span><span id="valTotalGeralCaixa">R$ 0,00</span></div>
                 </div>
-                <p class="text-xs text-slate-500">Confirme o encerramento do seu turno de caixa individual.</p>
             </div>
 
             <div class="flex space-x-3 mt-6">
@@ -485,7 +505,7 @@
     <!-- MODAL NOVO OPERADOR -->
     <div id="modalNovoOperador" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-3">
         <div class="bg-white rounded-xl max-w-sm w-full p-5 shadow-2xl">
-            <h3 class="font-bold text-base mb-3 text-slate-900">Novo Operador (Plano Comum)</h3>
+            <h3 class="font-bold text-base mb-3 text-slate-900">Novo Operador</h3>
             <div class="space-y-3">
                 <div>
                     <label class="block text-xs font-bold text-slate-600 mb-1">E-mail do Operador</label>
