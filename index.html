@@ -492,7 +492,7 @@
                     <input type="email" id="novoOpEmail" class="w-full p-2 border rounded text-sm" placeholder="operador@loja.com">
                 </div>
                 <div>
-                    <label class="path block text-xs font-bold text-slate-600 mb-1">Senha Provisória</label>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">Senha Provisória</label>
                     <input type="password" id="novoOpSenha" class="w-full p-2 border rounded text-sm" placeholder="••••••••">
                 </div>
             </div>
@@ -513,8 +513,14 @@
         </div>
     </div>
 
-    <!-- Scripts do Sistema -->
-    <!-- Removido o arquivo duplicado "botoes.js" para evitar conflito de redeclaracao de variáveis/funções -->
+    <!-- Scripts do Sistema Fragmentados (Ordem Correta de Dependências) -->
     <script src="config.js"></script>
+    <script src="state.js"></script>
+    <script src="auth.js"></script>
+    <script src="caixa.js"></script>
+    <script src="camera.js"></script>
+    <script src="produtos.js"></script>
+    <script src="admin.js"></script>
+    <script src="main.js"></script>
 </body>
 </html>
