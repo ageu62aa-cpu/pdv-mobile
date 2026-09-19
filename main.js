@@ -407,7 +407,7 @@ async function carregarFaturamentoDiarioResumo() {
         console.error("Erro ao carregar faturamento diário:", e);
     }
 }
-// Exemplo do que adicionar no final do seu main.js:
+// Exposição correta de funções no escopo global (window) para uso direto no HTML
 window.tratarEnterLogin = tratarEnterLogin;
 window.processarAutenticacao = processarAutenticacao;
 window.alternarTelaAuth = alternarTelaAuth;
@@ -430,7 +430,7 @@ window.fecharPainelAdmin = fecharPainelAdmin;
 window.abrirModalNovoOperador = abrirModalNovoOperador;
 window.abrirModalNovaMaquininha = abrirModalNovaMaquininha;
 window.salvarConfiguracoesEmpresaAdmin = salvarConfiguracoesEmpresaAdmin;
-window.salvarPinAdmin = salivarPinAdmin; // ou o nome correto da sua função
+window.salvarPinAdmin = salvarPinAdmin; 
 window.selecionarFormaPagamento = selecionarFormaPagamento;
 window.recalcularTotalComTaxasMaquininha = recalcularTotalComTaxasMaquininha;
 window.calcularTrocoCaixa = calcularTrocoCaixa;
@@ -439,7 +439,7 @@ window.confirmarConclusaoVenda = confirmarConclusaoVenda;
 window.fecharFormProduto = fecharFormProduto;
 window.salvarProdutoAdmin = salvarProdutoAdmin;
 window.escanearCameraAdmin = escanearCameraAdmin;
-window.fecharModalNovaMaquininha = maquininha => ... // garanta que as funções globais usadas no HTML estejam aqui
+window.fecharModalNovaMaquininha = fecharModalNovaMaquininha;
 window.salvarNovaMaquininha = salvarNovaMaquininha;
 window.tratarEnterModalCaixa = tratarEnterModalCaixa;
 window.fecharModalCaixa = fecharModalCaixa;
