@@ -92,21 +92,13 @@ export function fecharModalCaixa() {
 export async function confirmarAcaoCaixa() {
     const inputValorCaixa = document.getElementById('inputValorCaixa');
     const valorDigitado = inputValorCaixa ? parseFloat(inputValorCaixa.value) || 0 : 0;
+    let novoEstadoCaixa = false;
 
     if (acaoCaixaAtual === 'abrir') {
         valorTrocoAbertura = valorDigitado;
         horaAberturaCaixa = new Date();
+        novoEstadoCaixa = true;
         setCaixaAberto(true);
-
-        // Atualiza o status do caixa diretamente no Supabase para sincronizar entre dispositivos
-        if (empresaAtualId) {
-            const { error } = await supabaseClient
-                .from('empresas')
-                .update({ caixa_aberto: true })
-                .eq('id', empresaAtualId);
-            if (error) console.error('Erro ao atualizar caixa no banco:', error);
-        }
-
         alert('PDV-VS: Caixa aberto com sucesso!');
     } else {
         const horaFechamento = new Date();
@@ -115,19 +107,24 @@ export async function confirmarAcaoCaixa() {
         
         alert(`PDV-VS: Caixa Fechado com Sucesso!\n- Abertura: ${horaAberturaCaixa ? horaAberturaCaixa.toLocaleTimeString() : 'N/A'}\n- Fechamento: ${horaFechamento.toLocaleTimeString()}\n- Troco Inicial: R$ ${(valorTrocoAbertura || 0).toFixed(2)}\n- Vendas (Turno): R$ ${totalArrecadado.toFixed(2)}\n- Total Geral em Gaveta: R$ ${totalGeralGaveta.toFixed(2)}`);
         
+        novoEstadoCaixa = false;
         setCaixaAberto(false);
         valorTrocoAbertura = 0;
         setFaturamentoDia(0);
         const txtFat = document.getElementById('txtFaturamentoDia');
         if (txtFat) txtFat.innerText = 'R$ 0,00';
-
-        // Atualiza o status do caixa como fechado no Supabase
-        if (empresaAtualId) {
-            const { error } = await supabaseClient
-                .from('empresas')
-                .update({ caixa_aberto: false })
-                .eq('id', empresaAtualId);
-            if (error) console.error('Erro ao atualizar caixa no banco:', error);
+    }
+    
+    // Atualiza imediatamente no Supabase para sincronizar com todos os aparelhos e perfis (Admin/Operador)
+    if (empresaAtualId) {
+        const { error } = await supabaseClient
+            .from('empresas')
+            .update({ caixa_aberto: novoEstadoCaixa })
+            .eq('id', empresaAtualId);
+            
+        if (error) {
+            console.error('Erro ao sincronizar status do caixa no banco:', error);
+            alert('PDV-VS: Erro ao salvar status do caixa no banco de dados.');
         }
     }
     
