@@ -382,6 +382,7 @@ window.selecionarFormaPagamento = function(tipo) {
 async function carregarMaquininhasParaVenda() {
     try {
         const lojaId = localStorage.getItem('pdv_loja_id');
+        if (!lojaId) return;
         const { data, error } = await window.supabaseClient
             .from('maquininhas')
             .select('*')
@@ -399,7 +400,7 @@ async function carregarMaquininhasParaVenda() {
             select.innerHTML += `<option value="${m.id}">${m.nome} (Déb: ${m.taxa_debito}% | Créd: ${m.taxa_credito_avista}%)</option>`;
         });
     } catch (e) {
-        console.error("Erro ao carregar maquininhas:", e);
+        console.warn("Aviso ao carregar maquininhas:", e);
     }
 }
 
@@ -468,7 +469,7 @@ window.confirmarConclusaoVenda = async function() {
                 operador: operadorEmail,
                 forma_pagamento: formaPagamentoAtual,
                 valor_original: totalOriginal,
-                valor_total: valorFinal, // Corrigido para valor_total de acordo com o banco
+                valor_total: valorFinal,
                 itens: window.carrinhoVenda,
                 data_venda: new Date().toISOString()
             }]);
@@ -487,6 +488,7 @@ window.confirmarConclusaoVenda = async function() {
     }
 }
 
+// FUNÇÃO BLINDADA COM TRY/CATCH PARA EVITAR TRAVAMENTO NO LOGIN
 async function carregarFaturamentoDiarioResumo() {
     try {
         const lojaId = localStorage.getItem('pdv_loja_id');
@@ -497,21 +499,24 @@ async function carregarFaturamentoDiarioResumo() {
 
         const { data, error } = await window.supabaseClient
             .from('vendas')
-            .select('valor_total') // Corrigido para valor_total de acordo com o banco
+            .select('valor_total')
             .eq('loja_id', lojaId)
             .gte('data_venda', hojeInicio.toISOString());
 
-        if (error) throw error;
+        if (error) {
+            console.warn("Aviso na consulta de faturamento (ignorado com segurança):", error.message);
+            return;
+        }
 
         let totalDia = 0;
         if (data) {
-            data.forEach(v => totalDia += Number(v.valor_total) || 0); // Corrigido para valor_total
+            data.forEach(v => totalDia += Number(v.valor_total) || 0);
         }
 
         const el = document.getElementById('txtFaturamentoDia');
         if (el) el.innerText = `R$ ${totalDia.toFixed(2)}`;
     } catch (e) {
-        console.error("Erro ao carregar faturamento diário:", e);
+        console.warn("Aviso ao carregar faturamento diário (seguro):", e);
     }
 }
 
