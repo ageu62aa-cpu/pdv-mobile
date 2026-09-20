@@ -68,22 +68,28 @@ async function verificarSessaoEAlternarTelas() {
 
     if (session && session.user) {
         setUsuarioAtual(session.user);
-        setEmpresaAtualId(session.user.id); // Ajuste conforme a lógica da sua tabela de empresas/perfis
+
+        // CORREÇÃO CRÍTICA: Busca o ID real da empresa associada ao operador no Supabase
+        const { data: opData } = await window.supabaseClient
+            .from('operadores')
+            .select('empresa_id, cargo')
+            .eq('email', session.user.email)
+            .maybeSingle();
+
+        if (opData && opData.empresa_id) {
+            setEmpresaAtualId(opData.empresa_id);
+            setCargoUsuarioAtual(opData.cargo || 'admin_mercado');
+        } else {
+            // Fallback caso utilize diretamente o ID do usuário como ID da empresa
+            setEmpresaAtualId(session.user.id);
+            setCargoUsuarioAtual('admin_mercado');
+        }
 
         if (telaLogin) telaLogin.classList.add('hidden');
         if (appPrincipal) appPrincipal.classList.remove('hidden');
         if (infoUsuario) infoUsuario.innerText = session.user.email;
         
-        // Verifica cargo do operador no Supabase para restrições
-        const { data: opData } = await window.supabaseClient
-            .from('operadores')
-            .select('cargo')
-            .eq('email', session.user.email)
-            .maybeSingle();
-
         const cargo = opData ? opData.cargo : 'admin_mercado';
-        setCargoUsuarioAtual(cargo);
-
         const btnAdmin = document.getElementById('btnAdminMenu');
         if (btnAdmin) {
             if (cargo === 'admin_mercado') {
