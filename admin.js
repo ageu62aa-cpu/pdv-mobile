@@ -142,29 +142,29 @@ export function fecharFormProduto() {
 export async function salvarProdutoAdmin() {
     let idEmpresaAtual = empresaAtualId || localStorage.getItem('empresa_id') || localStorage.getItem('pdv_empresa_id');
 
-    if (!idEmpresaAtual) {
-        try {
-            const { data: { user } } = await window.supabaseClient.auth.getUser();
-            if (user) {
-                const { data: vincData } = await window.supabaseClient
-                    .from('usuarios_empresas')
-                    .select('empresa_id')
-                    .eq('user_id', user.id)
-                    .maybeSingle();
-                
-                if (vincData && vincData.empresa_id) {
-                    idEmpresaAtual = vincData.empresa_id;
-                    setEmpresaAtualId(idEmpresaAtual);
-                    localStorage.setItem('empresa_id', idEmpresaAtual);
-                }
+    try {
+        const { data: { session } } = await window.supabaseClient.auth.getSession();
+        if (session && session.user) {
+            const { data: vincData } = await window.supabaseClient
+                .from('usuarios_empresas')
+                .select('empresa_id')
+                .eq('user_id', session.user.id)
+                .maybeSingle();
+            
+            if (vincData && vincData.empresa_id) {
+                idEmpresaAtual = vincData.empresa_id;
+            } else if (!idEmpresaAtual) {
+                idEmpresaAtual = session.user.id;
             }
-        } catch (e) {
-            console.error("Erro ao buscar empresa:", e);
+            setEmpresaAtualId(idEmpresaAtual);
+            localStorage.setItem('empresa_id', idEmpresaAtual);
         }
+    } catch (e) {
+        console.error("Erro ao validar empresa na sessão:", e);
     }
 
     if (!idEmpresaAtual) {
-        alert('PDV-VS Erro: Sessão da empresa não identificada. Faça login novamente.');
+        alert('PDV-VS Erro Crítico: ID da empresa não encontrado. Faça login novamente.');
         return;
     }
 
