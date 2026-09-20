@@ -4,7 +4,7 @@
 
 import { 
     empresaAtualId, produtosCache, cargoUsuarioAtual, historicoVendasCache, 
-    setHistoricoVendasCache, setProdutosCache 
+    setHistoricoVendasCache, setProdutosCache, setEmpresaAtualId 
 } from './state.js';
 import { carregarProdutosCache } from './produtos.js';
 import { focarBusca } from './caixa.js';
@@ -140,6 +140,32 @@ export function fecharFormProduto() {
 }
 
 export async function salvarProdutoAdmin() {
+    // PROTEÇÃO CRÍTICA: Garante que temos um ID de empresa válido antes de salvar
+    let idEmpresaAtual = empresaAtualId;
+    if (!idEmpresaAtual) {
+        const { data: { session } } = await window.supabaseClient.auth.getSession();
+        if (session && session.user) {
+            const { data: opData } = await window.supabaseClient
+                .from('operadores')
+                .select('empresa_id')
+                .eq('email', session.user.email)
+                .maybeSingle();
+            
+            if (opData && opData.empresa_id) {
+                idEmpresaAtual = opData.empresa_id;
+                setEmpresaAtualId(idEmpresaAtual);
+            } else {
+                idEmpresaAtual = session.user.id;
+                setEmpresaAtualId(idEmpresaAtual);
+            }
+        }
+    }
+
+    if (!idEmpresaAtual) {
+        alert('PDV-VS Erro: Sessão da empresa não identificada. Faça login novamente.');
+        return;
+    }
+
     const prodId = document.getElementById('formProdId');
     const nome = document.getElementById('formNome');
     const codigo = document.getElementById('formCodigo');
@@ -151,7 +177,7 @@ export async function salvarProdutoAdmin() {
     const unidadeProd = selectUnidade ? selectUnidade.value : 'UN';
 
     const p = { 
-        empresa_id: empresaAtualId,
+        empresa_id: idEmpresaAtual,
         nome: nome ? nome.value.trim() : '', 
         codigo: codigo ? codigo.value.trim() : '', 
         preco: preco ? parseFloat(preco.value) || 0 : 0, 
