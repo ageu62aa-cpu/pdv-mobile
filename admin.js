@@ -140,32 +140,22 @@ export function fecharFormProduto() {
 }
 
 export async function salvarProdutoAdmin() {
-    // CORREÇÃO ROBUSTA: Garante de forma absoluta que temos o ID da empresa atual
+    // CORREÇÃO ROBUSTA: Busca diretamente na tabela usuarios_empresas caso o state esteja vazio
     let idEmpresaAtual = empresaAtualId || localStorage.getItem('empresa_id') || localStorage.getItem('pdv_empresa_id');
 
     if (!idEmpresaAtual) {
         const { data: { session } } = await window.supabaseClient.auth.getSession();
         if (session && session.user) {
-            const { data: opData } = await window.supabaseClient
-                .from('operadores')
+            const { data: vincData } = await window.supabaseClient
+                .from('usuarios_empresas')
                 .select('empresa_id')
-                .eq('email', session.user.email)
+                .eq('user_id', session.user.id)
                 .maybeSingle();
             
-            if (opData && opData.empresa_id) {
-                idEmpresaAtual = opData.empresa_id;
+            if (vincData && vincData.empresa_id) {
+                idEmpresaAtual = vincData.empresa_id;
             } else {
-                const { data: vincData } = await window.supabaseClient
-                    .from('usuarios_empresas')
-                    .select('empresa_id')
-                    .eq('user_id', session.user.id)
-                    .maybeSingle();
-                
-                if (vincData && vincData.empresa_id) {
-                    idEmpresaAtual = vincData.empresa_id;
-                } else {
-                    idEmpresaAtual = session.user.id;
-                }
+                idEmpresaAtual = session.user.id;
             }
             setEmpresaAtualId(idEmpresaAtual);
             localStorage.setItem('empresa_id', idEmpresaAtual);
