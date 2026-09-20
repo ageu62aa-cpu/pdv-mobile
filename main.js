@@ -1,6 +1,6 @@
 // ==========================================
 // PDV-VS Enterprise - Módulo Principal (main.js)
-// Versão Completa e Funcional
+// Versão Completa, Unificada e Sem Erros
 // ==========================================
 
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
@@ -280,6 +280,8 @@ window.mudarAbaAdmin = function(aba) {
         abaAtivaBtn.className = "px-3 py-1.5 text-xs font-bold bg-emerald-600 text-white rounded-lg";
     }
 
+    if (aba === 'produtos') carregarProdutosLoja();
+    if (aba === 'operadores') carregarOperadoresAdmin();
     if (aba === 'maquininhas') carregarMaquininhasAdmin();
     if (aba === 'historico') carregarHistoricoAdmin();
 }
@@ -368,6 +370,92 @@ window.deletarProdutoAdmin = async function(id) {
         carregarProdutosLoja();
     } catch (e) {
         alert("Erro ao excluir: " + e.message);
+    }
+}
+
+// --- GESTÃO DE OPERADORES ---
+async function carregarOperadoresAdmin() {
+    const lojaId = localStorage.getItem('pdv_loja_id');
+    const tbody = document.getElementById('tabelaOperadoresLoja');
+    if (!tbody) return;
+
+    tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-slate-400">Carregando operadores...</td></tr>`;
+
+    try {
+        const { data, error } = await window.supabaseClient
+            .from('operadores')
+            .select('*')
+            .eq('loja_id', lojaId);
+
+        if (error || !data || data.length === 0) {
+            const emailAtual = localStorage.getItem('pdv_usuario_email') || 'Administrador';
+            tbody.innerHTML = `
+                <tr class="border-b text-xs hover:bg-slate-50">
+                    <td class="p-3 font-bold text-slate-800">${emailAtual}</td>
+                    <td class="p-3"><span class="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-bold">Administrador</span></td>
+                    <td class="p-3 text-center"><span class="text-emerald-600 font-bold">Ativo</span></td>
+                    <td class="p-3 text-center">-</td>
+                </tr>
+            `;
+            return;
+        }
+
+        tbody.innerHTML = '';
+        data.forEach(op => {
+            const cargoFormatado = (op.cargo === 'admin_mercado' || op.cargo === 'admin') ? 'Administrador' : 'Operador de Caixa';
+            const badgeCor = cargoFormatado === 'Administrador' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800';
+            
+            tbody.innerHTML += `
+                <tr class="border-b text-xs hover:bg-slate-50">
+                    <td class="p-3 font-bold text-slate-800">${op.email || op.nome || 'Operador'}</td>
+                    <td class="p-3"><span class="${badgeCor} px-2 py-0.5 rounded font-bold">${cargoFormatado}</span></td>
+                    <td class="p-3 text-center"><span class="text-emerald-600 font-bold">Ativo</span></td>
+                    <td class="p-3 text-center">
+                        <button onclick="deletarOperador('${op.id}')" class="text-rose-500 hover:text-rose-700"><i class="fa-solid fa-trash"></i></button>
+                    </td>
+                </tr>
+            `;
+        });
+    } catch (e) {
+        console.error("Erro ao carregar operadores:", e);
+        tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-rose-500">Erro ao carregar operadores.</td></tr>`;
+    }
+}
+
+window.abrirModalNovoOperador = function() {
+    const emailOp = prompt("Digite o e-mail do novo operador/caixa:");
+    if (!emailOp) return;
+    const cargoOp = confirm("Este operador será Administrador do Estabelecimento? (OK para Sim, Cancelar para Operador de Caixa comum)") ? 'admin_mercado' : 'operador';
+    
+    cadastrarNovoOperadorSistema(emailOp, cargoOp);
+}
+
+async function cadastrarNovoOperadorSistema(email, cargo) {
+    const lojaId = localStorage.getItem('pdv_loja_id');
+    try {
+        const { error } = await window.supabaseClient.from('operadores').insert([{
+            loja_id: lojaId,
+            email: email,
+            cargo: cargo,
+            status: 'ativo'
+        }]);
+
+        if (error) throw error;
+        alert("Operador cadastrado com sucesso!");
+        carregarOperadoresAdmin();
+    } catch (e) {
+        alert("Erro ao cadastrar operador: " + e.message);
+    }
+}
+
+window.deletarOperador = async function(id) {
+    if (confirm("Deseja remover este operador da lista?")) {
+        try {
+            await window.supabaseClient.from('operadores').delete().eq('id', id);
+            carregarOperadoresAdmin();
+        } catch (e) {
+            alert("Erro ao remover: " + e.message);
+        }
     }
 }
 
