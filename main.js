@@ -1,12 +1,11 @@
 // ==========================================
 // PDV-VS Enterprise - Módulo Principal (main.js)
-// Arquivo Atualizado: Com todas as funções de câmara e busca expostas globalmente
+// Arquivo Corrigido: Sem erros de sintaxe e com todas as funções expostas
 // ==========================================
 
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
 import { setUsuarioAtual, setEmpresaAtualId, setCargoUsuarioAtual, setCaixaAberto } from './state.js';
 
-// Importando funções essenciais do seu módulo de caixa (incluindo câmara e busca)
 import { 
     verificarStatusCaixaServidor, 
     gerenciarCaixaModal, 
@@ -34,9 +33,9 @@ const SUPABASE_URL = 'https://vbdglgmxaywntmjriccf.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiZGdsZ214YXl3bnRtanJpY2NmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk1ODgzOTEsImV4cCI6MjEwNTE2NDM5MX0.S_IUvajnn7Qk7yNtkfBru9xsOjUkKhkJ0J0doikrWSs';
 
 window.supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-console.log("🟢 [SUPABASE] Conectado com sucesso!");[cite: 19]
+console.log("🟢 [SUPABASE] Conectado com sucesso!");
 
-// --- EXPOSIÇÃO GLOBAL DE FUNÇÕES DO CAIXA (Para o HTML e eventos inline) ---
+// --- EXPOSIÇÃO GLOBAL DE FUNÇÕES DO CAIXA E LOGIN ---
 window.gerenciarCaixaModal = gerenciarCaixaModal;
 window.fecharModalCaixa = fecharModalCaixa;
 window.confirmarAcaoCaixa = confirmarAcaoCaixa;
@@ -54,17 +53,47 @@ window.realizarLogout = realizarLogout;
 window.atualizarPaginaCompleta = atualizarPaginaCompleta;
 window.focarBusca = focarBusca;
 window.alterarQtd = alterarQtd;
-
-// CORREÇÃO: Funções de câmara e busca expostas globalmente para evitar erros na consola
 window.abrirLeitorCamera = abrirLeitorCamera;
 window.onDigitarBusca = onDigitarBusca;
+
+// Funções de Autenticação expostas para o HTML funcionar
+window.tratarEnterLogin = function(e) { 
+    if (e.key === 'Enter') processarAutenticacao(); 
+};
+
+window.processarAutenticacao = async function() {
+    const email = document.getElementById('authEmail')?.value.trim();
+    const senha = document.getElementById('authSenha')?.value.trim();
+
+    if (!email || !senha) {
+        alert("Preencha o e-mail e a senha.");
+        return;
+    }
+
+    try {
+        const { error } = await window.supabaseClient.auth.signInWithPassword({ email, password: senha });
+        if (error) throw error;
+        await verificarSessaoEAlternarTelas();
+    } catch (e) {
+        alert("Erro ao autenticar: " + (e.message || e));
+    }
+};
+
+// Funções extras de UI que o HTML procura
+window.alternarTelaAuth = function(tipo) {
+    console.log("Alternar tela auth:", tipo);
+    // Adicione a sua lógica de alternar entre login/cadastro caso possua na UI
+};
+
+window.solicitarRecuperacaoSenha = function() {
+    alert("Para recuperar a senha, contacte o suporte ou verifique as definições do Supabase.");
+};
 
 document.addEventListener("DOMContentLoaded", () => {
     verificarSessaoEAlternarTelas();
     inicializarAtalhosTeclado();
 });
 
-// --- CONTROLE DE SESSÃO E TELAS DO SISTEMA ---
 async function verificarSessaoEAlternarTelas() {
     const { data: { session } } = await window.supabaseClient.auth.getSession();
     
@@ -75,7 +104,6 @@ async function verificarSessaoEAlternarTelas() {
     if (session && session.user) {
         setUsuarioAtual(session.user);
 
-        // CORREÇÃO CRÍTICA: Busca o ID real da empresa associada ao operador no Supabase
         const { data: opData } = await window.supabaseClient
             .from('operadores')
             .select('empresa_id, cargo')
@@ -86,7 +114,6 @@ async function verificarSessaoEAlternarTelas() {
             setEmpresaAtualId(opData.empresa_id);
             setCargoUsuarioAtual(opData.cargo || 'admin_mercado');
         } else {
-            // Fallback caso utilize diretamente o ID do usuário como ID da empresa
             setEmpresaAtualId(session.user.id);
             setCargoUsuarioAtual('admin_mercado');
         }
@@ -105,7 +132,6 @@ async function verificarSessaoEAlternarTelas() {
             }
         }
 
-        // Executa checagens do módulo de caixa
         await verificarStatusCaixaServidor();
         focarBusca();
     } else {
@@ -114,28 +140,6 @@ async function verificarSessaoEAlternarTelas() {
     }
 }
 
-// --- AUTENTICAÇÃO ---
-window.tratarEnterLogin = function(e) { if (e.key === 'Enter') processarAutenticacao(); }
-
-window.processarAutenticacao = async function() {
-    const email = document.getElementById('authEmail')?.value.trim();
-    const senha = document.getElementById('authSenha')?.value.trim();
-
-    if (!email || !senha) {
-        alert("Preencha o e-mail e a senha.");
-        return;
-    }
-
-    try {
-        const { error } = await window.supabaseClient.auth.signInWithPassword({ email, password: senha });
-        if (error) throw error;
-        await verificarSessaoEAlternarTelas();
-    } catch (e) {
-        alert("Erro ao autenticar: " + (e.message || e));
-    }
-}
-
-// --- ATALHOS GLOBAIS DE TECLADO ---
 function inicializarAtalhosTeclado() {
     document.addEventListener('keydown', (e) => {
         if (e.key === 'F1') {
