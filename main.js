@@ -458,20 +458,19 @@ window.confirmarConclusaoVenda = async function() {
     const txtFinal = document.getElementById('modalValFinalComJuros').innerText;
     const valorFinal = Number(txtFinal.replace('R$', '').replace(/\./g, '').replace(',', '.').trim());
     
-    const lojaId = localStorage.getItem('pdv_loja_id');
+    const empresaId = localStorage.getItem('pdv_loja_id');
     const operadorEmail = localStorage.getItem('pdv_usuario_email') || 'caixa';
 
     try {
         const { error } = await window.supabaseClient
             .from('vendas')
             .insert([{
-                loja_id: lojaId,
+                empresa_id: empresaId,
                 operador: operadorEmail,
                 forma_pagamento: formaPagamentoAtual,
                 valor_original: totalOriginal,
                 valor_total: valorFinal,
-                itens: window.carrinhoVenda,
-                data_venda: new Date().toISOString()
+                itens: window.carrinhoVenda
             }]);
 
         if (error) throw error;
@@ -488,11 +487,11 @@ window.confirmarConclusaoVenda = async function() {
     }
 }
 
-// FUNÇÃO BLINDADA COM TRY/CATCH PARA EVITAR TRAVAMENTO NO LOGIN
+// FUNÇÃO BLINDADA COM TRY/CATCH PARA EVITAR TRAVAMENTO NO LOGIN E AJUSTADA AO BANCO
 async function carregarFaturamentoDiarioResumo() {
     try {
-        const lojaId = localStorage.getItem('pdv_loja_id');
-        if (!lojaId) return;
+        const empresaId = localStorage.getItem('pdv_loja_id');
+        if (!empresaId) return;
 
         const hojeInicio = new Date();
         hojeInicio.setHours(0, 0, 0, 0);
@@ -500,8 +499,8 @@ async function carregarFaturamentoDiarioResumo() {
         const { data, error } = await window.supabaseClient
             .from('vendas')
             .select('valor_total')
-            .eq('loja_id', lojaId)
-            .gte('data_venda', hojeInicio.toISOString());
+            .eq('empresa_id', empresaId)
+            .gte('created_at', hojeInicio.toISOString());
 
         if (error) {
             console.warn("Aviso na consulta de faturamento (ignorado com segurança):", error.message);
