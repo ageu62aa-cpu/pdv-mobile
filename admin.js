@@ -140,6 +140,7 @@ export function fecharFormProduto() {
 }
 
 export async function salvarProdutoAdmin() {
+    // CORREÇÃO ROBUSTA: Garante de forma absoluta que temos o ID da empresa atual
     let idEmpresaAtual = empresaAtualId || localStorage.getItem('empresa_id') || localStorage.getItem('pdv_empresa_id');
 
     if (!idEmpresaAtual) {
@@ -201,14 +202,14 @@ export async function salvarProdutoAdmin() {
     }
     
     if (id) { 
-        const { error } = await supabaseClient.from('produtos').update(p).eq('id', id); 
+        const { error } = await window.supabaseClient.from('produtos').update(p).eq('id', id); 
         if (error) { alert('Erro ao atualizar produto: ' + error.message); return; }
     } else { 
         if (produtosCache.length >= 800) {
             alert('PDV-VS: Limite de 800 produtos do plano comum atingido.');
             return;
         }
-        const { error } = await supabaseClient.from('produtos').insert([p]); 
+        const { error } = await window.supabaseClient.from('produtos').insert([p]); 
         if (error) { alert('Erro ao inserir produto: ' + error.message); return; }
     }
     
@@ -220,7 +221,7 @@ export async function salvarProdutoAdmin() {
 
 export async function excluirProdutoAdmin(id) { 
     if (confirm('PDV-VS: Deseja excluir este item permanentemente?')) { 
-        await supabaseClient.from('produtos').delete().eq('id', id); 
+        await window.supabaseClient.from('produtos').delete().eq('id', id); 
         await carregarProdutosCache(); 
         renderizarTabelaAdmin(produtosCache); 
     } 
@@ -231,7 +232,7 @@ export async function excluirProdutoAdmin(id) {
 // ==========================================
 export async function carregarMaquininhasAdmin() {
     if (!empresaAtualId) return;
-    const { data, error } = await supabaseClient
+    const { data, error } = await window.supabaseClient
         .from('maquininhas_taxas')
         .select('*')
         .eq('empresa_id', empresaAtualId);
@@ -281,7 +282,7 @@ export async function salvarNovaMaquininha() {
 
     const taxasObj = { "2": parcelas2x, "3": parcelas3x, "6": parcelas6x, "12": parcelas12x };
 
-    const { error } = await supabaseClient.from('maquininhas_taxas').insert([{
+    const { error } = await window.supabaseClient.from('maquininhas_taxas').insert([{
         empresa_id: empresaAtualId,
         nome_maquina: nome,
         taxa_debito: debito,
@@ -301,7 +302,7 @@ export async function salvarNovaMaquininha() {
 
 export async function excluirMaquininhaAdmin(id) {
     if (confirm('Deseja realmente excluir esta maquininha?')) {
-        await supabaseClient.from('maquininhas_taxas').delete().eq('id', id);
+        await window.supabaseClient.from('maquininhas_taxas').delete().eq('id', id);
         carregarMaquininhasAdmin();
     }
 }
@@ -309,14 +310,14 @@ export async function excluirMaquininhaAdmin(id) {
 export async function carregarOperadoresLoja() {
     if (!empresaAtualId) return;
 
-    const { data: operadores, error } = await supabaseClient
+    const { data: operadores, error } = await window.supabaseClient
         .from('usuarios_empresas')
         .select('*')
         .eq('empresa_id', empresaAtualId);
 
     if (error) return;
 
-    const { data: caixasAbertos } = await supabaseClient
+    const { data: caixasAbertos } = await window.supabaseClient
         .from('caixas')
         .select('user_id, status, faturamento_dia')
         .eq('empresa_id', empresaAtualId)
@@ -356,13 +357,13 @@ export async function carregarOperadoresLoja() {
 
 export async function excluirOperadorLoja(id) { 
     if (confirm('PDV-VS: Deseja remover este operador da equipe?')) { 
-        await supabaseClient.from('usuarios_empresas').delete().eq('user_id', id); 
+        await window.supabaseClient.from('usuarios_empresas').delete().eq('user_id', id); 
         carregarOperadoresLoja(); 
     } 
 }
 
 export function abrirModalNovoOperador() { 
-    supabaseClient.from('usuarios_empresas').select('*', { count: 'exact', head: true }).eq('empresa_id', empresaAtualId).eq('cargo', 'operador').then(({ count }) => {
+    window.supabaseClient.from('usuarios_empresas').select('*', { count: 'exact', head: true }).eq('empresa_id', empresaAtualId).eq('cargo', 'operador').then(({ count }) => {
         if (count >= 1) {
             alert('PDV-VS - Regra do Plano Comum: É permitido apenas 1 operador adicional além do Administrador.');
             return;
@@ -385,11 +386,11 @@ export async function salvarNovoOperador() {
 
     if (!email || !password) { alert('PDV-VS: Preencha os campos de acesso provisório.'); return; }
     
-    const { data, error } = await supabaseClient.auth.signUp({ email, password });
+    const { data, error } = await window.supabaseClient.auth.signUp({ email, password });
     if (error) { alert('PDV-VS: Erro ao criar usuário: ' + error.message); return; }
     
     if (data && data.user) {
-        await supabaseClient.from('usuarios_empresas').insert([{ user_id: data.user.id, empresa_id: empresaAtualId, cargo: 'operador' }]);
+        await window.supabaseClient.from('usuarios_empresas').insert([{ user_id: data.user.id, empresa_id: empresaAtualId, cargo: 'operador' }]);
         fecharModalNovoOperador(); 
         carregarOperadoresLoja();
         alert('PDV-VS: Operador cadastrado com sucesso!');
@@ -400,7 +401,7 @@ export async function carregarHistoricoAdmin() {
     const dataLimite = new Date();
     dataLimite.setDate(dataLimite.getDate() - 15);
 
-    const { data } = await supabaseClient.from('vendas')
+    const { data } = await window.supabaseClient.from('vendas')
         .select('*')
         .eq('empresa_id', empresaAtualId)
         .gte('created_at', dataLimite.toISOString())
