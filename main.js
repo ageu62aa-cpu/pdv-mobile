@@ -1,12 +1,12 @@
 // ==========================================
 // PDV-VS Enterprise - Módulo Principal (main.js)
-// Arquivo Limpo: Apenas Inicialização, Auth e Integração de Módulos
+// Arquivo Atualizado: Com todas as funções de câmara e busca expostas globalmente
 // ==========================================
 
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
 import { setUsuarioAtual, setEmpresaAtualId, setCargoUsuarioAtual, setCaixaAberto } from './state.js';
 
-// Importando funções essenciais do seu módulo de caixa
+// Importando funções essenciais do seu módulo de caixa (incluindo câmara e busca)
 import { 
     verificarStatusCaixaServidor, 
     gerenciarCaixaModal, 
@@ -25,14 +25,16 @@ import {
     realizarLogout, 
     atualizarPaginaCompleta, 
     focarBusca,
-    alterarQtd
+    alterarQtd,
+    abrirLeitorCamera,
+    onDigitarBusca
 } from './caixa.js';
 
 const SUPABASE_URL = 'https://vbdglgmxaywntmjriccf.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiZGdsZ214YXl3bnRtanJpY2NmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk1ODgzOTEsImV4cCI6MjEwNTE2NDM5MX0.S_IUvajnn7Qk7yNtkfBru9xsOjUkKhkJ0J0doikrWSs';
 
 window.supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-console.log("🟢 [SUPABASE] Conectado com sucesso!");
+console.log("🟢 [SUPABASE] Conectado com sucesso!");[cite: 19]
 
 // --- EXPOSIÇÃO GLOBAL DE FUNÇÕES DO CAIXA (Para o HTML e eventos inline) ---
 window.gerenciarCaixaModal = gerenciarCaixaModal;
@@ -52,6 +54,10 @@ window.realizarLogout = realizarLogout;
 window.atualizarPaginaCompleta = atualizarPaginaCompleta;
 window.focarBusca = focarBusca;
 window.alterarQtd = alterarQtd;
+
+// CORREÇÃO: Funções de câmara e busca expostas globalmente para evitar erros na consola
+window.abrirLeitorCamera = abrirLeitorCamera;
+window.onDigitarBusca = onDigitarBusca;
 
 document.addEventListener("DOMContentLoaded", () => {
     verificarSessaoEAlternarTelas();

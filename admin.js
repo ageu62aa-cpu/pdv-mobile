@@ -140,8 +140,8 @@ export function fecharFormProduto() {
 }
 
 export async function salvarProdutoAdmin() {
-    // PROTEÇÃO CRÍTICA: Garante que temos um ID de empresa válido antes de salvar
-    let idEmpresaAtual = empresaAtualId;
+    let idEmpresaAtual = empresaAtualId || localStorage.getItem('empresa_id') || localStorage.getItem('pdv_empresa_id');
+
     if (!idEmpresaAtual) {
         const { data: { session } } = await window.supabaseClient.auth.getSession();
         if (session && session.user) {
@@ -153,11 +153,21 @@ export async function salvarProdutoAdmin() {
             
             if (opData && opData.empresa_id) {
                 idEmpresaAtual = opData.empresa_id;
-                setEmpresaAtualId(idEmpresaAtual);
             } else {
-                idEmpresaAtual = session.user.id;
-                setEmpresaAtualId(idEmpresaAtual);
+                const { data: vincData } = await window.supabaseClient
+                    .from('usuarios_empresas')
+                    .select('empresa_id')
+                    .eq('user_id', session.user.id)
+                    .maybeSingle();
+                
+                if (vincData && vincData.empresa_id) {
+                    idEmpresaAtual = vincData.empresa_id;
+                } else {
+                    idEmpresaAtual = session.user.id;
+                }
             }
+            setEmpresaAtualId(idEmpresaAtual);
+            localStorage.setItem('empresa_id', idEmpresaAtual);
         }
     }
 

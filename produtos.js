@@ -177,6 +177,8 @@ export function tratarEnterBuscaCaixa(e) {
 }
 
 // Expondo funções deste módulo para o escopo global (para os eventos HTML funcionarem)
+window.carregarProdutosCache = carregarProdutosCache;
+window.aoDigitarBusca = aoDigitarBusca;
 window.adicionarItemVendaPorObjeto = adicionarItemVendaPorObjeto;
 window.fecharModalPesagemManual = fecharModalPesagemManual;
 window.calcularValorParcialPeso = calcularValorParcialPeso;
