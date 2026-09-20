@@ -1,32 +1,31 @@
 // ==========================================
 // PDV-VS Enterprise - Módulo Principal (main.js)
-// Conexão e Inicialização Oficial com Supabase
+// Versão Completa e Funcional
 // ==========================================
 
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
 
-// Credenciais oficiais e definitivas do seu projeto Supabase
 const SUPABASE_URL = 'https://vbdglgmxaywntmjriccf.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiZGdsZ214YXl3bnRtanJpY2NmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk1ODgzOTEsImV4cCI6MjEwNTE2NDM5MX0.S_IUvajnn7Qk7yNtkfBru9xsOjUkKhkJ0J0doikrWSs';
 
-// Inicializando o cliente Supabase globalmente na aplicação
 window.supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 console.log("🟢 [SUPABASE] Conectado com sucesso!");
 
 window.carrinhoVenda = [];
-let formaPagamentoAtual = 'dinheiro'; // 'dinheiro', 'pix', 'debito', 'credito'
+let formaPagamentoAtual = 'dinheiro';
 let maquininhasCadastradasLoja = [];
+let produtosLojaCache = [];
 let deferredPrompt = null;
+let html5QrCode = null;
 
 document.addEventListener("DOMContentLoaded", () => {
     verificarSessaoEAlternarTelas();
     inicializarEventosPDV();
     carregarFaturamentoDiarioResumo();
     configurarEventoPWA();
-    configurarBotaoInstalacaoManual();
 });
 
-// --- CONTROLE DE VISIBILIDADE DAS TELAS (LOGIN vs APP PRINCIPAL) ---
+// --- CONTROLE DE SESSÃO E TELAS ---
 function verificarSessaoEAlternarTelas() {
     const lojaId = localStorage.getItem('pdv_loja_id');
     const usuarioEmail = localStorage.getItem('pdv_usuario_email');
@@ -36,143 +35,79 @@ function verificarSessaoEAlternarTelas() {
     const infoUsuario = document.getElementById('infoUsuarioLogado');
 
     if (lojaId && usuarioEmail) {
-        // Se estiver logado, esconde o login e mostra o app principal
         if (telaLogin) telaLogin.classList.add('hidden');
         if (appPrincipal) appPrincipal.classList.remove('hidden');
         if (infoUsuario) infoUsuario.innerText = usuarioEmail;
         
-        // Exibe o botão de admin se necessário
         const btnAdmin = document.getElementById('btnAdminMenu');
         if (btnAdmin) btnAdmin.classList.remove('hidden');
-
-        console.log("Sessão ativa encontrada para:", usuarioEmail);
+        
+        carregarProdutosLoja();
     } else {
-        // Se não estiver logado, mostra o login e esconde o app principal
         if (telaLogin) telaLogin.classList.remove('hidden');
         if (appPrincipal) appPrincipal.classList.add('hidden');
     }
 }
 
-// --- LÓGICA DO PWA E BOTÃO DE INSTALAÇÃO ---
-function configurarEventoPWA() {
-    window.addEventListener('beforeinstallprompt', (e) => {
-        e.preventDefault();
-        deferredPrompt = e;
-        
-        const btnInstalarLogin = document.getElementById('btnInstalarPwaLogin');
-        const btnInstalarHeader = document.getElementById('btnInstalarPwaHeader');
-        if (btnInstalarLogin) btnInstalarLogin.classList.remove('hidden');
-        if (btnInstalarHeader) btnInstalarHeader.classList.remove('hidden');
-    });
-
-    window.addEventListener('appinstalled', () => {
-        deferredPrompt = null;
-        const btnInstalarLogin = document.getElementById('btnInstalarPwaLogin');
-        const btnInstalarHeader = document.getElementById('btnInstalarPwaHeader');
-        if (btnInstalarLogin) btnInstalarLogin.classList.add('hidden');
-        if (btnInstalarHeader) btnInstalarHeader.classList.add('hidden');
-    });
-}
-
-window.instalarAppPwa = async function() {
-    if (!deferredPrompt) {
-        alert("O aplicativo já está instalado ou o navegador não suporta a instalação direta.");
-        return;
-    }
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') {
-        console.log('Usuário aceitou instalar o PWA.');
-    }
-    deferredPrompt = null;
-}
-
-function configurarBotaoInstalacaoManual() {
-    // Mantido por compatibilidade
-}
-
-function inicializarEventosPDV() {
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'F5') {
-            e.preventDefault();
-            const inputBusca = document.getElementById('inputBusca');
-            if (inputBusca) inputBusca.focus();
-        } else if (e.key === 'F9') {
-            e.preventDefault();
-            finalizarVenda();
-        } else if (e.key === 'Escape') {
-            fecharModalFinalizarVenda();
-            fecharPainelAdmin();
-            fecharModalCaixa();
-        }
-    });
-}
-
-// --- AUTENTICAÇÃO E TELAS (SUPABASE) ---
-window.tratarEnterLogin = function(e) {
-    if (e.key === 'Enter') {
-        window.processarAutenticacao();
-    }
-}
+// --- AUTENTICAÇÃO ---
+window.tratarEnterLogin = function(e) { if (e.key === 'Enter') window.processarAutenticacao(); }
 
 window.processarAutenticacao = async function() {
-    console.log("Processando autenticação com Supabase...");
-    
-    const emailInput = document.getElementById('authEmail');
-    const senhaInput = document.getElementById('authSenha');
-    
-    if (!emailInput || !senhaInput) {
-        alert("Erro interno: Campos de login não encontrados na tela.");
-        return;
-    }
-    
-    const email = emailInput.value.trim();
-    const senha = senhaInput.value.trim();
+    const email = document.getElementById('authEmail')?.value.trim();
+    const senha = document.getElementById('authSenha')?.value.trim();
 
     if (!email || !senha) {
-        alert("Por favor, preencha o e-mail e a senha.");
+        alert("Preencha o e-mail e a senha.");
         return;
     }
 
     try {
-        if (!window.supabaseClient) {
-            throw new Error("Cliente Supabase não inicializado.");
-        }
-
-        const { data, error } = await window.supabaseClient.auth.signInWithPassword({
-            email: email,
-            password: senha
-        });
-
+        const { data, error } = await window.supabaseClient.auth.signInWithPassword({ email, password: senha });
         if (error) throw error;
 
         if (data && data.user) {
-            // Salvando os dados essenciais da sessão
             localStorage.setItem('pdv_usuario_email', data.user.email);
-            localStorage.setItem('pdv_loja_id', data.user.id); 
-            
-            console.log("Login efetuado com sucesso para:", data.user.email);
-            
-            // Alterna a interface imediatamente sem travamentos
+            localStorage.setItem('pdv_loja_id', data.user.id);
             verificarSessaoEAlternarTelas();
             carregarFaturamentoDiarioResumo();
         }
     } catch (e) {
-        console.error("Erro no login:", e);
         alert("Erro ao autenticar: " + (e.message || e));
     }
 }
 
 window.alternarTelaAuth = function(tipo) {
-    console.log("Alternando tela de autenticação para:", tipo);
-}
+    const titulo = document.getElementById('tituloAuth');
+    const sub = document.getElementById('subtituloAuth');
+    const btn = document.getElementById('btnAcaoAuth');
+    const divPerfil = document.getElementById('divTipoPerfil');
+    const divNome = document.getElementById('divNomeMercadoCadastro');
+    const divDoc = document.getElementById('divDocumentoCadastro');
+    const divEnd = document.getElementById('divCamposEnderecoCadastro');
+    const linkVoltar = document.getElementById('linkVoltarLogin');
+    const linksAux = document.getElementById('linksAuxiliares');
 
-window.solicitarRecuperacaoSenha = function() {
-    alert("Para recuperar sua senha, entre em contato com o suporte técnico.");
-}
-
-window.atualizarPaginaCompleta = function() {
-    window.location.reload();
+    if (tipo === 'cadastro') {
+        if (titulo) titulo.innerText = "Criar Estabelecimento";
+        if (sub) sub.innerText = "Cadastre sua loja e comece a vender";
+        if (btn) btn.innerText = "Cadastrar e Acessar";
+        if (divPerfil) divPerfil.classList.remove('hidden');
+        if (divNome) divNome.classList.remove('hidden');
+        if (divDoc) divDoc.classList.remove('hidden');
+        if (divEnd) divEnd.classList.remove('hidden');
+        if (linkVoltar) linkVoltar.classList.remove('hidden');
+        if (linksAux) linksAux.classList.add('hidden');
+    } else {
+        if (titulo) titulo.innerText = "PDV-VS Enterprise";
+        if (sub) sub.innerText = "Sistema de Gestão Comercial e PDV";
+        if (btn) btn.innerText = "Acessar Sistema";
+        if (divPerfil) divPerfil.classList.add('hidden');
+        if (divNome) divNome.classList.add('hidden');
+        if (divDoc) divDoc.classList.add('hidden');
+        if (divEnd) divEnd.classList.add('hidden');
+        if (linkVoltar) linkVoltar.classList.add('hidden');
+        if (linksAux) linksAux.classList.remove('hidden');
+    }
 }
 
 window.realizarLogout = function() {
@@ -181,83 +116,74 @@ window.realizarLogout = function() {
     window.location.reload();
 }
 
-// --- BUSCA E ADIÇÃO DE PRODUTOS ---
-window.aoDigitarBusca = async function(termo) {
+window.atualizarPaginaCompleta = function() { window.location.reload(); }
+
+// --- PRODUTOS E BUSCA ---
+async function carregarProdutosLoja() {
+    const lojaId = localStorage.getItem('pdv_loja_id');
+    if (!lojaId) return;
+    try {
+        const { data, error } = await window.supabaseClient.from('produtos').select('*').eq('loja_id', lojaId);
+        if (error) throw error;
+        produtosLojaCache = data || [];
+        renderizarTabelaAdminProdutos();
+    } catch (e) {
+        console.error("Erro ao carregar produtos:", e);
+    }
+}
+
+window.aoDigitarBusca = function(termo) {
     const painel = document.getElementById('painelSugestoes');
     if (!painel) return;
-    
-    if (!termo || termo.trim().length < 2) {
+    if (!termo || termo.trim().length < 1) {
         painel.classList.add('hidden');
         return;
     }
 
-    const lojaId = localStorage.getItem('pdv_loja_id');
-    try {
-        const { data, error } = await window.supabaseClient
-            .from('produtos')
-            .select('*')
-            .eq('loja_id', lojaId)
-            .or(`nome.ilike.%${termo}%,codigo.ilike.%${termo}%`)
-            .limit(10);
+    const filtrados = produtosLojaCache.filter(p => 
+        p.nome.toLowerCase().includes(termo.toLowerCase()) || 
+        (p.codigo && p.codigo.toLowerCase().includes(termo.toLowerCase()))
+    ).slice(0, 10);
 
-        if (error) throw error;
-
-        if (data && data.length > 0) {
-            painel.innerHTML = '';
-            data.forEach(prod => {
-                const div = document.createElement('div');
-                div.className = "p-2.5 hover:bg-emerald-50 cursor-pointer border-b flex justify-between items-center text-sm";
-                div.innerHTML = `<div><strong>${prod.nome}</strong> <span class="text-xs text-slate-400">(${prod.codigo || 'Sem Cód'})</span></div><span class="font-bold text-emerald-600">R$ ${Number(prod.preco).toFixed(2)}</span>`;
-                div.onclick = () => {
-                    adicionarProdutoAoCarrinho(prod);
-                    document.getElementById('inputBusca').value = '';
-                    painel.classList.add('hidden');
-                };
-                painel.appendChild(div);
-            });
-            painel.classList.remove('hidden');
-        } else {
-            painel.classList.add('hidden');
-        }
-    } catch (e) {
-        console.error("Erro ao buscar produto:", e);
+    if (filtrados.length > 0) {
+        painel.innerHTML = '';
+        filtrados.forEach(prod => {
+            const div = document.createElement('div');
+            div.className = "p-2.5 hover:bg-emerald-50 cursor-pointer border-b flex justify-between items-center text-sm";
+            div.innerHTML = `<div><strong>${prod.nome}</strong> <span class="text-xs text-slate-400">(${prod.codigo || 'Sem Cód'})</span></div><span class="font-bold text-emerald-600">R$ ${Number(prod.preco).toFixed(2)}</span>`;
+            div.onclick = () => {
+                adicionarProdutoAoCarrinho(prod);
+                document.getElementById('inputBusca').value = '';
+                painel.classList.add('hidden');
+            };
+            painel.appendChild(div);
+        });
+        painel.classList.remove('hidden');
+    } else {
+        painel.classList.add('hidden');
     }
 }
 
-window.tratarEnterBuscaCaixa = async function(e) {
+window.tratarEnterBuscaCaixa = function(e) {
     if (e.key === 'Enter') {
         const termo = e.target.value.trim();
         if (!termo) return;
-
-        const lojaId = localStorage.getItem('pdv_loja_id');
-        try {
-            const { data, error } = await window.supabaseClient
-                .from('produtos')
-                .select('*')
-                .eq('loja_id', lojaId)
-                .or(`codigo.eq.${termo},nome.ilike.%${termo}%`)
-                .limit(1);
-
-            if (error) throw error;
-            if (data && data.length > 0) {
-                adicionarProdutoAoCarrinho(data[0]);
-                e.target.value = '';
-                const painel = document.getElementById('painelSugestoes');
-                if (painel) painel.classList.add('hidden');
-            } else {
-                alert("Produto não encontrado!");
-            }
-        } catch (err) {
-            console.error(err);
+        const prod = produtosLojaCache.find(p => p.codigo === termo || p.nome.toLowerCase().includes(termo.toLowerCase()));
+        if (prod) {
+            adicionarProdutoAoCarrinho(prod);
+            e.target.value = '';
+            document.getElementById('painelSugestoes').classList.add('hidden');
+        } else {
+            alert("Produto não encontrado!");
         }
     }
 }
 
 window.adicionarProdutoAoCarrinho = function(produto) {
-    const itemExistente = window.carrinhoVenda.find(i => i.id === produto.id);
-    if (itemExistente) {
-        itemExistente.quantidade += 1;
-        itemExistente.subtotal = itemExistente.quantidade * itemExistente.preco;
+    const item = window.carrinhoVenda.find(i => i.id === produto.id);
+    if (item) {
+        item.quantidade += 1;
+        item.subtotal = item.quantidade * item.preco;
     } else {
         window.carrinhoVenda.push({
             id: produto.id,
@@ -285,294 +211,309 @@ window.renderizarCarrinho = function() {
         return;
     }
 
-    let totalGeral = 0;
-    let totalItensCount = 0;
-
+    let total = 0, qtdCount = 0;
     window.carrinhoVenda.forEach((item, index) => {
-        totalGeral += item.subtotal;
-        totalItensCount += item.quantidade;
-
+        total += item.subtotal;
+        qtdCount += item.quantidade;
         tbody.innerHTML += `
             <tr class="border-b hover:bg-slate-50">
                 <td class="p-2 font-medium text-slate-800">${item.nome}</td>
-                <td class="p-2">
-                    <input type="number" step="${item.unidade === 'KG' ? '0.001' : '1'}" value="${item.quantidade}" onchange="atualizarQuantidadeItem(${index}, this.value)" class="w-20 p-1 border rounded text-xs text-center font-bold">
-                </td>
+                <td class="p-2"><input type="number" step="${item.unidade === 'KG' ? '0.001' : '1'}" value="${item.quantidade}" onchange="atualizarQtdItem(${index}, this.value)" class="w-20 p-1 border rounded text-xs text-center font-bold"></td>
                 <td class="p-2 text-slate-600">R$ ${item.preco.toFixed(2)}</td>
                 <td class="p-2 font-bold text-slate-900">R$ ${item.subtotal.toFixed(2)}</td>
-                <td class="p-2 text-center">
-                    <button onclick="removerItemCarrinho(${index})" class="text-rose-500 hover:text-rose-700 p-1"><i class="fa-solid fa-trash"></i></button>
-                </td>
+                <td class="p-2 text-center"><button onclick="removerItem(${index})" class="text-rose-500 hover:text-rose-700 p-1"><i class="fa-solid fa-trash"></i></button></td>
             </tr>
         `;
     });
 
-    document.getElementById('txtSubtotal').innerText = `R$ ${totalGeral.toFixed(2)}`;
-    document.getElementById('txtTotal').innerText = `R$ ${totalGeral.toFixed(2)}`;
-    document.getElementById('contadorItens').innerText = `${totalItensCount} itens`;
+    document.getElementById('txtSubtotal').innerText = `R$ ${total.toFixed(2)}`;
+    document.getElementById('txtTotal').innerText = `R$ ${total.toFixed(2)}`;
+    document.getElementById('contadorItens').innerText = `${qtdCount} itens`;
 }
 
-window.atualizarQuantidadeItem = function(index, novaQtd) {
-    const qtd = Number(novaQtd);
-    if (qtd <= 0) {
-        removerItemCarrinho(index);
-        return;
-    }
-    window.carrinhoVenda[index].quantidade = qtd;
-    window.carrinhoVenda[index].subtotal = qtd * window.carrinhoVenda[index].preco;
+window.atualizarQtdItem = function(index, val) {
+    const q = Number(val);
+    if (q <= 0) { removerItem(index); return; }
+    window.carrinhoVenda[index].quantidade = q;
+    window.carrinhoVenda[index].subtotal = q * window.carrinhoVenda[index].preco;
     renderizarCarrinho();
 }
 
-window.removerItemCarrinho = function(index) {
+window.removerItem = function(index) {
     window.carrinhoVenda.splice(index, 1);
     renderizarCarrinho();
 }
 
 window.cancelarVenda = function() {
-    if (window.carrinhoVenda.length === 0) return;
-    if (confirm("Deseja realmente cancelar toda a venda atual?")) {
+    if (window.carrinhoVenda.length > 0 && confirm("Deseja cancelar a venda?")) {
         window.carrinhoVenda = [];
         renderizarCarrinho();
     }
 }
 
-window.calcularTotalCarrinho = function() {
-    return window.carrinhoVenda.reduce((acc, item) => acc + item.subtotal, 0);
+// --- PAINEL ADMINISTRATIVO E ABAS ---
+window.abrirPainelAdmin = function() {
+    document.getElementById('modalAdmin')?.classList.remove('hidden');
+    mudarAbaAdmin('produtos');
+    carregarProdutosLoja();
 }
 
-// ==========================================
-// FLUXO DE FINALIZAÇÃO E PAGAMENTO COM MAQUININHAS
-// ==========================================
+window.fecharPainelAdmin = function() {
+    document.getElementById('modalAdmin')?.classList.add('hidden');
+}
 
+window.mudarAbaAdmin = function(aba) {
+    const abas = ['produtos', 'operadores', 'maquininhas', 'historico', 'configuracoes'];
+    abas.forEach(a => {
+        const conteudo = document.getElementById(`conteudoAba${a.charAt(0).toUpperCase() + a.slice(1)}`);
+        const btn = document.getElementById(`btnAba${a.charAt(0).toUpperCase() + a.slice(1)}`);
+        if (conteudo) conteudo.classList.add('hidden');
+        if (btn) {
+            btn.className = "px-3 py-1.5 text-xs font-bold bg-slate-200 text-slate-700 rounded-lg";
+        }
+    });
+
+    const abaAtivaConteudo = document.getElementById(`conteudoAba${aba.charAt(0).toUpperCase() + aba.slice(1)}`);
+    const abaAtivaBtn = document.getElementById(`btnAba${aba.charAt(0).toUpperCase() + aba.slice(1)}`);
+    if (abaAtivaConteudo) abaAtivaConteudo.classList.remove('hidden');
+    if (abaAtivaBtn) {
+        abaAtivaBtn.className = "px-3 py-1.5 text-xs font-bold bg-emerald-600 text-white rounded-lg";
+    }
+
+    if (aba === 'maquininhas') carregarMaquininhasAdmin();
+    if (aba === 'historico') carregarHistoricoAdmin();
+}
+
+function renderizarTabelaAdminProdutos(filtro = '') {
+    const tbody = document.getElementById('tabelaAdminProdutos');
+    const contador = document.getElementById('contadorLimiteProdutosAdmin');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    const filtrados = produtosLojaCache.filter(p => p.nome.toLowerCase().includes(filtro.toLowerCase()) || (p.codigo && p.codigo.includes(filtro)));
+    if (contador) contador.innerText = `${produtosLojaCache.length} / 800 produtos`;
+
+    if (filtrados.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400">Nenhum produto cadastrado.</td></tr>`;
+        return;
+    }
+
+    filtrados.forEach(p => {
+        tbody.innerHTML += `
+            <tr class="border-b hover:bg-slate-50 text-xs">
+                <td class="p-2 font-mono">${p.codigo || '-'}</td>
+                <td class="p-2 font-medium text-slate-800">${p.nome}</td>
+                <td class="p-2 font-bold text-emerald-700">R$ ${Number(p.preco).toFixed(2)}</td>
+                <td class="p-2">${p.estoque || 0} ${p.unidade || 'UN'}</td>
+                <td class="p-2 text-center">
+                    <button onclick="deletarProdutoAdmin('${p.id}')" class="text-rose-500 hover:text-rose-700 p-1"><i class="fa-solid fa-trash"></i></button>
+                </td>
+            </tr>
+        `;
+    });
+}
+
+window.filtrarTabelaAdmin = function(val) { renderizarTabelaAdminProdutos(val); }
+
+window.abrirModalNovoProdutoAdmin = function() {
+    document.getElementById('formProdId').value = '';
+    document.getElementById('formNome').value = '';
+    document.getElementById('formCodigo').value = '';
+    document.getElementById('formPreco').value = '';
+    document.getElementById('formEstoque').value = '';
+    document.getElementById('modalFormProduto')?.classList.remove('hidden');
+}
+
+window.fecharFormProduto = function() {
+    document.getElementById('modalFormProduto')?.classList.add('hidden');
+}
+
+window.salvarProdutoAdmin = async function() {
+    const lojaId = localStorage.getItem('pdv_loja_id');
+    const nome = document.getElementById('formNome').value.trim();
+    const codigo = document.getElementById('formCodigo').value.trim();
+    const preco = Number(document.getElementById('formPreco').value);
+    const estoque = Number(document.getElementById('formEstoque').value) || 0;
+    const unidade = document.getElementById('formUnidade').value;
+
+    if (!nome || !preco) {
+        alert("Preencha o nome e o preço do produto.");
+        return;
+    }
+
+    try {
+        const { error } = await window.supabaseClient.from('produtos').insert([{
+            loja_id: lojaId,
+            nome,
+            codigo,
+            preco,
+            estoque,
+            unidade
+        }]);
+
+        if (error) throw error;
+        alert("Produto cadastrado com sucesso!");
+        fecharFormProduto();
+        carregarProdutosLoja();
+    } catch (e) {
+        alert("Erro ao salvar produto: " + e.message);
+    }
+}
+
+window.deletarProdutoAdmin = async function(id) {
+    if (!confirm("Deseja excluir este produto?")) return;
+    try {
+        const { error } = await window.supabaseClient.from('produtos').delete().eq('id', id);
+        if (error) throw error;
+        carregarProdutosLoja();
+    } catch (e) {
+        alert("Erro ao excluir: " + e.message);
+    }
+}
+
+// --- MAQUININHAS ---
+async function carregarMaquininhasAdmin() {
+    const lojaId = localStorage.getItem('pdv_loja_id');
+    const tbody = document.getElementById('tabelaMaquininhasAdmin');
+    if (!tbody) return;
+    try {
+        const { data, error } = await window.supabaseClient.from('maquininhas').select('*').eq('loja_id', lojaId);
+        if (error) throw error;
+        maquininhasCadastradasLoja = data || [];
+        tbody.innerHTML = '';
+        if (maquininhasCadastradasLoja.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-slate-400">Nenhuma maquininha cadastrada.</td></tr>`;
+            return;
+        }
+        maquininhasCadastradasLoja.forEach(m => {
+            tbody.innerHTML += `
+                <tr class="border-b text-xs">
+                    <td class="p-3 font-bold">${m.nome}</td>
+                    <td class="p-3">Déb: ${m.taxa_debito}% | Créd: ${m.taxa_credito_avista}%</td>
+                    <td class="p-3">2x: ${m.taxa_2x || 0}% | 3x: ${m.taxa_3x || 0}%</td>
+                    <td class="p-3 text-center"><button onclick="deletarMaquininha('${m.id}')" class="text-rose-500"><i class="fa-solid fa-trash"></i></button></td>
+                </tr>
+            `;
+        });
+    } catch (e) { console.error(e); }
+}
+
+window.abrirModalNovaMaquininha = function() { document.getElementById('modalNovaMaquininha')?.classList.remove('hidden'); }
+window.fecharModalNovaMaquininha = function() { document.getElementById('modalNovaMaquininha')?.classList.add('hidden'); }
+
+window.salvarNovaMaquininha = async function() {
+    const lojaId = localStorage.getItem('pdv_loja_id');
+    const nome = document.getElementById('maqNome').value.trim();
+    if (!nome) { alert("Informe o nome da maquininha."); return; }
+    try {
+        const { error } = await window.supabaseClient.from('maquininhas').insert([{
+            loja_id: lojaId,
+            nome,
+            taxa_debito: Number(document.getElementById('maqDebito').value) || 0,
+            taxa_credito_avista: Number(document.getElementById('maqCreditoAvista').value) || 0,
+            taxa_2x: Number(document.getElementById('maq2x').value) || 0,
+            taxa_3x: Number(document.getElementById('maq3x').value) || 0,
+            taxa_6x: Number(document.getElementById('maq6x').value) || 0,
+            taxa_12x: Number(document.getElementById('maq12x').value) || 0
+        }]);
+        if (error) throw error;
+        fecharModalNovaMaquininha();
+        carregarMaquininhasAdmin();
+    } catch (e) { alert("Erro: " + e.message); }
+}
+
+window.deletarMaquininha = async function(id) {
+    if (confirm("Excluir maquininha?")) {
+        await window.supabaseClient.from('maquininhas').delete().eq('id', id);
+        carregarMaquininhasAdmin();
+    }
+}
+
+// --- CÂMERA / QR CODE ---
+window.abrirLeitorCamera = function() {
+    alert("Para escanear via câmera, certifique-se de acessar por HTTPS ou localhost com permissão concedida.");
+}
+
+// --- FINALIZAÇÃO DE VENDA ---
 window.finalizarVenda = async function() {
     if (window.carrinhoVenda.length === 0) {
         alert("O carrinho está vazio!");
         return;
     }
-    
-    await carregarMaquininhasParaVenda();
-    
-    const modal = document.getElementById('modalFinalizarVenda');
-    if (modal) modal.classList.remove('hidden');
-    
+    document.getElementById('modalFinalizarVenda')?.classList.remove('hidden');
     selecionarFormaPagamento('dinheiro');
-    
-    const totalGeral = calcularTotalCarrinho();
-    document.getElementById('modalValTotalOriginal').innerText = `R$ ${totalGeral.toFixed(2)}`;
-    document.getElementById('modalValFinalComJuros').innerText = `R$ ${totalGeral.toFixed(2)}`;
+    const total = window.carrinhoVenda.reduce((acc, i) => acc + i.subtotal, 0);
+    document.getElementById('modalValTotalOriginal').innerText = `R$ ${total.toFixed(2)}`;
+    document.getElementById('modalValFinalComJuros').innerText = `R$ ${total.toFixed(2)}`;
 }
 
-window.fecharModalFinalizarVenda = function() {
-    const modal = document.getElementById('modalFinalizarVenda');
-    if (modal) modal.classList.add('hidden');
-}
+window.fecharModalFinalizarVenda = function() { document.getElementById('modalFinalizarVenda')?.classList.add('hidden'); }
 
 window.selecionarFormaPagamento = function(tipo) {
     formaPagamentoAtual = tipo;
-    
     ['Dinheiro', 'Pix', 'Debito', 'Credito'].forEach(t => {
         const btn = document.getElementById(`btnForma${t}`);
-        if (btn) {
-            btn.className = "py-2.5 px-2 bg-slate-100 text-slate-700 text-xs font-bold rounded-lg hover:bg-slate-200 transition text-center";
-        }
+        if (btn) btn.className = "py-2.5 px-2 bg-slate-100 text-slate-700 text-xs font-bold rounded-lg hover:bg-slate-200 transition text-center";
     });
-    
-    const mapBtn = { dinheiro: 'Dinheiro', pix: 'Pix', debito: 'Debito', credito: 'Credito' };
-    const btnAtivo = document.getElementById(`btnForma${mapBtn[tipo]}`);
-    if (btnAtivo) {
-        btnAtivo.className = "py-2.5 px-2 bg-emerald-600 text-white text-xs font-bold rounded-lg shadow transition text-center";
-    }
-    
-    const secaoCartao = document.getElementById('secaoOpcoesCartao');
-    const secaoDinheiro = document.getElementById('secaoDinheiroTroco');
-    const divParcelas = document.getElementById('divSeletorParcelas');
-    
-    if (tipo === 'debito' || tipo === 'credito') {
-        if (secaoCartao) secaoCartao.classList.remove('hidden');
-        if (secaoDinheiro) secaoDinheiro.classList.add('hidden');
-        if (tipo === 'credito') {
-            if (divParcelas) divParcelas.classList.remove('hidden');
-        } else {
-            if (divParcelas) divParcelas.classList.add('hidden');
-        }
-    } else {
-        if (secaoCartao) secaoCartao.classList.add('hidden');
-        if (tipo === 'dinheiro') {
-            if (secaoDinheiro) secaoDinheiro.classList.remove('hidden');
-        } else {
-            if (secaoDinheiro) secaoDinheiro.classList.add('hidden');
-        }
-    }
-    recalcularTotalComTaxasMaquininha();
-}
-
-async function carregarMaquininhasParaVenda() {
-    try {
-        const lojaId = localStorage.getItem('pdv_loja_id');
-        if (!lojaId) return;
-        const { data, error } = await window.supabaseClient
-            .from('maquininhas')
-            .select('*')
-            .eq('loja_id', lojaId);
-            
-        if (error) throw error;
-        maquininhasCadastradasLoja = data || [];
-        
-        const select = document.getElementById('selectMaquininhaVenda');
-        if (!select) return;
-        
-        select.innerHTML = '<option value="">Selecione uma maquininha cadastrada...</option>';
-        
-        maquininhasCadastradasLoja.forEach(m => {
-            select.innerHTML += `<option value="${m.id}">${m.nome} (Déb: ${m.taxa_debito}% | Créd: ${m.taxa_credito_avista}%)</option>`;
-        });
-    } catch (e) {
-        console.warn("Aviso ao carregar maquininhas:", e);
-    }
-}
-
-window.recalcularTotalComTaxasMaquininha = function() {
-    const totalOriginal = calcularTotalCarrinho();
-    let taxaPercentual = 0;
-    
-    if (formaPagamentoAtual === 'dinheiro' || formaPagamentoAtual === 'pix') {
-        taxaPercentual = 0;
-    } 
-    else if (formaPagamentoAtual === 'debito' || formaPagamentoAtual === 'credito') {
-        const selectMaq = document.getElementById('selectMaquininhaVenda');
-        const idMaq = selectMaq ? selectMaq.value : '';
-        const maq = maquininhasCadastradasLoja.find(m => m.id == idMaq);
-        
-        if (maq) {
-            if (formaPagamentoAtual === 'debito') {
-                taxaPercentual = Number(maq.taxa_debito) || 0;
-            } else if (formaPagamentoAtual === 'credito') {
-                const selectParcelas = document.getElementById('selectParcelasVenda');
-                const parcelas = selectParcelas ? selectParcelas.value : '1';
-                if (parcelas == '1') taxaPercentual = Number(maq.taxa_credito_avista) || 0;
-                else if (parcelas == '2') taxaPercentual = Number(maq.taxa_2x) || 0;
-                else if (parcelas == '3') taxaPercentual = Number(maq.taxa_3x) || 0;
-                else if (parcelas == '6') taxaPercentual = Number(maq.taxa_6x) || 0;
-                else if (parcelas == '12') taxaPercentual = Number(maq.taxa_12x) || 0;
-            }
-        }
-    }
-    
-    const valorTaxa = (totalOriginal * taxaPercentual) / 100;
-    const totalComJuros = totalOriginal + valorTaxa;
-    
-    const elTaxa = document.getElementById('txtTaxaAplicadaInfo');
-    const elFinal = document.getElementById('modalValFinalComJuros');
-    
-    if (elTaxa) elTaxa.innerText = `${taxaPercentual.toFixed(2)}% (R$ ${valorTaxa.toFixed(2)})`;
-    if (elFinal) elFinal.innerText = `R$ ${totalComJuros.toFixed(2)}`;
-}
-
-window.calcularTrocoCaixa = function() {
-    const totalOriginal = calcularTotalCarrinho();
-    const inputRecebido = document.getElementById('inputValorRecebido');
-    const recebido = inputRecebido ? Number(inputRecebido.value) || 0 : 0;
-    const troco = recebido - totalOriginal;
-    
-    const txtTroco = document.getElementById('txtTrocoDevolver');
-    if (txtTroco) {
-        txtTroco.innerText = troco >= 0 ? `R$ ${troco.toFixed(2)}` : `R$ 0,00`;
-    }
+    const map = { dinheiro: 'Dinheiro', pix: 'Pix', debito: 'Debito', credito: 'Credito' };
+    document.getElementById(`btnForma${map[tipo]}`)?.setAttribute('class', "py-2.5 px-2 bg-emerald-600 text-white text-xs font-bold rounded-lg shadow transition text-center");
 }
 
 window.confirmarConclusaoVenda = async function() {
-    const totalOriginal = calcularTotalCarrinho();
-    const txtFinal = document.getElementById('modalValFinalComJuros').innerText;
-    const valorFinal = Number(txtFinal.replace('R$', '').replace(/\./g, '').replace(',', '.').trim());
-    
-    const empresaId = localStorage.getItem('pdv_loja_id');
-    const operadorEmail = localStorage.getItem('pdv_usuario_email') || 'caixa';
+    const total = window.carrinhoVenda.reduce((acc, i) => acc + i.subtotal, 0);
+    const lojaId = localStorage.getItem('pdv_loja_id');
+    const operador = localStorage.getItem('pdv_usuario_email');
 
     try {
-        const { error } = await window.supabaseClient
-            .from('vendas')
-            .insert([{
-                empresa_id: empresaId,
-                operador: operadorEmail,
-                forma_pagamento: formaPagamentoAtual,
-                valor_original: totalOriginal,
-                valor_total: valorFinal,
-                itens: window.carrinhoVenda
-            }]);
+        const { error } = await window.supabaseClient.from('vendas').insert([{
+            empresa_id: lojaId,
+            operador,
+            forma_pagamento: formaPagamentoAtual,
+            valor_original: total,
+            valor_total: total,
+            itens: window.carrinhoVenda
+        }]);
 
         if (error) throw error;
-
-        alert(`Venda finalizada com sucesso via ${formaPagamentoAtual.toUpperCase()}! Valor: R$ ${valorFinal.toFixed(2)}`);
-        
+        alert("Venda concluída com sucesso!");
         window.carrinhoVenda = [];
         renderizarCarrinho();
         fecharModalFinalizarVenda();
         carregarFaturamentoDiarioResumo();
     } catch (e) {
-        console.error("Erro ao concluir venda:", e);
-        alert("Erro ao registrar a venda no banco de dados.");
+        alert("Erro ao concluir venda: " + e.message);
     }
 }
 
 async function carregarFaturamentoDiarioResumo() {
+    const lojaId = localStorage.getItem('pdv_loja_id');
+    if (!lojaId) return;
     try {
-        const empresaId = localStorage.getItem('pdv_loja_id');
-        if (!empresaId) return;
-
-        const hojeInicio = new Date();
-        hojeInicio.setHours(0, 0, 0, 0);
-
-        const { data, error } = await window.supabaseClient
-            .from('vendas')
-            .select('valor_total')
-            .eq('empresa_id', empresaId)
-            .gte('created_at', hojeInicio.toISOString());
-
-        if (error) {
-            console.warn("Aviso na consulta de faturamento:", error.message);
-            return;
-        }
-
-        let totalDia = 0;
-        if (data) {
-            data.forEach(v => totalDia += Number(v.valor_total) || 0);
-        }
-
+        const hoje = new Date(); hoje.setHours(0,0,0,0);
+        const { data } = await window.supabaseClient.from('vendas').select('valor_total').eq('empresa_id', lojaId).gte('created_at', hoje.toISOString());
+        let total = 0;
+        data?.forEach(v => total += Number(v.valor_total) || 0);
         const el = document.getElementById('txtFaturamentoDia');
-        if (el) el.innerText = `R$ ${totalDia.toFixed(2)}`;
-    } catch (e) {
-        console.warn("Aviso ao carregar faturamento diário:", e);
-    }
+        if (el) el.innerText = `R$ ${total.toFixed(2)}`;
+    } catch (e) { console.warn(e); }
 }
 
-// --- FUNÇÕES DE APOIO E PAINEL ADMIN / MODAIS ---
-window.abrirLeitorCamera = function() { console.log("Abrindo leitor de câmera..."); }
-window.abrirModalCancelarItem = function() { console.log("Abrindo modal cancelar item..."); }
-window.gerenciarCaixaModal = function() { console.log("Gerenciando caixa..."); }
-window.abrirPainelAdmin = function() { 
-    const painel = document.getElementById('modalAdmin');
-    if (painel) painel.classList.remove('hidden');
+async function carregarHistoricoAdmin() {
+    carregarFaturamentoDiarioResumo();
 }
-window.mudarAbaAdmin = function(aba) { console.log("Mudando para aba:", aba); }
-window.filtrarTabelaAdmin = function() {}
-window.abrirModalNovoProdutoAdmin = function() {}
-window.recarregarDadosAdmin = function() {}
-window.fecharPainelAdmin = function() { 
-    const painel = document.getElementById('modalAdmin');
-    if (painel) painel.classList.add('hidden');
+
+function inicializarEventosPDV() {
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'F5') { e.preventDefault(); document.getElementById('inputBusca')?.focus(); }
+        else if (e.key === 'F9') { e.preventDefault(); finalizarVenda(); }
+        else if (e.key === 'Escape') { fecharModalFinalizarVenda(); fecharPainelAdmin(); }
+    });
 }
-window.abrirModalNovoOperador = function() {}
-window.abrirModalNovaMaquininha = function() {}
-window.salvarConfiguracoesEmpresaAdmin = function() {}
-window.salvarPinAdmin = function() {}
-window.fecharFormProduto = function() {}
-window.salvarProdutoAdmin = function() {}
-window.escanearCameraAdmin = function() {}
-window.fecharModalNovaMaquininha = function() {}
-window.salvarNovaMaquininha = function() {}
-window.tratarEnterModalCaixa = function() {}
-window.fecharModalCaixa = function() {
-    const modal = document.getElementById('modalCaixa');
-    if (modal) modal.classList.add('hidden');
-}
-window.confirmarAcaoCaixa = function() {}
+
+window.recarregarDadosAdmin = carregarProdutosLoja;
+window.abrirModalCancelarItem = function() {};
+window.gerenciarCaixaModal = function() {};
+window.salvarConfiguracoesEmpresaAdmin = function() {};
+window.salvarPinAdmin = function() {};
+window.escanearCameraAdmin = function() {};
+window.fecharModalCaixa = function() {};
