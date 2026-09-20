@@ -10,8 +10,16 @@ import { atualizarTabelaVenda, focarBusca } from './caixa.js';
 
 export async function carregarProdutosCache() {
     if (!empresaAtualId) return;
-    // Corrigido para utilizar 'empresa_id' alinhado à tabela do Supabase
-    const { data } = await supabaseClient.from('produtos').select('*').eq('empresa_id', empresaAtualId).order('nome', { ascending: true });
+    const { data, error } = await supabaseClient
+        .from('produtos')
+        .select('*')
+        .eq('empresa_id', empresaAtualId)
+        .order('nome', { ascending: true });
+        
+    if (error) {
+        console.error("Erro ao carregar produtos:", error);
+        return;
+    }
     if (data) setProdutosCache(data);
 }
 
@@ -176,7 +184,7 @@ export function tratarEnterBuscaCaixa(e) {
     }
 }
 
-// Expondo funções deste módulo para o escopo global (para os eventos HTML funcionarem)
+// Expondo funções deste módulo para o escopo global
 window.carregarProdutosCache = carregarProdutosCache;
 window.aoDigitarBusca = aoDigitarBusca;
 window.adicionarItemVendaPorObjeto = adicionarItemVendaPorObjeto;
