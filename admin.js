@@ -140,7 +140,6 @@ export function fecharFormProduto() {
 }
 
 export async function salvarProdutoAdmin() {
-    // Busca garantida do ID da empresa vinculada na tabela usuarios_empresas
     let idEmpresaAtual = empresaAtualId || localStorage.getItem('empresa_id') || localStorage.getItem('pdv_empresa_id');
 
     if (!idEmpresaAtual) {
