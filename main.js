@@ -1,6 +1,6 @@
 // ==========================================
 // PDV-VS Enterprise - Módulo Principal (main.js)
-// Versão Completa, Unificada e Sem Erros
+// Versão Atualizada: Controle Real de Caixa, Operadores e Admin
 // ==========================================
 
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
@@ -15,17 +15,15 @@ window.carrinhoVenda = [];
 let formaPagamentoAtual = 'dinheiro';
 let maquininhasCadastradasLoja = [];
 let produtosLojaCache = [];
-let deferredPrompt = null;
-let html5QrCode = null;
+let caixaAbertoLoja = false;
 
 document.addEventListener("DOMContentLoaded", () => {
     verificarSessaoEAlternarTelas();
     inicializarEventosPDV();
     carregarFaturamentoDiarioResumo();
-    configurarEventoPWA();
 });
 
-// --- CONTROLE DE SESSÃO E TELAS ---
+// --- CONTROLE DE SESSÃO, TELAS E PERMISSÕES ---
 function verificarSessaoEAlternarTelas() {
     const lojaId = localStorage.getItem('pdv_loja_id');
     const usuarioEmail = localStorage.getItem('pdv_usuario_email');
@@ -39,10 +37,22 @@ function verificarSessaoEAlternarTelas() {
         if (appPrincipal) appPrincipal.classList.remove('hidden');
         if (infoUsuario) infoUsuario.innerText = usuarioEmail;
         
+        // Identifica se é o Admin Principal ou um Operador comum
+        const eAdminPrincipal = localStorage.getItem('pdv_is_admin') === 'true' || 
+                                 usuarioEmail.includes('vancelysoftware@gmail.com') || 
+                                 !localStorage.getItem('pdv_cargo_operador');
+
         const btnAdmin = document.getElementById('btnAdminMenu');
-        if (btnAdmin) btnAdmin.classList.remove('hidden');
+        if (btnAdmin) {
+            if (eAdminPrincipal) {
+                btnAdmin.classList.remove('hidden');
+            } else {
+                btnAdmin.classList.add('hidden'); // Operador comum não vê o botão de Admin
+            }
+        }
         
         carregarProdutosLoja();
+        verificarStatusCaixaLocal();
     } else {
         if (telaLogin) telaLogin.classList.remove('hidden');
         if (appPrincipal) appPrincipal.classList.add('hidden');
@@ -68,6 +78,25 @@ window.processarAutenticacao = async function() {
         if (data && data.user) {
             localStorage.setItem('pdv_usuario_email', data.user.email);
             localStorage.setItem('pdv_loja_id', data.user.id);
+
+            // Verificar se está cadastrado na tabela de operadores
+            const { data: opData } = await window.supabaseClient
+                .from('operadores')
+                .select('*')
+                .eq('email', data.user.email)
+                .maybeSingle();
+
+            if (opData) {
+                localStorage.setItem('pdv_cargo_operador', opData.cargo);
+                if (opData.cargo === 'admin_mercado' || opData.cargo === 'admin') {
+                    localStorage.setItem('pdv_is_admin', 'true');
+                } else {
+                    localStorage.removeItem('pdv_is_admin');
+                }
+            } else {
+                localStorage.setItem('pdv_is_admin', 'true');
+            }
+
             verificarSessaoEAlternarTelas();
             carregarFaturamentoDiarioResumo();
         }
@@ -113,10 +142,57 @@ window.alternarTelaAuth = function(tipo) {
 window.realizarLogout = function() {
     localStorage.removeItem('pdv_loja_id');
     localStorage.removeItem('pdv_usuario_email');
+    localStorage.removeItem('pdv_is_admin');
+    localStorage.removeItem('pdv_cargo_operador');
     window.location.reload();
 }
 
 window.atualizarPaginaCompleta = function() { window.location.reload(); }
+
+// --- CONTROLE DE CAIXA (FUNÇÕES INTEGRADAS) ---
+window.abrirCaixaModal = function() {
+    caixaAbertoLoja = true;
+    localStorage.setItem('pdv_caixa_status', 'aberto');
+    atualizarInterfaceCaixaStatus();
+    alert("Caixa aberto com sucesso!");
+}
+
+window.fecharCaixaModal = function() {
+    if (confirm("Deseja realmente fechar o caixa?")) {
+        caixaAbertoLoja = false;
+        localStorage.setItem('pdv_caixa_status', 'fechado');
+        atualizarInterfaceCaixaStatus();
+        alert("Caixa fechado.");
+    }
+}
+
+window.gerenciarCaixaModal = function() {
+    // Caso haja um modal próprio de caixa ou clique direto
+    if (!caixaAbertoLoja) {
+        window.abrirCaixaModal();
+    } else {
+        window.fecharCaixaModal();
+    }
+}
+
+window.fecharModalCaixa = function() {
+    const modal = document.getElementById('modalCaixa');
+    if (modal) modal.classList.add('hidden');
+}
+
+function verificarStatusCaixaLocal() {
+    const statusSalvo = localStorage.getItem('pdv_caixa_status');
+    caixaAbertoLoja = (statusSalvo === 'aberto');
+    atualizarInterfaceCaixaStatus();
+}
+
+function atualizarInterfaceCaixaStatus() {
+    const indicadorTopo = document.getElementById('txtStatusCaixaTopo');
+    if (indicadorTopo) {
+        indicadorTopo.innerText = caixaAbertoLoja ? "CAIXA ABERTO" : "CAIXA FECHADO";
+        indicadorTopo.className = caixaAbertoLoja ? "text-emerald-600 font-bold" : "text-amber-600 font-bold";
+    }
+}
 
 // --- PRODUTOS E BUSCA ---
 async function carregarProdutosLoja() {
@@ -373,7 +449,7 @@ window.deletarProdutoAdmin = async function(id) {
     }
 }
 
-// --- GESTÃO DE OPERADORES ---
+// --- GESTÃO DE OPERADORES E STATUS REAL DO CAIXA ---
 async function carregarOperadoresAdmin() {
     const lojaId = localStorage.getItem('pdv_loja_id');
     const tbody = document.getElementById('tabelaOperadoresLoja');
@@ -387,38 +463,40 @@ async function carregarOperadoresAdmin() {
             .select('*')
             .eq('loja_id', lojaId);
 
-        if (error || !data || data.length === 0) {
-            const emailAtual = localStorage.getItem('pdv_usuario_email') || 'Administrador';
-            tbody.innerHTML = `
-                <tr class="border-b text-xs hover:bg-slate-50">
-                    <td class="p-3 font-bold text-slate-800">${emailAtual}</td>
-                    <td class="p-3"><span class="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-bold">Administrador</span></td>
-                    <td class="p-3 text-center"><span class="text-emerald-600 font-bold">Ativo</span></td>
-                    <td class="p-3 text-center">-</td>
-                </tr>
-            `;
-            return;
+        const emailAtual = localStorage.getItem('pdv_usuario_email') || 'Administrador';
+        const statusTexto = caixaAbertoLoja ? "Aberto" : "Fechado";
+        const badgeCorStatus = caixaAbertoLoja ? "bg-emerald-100 text-emerald-800 font-bold" : "bg-amber-100 text-amber-800 font-bold";
+
+        let htmlRows = `
+            <tr class="border-b text-xs hover:bg-slate-50">
+                <td class="p-3 font-bold text-slate-800">${emailAtual} (Admin Principal)</td>
+                <td class="p-3"><span class="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-bold">Administrador</span></td>
+                <td class="p-3 text-center"><span class="${badgeCorStatus} px-2 py-0.5 rounded">${statusTexto}</span></td>
+                <td class="p-3 text-center">-</td>
+            </tr>
+        `;
+
+        if (data && data.length > 0) {
+            data.forEach(op => {
+                const cargoFormatado = (op.cargo === 'admin_mercado' || op.cargo === 'admin') ? 'Administrador' : 'Operador de Caixa';
+                const badgeCor = cargoFormatado === 'Administrador' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800';
+                
+                htmlRows += `
+                    <tr class="border-b text-xs hover:bg-slate-50">
+                        <td class="p-3 font-bold text-slate-800">${op.email || op.nome || 'Operador'}</td>
+                        <td class="p-3"><span class="${badgeCor} px-2 py-0.5 rounded font-bold">${cargoFormatado}</span></td>
+                        <td class="p-3 text-center"><span class="${badgeCorStatus} px-2 py-0.5 rounded">${statusTexto}</span></td>
+                        <td class="p-3 text-center">
+                            <button onclick="deletarOperador('${op.id}')" class="text-rose-500 hover:text-rose-700"><i class="fa-solid fa-trash"></i></button>
+                        </td>
+                    </tr>
+                `;
+            });
         }
 
-        tbody.innerHTML = '';
-        data.forEach(op => {
-            const cargoFormatado = (op.cargo === 'admin_mercado' || op.cargo === 'admin') ? 'Administrador' : 'Operador de Caixa';
-            const badgeCor = cargoFormatado === 'Administrador' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800';
-            
-            tbody.innerHTML += `
-                <tr class="border-b text-xs hover:bg-slate-50">
-                    <td class="p-3 font-bold text-slate-800">${op.email || op.nome || 'Operador'}</td>
-                    <td class="p-3"><span class="${badgeCor} px-2 py-0.5 rounded font-bold">${cargoFormatado}</span></td>
-                    <td class="p-3 text-center"><span class="text-emerald-600 font-bold">Ativo</span></td>
-                    <td class="p-3 text-center">
-                        <button onclick="deletarOperador('${op.id}')" class="text-rose-500 hover:text-rose-700"><i class="fa-solid fa-trash"></i></button>
-                    </td>
-                </tr>
-            `;
-        });
+        tbody.innerHTML = htmlRows;
     } catch (e) {
         console.error("Erro ao carregar operadores:", e);
-        tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-rose-500">Erro ao carregar operadores.</td></tr>`;
     }
 }
 
@@ -524,6 +602,10 @@ window.abrirLeitorCamera = function() {
 
 // --- FINALIZAÇÃO DE VENDA ---
 window.finalizarVenda = async function() {
+    if (!caixaAbertoLoja) {
+        alert("O caixa está fechado! Abra o caixa para realizar vendas.");
+        return;
+    }
     if (window.carrinhoVenda.length === 0) {
         alert("O carrinho está vazio!");
         return;
@@ -600,8 +682,6 @@ function inicializarEventosPDV() {
 
 window.recarregarDadosAdmin = carregarProdutosLoja;
 window.abrirModalCancelarItem = function() {};
-window.gerenciarCaixaModal = function() {};
 window.salvarConfiguracoesEmpresaAdmin = function() {};
 window.salvarPinAdmin = function() {};
 window.escanearCameraAdmin = function() {};
-window.fecharModalCaixa = function() {};
