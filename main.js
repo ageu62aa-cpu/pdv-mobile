@@ -1,3 +1,28 @@
+// Teste de Diagnóstico Profissional de Conexão com o Supabase
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
+
+// Substitua pelas suas credenciais reais caso estejam incorretas no arquivo principal
+const SUPABASE_URL = 'SUA_URL_DO_SUPABASE';
+const SUPABASE_ANON_KEY = 'SUA_CHAVE_ANON_DO_SUPABASE';
+
+try {
+    const supabaseTest = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    console.log("🟢 [DIAGNÓSTICO] Cliente Supabase criado com sucesso.");
+
+    // Testando uma leitura simples em uma tabela padrão (ex: 'produtos' ou 'empresas')
+    async function testarConexaoBanco() {
+        const { data, error } = await supabaseTest.from('produtos').select('*').limit(1);
+        if (error) {
+            console.error("🔴 [DIAGNÓSTICO] Erro ao comunicar com o banco de dados:", error.message);
+        } else {
+            console.log("🟢 [DIAGNÓSTICO] Conexão com a tabela do banco estabelecida com sucesso! Dados:", data);
+        }
+    }
+    testarConexaoBanco();
+
+} catch (err) {
+    console.error("🔴 [DIAGNÓSTICO CRÍTICO] Falha total ao instanciar o Supabase:", err);
+}
 // ==========================================
 // PDV-VS Enterprise - Módulo Principal (main.js)
 // ==========================================
@@ -11,20 +36,50 @@ document.addEventListener("DOMContentLoaded", () => {
     inicializarEventosPDV();
     carregarFaturamentoDiarioResumo();
     configurarEventoPWA();
+    configurarBotaoInstalacaoManual();
 });
 
-// --- LÓGICA DO PWA (GERENCIADO PELA BARRA DE URL DO NAVEGADOR) ---
+// --- LÓGICA DO PWA E BOTÃO DE INSTALAÇÃO ---
 function configurarEventoPWA() {
     window.addEventListener('beforeinstallprompt', (e) => {
         e.preventDefault();
         deferredPrompt = e;
-        console.log("PWA pronto para instalação pela barra de endereços do navegador.");
+        console.log("PWA pronto para instalação.");
+        
+        // Exibe o botão de instalação ao lado do ícone da caixa registradora
+        const btnInstalar = document.getElementById('btnInstalarPWA');
+        if (btnInstalar) {
+            btnInstalar.classList.remove('hidden');
+        }
     });
 
     window.addEventListener('appinstalled', () => {
         deferredPrompt = null;
         console.log('PWA instalado com sucesso pelo usuário!');
+        const btnInstalar = document.getElementById('btnInstalarPWA');
+        if (btnInstalar) {
+            btnInstalar.classList.add('hidden');
+        }
     });
+}
+
+function configurarBotaoInstalacaoManual() {
+    const btnInstalar = document.getElementById('btnInstalarPWA');
+    if (btnInstalar) {
+        btnInstalar.addEventListener('click', async () => {
+            if (!deferredPrompt) {
+                alert("O aplicativo já está instalado ou o navegador não suporta a instalação direta neste momento.");
+                return;
+            }
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            if (outcome === 'accepted') {
+                console.log('Utilizador aceitou instalar o PWA.');
+            }
+            deferredPrompt = null;
+            btnInstalar.classList.add('hidden');
+        });
+    }
 }
 
 function inicializarEventosPDV() {
@@ -44,7 +99,7 @@ function inicializarEventosPDV() {
     });
 }
 
-// --- AUTENTICAÇÃO E TELAS ---
+// --- AUTENTICAÇÃO E TELAS (SUPABASE) ---
 window.tratarEnterLogin = function(e) {
     if (e.key === 'Enter') {
         window.processarAutenticacao();
@@ -52,8 +107,47 @@ window.tratarEnterLogin = function(e) {
 }
 
 window.processarAutenticacao = async function() {
-    console.log("Processando autenticação...");
-    // Implemente a lógica de login aqui caso esteja noutroum script
+    console.log("Processando autenticação com Supabase...");
+    
+    const emailInput = document.getElementById('inputEmailLogin');
+    const senhaInput = document.getElementById('inputSenhaLogin');
+    
+    if (!emailInput || !senhaInput) {
+        console.error("Campos de login (inputEmailLogin / inputSenhaLogin) não encontrados no DOM.");
+        return;
+    }
+    
+    const email = emailInput.value.trim();
+    const senha = senhaInput.value.trim();
+
+    if (!email || !senha) {
+        alert("Por favor, preencha o e-mail e a senha.");
+        return;
+    }
+
+    try {
+        if (!window.supabaseClient) {
+            throw new Error("Cliente Supabase não inicializado.");
+        }
+
+        const { data, error } = await window.supabaseClient.auth.signInWithPassword({
+            email: email,
+            password: senha
+        });
+
+        if (error) throw error;
+
+        if (data && data.user) {
+            localStorage.setItem('pdv_usuario_email', data.user.email);
+            localStorage.setItem('pdv_loja_id', data.user.id); 
+            
+            alert("Login efetuado com sucesso!");
+            window.location.reload();
+        }
+    } catch (e) {
+        console.error("Erro no login:", e);
+        alert("Erro ao autenticar: " + (e.message || e));
+    }
 }
 
 window.alternarTelaAuth = function() {
