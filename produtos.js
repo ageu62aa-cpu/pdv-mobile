@@ -10,6 +10,7 @@ import { atualizarTabelaVenda, focarBusca } from './caixa.js';
 
 export async function carregarProdutosCache() {
     if (!empresaAtualId) return;
+    // Corrigido para utilizar 'empresa_id' alinhado à tabela do Supabase
     const { data } = await supabaseClient.from('produtos').select('*').eq('empresa_id', empresaAtualId).order('nome', { ascending: true });
     if (data) setProdutosCache(data);
 }
