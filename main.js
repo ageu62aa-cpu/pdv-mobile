@@ -1,31 +1,17 @@
-// Teste de Diagnóstico Profissional de Conexão com o Supabase
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
-
-// Substitua pelas suas credenciais reais caso estejam incorretas no arquivo principal
-const SUPABASE_URL = 'SUA_URL_DO_SUPABASE';
-const SUPABASE_ANON_KEY = 'SUA_CHAVE_ANON_DO_SUPABASE';
-
-try {
-    const supabaseTest = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    console.log("🟢 [DIAGNÓSTICO] Cliente Supabase criado com sucesso.");
-
-    // Testando uma leitura simples em uma tabela padrão (ex: 'produtos' ou 'empresas')
-    async function testarConexaoBanco() {
-        const { data, error } = await supabaseTest.from('produtos').select('*').limit(1);
-        if (error) {
-            console.error("🔴 [DIAGNÓSTICO] Erro ao comunicar com o banco de dados:", error.message);
-        } else {
-            console.log("🟢 [DIAGNÓSTICO] Conexão com a tabela do banco estabelecida com sucesso! Dados:", data);
-        }
-    }
-    testarConexaoBanco();
-
-} catch (err) {
-    console.error("🔴 [DIAGNÓSTICO CRÍTICO] Falha total ao instanciar o Supabase:", err);
-}
 // ==========================================
 // PDV-VS Enterprise - Módulo Principal (main.js)
+// Conexão e Inicialização Oficial com Supabase
 // ==========================================
+
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
+
+// Credenciais oficiais e definitivas do seu projeto Supabase
+const SUPABASE_URL = 'https://vbdglgmxaywntmjriccf.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiZGdsZ214YXl3bnRtanJpY2NmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk1ODgzOTEsImV4cCI6MjEwNTE2NDM5MX0.S_IUvajnn7Qk7yNtkfBru9xsOjUkKhkJ0J0doikrWSs';
+
+// Inicializando o cliente Supabase globalmente na aplicação
+window.supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+console.log("🟢 [SUPABASE] Conectado com sucesso!");
 
 window.carrinhoVenda = [];
 let formaPagamentoAtual = 'dinheiro'; // 'dinheiro', 'pix', 'debito', 'credito'
@@ -46,7 +32,6 @@ function configurarEventoPWA() {
         deferredPrompt = e;
         console.log("PWA pronto para instalação.");
         
-        // Exibe o botão de instalação ao lado do ícone da caixa registradora
         const btnInstalar = document.getElementById('btnInstalarPWA');
         if (btnInstalar) {
             btnInstalar.classList.remove('hidden');
@@ -109,11 +94,13 @@ window.tratarEnterLogin = function(e) {
 window.processarAutenticacao = async function() {
     console.log("Processando autenticação com Supabase...");
     
-    const emailInput = document.getElementById('inputEmailLogin');
-    const senhaInput = document.getElementById('inputSenhaLogin');
+    // Corrigido para buscar os IDs corretos do index.html (authEmail / authSenha)
+    const emailInput = document.getElementById('authEmail');
+    const senhaInput = document.getElementById('authSenha');
     
     if (!emailInput || !senhaInput) {
-        console.error("Campos de login (inputEmailLogin / inputSenhaLogin) não encontrados no DOM.");
+        console.error("Campos de login (authEmail / authSenha) não encontrados no DOM.");
+        alert("Erro interno: Campos de login não encontrados na tela.");
         return;
     }
     
