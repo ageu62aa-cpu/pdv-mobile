@@ -1,10 +1,9 @@
 // ==========================================
 // PDV-VS Enterprise - Módulo Principal (main.js)
-// Arquivo Corrigido: Sem erros de sintaxe e com todas as funções expostas
 // ==========================================
 
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
-import { setUsuarioAtual, setEmpresaAtualId, setCargoUsuarioAtual, setCaixaAberto } from './state.js';
+import { setUsuarioAtual, setEmpresaAtualId, setCargoUsuarioAtual } from './state.js';
 
 import { 
     verificarStatusCaixaServidor, 
@@ -24,9 +23,7 @@ import {
     realizarLogout, 
     atualizarPaginaCompleta, 
     focarBusca,
-    alterarQtd,
-    abrirLeitorCamera,
-    onDigitarBusca
+    alterarQtd
 } from './caixa.js';
 
 const SUPABASE_URL = 'https://vbdglgmxaywntmjriccf.supabase.co';
@@ -35,7 +32,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 window.supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 console.log("🟢 [SUPABASE] Conectado com sucesso!");
 
-// --- EXPOSIÇÃO GLOBAL DE FUNÇÕES DO CAIXA E LOGIN ---
+// --- EXPOSIÇÃO GLOBAL DE FUNÇÕES DO CAIXA ---
 window.gerenciarCaixaModal = gerenciarCaixaModal;
 window.fecharModalCaixa = fecharModalCaixa;
 window.confirmarAcaoCaixa = confirmarAcaoCaixa;
@@ -53,10 +50,8 @@ window.realizarLogout = realizarLogout;
 window.atualizarPaginaCompleta = atualizarPaginaCompleta;
 window.focarBusca = focarBusca;
 window.alterarQtd = alterarQtd;
-window.abrirLeitorCamera = abrirLeitorCamera;
-window.onDigitarBusca = onDigitarBusca;
 
-// Funções de Autenticação expostas para o HTML funcionar
+// --- AUTENTICAÇÃO E LOGIN ---
 window.tratarEnterLogin = function(e) { 
     if (e.key === 'Enter') processarAutenticacao(); 
 };
@@ -79,14 +74,12 @@ window.processarAutenticacao = async function() {
     }
 };
 
-// Funções extras de UI que o HTML procura
 window.alternarTelaAuth = function(tipo) {
     console.log("Alternar tela auth:", tipo);
-    // Adicione a sua lógica de alternar entre login/cadastro caso possua na UI
 };
 
 window.solicitarRecuperacaoSenha = function() {
-    alert("Para recuperar a senha, contacte o suporte ou verifique as definições do Supabase.");
+    alert("Para recuperar a senha, contacte o administrador do sistema.");
 };
 
 document.addEventListener("DOMContentLoaded", () => {
