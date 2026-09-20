@@ -19,52 +19,76 @@ let maquininhasCadastradasLoja = [];
 let deferredPrompt = null;
 
 document.addEventListener("DOMContentLoaded", () => {
+    verificarSessaoEAlternarTelas();
     inicializarEventosPDV();
     carregarFaturamentoDiarioResumo();
     configurarEventoPWA();
     configurarBotaoInstalacaoManual();
 });
 
+// --- CONTROLE DE VISIBILIDADE DAS TELAS (LOGIN vs APP PRINCIPAL) ---
+function verificarSessaoEAlternarTelas() {
+    const lojaId = localStorage.getItem('pdv_loja_id');
+    const usuarioEmail = localStorage.getItem('pdv_usuario_email');
+    
+    const telaLogin = document.getElementById('telaLogin');
+    const appPrincipal = document.getElementById('appPrincipal');
+    const infoUsuario = document.getElementById('infoUsuarioLogado');
+
+    if (lojaId && usuarioEmail) {
+        // Se estiver logado, esconde o login e mostra o app principal
+        if (telaLogin) telaLogin.classList.add('hidden');
+        if (appPrincipal) appPrincipal.classList.remove('hidden');
+        if (infoUsuario) infoUsuario.innerText = usuarioEmail;
+        
+        // Exibe o botão de admin se necessário
+        const btnAdmin = document.getElementById('btnAdminMenu');
+        if (btnAdmin) btnAdmin.classList.remove('hidden');
+
+        console.log("Sessão ativa encontrada para:", usuarioEmail);
+    } else {
+        // Se não estiver logado, mostra o login e esconde o app principal
+        if (telaLogin) telaLogin.classList.remove('hidden');
+        if (appPrincipal) appPrincipal.classList.add('hidden');
+    }
+}
+
 // --- LÓGICA DO PWA E BOTÃO DE INSTALAÇÃO ---
 function configurarEventoPWA() {
     window.addEventListener('beforeinstallprompt', (e) => {
         e.preventDefault();
         deferredPrompt = e;
-        console.log("PWA pronto para instalação.");
         
-        const btnInstalar = document.getElementById('btnInstalarPWA');
-        if (btnInstalar) {
-            btnInstalar.classList.remove('hidden');
-        }
+        const btnInstalarLogin = document.getElementById('btnInstalarPwaLogin');
+        const btnInstalarHeader = document.getElementById('btnInstalarPwaHeader');
+        if (btnInstalarLogin) btnInstalarLogin.classList.remove('hidden');
+        if (btnInstalarHeader) btnInstalarHeader.classList.remove('hidden');
     });
 
     window.addEventListener('appinstalled', () => {
         deferredPrompt = null;
-        console.log('PWA instalado com sucesso pelo usuário!');
-        const btnInstalar = document.getElementById('btnInstalarPWA');
-        if (btnInstalar) {
-            btnInstalar.classList.add('hidden');
-        }
+        const btnInstalarLogin = document.getElementById('btnInstalarPwaLogin');
+        const btnInstalarHeader = document.getElementById('btnInstalarPwaHeader');
+        if (btnInstalarLogin) btnInstalarLogin.classList.add('hidden');
+        if (btnInstalarHeader) btnInstalarHeader.classList.add('hidden');
     });
 }
 
-function configurarBotaoInstalacaoManual() {
-    const btnInstalar = document.getElementById('btnInstalarPWA');
-    if (btnInstalar) {
-        btnInstalar.addEventListener('click', async () => {
-            if (!deferredPrompt) {
-                alert("O aplicativo já está instalado ou o navegador não suporta a instalação direta neste momento.");
-                return;
-            }
-            deferredPrompt.prompt();
-            const { outcome } = await deferredPrompt.userChoice;
-            if (outcome === 'accepted') {
-                console.log('Utilizador aceitou instalar o PWA.');
-            }
-            deferredPrompt = null;
-            btnInstalar.classList.add('hidden');
-        });
+window.instalarAppPwa = async function() {
+    if (!deferredPrompt) {
+        alert("O aplicativo já está instalado ou o navegador não suporta a instalação direta.");
+        return;
     }
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+        console.log('Usuário aceitou instalar o PWA.');
+    }
+    deferredPrompt = null;
+}
+
+function configurarBotaoInstalacaoManual() {
+    // Mantido por compatibilidade
 }
 
 function inicializarEventosPDV() {
@@ -98,7 +122,6 @@ window.processarAutenticacao = async function() {
     const senhaInput = document.getElementById('authSenha');
     
     if (!emailInput || !senhaInput) {
-        console.error("Campos de login (authEmail / authSenha) não encontrados no DOM.");
         alert("Erro interno: Campos de login não encontrados na tela.");
         return;
     }
@@ -124,11 +147,15 @@ window.processarAutenticacao = async function() {
         if (error) throw error;
 
         if (data && data.user) {
+            // Salvando os dados essenciais da sessão
             localStorage.setItem('pdv_usuario_email', data.user.email);
             localStorage.setItem('pdv_loja_id', data.user.id); 
             
-            alert("Login efetuado com sucesso!");
-            window.location.reload();
+            console.log("Login efetuado com sucesso para:", data.user.email);
+            
+            // Alterna a interface imediatamente sem travamentos
+            verificarSessaoEAlternarTelas();
+            carregarFaturamentoDiarioResumo();
         }
     } catch (e) {
         console.error("Erro no login:", e);
@@ -136,12 +163,12 @@ window.processarAutenticacao = async function() {
     }
 }
 
-window.alternarTelaAuth = function() {
-    console.log("Alternando tela de autenticação...");
+window.alternarTelaAuth = function(tipo) {
+    console.log("Alternando tela de autenticação para:", tipo);
 }
 
 window.solicitarRecuperacaoSenha = function() {
-    console.log("Solicitando recuperação de senha...");
+    alert("Para recuperar sua senha, entre em contato com o suporte técnico.");
 }
 
 window.atualizarPaginaCompleta = function() {
@@ -487,7 +514,6 @@ window.confirmarConclusaoVenda = async function() {
     }
 }
 
-// FUNÇÃO BLINDADA COM TRY/CATCH PARA EVITAR TRAVAMENTO NO LOGIN E AJUSTADA AO BANCO
 async function carregarFaturamentoDiarioResumo() {
     try {
         const empresaId = localStorage.getItem('pdv_loja_id');
@@ -503,7 +529,7 @@ async function carregarFaturamentoDiarioResumo() {
             .gte('created_at', hojeInicio.toISOString());
 
         if (error) {
-            console.warn("Aviso na consulta de faturamento (ignorado com segurança):", error.message);
+            console.warn("Aviso na consulta de faturamento:", error.message);
             return;
         }
 
@@ -515,7 +541,7 @@ async function carregarFaturamentoDiarioResumo() {
         const el = document.getElementById('txtFaturamentoDia');
         if (el) el.innerText = `R$ ${totalDia.toFixed(2)}`;
     } catch (e) {
-        console.warn("Aviso ao carregar faturamento diário (seguro):", e);
+        console.warn("Aviso ao carregar faturamento diário:", e);
     }
 }
 
@@ -524,7 +550,7 @@ window.abrirLeitorCamera = function() { console.log("Abrindo leitor de câmera..
 window.abrirModalCancelarItem = function() { console.log("Abrindo modal cancelar item..."); }
 window.gerenciarCaixaModal = function() { console.log("Gerenciando caixa..."); }
 window.abrirPainelAdmin = function() { 
-    const painel = document.getElementById('painelAdmin');
+    const painel = document.getElementById('modalAdmin');
     if (painel) painel.classList.remove('hidden');
 }
 window.mudarAbaAdmin = function(aba) { console.log("Mudando para aba:", aba); }
@@ -532,7 +558,7 @@ window.filtrarTabelaAdmin = function() {}
 window.abrirModalNovoProdutoAdmin = function() {}
 window.recarregarDadosAdmin = function() {}
 window.fecharPainelAdmin = function() { 
-    const painel = document.getElementById('painelAdmin');
+    const painel = document.getElementById('modalAdmin');
     if (painel) painel.classList.add('hidden');
 }
 window.abrirModalNovoOperador = function() {}
