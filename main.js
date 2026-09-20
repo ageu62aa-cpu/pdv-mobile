@@ -94,7 +94,6 @@ window.tratarEnterLogin = function(e) {
 window.processarAutenticacao = async function() {
     console.log("Processando autenticação com Supabase...");
     
-    // Corrigido para buscar os IDs corretos do index.html (authEmail / authSenha)
     const emailInput = document.getElementById('authEmail');
     const senhaInput = document.getElementById('authSenha');
     
@@ -469,7 +468,7 @@ window.confirmarConclusaoVenda = async function() {
                 operador: operadorEmail,
                 forma_pagamento: formaPagamentoAtual,
                 valor_original: totalOriginal,
-                valor_final: valorFinal,
+                valor_total: valorFinal, // Corrigido para valor_total de acordo com o banco
                 itens: window.carrinhoVenda,
                 data_venda: new Date().toISOString()
             }]);
@@ -498,7 +497,7 @@ async function carregarFaturamentoDiarioResumo() {
 
         const { data, error } = await window.supabaseClient
             .from('vendas')
-            .select('valor_final')
+            .select('valor_total') // Corrigido para valor_total de acordo com o banco
             .eq('loja_id', lojaId)
             .gte('data_venda', hojeInicio.toISOString());
 
@@ -506,7 +505,7 @@ async function carregarFaturamentoDiarioResumo() {
 
         let totalDia = 0;
         if (data) {
-            data.forEach(v => totalDia += Number(v.valor_final) || 0);
+            data.forEach(v => totalDia += Number(v.valor_total) || 0); // Corrigido para valor_total
         }
 
         const el = document.getElementById('txtFaturamentoDia');
