@@ -204,24 +204,29 @@ export async function validarVinculoEmpresaUsuario() {
         setCargoUsuarioAtual(vincData.cargo);
         
         const { data: empData } = await supabaseClient.from('empresas').select('*').eq('id', empresaAtualId).single();
-        if (empData.ativo === false) {
+        if (empData && empData.ativo === false) {
             await supabaseClient.auth.signOut(); 
             alert('PDV-VS - ACESSO SUSPENSO: Este estabelecimento encontra-se bloqueado por pendência financeira.'); 
             location.reload(); 
             return;
         }
-        setDadosEmpresaAtual(empData); 
-
-        setCaixaAberto(empData.caixa_aberto === true);
+        if (empData) {
+            setDadosEmpresaAtual(empData); 
+            setCaixaAberto(empData.caixa_aberto === true);
+        }
 
         const novoTokenSessao = 'sessao_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
         setTokenSessaoAtual(novoTokenSessao);
 
-        await supabaseClient.from('sessoes_ativas').upsert({
-            user_id: usuarioAtual.id,
-            token_sessao: novoTokenSessao,
-            updated_at: new Date()
-        });
+        try {
+            await supabaseClient.from('sessoes_ativas').upsert({
+                user_id: usuarioAtual.id,
+                token_sessao: novoTokenSessao,
+                updated_at: new Date()
+            });
+        } catch (errSession) {
+            console.warn('Aviso de sessão:', errSession);
+        }
 
         concluirLoginSucesso(cargoUsuarioAtual);
     } catch (e) { 
@@ -240,35 +245,44 @@ export function mostrarFeedback(msg, cor) {
 }
 
 export function concluirLoginSucesso(cargoUser) {
-    if (usuarioAtual && usuarioAtual.email) {
-        const usuarioNomeExibicao = usuarioAtual.email.split('@')[0];
-        const infoLogado = document.getElementById('infoUsuarioLogado');
-        if (infoLogado) infoLogado.innerHTML = `<i class="fa-solid fa-user text-emerald-300 mr-1"></i> ${usuarioNomeExibicao} (${cargoUser === 'admin_mercado' ? 'Admin' : 'Caixa'})`;
-    }
-    
-    if (dadosEmpresaAtual) {
-        const tituloEmpresa = document.getElementById('tituloAppEmpresa');
-        const badgeEmpresa = document.getElementById('badgeEmpresaLogada');
-        const badgeLoja = document.getElementById('badgeNumeroLoja');
-        if (tituloEmpresa) tituloEmpresa.innerText = dadosEmpresaAtual.nome_mercado;
-        if (badgeEmpresa) badgeEmpresa.innerText = `CNPJ: ${dadosEmpresaAtual.documento}`;
-        if (badgeLoja) badgeLoja.innerText = `Loja #${dadosEmpresaAtual.id.substring(0,6)}`;
-    }
-    
-    const btnAdminMenu = document.getElementById('btnAdminMenu');
-    if (btnAdminMenu) btnAdminMenu.classList.toggle('hidden', cargoUser !== 'admin_mercado');
+    try {
+        if (usuarioAtual && usuarioAtual.email) {
+            const usuarioNomeExibicao = usuarioAtual.email.split('@')[0];
+            const infoLogado = document.getElementById('infoUsuarioLogado');
+            if (infoLogado) infoLogado.innerHTML = `<i class="fa-solid fa-user text-emerald-300 mr-1"></i> ${usuarioNomeExibicao} (${cargoUser === 'admin_mercado' ? 'Admin' : 'Caixa'})`;
+        }
+        
+        if (dadosEmpresaAtual) {
+            const tituloEmpresa = document.getElementById('tituloAppEmpresa');
+            const badgeEmpresa = document.getElementById('badgeEmpresaLogada');
+            const badgeLoja = document.getElementById('badgeNumeroLoja');
+            if (tituloEmpresa) tituloEmpresa.innerText = dadosEmpresaAtual.nome_mercado;
+            if (badgeEmpresa) badgeEmpresa.innerText = `CNPJ: ${dadosEmpresaAtual.documento}`;
+            if (badgeLoja) badgeLoja.innerText = `Loja #${dadosEmpresaAtual.id.substring(0,6)}`;
+        }
+        
+        const btnAdminMenu = document.getElementById('btnAdminMenu');
+        if (btnAdminMenu) btnAdminMenu.classList.toggle('hidden', cargoUser !== 'admin_mercado');
 
-    atualizarBadgesCaixaInterface();
+        atualizarBadgesCaixaInterface();
+    } catch (errUI) {
+        console.warn('Aviso na interface de login:', errUI);
+    }
 
+    // FORÇAR A ABERTURA DA TELA PRINCIPAL (MESMO SE HOUVER AVISOS SECUNDÁRIOS)
     const telaLogin = document.getElementById('telaLogin');
     const appPrincipal = document.getElementById('appPrincipal');
     if (telaLogin) telaLogin.classList.add('hidden');
     if (appPrincipal) appPrincipal.classList.remove('hidden');
     
-    carregarProdutosCache(); 
-    iniciarSincronizacaoRealtime();
-    iniciarMonitoramentoSessaoUnica();
-    focarBusca();
+    try {
+        carregarProdutosCache(); 
+        iniciarSincronizacaoRealtime();
+        iniciarMonitoramentoSessaoUnica();
+        focarBusca();
+    } catch (errInit) {
+        console.warn('Aviso de inicialização em segundo plano:', errInit);
+    }
 }
 
 function iniciarMonitoramentoSessaoUnica() {
@@ -295,34 +309,37 @@ function iniciarMonitoramentoSessaoUnica() {
 export function iniciarSincronizacaoRealtime() {
     if (!empresaAtualId) return;
 
-    supabaseClient
-        .channel('public:produtos_sync')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'produtos', filter: `empresa_id=eq.${empresaAtualId}` }, async () => {
-            console.log('PDV-VS: Mudança de estoque detectada em outro dispositivo!');
-            await carregarProdutosCache();
-            if (typeof window.renderizarTabelaAdmin === 'function') {
-                window.renderizarTabelaAdmin(window.produtosCache);
-            }
-            atualizarTabelaVenda();
-        })
-        .subscribe();
+    try {
+        supabaseClient
+            .channel('public:produtos_sync')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'produtos', filter: `empresa_id=eq.${empresaAtualId}` }, async () => {
+                await carregarProdutosCache();
+                if (typeof window.renderizarTabelaAdmin === 'function') {
+                    window.renderizarTabelaAdmin(window.produtosCache);
+                }
+                atualizarTabelaVenda();
+            })
+            .subscribe();
 
-    supabaseClient
-        .channel('public:empresas_sync')
-        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'empresas', filter: `id=eq.${empresaAtualId}` }, payload => {
-            if (payload.new) {
-                if (payload.new.ativo === false) {
-                    alert('PDV-VS: Este estabelecimento foi bloqueado.');
-                    location.reload();
-                    return;
+        supabaseClient
+            .channel('public:empresas_sync')
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'empresas', filter: `id=eq.${empresaAtualId}` }, payload => {
+                if (payload.new) {
+                    if (payload.new.ativo === false) {
+                        alert('PDV-VS: Este estabelecimento foi bloqueado.');
+                        location.reload();
+                        return;
+                    }
+                    if (payload.new.caixa_aberto !== undefined) {
+                        setCaixaAberto(payload.new.caixa_aberto);
+                        atualizarBadgesCaixaInterface();
+                    }
                 }
-                if (payload.new.caixa_aberto !== undefined) {
-                    setCaixaAberto(payload.new.caixa_aberto);
-                    atualizarBadgesCaixaInterface();
-                }
-            }
-        })
-        .subscribe();
+            })
+            .subscribe();
+    } catch (errRt) {
+        console.warn('Aviso de realtime:', errRt);
+    }
 }
 
 export async function abrirSuperAdminMaster() {
