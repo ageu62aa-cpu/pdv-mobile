@@ -47,18 +47,16 @@ export async function iniciarCameraComHtml5Qrcode() {
         const instance = new Html5Qrcode(elementId);
         setHtml5QrcodeInstance(instance);
         
-        // Configuração profissional otimizada para suportar QR Code e códigos de barras com alta precisão
+        // Configuração focada em precisão estrita dentro da moldura central
         const config = { 
-            fps: 30, 
+            fps: 20, // Reduzido ligeiramente para dar tempo de processamento estável no iOS
             qrbox: (viewfinderWidth, viewfinderHeight) => {
-                // Moldura centralizada perfeitamente proporcional ao formato de barras e QR Codes
-                let width = Math.floor(viewfinderWidth * 0.82);
-                let height = Math.floor(width * 0.45); 
+                let width = Math.floor(viewfinderWidth * 0.78);
+                let height = Math.floor(width * 0.38); 
                 return { width: width, height: height };
             },
             aspectRatio: 1.0,
             rememberLastUsedCamera: true,
-            // Habilita explicitamente todos os formatos essenciais de PDV e QR Code
             formatsToSupport: [ 
                 Html5QrcodeSupportedFormats.EAN_13,
                 Html5QrcodeSupportedFormats.EAN_8,
@@ -70,7 +68,6 @@ export async function iniciarCameraComHtml5Qrcode() {
             ]
         };
         
-        // Configuração de câmara universal compatível com o WebKit do iPhone e Android
         const cameraConfig = { 
             facingMode: "environment" 
         };
@@ -79,12 +76,14 @@ export async function iniciarCameraComHtml5Qrcode() {
             cameraConfig,
             config,
             (decodedText) => {
-                // Validação de segurança para ignorar leituras vazias ou muito curtas/errôneas
-                if (!decodedText || decodedText.trim().length < 2) return;
+                if (!decodedText) return;
+                const codigoLimpo = decodedText.trim();
+
+                // Filtro anti-falsos positivos: Valida se o comprimento é compatível com códigos comerciais reais
+                // (EAN tem 8 ou 13 dígitos, UPC tem 12, Code128 geralmente 4+, QR Codes variam mas exigem pelo menos 3 caracteres)
+                if (codigoLimpo.length < 4) return;
 
                 fecharLeitorCamera();
-                
-                const codigoLimpo = decodedText.trim();
 
                 if (origemLeitor === 'busca') {
                     const p = produtosCache.find(prod => (prod.codigo && prod.codigo.trim() === codigoLimpo) || prod.nome.toLowerCase().includes(codigoLimpo.toLowerCase()));
@@ -102,7 +101,7 @@ export async function iniciarCameraComHtml5Qrcode() {
                 }
             },
             (errorMessage) => {
-                // Erros iterativos de varredura de frame são ignorados para manter a performance fluida
+                // Ignora falhas de frame iterativas
             }
         );
     } catch (err) {
