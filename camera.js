@@ -32,7 +32,6 @@ export async function escanearCameraAdmin() {
 
 export async function iniciarCameraComHtml5Qrcode() {
     try {
-        // Garante a paragem total e segura de qualquer instância anterior antes de recriar
         if (html5QrcodeInstance) {
             try {
                 if (html5QrcodeInstance.isScanning) {
@@ -42,8 +41,7 @@ export async function iniciarCameraComHtml5Qrcode() {
                 console.warn("Aviso ao limpar instância anterior:", e);
             }
             setHtml5QrcodeInstance(null);
-            // Pequena pausa para o DOM libertar o stream de vídeo da câmara
-            await new Promise(resolve => setTimeout(resolve, 300));
+            await new Promise(resolve => setTimeout(resolve, 250));
         }
         
         const elementId = "videoPreviewCamera";
@@ -56,27 +54,14 @@ export async function iniciarCameraComHtml5Qrcode() {
         const instance = new Html5Qrcode(elementId);
         setHtml5QrcodeInstance(instance);
         
+        // Configuração padrão limpa e eficiente (sem restrições pesadas de qrbox que travam o iPhone)
         const config = { 
-            fps: 20, 
-            qrbox: (viewfinderWidth, viewfinderHeight) => {
-                let width = Math.floor(viewfinderWidth * 0.78);
-                let height = Math.floor(width * 0.38); 
-                return { width: width, height: height };
-            },
-            aspectRatio: 1.0,
-            rememberLastUsedCamera: true,
-            formatsToSupport: [ 
-                Html5QrcodeSupportedFormats.EAN_13,
-                Html5QrcodeSupportedFormats.EAN_8,
-                Html5QrcodeSupportedFormats.CODE_128,
-                Html5QrcodeSupportedFormats.CODE_39,
-                Html5QrcodeSupportedFormats.UPC_A,
-                Html5QrcodeSupportedFormats.UPC_E,
-                Html5QrcodeSupportedFormats.QR_CODE
-            ]
+            fps: 10,
+            qrbox: { width: 250, height: 150 },
+            aspectRatio: 1.777778,
+            rememberLastUsedCamera: true
         };
         
-        // Configuração universal limpa compatível com computadores, Android e iOS
         const cameraConfig = { 
             facingMode: "environment" 
         };
@@ -107,12 +92,12 @@ export async function iniciarCameraComHtml5Qrcode() {
                 }
             },
             (errorMessage) => {
-                // Ignora falhas de frame por segundo
+                // Ignora erros de frame contínuos
             }
         );
     } catch (err) {
-        console.error("PDV-VS Erro crítico ao iniciar câmera:", err);
-        alert("PDV-VS: Não foi possível acessar a câmera do dispositivo. Verifique as permissões de vídeo nas configurações do navegador e certifique-se de usar HTTPS.");
+        console.error("PDV-VS Erro ao iniciar câmera:", err);
+        alert("PDV-VS: Não foi possível acessar a câmera do dispositivo. Verifique as permissões de vídeo nas configurações do seu navegador.");
         fecharLeitorCamera();
     }
 }
