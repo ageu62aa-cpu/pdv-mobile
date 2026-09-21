@@ -4,6 +4,7 @@
 
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
 import { setUsuarioAtual, setEmpresaAtualId, setCargoUsuarioAtual } from './state.js';
+import { abrirLeitorCamera, escanearCameraAdmin } from './camera.js';
 
 import { 
     verificarStatusCaixaServidor, 
@@ -51,10 +52,9 @@ window.atualizarPaginaCompleta = atualizarPaginaCompleta;
 window.focarBusca = focarBusca;
 window.alterarQtd = alterarQtd;
 
-// --- FUNÇÃO GLOBAL DA CÂMERA ---
-window.abrirLeitorCamera = function() {
-    alert("PDV-VS: O leitor de código de barras por câmera está em desenvolvimento.");
-};
+// --- EXPOSIÇÃO GLOBAL DA CÂMERA (CORRIGIDO) ---
+window.abrirLeitorCamera = abrirLeitorCamera;
+window.escanearCameraAdmin = escanearCameraAdmin;
 
 // --- AUTENTICAÇÃO E LOGIN ---
 window.tratarEnterLogin = function(e) { 
@@ -102,7 +102,6 @@ async function verificarSessaoEAlternarTelas() {
     if (session && session.user) {
         setUsuarioAtual(session.user);
 
-        // Correção: Consulta correta na tabela usuarios_empresas por user_id
         const { data: opData } = await window.supabaseClient
             .from('usuarios_empresas')
             .select('empresa_id, cargo')
@@ -124,7 +123,6 @@ async function verificarSessaoEAlternarTelas() {
         if (appPrincipal) appPrincipal.classList.remove('hidden');
         if (infoUsuario) infoUsuario.innerText = session.user.email;
         
-        // Ocultar ou exibir o botão Admin com base estrita no cargo
         const btnAdmin = document.getElementById('btnAdminMenu');
         if (btnAdmin) {
             if (cargoFinal === 'admin_mercado') {
