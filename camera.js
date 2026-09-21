@@ -9,7 +9,7 @@ import {
 import { tratarAdicaoProduto } from './produtos.js';
 
 let listenerTecladoGlobal = null;
-let ultimaFotoCapturadaArquivo = null; // Guarda o arquivo binário para leitura interna
+let ultimaFotoCapturadaArquivo = null;
 
 export async function abrirLeitorCamera() {
     console.log("PDV-VS: Abrindo leitor para Vendas (busca)");
@@ -32,9 +32,29 @@ function prepararModalCameraVisual() {
         modalCam.classList.add('flex');
         modalCam.classList.remove('hidden');
 
+        // Garante posição relativa para o botão flutuante funcionar perfeitamente
+        const cardModal = modalCam.querySelector('div') || modalCam;
+        cardModal.style.position = cardModal.style.position || 'relative';
+
+        // Cria botão flutuante de Fechar/Voltar para segurança total contra travamentos mobile
+        let btnFlutuanteSair = document.getElementById('btnFlutuanteSairCamera');
+        if (!btnFlutuanteSair) {
+            btnFlutuanteSair = document.createElement('button');
+            btnFlutuanteSair.id = 'btnFlutuanteSairCamera';
+            btnFlutuanteSair.type = 'button';
+            btnFlutuanteSair.innerHTML = '✕ Fechar / Voltar';
+            btnFlutuanteSair.style.cssText = "position: absolute; top: 10px; right: 10px; background: #ef4444; color: #fff; border: none; padding: 8px 14px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 12px; z-index: 100002; box-shadow: 0 2px 5px rgba(0,0,0,0.3);";
+            
+            btnFlutuanteSair.onclick = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                fecharLeitorCamera();
+            };
+            cardModal.appendChild(btnFlutuanteSair);
+        }
+
         let containerManual = document.getElementById('containerManualCamera');
         if (!containerManual) {
-            const cardModal = modalCam.querySelector('div') || modalCam;
             containerManual = document.createElement('div');
             containerManual.id = 'containerManualCamera';
             containerManual.style.cssText = "margin-top: 15px; padding: 12px; background: #f8fafc; border-radius: 8px; border: 1px solid #cbd5e1; display: flex; flex-direction: column; gap: 8px; width: 100%; box-sizing: border-box; z-index: 100000; position: relative;";
@@ -42,7 +62,7 @@ function prepararModalCameraVisual() {
             containerManual.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 2px;">
                     <span id="statusFotoLabel" style="font-size: 11px; color: #64748b; font-weight: 500;">Câmera ao vivo ativa:</span>
-                    <button type="button" id="btnCapturarNativo" style="background: #0ea5e9; color: #fff; border: none; padding: 5px 10px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px; display: flex; align-items: center; gap: 4px;">
+                    <button type="button" id="btnCapturarNativo" style="background: #0ea5e9; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px; display: flex; align-items: center; gap: 4px;">
                         📸 Tirar Foto
                     </button>
                 </div>
@@ -141,15 +161,13 @@ function dispararCameraParaCaptura() {
         const arquivo = e.target.files[0];
         if (!arquivo) return;
 
-        // Para a câmera ao vivo se estiver rodando para economizar processamento
         if (html5QrcodeInstance && html5QrcodeInstance.isScanning) {
             html5QrcodeInstance.stop().catch(() => {});
         }
 
         ultimaFotoCapturadaArquivo = arquivo;
-        console.log("PDV-VS: Foto capturada e fixada na tela. Pronto para leitura interna.");
+        console.log("PDV-VS: Foto capturada e fixada na tela.");
 
-        // Exibe a foto estaticamente na mesma moldura da câmera
         const containerVideo = document.getElementById('videoPreviewCamera');
         if (containerVideo) {
             const reader = new FileReader();
@@ -160,7 +178,7 @@ function dispararCameraParaCaptura() {
         }
 
         const statusLbl = document.getElementById('statusFotoLabel');
-        if (statusLbl) statusLbl.innerText = "Foto na tela! Clique em OK para extrair o código:";
+        if (statusLbl) statusLbl.innerText = "Foto na tela! Clique em OK para extrair:";
 
         const inp = document.getElementById('inputCodigoManual');
         if (inp) {
@@ -176,7 +194,6 @@ function dispararCameraParaCaptura() {
 }
 
 async function executarBotaoOkOuManual() {
-    // Se houver uma foto armazenada, faz a leitura interna (escaneamento sobreposto) sem reabrir imagens
     if (ultimaFotoCapturadaArquivo) {
         console.log("PDV-VS: Executando escaneamento interno sobre a foto...");
         try {
@@ -189,17 +206,17 @@ async function executarBotaoOkOuManual() {
             }
 
             if (codigoLido) {
-                console.log("PDV-VS: Código extraído com sucesso da foto fixa:", codigoLido);
+                console.log("PDV-VS: Código extraído com sucesso:", codigoLido);
                 processarCodigoCapturado(codigoLido.trim());
                 return;
             } else {
-                console.warn("PDV-VS: Não foi possível decodificar barras desta foto. Focando no campo manual.");
+                console.warn("PDV-VS: Não foi possível decodificar barras desta foto. Digite manualmente.");
                 const inp = document.getElementById('inputCodigoManual');
                 if (inp) {
                     inp.placeholder = "Não lido. Digite o código aqui...";
                     inp.focus();
                 }
-                ultimaFotoCapturadaArquivo =pperware = null; // reseta para permitir digitar
+                ultimaFotoCapturadaArquivo = null;
             }
         } catch (err) {
             console.error("PDV-VS Erro ao escanear arquivo:", err);
@@ -207,7 +224,6 @@ async function executarBotaoOkOuManual() {
         return;
     }
 
-    // Caso contrário, segue o fluxo normal de texto digitado ou pistola
     executarEntradaManual();
 }
 
