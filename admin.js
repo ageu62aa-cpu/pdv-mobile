@@ -9,7 +9,7 @@ import {
 import { carregarProdutosCache } from './produtos.js';
 import { focarBusca } from './caixa.js';
 
-export function mudarAbaAdmin(aba) {
+export async function mudarAbaAdmin(aba) {
     ['Produtos', 'Operadores', 'Maquininhas', 'Historico', 'Configuracoes'].forEach(a => {
         const conteudo = document.getElementById(`conteudoAba${a}`);
         const btn = document.getElementById(`btnAba${a}`);
@@ -24,10 +24,15 @@ export function mudarAbaAdmin(aba) {
     if (conteudoAtivo) conteudoAtivo.classList.remove('hidden');
     if (btnAtivo) btnAtivo.className = 'px-3 py-1.5 text-xs font-bold bg-emerald-600 text-white rounded-lg';
     
-    if (aba === 'operadores') carregarOperadoresLoja();
-    if (aba === 'maquininhas') carregarMaquininhasAdmin();
-    if (aba === 'historico') carregarHistoricoAdmin();
-    if (aba === 'configuracoes') {
+    // Garante o carregamento imediato e síncrono da aba selecionada
+    if (aba === 'produtos' || aba === 'Produtos') {
+        await carregarProdutosCache();
+        renderizarTabelaAdmin(produtosCache);
+    }
+    if (aba === 'operadores' || aba === 'Operadores') await carregarOperadoresLoja();
+    if (aba === 'maquininhas' || aba === 'Maquininhas') await carregarMaquininhasAdmin();
+    if (aba === 'historico' || aba === 'Historico') await carregarHistoricoAdmin();
+    if (aba === 'configuracoes' || aba === 'Configuracoes') {
         const inputPinConfig = document.getElementById('inputAdminPinConfig');
         if (inputPinConfig) {
             inputPinConfig.value = localStorage.getItem('pdv_admin_pin_' + empresaAtualId) || '123456';
@@ -47,23 +52,25 @@ export async function recarregarDadosAdmin() {
 }
 
 export async function abrirPainelAdmin() { 
-    // Garante o carregamento automático imediato ao abrir o painel
-    await carregarProdutosCache(); 
-    renderizarTabelaAdmin(produtosCache); 
-    
-    if (cargoUsuarioAtual === 'admin_mercado') {
-        if (typeof carregarOperadoresLoja === 'function') await carregarOperadoresLoja();
-        if (typeof carregarHistoricoAdmin === 'function') await carregarHistoricoAdmin();
-        if (typeof carregarMaquininhasAdmin === 'function') await carregarMaquininhasAdmin();
-    }
-
-    mudarAbaAdmin('produtos'); 
-    
     const modalAdmin = document.getElementById('modalAdmin');
     if (modalAdmin) {
         modalAdmin.classList.add('flex');
         modalAdmin.classList.remove('hidden'); 
     }
+
+    // Carrega todos os dados principais em paralelo para garantir exibição imediata
+    await carregarProdutosCache(); 
+    renderizarTabelaAdmin(produtosCache); 
+    
+    if (cargoUsuarioAtual === 'admin_mercado') {
+        await Promise.all([
+            carregarOperadoresLoja(),
+            carregarHistoricoAdmin(),
+            carregarMaquininhasAdmin()
+        ]);
+    }
+
+    mudarAbaAdmin('produtos'); 
 }
 
 export function fecharPainelAdmin() { 
@@ -297,14 +304,14 @@ export async function salvarNovaMaquininha() {
     }
 
     fecharModalNovaMaquininha();
-    carregarMaquininhasAdmin();
+    await carregarMaquininhasAdmin();
     alert('Maquininha cadastrada com sucesso!');
 }
 
 export async function excluirMaquininhaAdmin(id) {
     if (confirm('Deseja realmente excluir esta maquininha?')) {
         await window.supabaseClient.from('maquininhas_taxas').delete().eq('id', id);
-        carregarMaquininhasAdmin();
+        await carregarMaquininhasAdmin();
     }
 }
 
@@ -359,7 +366,7 @@ export async function carregarOperadoresLoja() {
 export async function excluirOperadorLoja(id) { 
     if (confirm('PDV-VS: Deseja remover este operador da equipe?')) { 
         await window.supabaseClient.from('usuarios_empresas').delete().eq('user_id', id); 
-        carregarOperadoresLoja(); 
+        await carregarOperadoresLoja(); 
     } 
 }
 
@@ -393,7 +400,7 @@ export async function salvarNovoOperador() {
     if (data && data.user) {
         await window.supabaseClient.from('usuarios_empresas').insert([{ user_id: data.user.id, empresa_id: empresaAtualId, cargo: 'operador' }]);
         fecharModalNovoOperador(); 
-        carregarOperadoresLoja();
+        await carregarOperadoresLoja();
         alert('PDV-VS: Operador cadastrado com sucesso!');
     }
 }
