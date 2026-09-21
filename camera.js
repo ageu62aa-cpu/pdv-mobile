@@ -39,10 +39,10 @@ function prepararModalCameraVisual() {
             containerManual.style.cssText = "margin-top: 15px; padding: 12px; background: #f8fafc; border-radius: 8px; border: 1px solid #cbd5e1; display: flex; flex-direction: column; gap: 8px; width: 100%; box-sizing: border-box; z-index: 100000; position: relative;";
             
             containerManual.innerHTML = `
-                <!-- Botão discreto com ícone de câmera para capturar a imagem exata da moldura (Perfeito para iPhone) -->
-                <div style="display: flex; justify-content: center; width: 100%; margin-bottom: 4px;">
-                    <button type="button" id="btnCapturarMolduraOtimizada" style="background: #0ea5e9; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 13px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                        📸 Capturar Imagem da Moldura
+                <!-- Botão de câmera discreto, seguindo o padrão minimalista dos demais botões do app -->
+                <div style="display: flex; justify-content: flex-end; width: 100%; margin-bottom: 2px;">
+                    <button type="button" id="btnCapturarMolduraOtimizada" title="Capturar imagem da moldura" style="background: #1e293b; color: #fff; border: none; padding: 6px 10px; border-radius: 6px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 5px; font-size: 12px; transition: background 0.2s;">
+                        📷 Capturar Frame
                     </button>
                 </div>
 
@@ -53,7 +53,7 @@ function prepararModalCameraVisual() {
             `;
             cardModal.appendChild(containerManual);
 
-            // Evento do botão de captura otimizada da moldura
+            // Evento do botão discreto de captura da moldura
             const btnCapturar = document.getElementById('btnCapturarMolduraOtimizada');
             btnCapturar.onclick = async (e) => {
                 e.preventDefault();
@@ -124,54 +124,43 @@ function prepararModalCameraVisual() {
     }
 }
 
-// Função avançada para capturar o frame da moldura e garantir a leitura dos números
+// Função de captura da moldura limpa de alertas incômodos
 async function capturarEProcessarMoldura() {
     try {
         const videoElement = document.querySelector('#videoPreviewCamera video');
         if (!videoElement) {
-            alert("A câmera não está ativa para captura.");
             return;
         }
 
-        // Cria um canvas com alta resolução para o frame capturado
         const canvas = document.createElement('canvas');
         canvas.width = videoElement.videoWidth || 1280;
         canvas.height = videoElement.videoHeight || 720;
         const ctx = canvas.getContext('2d');
         ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
 
-        // Converte o canvas em arquivo de imagem suportado pelo leitor
         canvas.toBlob(async (blob) => {
-            if (!blob) {
-                alert("Não foi possível gerar a imagem da moldura.");
-                return;
-            }
+            if (!blob) return;
 
             const arquivo = new File([blob], "codigo_capturado.png", { type: "image/png" });
 
             try {
-                // Tenta ler usando a instância atual ou cria uma temporária focada em arquivos
                 const scannerTemp = new window.Html5Qrcode("videoPreviewCamera");
-                
-                // Configuração robusta para leitura de imagem estática
                 const codigoDecodificado = await scannerTemp.scanFile(arquivo, true);
                 
                 if (codigoDecodificado) {
                     processarCodigoCapturado(codigoDecodificado.trim());
                 }
             } catch (err) {
-                console.warn("Tentativa padrão falhou, tentando decodificação alternativa...", err);
-                
-                // Fallback inteligente: se a leitura automática da foto falhar, joga um alerta amigável mas foca no input para digitação rápida dos números que aparecem na foto
-                alert("A imagem foi capturada, mas o código não foi decodificado automaticamente. Por favor, digite os números visíveis no campo abaixo.");
+                // Sem alertas na tela: apenas posiciona o cursor suavemente no input para agilizar a venda
                 const inp = document.getElementById('inputCodigoManual');
-                if (inp) inp.focus();
+                if (inp) {
+                    inp.focus();
+                }
             }
         }, 'image/png');
 
     } catch (e) {
         console.error("Erro ao processar moldura:", e);
-        alert("Erro ao capturar a imagem da moldura.");
     }
 }
 
