@@ -58,7 +58,31 @@ export async function abrirPainelAdmin() {
         modalAdmin.classList.remove('hidden'); 
     }
 
-    // Carrega todos os dados principais imediatamente ao abrir o painel
+    // 1. Garante que o ID da empresa esteja resolvido ANTES de puxar os dados
+    let idEmpresaAtual = empresaAtualId || localStorage.getItem('empresa_id') || localStorage.getItem('pdv_empresa_id');
+
+    try {
+        const { data: { session } } = await window.supabaseClient.auth.getSession();
+        if (session && session.user) {
+            const { data: vincData } = await window.supabaseClient
+                .from('usuarios_empresas')
+                .select('empresa_id')
+                .eq('user_id', session.user.id)
+                .maybeSingle();
+            
+            if (vincData && vincData.empresa_id) {
+                idEmpresaAtual = vincData.empresa_id;
+            } else if (!idEmpresaAtual) {
+                idEmpresaAtual = session.user.id;
+            }
+            setEmpresaAtualId(idEmpresaAtual);
+            localStorage.setItem('empresa_id', idEmpresaAtual);
+        }
+    } catch (e) {
+        console.error("Erro ao validar empresa na sessão ao abrir painel:", e);
+    }
+
+    // 2. Carrega todos os dados principais em tempo real assim que o painel abre
     try {
         await carregarProdutosCache(); 
         renderizarTabelaAdmin(produtosCache); 
@@ -71,7 +95,7 @@ export async function abrirPainelAdmin() {
             ]);
         }
     } catch (e) {
-        console.error("Erro ao carregar dados ao abrir o painel:", e);
+        console.error("Erro ao carregar dados do painel:", e);
     }
 
     mudarAbaAdmin('produtos'); 
