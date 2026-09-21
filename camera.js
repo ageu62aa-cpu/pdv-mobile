@@ -9,7 +9,6 @@ import {
 import { tratarAdicaoProduto } from './produtos.js';
 
 let listenerTecladoGlobal = null;
-let ultimoBlobCapturado = null; // Armazena a imagem da moldura capturada pelo botão
 
 export async function abrirLeitorCamera() {
     console.log("PDV-VS: Abrindo leitor para Vendas (busca)");
@@ -40,44 +39,42 @@ function prepararModalCameraVisual() {
             containerManual.style.cssText = "margin-top: 15px; padding: 12px; background: #f8fafc; border-radius: 8px; border: 1px solid #cbd5e1; display: flex; flex-direction: column; gap: 8px; width: 100%; box-sizing: border-box; z-index: 100000; position: relative;";
             
             containerManual.innerHTML = `
-                <!-- Controles divididos: Botão 1 para Capturar a Imagem e Feedback visual -->
+                <!-- Barra superior limpa com status amigável -->
                 <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 2px;">
-                    <span id="txtStatusCaptura" style="font-size: 11px; color: #64748b; font-weight: 600;">1. Aponte e clique em 'Capturar'</span>
-                    <button type="button" id="btnCapturarMoldura" style="background: #0ea5e9; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 5px; font-size: 12px;">
-                        📸 Capturar Frame
+                    <span style="font-size: 11px; color: #64748b; font-weight: 600;">Leitor Ativo (Aponte ou Digite)</span>
+                    <button type="button" id="btnZerarFoco" style="background: #e2e8f0; color: #334155; border: none; padding: 4px 8px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 11px;">
+                        🔄 Recarregar Câmera
                     </button>
                 </div>
 
-                <!-- Campo e Botão 2 (OK) para processar a imagem capturada ou ler o texto -->
                 <div style="display: flex; gap: 8px; width: 100%; align-items: center;">
-                    <input type="text" id="inputCodigoManual" placeholder="Ou digite o código manualmente..." style="flex: 1; padding: 10px; border: 1px solid #94a3b8; border-radius: 6px; font-size: 14px; outline: none; background: #fff; color: #000;" />
-                    <button type="button" id="btnProcessarLeitura" style="background: #2563eb; color: #fff; border: none; padding: 10px 18px; border-radius: 6px; font-weight: bold; cursor: pointer;">OK</button>
+                    <input type="text" id="inputCodigoManual" placeholder="Digite o código ou use a pistola..." style="flex: 1; padding: 10px; border: 1px solid #94a3b8; border-radius: 6px; font-size: 14px; outline: none; background: #fff; color: #000;" />
+                    <button type="button" id="btnConfirmarManual" style="background: #2563eb; color: #fff; border: none; padding: 10px 18px; border-radius: 6px; font-weight: bold; cursor: pointer;">OK</button>
                 </div>
             `;
             cardModal.appendChild(containerManual);
 
-            // BOTÃO 1: Captura o frame atual da moldura da câmera
-            const btnCapturar = document.getElementById('btnCapturarMoldura');
-            btnCapturar.onclick = (e) => {
+            // Botão para reiniciar a câmera caso o iPhone trave o foco
+            const btnZerar = document.getElementById('btnZerarFoco');
+            btnZerar.onclick = async (e) => {
                 e.preventDefault();
-                e.stopPropagation();
-                executarCapturaDeFrame();
+                await iniciarCameraComHtml5Qrcode();
             };
 
-            // BOTÃO 2 (OK): Processa a imagem capturada ou lê o input
-            const btnProcessar = document.getElementById('btnProcessarLeitura');
-            btnProcessar.onclick = async (e) => {
+            // Evento do botão OK limpo e direto
+            const btn = document.getElementById('btnConfirmarManual');
+            btn.onclick = (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                await executarProcessamentoFinal();
+                executarEntradaManual();
             };
 
             const inp = document.getElementById('inputCodigoManual');
-            inp.onkeydown = async (e) => {
+            inp.onkeydown = (e) => {
                 if (e.key === 'Enter') {
                     e.preventDefault();
                     e.stopPropagation();
-                    await executarProcessamentoFinal();
+                    executarEntradaManual();
                 }
             };
         }
@@ -85,12 +82,8 @@ function prepararModalCameraVisual() {
         const inp = document.getElementById('inputCodigoManual');
         if (inp) {
             inp.value = '';
-            ultimoBlobCapturado = null;
             setTimeout(() => inp.focus(), 150);
         }
-
-        const txtStatus = document.getElementById('txtStatusCaptura');
-        if (txtStatus) txtStatus.innerText = "1. Aponte e clique em 'Capturar'";
 
         // Listener global para pistolas USB/Bluetooth
         if (listenerTecladoGlobal) {
@@ -131,76 +124,13 @@ function prepararModalCameraVisual() {
     }
 }
 
-// Função do Botão 1: Salva o frame da câmera na memória
-function executarCapturaDeFrame() {
-    const videoElement = document.querySelector('#videoPreviewCamera video');
-    const txtStatus = document.getElementById('txtStatusCaptura');
+function executarEntradaManual() {
     const inp = document.getElementById('inputCodigoManual');
-
-    if (!videoElement) {
-        alert("Câmera não encontrada.");
-        return;
-    }
-
-    const canvas = document.createElement('canvas');
-    canvas.width = videoElement.videoWidth || 1280;
-    canvas.height = videoElement.videoHeight || 720;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
-
-    canvas.toBlob((blob) => {
-        if (!blob) {
-            alert("Erro ao gerar imagem da moldura.");
-            return;
-        }
-        ultimoBlobCapturado = blob;
-        if (txtStatus) {
-            txtStatus.innerText = "✅ Frame capturado! Clique em OK para ler.";
-            txtStatus.style.color = "#16a34a";
-        }
-        if (inp) inp.focus();
-    }, 'image/png');
-}
-
-// Função do Botão 2 (OK): Tenta ler a imagem capturada ou usa o texto digitado
-async function executarProcessamentoFinal() {
-    const inp = document.getElementById('inputCodigoManual');
-    const txtStatus = document.getElementById('txtStatusCaptura');
     if (!inp) return;
-
-    const textoDigitado = inp.value.trim();
-
-    // Se o usuário digitou algo no campo, usa diretamente
-    if (textoDigitado.length > 0) {
-        processarCodigoCapturado(textoDigitado);
-        return;
-    }
-
-    // Se tem uma imagem capturada pelo Botão 1, tenta decodificá-la agora
-    if (ultimoBlobCapturado) {
-        if (txtStatus) txtStatus.innerText = "⏳ Analisando imagem capturada...";
-        
-        try {
-            const arquivo = new File([ultimoBlobCapturado], "frame.png", { type: "image/png" });
-            const scannerTemp = new window.Html5Qrcode("videoPreviewCamera");
-            const codigoLido = await scannerTemp.scanFile(arquivo, true);
-
-            if (codigoLido) {
-                processarCodigoCapturado(codigoLido.trim());
-                return;
-            }
-        } catch (err) {
-            console.warn("Decodificação estática falhou:", err);
-        }
-
-        // Se falhou em ler a imagem automaticamente, avisa de forma limpa e foca no input para digitação rápida
-        if (txtStatus) {
-            txtStatus.innerText = "⚠️ Não leu sozinho. Digite o número e clique OK.";
-            txtStatus.style.color = "#dc2626";
-        }
-        inp.focus();
+    const valorDigitado = inp.value.trim();
+    if (valorDigitado.length > 0) {
+        processarCodigoCapturado(valorDigitado);
     } else {
-        alert("Por favor, capture um frame da moldura ou digite o código.");
         inp.focus();
     }
 }
@@ -292,10 +222,10 @@ export async function iniciarCameraComHtml5Qrcode() {
             config,
             (decodedText) => {
                 if (!decodedText) return;
-                processarCodigoCaptured(decodedText.trim());
+                processarCodigoCapturado(decodedText.trim());
             },
             (errorMessage) => {
-                // Ignora ruídos de frame
+                // Silencia erros de frame contínuos
             }
         );
     } catch (err) {
