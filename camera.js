@@ -9,6 +9,7 @@ import {
 import { tratarAdicaoProduto } from './produtos.js';
 
 let listenerTecladoGlobal = null;
+let ultimaFotoCapturadaArquivo = null; // Armazena o arquivo da foto tirada para processar no OK
 
 export async function abrirLeitorCamera() {
     console.log("PDV-VS: Abrindo leitor para Vendas (busca)");
@@ -40,14 +41,14 @@ function prepararModalCameraVisual() {
             
             containerManual.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 2px;">
-                    <span style="font-size: 11px; color: #64748b; font-weight: 500;">Opção alternativa (Enviar Foto):</span>
+                    <span id="statusFotoLabel" style="font-size: 11px; color: #64748b; font-weight: 500;">Câmera ao vivo ativa:</span>
                     <button type="button" id="btnCapturarNativo" style="background: #0ea5e9; color: #fff; border: none; padding: 5px 10px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px; display: flex; align-items: center; gap: 4px;">
-                        📁 Escolher Foto da Galeria
+                        📸 Tirar Foto
                     </button>
                 </div>
 
                 <div style="display: flex; gap: 8px; width: 100%; align-items: center;">
-                    <input type="text" id="inputCodigoManual" placeholder="Digite o código ou use a pistola..." style="flex: 1; padding: 10px; border: 1px solid #94a3b8; border-radius: 6px; font-size: 14px; outline: none; background: #fff; color: #000;" />
+                    <input type="text" id="inputCodigoManual" placeholder="Digite o código ou tire a foto..." style="flex: 1; padding: 10px; border: 1px solid #94a3b8; border-radius: 6px; font-size: 14px; outline: none; background: #fff; color: #000;" />
                     <button type="button" id="btnConfirmarManual" style="background: #2563eb; color: #fff; border: none; padding: 10px 18px; border-radius: 6px; font-weight: bold; cursor: pointer;">OK</button>
                 </div>
             `;
@@ -57,14 +58,14 @@ function prepararModalCameraVisual() {
             btnNativo.onclick = (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                dispararSeletorGaleriaOuArquivo();
+                dispararCameraParaCaptura();
             };
 
             const btn = document.getElementById('btnConfirmarManual');
             btn.onclick = (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                executarEntradaManual();
+                executarBotaoOkOuManual();
             };
 
             const inp = document.getElementById('inputCodigoManual');
@@ -72,11 +73,15 @@ function prepararModalCameraVisual() {
                 if (e.key === 'Enter') {
                     e.preventDefault();
                     e.stopPropagation();
-                    executarEntradaManual();
+                    executarBotaoOkOuManual();
                 }
             };
         }
         
+        ultimaFotoCapturadaArquivo = null;
+        const statusLbl = document.getElementById('statusFotoLabel');
+        if (statusLbl) statusLbl.innerText = "Câmera ao vivo ativa:";
+
         const inp = document.getElementById('inputCodigoManual');
         if (inp) {
             inp.value = '';
@@ -121,58 +126,77 @@ function prepararModalCameraVisual() {
     }
 }
 
-function dispararSeletorGaleriaOuArquivo() {
+function dispararCameraParaCaptura() {
     let inputAntigo = document.getElementById('inputCameraNativoOculto');
     if (inputAntigo) inputAntigo.remove();
 
-    // Mudamos para seleção limpa sem o atributo 'capture' forçado, permitindo escolher
-    // um arquivo salvo ou foto existente sem prender a thread de vídeo do navegador em loop de tela cheia.
     const inputFile = document.createElement('input');
     inputFile.type = 'file';
     inputFile.id = 'inputCameraNativoOculto';
     inputFile.accept = 'image/*';
+    inputFile.setAttribute('capture', 'environment');
     inputFile.style.display = 'none';
 
-    inputFile.onchange = async (e) => {
+    inputFile.onchange = (e) => {
         const arquivo = e.target.files[0];
         if (!arquivo) return;
 
-        console.log("PDV-VS: Arquivo de imagem recebido, decodificando...");
+        ultimaFotoCapturadaArquivo = arquivo;
+        console.log("PDV-VS: Foto capturada e armazenada na janela. Aguardando OK.");
 
-        try {
-            const qrScanner = new window.Html5Qrcode("modalCamera") || new window.Html5Qrcode("videoPreviewCamera");
-            
-            let codigoLido = null;
-            try {
-                codigoLido = await qrScanner.scanFile(arquivo, true);
-            } catch (errScan) {
-                console.warn("Scan de arquivo falhou:", errScan);
-            }
-
-            if (codigoLido) {
-                console.log("PDV-VS: Código decodificado da imagem com sucesso:", codigoLido);
-                processarCodigoCapturado(codigoLido.trim());
-            } else {
-                console.warn("PDV-VS: Código não identificado na imagem enviada.");
-                const inp = document.getElementById('inputCodigoManual');
-                if (inp) {
-                    inp.value = "";
-                    inp.focus();
-                }
-                alert("A imagem foi enviada, mas o leitor automático não encontrou as barras. O campo foi liberado para você digitar o número.");
-            }
-        } catch (err) {
-            console.error("PDV-VS Erro ao processar arquivo de imagem:", err);
-            const inp = document.getElementById('inputCodigoManual');
-            if (inp) inp.focus();
-            alert("Erro ao ler a imagem. Tente digitar o código manualmente.");
-        } finally {
-            if (inputFile) inputFile.remove();
+        // Mostra a prévia da foto na mesma janela (substitui temporariamente o preview de vídeo se possível)
+        const containerVideo = document.getElementById('videoPreviewCamera');
+        if (containerVideo) {
+            const reader = new FileReader();
+            reader.onload = (evt) => {
+                containerVideo.innerHTML = `<div style="width:100%; height:100%; background:url('${evt.target.result}') center/contain no-repeat; background-color: #000;"></div>`;
+            };
+            reader.readAsDataURL(arquivo);
         }
+
+        const statusLbl = document.getElementById('statusFotoLabel');
+        if (statusLbl) statusLbl.innerText = "Foto capturada! Clique em OK para processar:";
+
+        const inp = document.getElementById('inputCodigoManual');
+        if (inp) {
+            inp.placeholder = "Foto pronta. Clique em OK para extrair...";
+            inp.focus();
+        }
+
+        if (inputFile) inputFile.remove();
     };
 
     document.body.appendChild(inputFile);
     inputFile.click();
+}
+
+async function executarBotaoOkOuManual() {
+    // Se houver uma foto capturada pendente, processa ela primeiro ao clicar em OK
+    if (ultimaFotoCapturadaArquivo) {
+        console.log("PDV-VS: Processando a foto capturada através do botão OK...");
+        try {
+            const qrScanner = new window.Html5Qrcode("modalCamera") || new window.Html5Qrcode("videoPreviewCamera");
+            let codigoLido = null;
+            try {
+                codigoLido = await qrScanner.scanFile(ultimaFotoCapturadaArquivo, true);
+            } catch (errScan) {
+                console.warn("Scan da foto pendente falhou:", errScan);
+            }
+
+            if (codigoLido) {
+                console.log("PDV-VS: Código extraído com sucesso da foto:", codigoLido);
+                processarCodigoCapturado(codigoLido.trim());
+                return;
+            } else {
+                console.warn("PDV-VS: Não foi possível ler o código na foto. Usando valor digitado ou limpando.");
+            }
+        } catch (err) {
+            console.error("PDV-VS Erro ao processar foto no OK:", err);
+        }
+    }
+
+    // Caso contrário, executa a entrada manual normal pelo texto digitado
+    executarEntradaManual();
 }
 
 function executarEntradaManual() {
@@ -292,6 +316,8 @@ export async function fecharLeitorCamera() {
 
     let inputAntigo = document.getElementById('inputCameraNativoOculto');
     if (inputAntigo) inputAntigo.remove();
+
+    ultimaFotoCapturadaArquivo = null;
 
     if (html5QrcodeInstance) {
         try {
