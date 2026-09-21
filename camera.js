@@ -1,5 +1,5 @@
 // ==========================================
-// MÓDULO DE LEITOR DE CÂMERA (PDV-VS)
+// MÓDULO DE LEITOR DE CÂMERA (PDV-VS) - BLINDADO PARA iOS
 // ==========================================
 
 import { 
@@ -31,14 +31,13 @@ function prepararModalCameraVisual() {
         modalCam.classList.add('flex');
         modalCam.classList.remove('hidden');
 
-        // Remove qualquer resquício de container manual ou botão flutuante anterior caso exista no DOM
+        // Limpeza preventiva de elementos visuais legados
         const containerManual = document.getElementById('containerManualCamera');
         if (containerManual) containerManual.remove();
 
         const btnFlutuanteSair = document.getElementById('btnFlutuanteSairCamera');
         if (btnFlutuanteSair) btnFlutuanteSair.remove();
 
-        // Listener global de teclado/pistola USB de suporte, se houver
         if (listenerTecladoGlobal) {
             window.removeEventListener('keydown', listenerTecladoGlobal);
         }
@@ -104,34 +103,59 @@ export async function iniciarCameraComHtml5Qrcode() {
         const instance = new QrLib(elementId);
         setHtml5QrcodeInstance(instance);
         
-        // Configurações otimizadas para precisão máxima no iOS e Android (foco e taxa de quadros)
+        // Configuração de quadros e moldura otimizada para leitura rápida
         const config = { 
-            fps: 30,
+            fps: 25,
             qrbox: { width: 280, height: 140 },
-            aspectRatio: 1.777778,
+            aspectRatio: 1.0,
             rememberLastUsedCamera: true
         };
-        
-        // Preferência explícita pela câmera traseira com foco contínuo (ideal para iOS/Safari)
-        const cameraConfig = { 
-            facingMode: "environment" 
-        };
+
+        let cameraIdParaUso = { facingMode: "environment" };
+
+        // TRUQUE DEFINITIVO PARA iOS: Tenta mapear as câmeras físicas reais do aparelho
+        try {
+            const devices = await QrLib.getCameras();
+            if (devices && devices.length > 0) {
+                console.log("PDV-VS: Câmeras detectadas:", devices);
+                // Busca preferencialmente por uma câmera traseira (back, rear, environment)
+                const cameraTraseira = devices.find(device => {
+                    const label = device.label.toLowerCase();
+                    return label.includes('back') || label.includes('traseira') || label.includes('rear') || label.includes('environment');
+                });
+
+                if (cameraTraseira) {
+                    cameraIdParaUso = cameraTraseira.id;
+                    console.log("PDV-VS: Usando ID específico da câmera traseira:", cameraTraseira.label);
+                } else {
+                    // Se não achar pelo rótulo, pega a última da lista (geralmente a principal traseira em iPhones com múltiplas lentes)
+                    cameraIdParaUso = devices[devices.length - 1].id;
+                }
+            }
+        } catch (errCamList) {
+            console.warn("PDV-VS: Não foi possível enumerar câmeras via getCameras, usando fallback facingMode.", errCamList);
+        }
+
+        // Força constraints avançadas de resolução e foco adaptadas para o WebKit/Safari do iOS
+        const constraintsAvancadas = typeof cameraIdParaUso === 'string' 
+            ? { deviceId: { exact: cameraIdParaUso }, width: { ideal: 1280 }, height: { ideal: 720 } }
+            : { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } };
 
         await instance.start(
-            cameraConfig,
+            constraintsAvancadas,
             config,
             (decodedText) => {
                 if (!decodedText) return;
-                console.log("PDV-VS: Código escaneado com sucesso pela câmera:", decodedText);
+                console.log("PDV-VS: Código escaneado com sucesso:", decodedText);
                 processarCodigoCapturado(decodedText.trim());
             },
             (errorMessage) => {
-                // Ignora erros de frame contínuos da varredura vazia
+                // Silencia os erros de varredura frame a frame vazios
             }
         );
     } catch (err) {
-        console.error("PDV-VS Erro ao iniciar câmera:", err);
-        alert("Não foi possível acessar a câmera. Verifique as permissões do navegador.");
+        console.error("PDV-VS Erro crítico ao iniciar câmera no iOS/Dispositivo:", err);
+        alert("Erro ao acessar a câmera. Certifique-se de permitir o uso da câmera nas configurações do seu navegador/iPhone.");
         fecharLeitorCamera();
     }
 }
