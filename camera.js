@@ -32,11 +32,10 @@ function prepararModalCameraVisual() {
         modalCam.classList.add('flex');
         modalCam.classList.remove('hidden');
 
-        // Garante posição relativa para o botão flutuante funcionar perfeitamente
         const cardModal = modalCam.querySelector('div') || modalCam;
         cardModal.style.position = cardModal.style.position || 'relative';
 
-        // Cria botão flutuante de Fechar/Voltar para segurança total contra travamentos mobile
+        // Botão flutuante de Fechar/Voltar absoluto no topo
         let btnFlutuanteSair = document.getElementById('btnFlutuanteSairCamera');
         if (!btnFlutuanteSair) {
             btnFlutuanteSair = document.createElement('button');
@@ -63,12 +62,12 @@ function prepararModalCameraVisual() {
                 <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 2px;">
                     <span id="statusFotoLabel" style="font-size: 11px; color: #64748b; font-weight: 500;">Câmera ao vivo ativa:</span>
                     <button type="button" id="btnCapturarNativo" style="background: #0ea5e9; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px; display: flex; align-items: center; gap: 4px;">
-                        📸 Tirar Foto
+                        📸 Tirar Foto da Etiqueta
                     </button>
                 </div>
 
                 <div style="display: flex; gap: 8px; width: 100%; align-items: center;">
-                    <input type="text" id="inputCodigoManual" placeholder="Digite o código ou tire a foto..." style="flex: 1; padding: 10px; border: 1px solid #94a3b8; border-radius: 6px; font-size: 14px; outline: none; background: #fff; color: #000;" />
+                    <input type="text" id="inputCodigoManual" placeholder="Digite o código da foto..." style="flex: 1; padding: 10px; border: 1px solid #94a3b8; border-radius: 6px; font-size: 14px; outline: none; background: #fff; color: #000;" />
                     <button type="button" id="btnConfirmarManual" style="background: #2563eb; color: #fff; border: none; padding: 10px 18px; border-radius: 6px; font-weight: bold; cursor: pointer;">OK</button>
                 </div>
             `;
@@ -85,7 +84,7 @@ function prepararModalCameraVisual() {
             btn.onclick = (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                executarBotaoOkOuManual();
+                executarEntradaManual();
             };
 
             const inp = document.getElementById('inputCodigoManual');
@@ -93,7 +92,7 @@ function prepararModalCameraVisual() {
                 if (e.key === 'Enter') {
                     e.preventDefault();
                     e.stopPropagation();
-                    executarBotaoOkOuManual();
+                    executarEntradaManual();
                 }
             };
         }
@@ -166,23 +165,26 @@ function dispararCameraParaCaptura() {
         }
 
         ultimaFotoCapturadaArquivo = arquivo;
-        console.log("PDV-VS: Foto capturada e fixada na tela.");
+        console.log("PDV-VS: Foto capturada e exibida como referência visual.");
 
         const containerVideo = document.getElementById('videoPreviewCamera');
         if (containerVideo) {
             const reader = new FileReader();
             reader.onload = (evt) => {
-                containerVideo.innerHTML = `<div style="width:100%; height:100%; background:url('${evt.target.result}') center/contain no-repeat; background-color: #000;"></div>`;
+                // Exibe a foto lado a lado ou preenchendo o preview para você consultar o código impresso
+                containerVideo.innerHTML = `<div style="width:100%; height:100%; background:url('${evt.target.result}') center/contain no-repeat; background-color: #000; position: relative;">
+                    <div style="position: absolute; bottom: 5px; left: 5px; background: rgba(0,0,0,0.7); color: #fff; padding: 4px 8px; font-size: 10px; border-radius: 4px;">Foto capturada! Digite o código abaixo:</div>
+                </div>`;
             };
             reader.readAsDataURL(arquivo);
         }
 
         const statusLbl = document.getElementById('statusFotoLabel');
-        if (statusLbl) statusLbl.innerText = "Foto na tela! Clique em OK para extrair:";
+        if (statusLbl) statusLbl.innerText = "Consulte a foto acima e digite o código:";
 
         const inp = document.getElementById('inputCodigoManual');
         if (inp) {
-            inp.placeholder = "Pressione OK para ler a imagem...";
+            inp.placeholder = "Digite o número que está na foto...";
             inp.focus();
         }
 
@@ -191,40 +193,6 @@ function dispararCameraParaCaptura() {
 
     document.body.appendChild(inputFile);
     inputFile.click();
-}
-
-async function executarBotaoOkOuManual() {
-    if (ultimaFotoCapturadaArquivo) {
-        console.log("PDV-VS: Executando escaneamento interno sobre a foto...");
-        try {
-            const qrScanner = new window.Html5Qrcode("modalCamera") || new window.Html5Qrcode("videoPreviewCamera");
-            let codigoLido = null;
-            try {
-                codigoLido = await qrScanner.scanFile(ultimaFotoCapturadaArquivo, true);
-            } catch (errScan) {
-                console.warn("Leitura direta do arquivo falhou:", errScan);
-            }
-
-            if (codigoLido) {
-                console.log("PDV-VS: Código extraído com sucesso:", codigoLido);
-                processarCodigoCapturado(codigoLido.trim());
-                return;
-            } else {
-                console.warn("PDV-VS: Não foi possível decodificar barras desta foto. Digite manualmente.");
-                const inp = document.getElementById('inputCodigoManual');
-                if (inp) {
-                    inp.placeholder = "Não lido. Digite o código aqui...";
-                    inp.focus();
-                }
-                ultimaFotoCapturadaArquivo = null;
-            }
-        } catch (err) {
-            console.error("PDV-VS Erro ao escanear arquivo:", err);
-        }
-        return;
-    }
-
-    executarEntradaManual();
 }
 
 function executarEntradaManual() {
