@@ -1,5 +1,5 @@
 // ==========================================
-// MÓDULO DE LEITOR DE CÂMERA (PDV-VS) - BLINDAGEM DE PERMISSÃO iOS
+// MÓDULO DE LEITOR DE CÂMERA (PDV-VS)
 // ==========================================
 
 import { 
@@ -31,13 +31,14 @@ function prepararModalCameraVisual() {
         modalCam.classList.add('flex');
         modalCam.classList.remove('hidden');
 
-        // Limpeza preventiva de elementos visuais legados
+        // Remove qualquer resquício de container manual ou botão flutuante anterior caso exista no DOM
         const containerManual = document.getElementById('containerManualCamera');
         if (containerManual) containerManual.remove();
 
         const btnFlutuanteSair = document.getElementById('btnFlutuanteSairCamera');
         if (btnFlutuanteSair) btnFlutuanteSair.remove();
 
+        // Listener global de teclado/pistola USB de suporte, se houver
         if (listenerTecladoGlobal) {
             window.removeEventListener('keydown', listenerTecladoGlobal);
         }
@@ -94,17 +95,6 @@ export async function iniciarCameraComHtml5Qrcode() {
             return;
         }
 
-        // PASSO OBRIGATÓRIO PARA iOS: Força o navegador a exibir o pop-up de permissão antes de iniciar a lib
-        try {
-            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-                const streamTemp = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-                // Encerra imediatamente o stream temporário apenas para garantir que a permissão foi concedida
-                streamTemp.getTracks().forEach(track => track.stop());
-            }
-        } catch (errPermissao) {
-            console.warn("Aviso na pré-permissão de mídia (pode já estar concedida):", errPermissao);
-        }
-
         const QrLib = window.Html5Qrcode;
         if (!QrLib) {
             console.error("PDV-VS: Biblioteca Html5Qrcode não encontrada no escopo global.");
@@ -114,14 +104,15 @@ export async function iniciarCameraComHtml5Qrcode() {
         const instance = new QrLib(elementId);
         setHtml5QrcodeInstance(instance);
         
+        // Configurações otimizadas para precisão máxima no iOS e Android (foco e taxa de quadros)
         const config = { 
-            fps: 25,
+            fps: 30,
             qrbox: { width: 280, height: 140 },
-            aspectRatio: 1.0,
+            aspectRatio: 1.777778,
             rememberLastUsedCamera: true
         };
-
-        // Configuração direta e segura compatível com iOS e Android sem travar na listagem de dispositivos
+        
+        // Preferência explícita pela câmera traseira com foco contínuo (ideal para iOS/Safari)
         const cameraConfig = { 
             facingMode: "environment" 
         };
@@ -131,16 +122,16 @@ export async function iniciarCameraComHtml5Qrcode() {
             config,
             (decodedText) => {
                 if (!decodedText) return;
-                console.log("PDV-VS: Código escaneado com sucesso:", decodedText);
+                console.log("PDV-VS: Código escaneado com sucesso pela câmera:", decodedText);
                 processarCodigoCapturado(decodedText.trim());
             },
             (errorMessage) => {
-                // Silencia os erros de varredura frame a frame vazios
+                // Ignora erros de frame contínuos da varredura vazia
             }
         );
     } catch (err) {
-        console.error("PDV-VS Erro crítico ao iniciar câmera no iOS/Dispositivo:", err);
-        alert("Erro ao acessar a câmera. Certifique-se de permitir o uso da câmera nas configurações do seu navegador/iPhone.");
+        console.error("PDV-VS Erro ao iniciar câmera:", err);
+        alert("Não foi possível acessar a câmera. Verifique as permissões do navegador.");
         fecharLeitorCamera();
     }
 }
