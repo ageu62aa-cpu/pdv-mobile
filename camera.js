@@ -38,13 +38,18 @@ function prepararModalCameraVisual() {
             containerManual.id = 'containerManualCamera';
             containerManual.style.cssText = "margin-top: 15px; padding: 12px; background: #f8fafc; border-radius: 8px; border: 1px solid #cbd5e1; display: flex; flex-direction: column; gap: 8px; width: 100%; box-sizing: border-box; z-index: 100000; position: relative;";
             
-            // Botão dedicado para abrir a câmera nativa (Plano B perfeito para iPhone)
+            // Painel com botão de Câmera Nativa e Botão de Fechar/Voltar explícito
             containerManual.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 2px;">
-                    <span style="font-size: 11px; color: #64748b; font-weight: 500;">Falhou no automático? Use a câmera nativa ➡️</span>
-                    <button type="button" id="btnCapturarNativo" style="background: #0ea5e9; color: #fff; border: none; padding: 5px 10px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px; display: flex; align-items: center; gap: 4px;">
-                        📸 Câmera Nativa
-                    </button>
+                    <span style="font-size: 11px; color: #64748b; font-weight: 500;">Uso opcional (iPhone / Falha):</span>
+                    <div style="display: flex; gap: 6px;">
+                        <button type="button" id="btnCapturarNativo" style="background: #0ea5e9; color: #fff; border: none; padding: 5px 10px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px; display: flex; align-items: center; gap: 4px;">
+                            📸 Câmera Nativa
+                        </button>
+                        <button type="button" id="btnFecharModalExtra" style="background: #64748b; color: #fff; border: none; padding: 5px 10px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px;">
+                            ✕ Fechar
+                        </button>
+                    </div>
                 </div>
 
                 <div style="display: flex; gap: 8px; width: 100%; align-items: center;">
@@ -54,7 +59,15 @@ function prepararModalCameraVisual() {
             `;
             cardModal.appendChild(containerManual);
 
-            // Ação do Botão Nativo: Abre a câmera oficial do celular, processa a foto e envia direto
+            // Ação do Botão Fechar
+            const btnFecharExtra = document.getElementById('btnFecharModalExtra');
+            btnFecharExtra.onclick = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                fecharLeitorCamera();
+            };
+
+            // Ação do Botão Nativo
             const btnNativo = document.getElementById('btnCapturarNativo');
             btnNativo.onclick = (e) => {
                 e.preventDefault();
@@ -151,14 +164,20 @@ function dispararSeletorCameraNativo() {
                 if (inp) {
                     inp.value = codigoLido.trim();
                 }
-                // Processa automaticamente logo após ler
                 processarCodigoCapturado(codigoLido.trim());
             } else {
-                alert("Não foi possível ler o código na foto. Tente aproximar mais.");
+                // Não trava mais a tela: apenas avisa e devolve o foco para você tentar de novo ou digitar
+                console.warn("PDV-VS: Código não encontrado na imagem nativa.");
+                alert("Não foi possível ler o código de barras nesta foto. Tente aproximar mais ou ajustar o foco.");
+                const inp = document.getElementById('inputCodigoManual');
+                if (inp) inp.focus();
             }
         } catch (err) {
             console.error("PDV-VS Erro ao decodificar imagem nativa:", err);
-            alert("Falha ao ler a imagem capturada. Tente novamente.");
+            // Mantém a tela ativa e permite nova tentativa
+            alert("Falha ao processar a imagem. Tente capturar novamente.");
+            const inp = document.getElementById('inputCodigoManual');
+            if (inp) inp.focus();
         }
     };
 
