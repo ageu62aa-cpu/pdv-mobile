@@ -38,12 +38,12 @@ function prepararModalCameraVisual() {
             containerManual.id = 'containerManualCamera';
             containerManual.style.cssText = "margin-top: 15px; padding: 12px; background: #f8fafc; border-radius: 8px; border: 1px solid #cbd5e1; display: flex; flex-direction: column; gap: 8px; width: 100%; box-sizing: border-box; z-index: 100000; position: relative;";
             
-            // Adicionamos o botão de captura manual logo acima do input, exclusivo para auxiliar quando o automático falhar (ex: iPhone)
+            // Botão dedicado para abrir a câmera nativa (Plano B perfeito para iPhone)
             containerManual.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 2px;">
-                    <span style="font-size: 11px; color: #64748b; font-weight: 500;">Se não ler automático, use o botão ao lado ➡️</span>
-                    <button type="button" id="btnCapturarFrameManual" style="background: #0ea5e9; color: #fff; border: none; padding: 5px 10px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px; display: flex; align-items: center; gap: 4px;">
-                        📸 Capturar Frame
+                    <span style="font-size: 11px; color: #64748b; font-weight: 500;">Falhou no automático? Use a câmera nativa ➡️</span>
+                    <button type="button" id="btnCapturarNativo" style="background: #0ea5e9; color: #fff; border: none; padding: 5px 10px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px; display: flex; align-items: center; gap: 4px;">
+                        📸 Câmera Nativa
                     </button>
                 </div>
 
@@ -54,12 +54,12 @@ function prepararModalCameraVisual() {
             `;
             cardModal.appendChild(containerManual);
 
-            // Ação do Botão de Captura Manual (Plano B para o iPhone)
-            const btnCapturar = document.getElementById('btnCapturarFrameManual');
-            btnCapturar.onclick = async (e) => {
+            // Ação do Botão Nativo: Abre a câmera oficial do celular, processa a foto e envia direto
+            const btnNativo = document.getElementById('btnCapturarNativo');
+            btnNativo.onclick = (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                await forcarLeituraFrameAtual();
+                dispararSeletorCameraNativo();
             };
 
             const btn = document.getElementById('btnConfirmarManual');
@@ -124,40 +124,46 @@ function prepararModalCameraVisual() {
     }
 }
 
-// Função que pega o frame atual da câmera ao clicar no botão, extrai o número e joga no input automaticamente
-async function forcarLeituraFrameAtual() {
-    try {
-        const videoElement = document.querySelector('#videoPreviewCamera video');
-        const inp = document.getElementById('inputCodigoManual');
-        if (!videoElement) return;
+function dispararSeletorCameraNativo() {
+    let inputAntigo = document.getElementById('inputCameraNativoOculto');
+    if (inputAntigo) inputAntigo.remove();
 
-        const canvas = document.createElement('canvas');
-        canvas.width = videoElement.videoWidth || 1280;
-        canvas.height = videoElement.videoHeight || 720;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+    const inputFile = document.createElement('input');
+    inputFile.type = 'file';
+    inputFile.id = 'inputCameraNativoOculto';
+    inputFile.accept = 'image/*';
+    inputFile.setAttribute('capture', 'environment');
+    inputFile.style.display = 'none';
 
-        canvas.toBlob(async (blob) => {
-            if (!blob) return;
-            const arquivo = new File([blob], "captura.png", { type: "image/png" });
-            try {
-                const scannerTemp = new window.Html5Qrcode("videoPreviewCamera");
-                const codigoDecodificado = await scannerTemp.scanFile(arquivo, true);
-                if (codigoDecodificado && inp) {
-                    inp.value = codigoDecodificado.trim();
-                    inp.focus();
-                    console.log("PDV-VS: Código capturado manualmente do frame:", codigoDecodificado);
-                } else if (inp) {
-                    inp.focus();
+    inputFile.onchange = async (e) => {
+        const arquivo = e.target.files[0];
+        if (!arquivo) return;
+
+        console.log("PDV-VS: Foto capturada pela câmera nativa, decodificando...");
+
+        try {
+            const qrScanner = new window.Html5Qrcode("modalCamera") || new window.Html5Qrcode("videoPreviewCamera");
+            const codigoLido = await qrScanner.scanFile(arquivo, true);
+
+            if (codigoLido) {
+                console.log("PDV-VS: Código decodificado com sucesso da foto nativa:", codigoLido);
+                const inp = document.getElementById('inputCodigoManual');
+                if (inp) {
+                    inp.value = codigoLido.trim();
                 }
-            } catch (err) {
-                console.warn("Falha ao decodificar frame estático:", err);
-                if (inp) inp.focus();
+                // Processa automaticamente logo após ler
+                processarCodigoCapturado(codigoLido.trim());
+            } else {
+                alert("Não foi possível ler o código na foto. Tente aproximar mais.");
             }
-        }, 'image/png');
-    } catch (e) {
-        console.error("Erro ao forçar captura de frame:", e);
-    }
+        } catch (err) {
+            console.error("PDV-VS Erro ao decodificar imagem nativa:", err);
+            alert("Falha ao ler a imagem capturada. Tente novamente.");
+        }
+    };
+
+    document.body.appendChild(inputFile);
+    inputFile.click();
 }
 
 function executarEntradaManual() {
@@ -274,6 +280,9 @@ export async function fecharLeitorCamera() {
         window.removeEventListener('keydown', listenerTecladoGlobal);
         listenerTecladoGlobal = null;
     }
+
+    let inputAntigo = document.getElementById('inputCameraNativoOculto');
+    if (inputAntigo) inputAntigo.remove();
 
     if (html5QrcodeInstance) {
         try {
