@@ -40,9 +40,9 @@ function prepararModalCameraVisual() {
             
             containerManual.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 2px;">
-                    <span style="font-size: 11px; color: #64748b; font-weight: 500;">Alternativa (Foto / Arquivo):</span>
+                    <span style="font-size: 11px; color: #64748b; font-weight: 500;">Opção alternativa (Enviar Foto):</span>
                     <button type="button" id="btnCapturarNativo" style="background: #0ea5e9; color: #fff; border: none; padding: 5px 10px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px; display: flex; align-items: center; gap: 4px;">
-                        📸 Enviar / Tirar Foto
+                        📁 Escolher Foto da Galeria
                     </button>
                 </div>
 
@@ -57,7 +57,7 @@ function prepararModalCameraVisual() {
             btnNativo.onclick = (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                dispararSeletorCameraNativo();
+                dispararSeletorGaleriaOuArquivo();
             };
 
             const btn = document.getElementById('btnConfirmarManual');
@@ -121,10 +121,12 @@ function prepararModalCameraVisual() {
     }
 }
 
-function dispararSeletorCameraNativo() {
+function dispararSeletorGaleriaOuArquivo() {
     let inputAntigo = document.getElementById('inputCameraNativoOculto');
     if (inputAntigo) inputAntigo.remove();
 
+    // Mudamos para seleção limpa sem o atributo 'capture' forçado, permitindo escolher
+    // um arquivo salvo ou foto existente sem prender a thread de vídeo do navegador em loop de tela cheia.
     const inputFile = document.createElement('input');
     inputFile.type = 'file';
     inputFile.id = 'inputCameraNativoOculto';
@@ -135,7 +137,7 @@ function dispararSeletorCameraNativo() {
         const arquivo = e.target.files[0];
         if (!arquivo) return;
 
-        console.log("PDV-VS: Imagem selecionada/capturada, decodificando...");
+        console.log("PDV-VS: Arquivo de imagem recebido, decodificando...");
 
         try {
             const qrScanner = new window.Html5Qrcode("modalCamera") || new window.Html5Qrcode("videoPreviewCamera");
@@ -144,26 +146,26 @@ function dispararSeletorCameraNativo() {
             try {
                 codigoLido = await qrScanner.scanFile(arquivo, true);
             } catch (errScan) {
-                console.warn("Scan padrão falhou:", errScan);
+                console.warn("Scan de arquivo falhou:", errScan);
             }
 
             if (codigoLido) {
-                console.log("PDV-VS: Código decodificado com sucesso:", codigoLido);
+                console.log("PDV-VS: Código decodificado da imagem com sucesso:", codigoLido);
                 processarCodigoCapturado(codigoLido.trim());
             } else {
-                console.warn("PDV-VS: Não foi possível extrair o código automaticamente da foto.");
+                console.warn("PDV-VS: Código não identificado na imagem enviada.");
                 const inp = document.getElementById('inputCodigoManual');
                 if (inp) {
-                    inp.placeholder = "Não lido na foto. Digite o número visível...";
+                    inp.value = "";
                     inp.focus();
                 }
-                alert("A imagem foi enviada, mas o leitor não reconheceu o código de barras. Digite o número visível na etiqueta.");
+                alert("A imagem foi enviada, mas o leitor automático não encontrou as barras. O campo foi liberado para você digitar o número.");
             }
         } catch (err) {
-            console.error("PDV-VS Erro geral ao processar imagem:", err);
+            console.error("PDV-VS Erro ao processar arquivo de imagem:", err);
             const inp = document.getElementById('inputCodigoManual');
             if (inp) inp.focus();
-            alert("Erro ao processar a imagem. Tente novamente ou digite o código.");
+            alert("Erro ao ler a imagem. Tente digitar o código manualmente.");
         } finally {
             if (inputFile) inputFile.remove();
         }
