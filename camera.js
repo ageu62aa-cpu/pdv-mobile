@@ -9,6 +9,7 @@ import {
 import { tratarAdicaoProduto } from './produtos.js';
 
 let listenerTecladoGlobal = null;
+let ultimaImagemCapturadaBlob = null; // Armazena o último frame capturado para análise inteligente
 
 export async function abrirLeitorCamera() {
     console.log("PDV-VS: Abrindo leitor para Vendas (busca)");
@@ -39,42 +40,43 @@ function prepararModalCameraVisual() {
             containerManual.style.cssText = "margin-top: 15px; padding: 12px; background: #f8fafc; border-radius: 8px; border: 1px solid #cbd5e1; display: flex; flex-direction: column; gap: 8px; width: 100%; box-sizing: border-box; z-index: 100000; position: relative;";
             
             containerManual.innerHTML = `
-                <!-- Botão de câmera discreto, seguindo o padrão minimalista dos demais botões do app -->
-                <div style="display: flex; justify-content: flex-end; width: 100%; margin-bottom: 2px;">
-                    <button type="button" id="btnCapturarMolduraOtimizada" title="Capturar imagem da moldura" style="background: #1e293b; color: #fff; border: none; padding: 6px 10px; border-radius: 6px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 5px; font-size: 12px; transition: background 0.2s;">
+                <!-- Botão de câmera discreto para capturar e congelar o frame -->
+                <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 2px;">
+                    <span id="statusCapturaFeedback" style="font-size: 11px; color: #64748b; font-weight: 500;">Aponte para o código e clique em capturar se necessário</span>
+                    <button type="button" id="btnCapturarMolduraOtimizada" title="Capturar imagem da moldura" style="background: #1e293b; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 5px; font-size: 12px; transition: background 0.2s;">
                         📷 Capturar Frame
                     </button>
                 </div>
 
                 <div style="display: flex; gap: 8px; width: 100%; align-items: center;">
-                    <input type="text" id="inputCodigoManual" placeholder="Digite o código ou use a pistola..." style="flex: 1; padding: 10px; border: 1px solid #94a3b8; border-radius: 6px; font-size: 14px; outline: none; background: #fff; color: #000;" />
+                    <input type="text" id="inputCodigoManual" placeholder="Digite o código ou capture o frame..." style="flex: 1; padding: 10px; border: 1px solid #94a3b8; border-radius: 6px; font-size: 14px; outline: none; background: #fff; color: #000;" />
                     <button type="button" id="btnConfirmarManual" style="background: #2563eb; color: #fff; border: none; padding: 10px 18px; border-radius: 6px; font-weight: bold; cursor: pointer;">OK</button>
                 </div>
             `;
             cardModal.appendChild(containerManual);
 
-            // Evento do botão discreto de captura da moldura
+            // Evento do botão de captura
             const btnCapturar = document.getElementById('btnCapturarMolduraOtimizada');
             btnCapturar.onclick = async (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                await capturarEProcessarMoldura();
+                await capturarEArmazenarMoldura();
             };
 
-            // Evento do botão OK / Digitação Manual
+            // Evento do botão OK inteligente
             const btn = document.getElementById('btnConfirmarManual');
-            btn.onclick = (e) => {
+            btn.onclick = async (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                executarEntradaManual();
+                await executarAcaoInteligentemente();
             };
 
             const inp = document.getElementById('inputCodigoManual');
-            inp.onkeydown = (e) => {
+            inp.onkeydown = async (e) => {
                 if (e.key === 'Enter') {
                     e.preventDefault();
                     e.stopPropagation();
-                    executarEntradaManual();
+                    await executarAcaoInteligentemente();
                 }
             };
         }
@@ -82,8 +84,12 @@ function prepararModalCameraVisual() {
         const inp = document.getElementById('inputCodigoManual');
         if (inp) {
             inp.value = '';
+            ultimaImagemCapturadaBlob = null;
             setTimeout(() => inp.focus(), 150);
         }
+
+        const lblFeedback = document.getElementById('statusCapturaFeedback');
+        if (lblFeedback) lblFeedback.innerText = "Aponte para o código e clique em capturar se necessário";
 
         // Listener global para pistolas USB/Bluetooth
         if (listenerTecladoGlobal) {
@@ -124,13 +130,12 @@ function prepararModalCameraVisual() {
     }
 }
 
-// Função de captura da moldura limpa de alertas incômodos
-async function capturarEProcessarMoldura() {
+// Captura o frame atual da moldura e guarda na memória para o botão OK processar
+async function capturarEArmazenarMoldura() {
     try {
         const videoElement = document.querySelector('#videoPreviewCamera video');
-        if (!videoElement) {
-            return;
-        }
+        const lblFeedback = document.getElementById('statusCapturaFeedback');
+        if (!videoElement) return;
 
         const canvas = document.createElement('canvas');
         canvas.width = videoElement.videoWidth || 1280;
@@ -140,37 +145,76 @@ async function capturarEProcessarMoldura() {
 
         canvas.toBlob(async (blob) => {
             if (!blob) return;
+            ultimaImagemCapturadaBlob = blob;
 
+            if (lblFeedback) {
+                lblFeedback.innerText = "✅ Frame capturado! Processando...";
+                lblFeedback.style.color = "#16a34a";
+            }
+
+            // Tenta decodificar imediatamente o blob capturado
             const arquivo = new File([blob], "codigo_capturado.png", { type: "image/png" });
-
             try {
                 const scannerTemp = new window.Html5Qrcode("videoPreviewCamera");
                 const codigoDecodificado = await scannerTemp.scanFile(arquivo, true);
-                
                 if (codigoDecodificado) {
                     processarCodigoCapturado(codigoDecodificado.trim());
+                    return;
                 }
             } catch (err) {
-                // Sem alertas na tela: apenas posiciona o cursor suavemente no input para agilizar a venda
-                const inp = document.getElementById('inputCodigoManual');
-                if (inp) {
-                    inp.focus();
-                }
+                // Silencia erro e deixa pronto para o OK forçar ou o usuário digitar
+            }
+
+            const inp = document.getElementById('inputCodigoManual');
+            if (inp) inp.focus();
+            if (lblFeedback) {
+                lblFeedback.innerText = "📸 Frame salvo. Clique OK para forçar leitura ou digite.";
             }
         }, 'image/png');
 
     } catch (e) {
-        console.error("Erro ao processar moldura:", e);
+        console.error("Erro ao capturar moldura:", e);
     }
 }
 
-function executarEntradaManual() {
+// Ação inteligente do botão OK: verifica se há texto digitado ou tenta extrair da imagem capturada por último
+async function executarAcaoInteligentemente() {
     const inp = document.getElementById('inputCodigoManual');
     if (!inp) return;
+
     const valorDigitado = inp.value.trim();
+
+    // 1. Se o usuário digitou algo, usa o texto digitado imediatamente
     if (valorDigitado.length > 0) {
         processarCodigoCapturado(valorDigitado);
+        return;
+    }
+
+    // 2. Se o campo está vazio mas existe uma imagem capturada, força nova varredura profunda no blob
+    if (ultimaImagemCapturadaBlob) {
+        const lblFeedback = document.getElementById('statusCapturaFeedback');
+        if (lblFeedback) lblFeedback.innerText = "🔍 Forçando leitura da imagem capturada...";
+
+        try {
+            const arquivo = new File([ultimaImagemCapturadaBlob], "codigo_capturado.png", { type: "image/png" });
+            const scannerTemp = new window.Html5Qrcode("videoPreviewCamera");
+            const codigoDecodificado = await scannerTemp.scanFile(arquivo, true);
+
+            if (codigoDecodificado) {
+                processarCodigoCapturado(codigoDecodificado.trim());
+                return;
+            }
+        } catch (e) {
+            console.warn("Tentativa final de scanFile falhou:", e);
+        }
+
+        if (lblFeedback) {
+            lblFeedback.innerText = "⚠️ Não foi possível ler automaticamente. Digite o código.";
+            lblFeedback.style.color = "#dc2626";
+        }
+        inp.focus();
     } else {
+        // Se não tem imagem nem texto, avisa e foca
         inp.focus();
     }
 }
