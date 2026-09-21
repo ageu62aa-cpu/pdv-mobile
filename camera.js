@@ -8,6 +8,9 @@ import {
 } from './state.js';
 import { tratarAdicaoProduto } from './produtos.js';
 
+// Variável para gerenciar o buffer global de pistolas USB/Bluetooth com segurança
+let listenerTecladoGlobal = null;
+
 export async function abrirLeitorCamera() {
     console.log("PDV-VS: Abrindo leitor para Vendas (busca)");
     setOrigemLeitor('busca');
@@ -37,12 +40,12 @@ function prepararModalCameraVisual() {
             containerManual.style.cssText = "margin-top: 15px; padding: 12px; background: #f8fafc; border-radius: 8px; border: 1px solid #cbd5e1; display: flex; gap: 8px; align-items: center; width: 100%; box-sizing: border-box; z-index: 100000; position: relative;";
             
             containerManual.innerHTML = `
-                <input type="text" id="inputCodigoManual" placeholder="Digite o código ou nome (ex: nescal)..." style="flex: 1; padding: 10px; border: 1px solid #94a3b8; border-radius: 6px; font-size: 14px; outline: none; background: #fff; color: #000;" />
+                <input type="text" id="inputCodigoManual" placeholder="Digite o código ou use a pistola / câmera..." style="flex: 1; padding: 10px; border: 1px solid #94a3b8; border-radius: 6px; font-size: 14px; outline: none; background: #fff; color: #000;" />
                 <button type="button" id="btnConfirmarManual" style="background: #2563eb; color: #fff; border: none; padding: 10px 18px; border-radius: 6px; font-weight: bold; cursor: pointer;">OK</button>
             `;
             cardModal.appendChild(containerManual);
 
-            // Evento direto no botão OK
+            // Evento direto no botão OK (Captura manual e envia para a aba/janela correta)
             const btn = document.getElementById('btnConfirmarManual');
             btn.onclick = (e) => {
                 e.preventDefault();
@@ -50,7 +53,7 @@ function prepararModalCameraVisual() {
                 executarEntradaManual();
             };
 
-            // Evento de tecla Enter no input
+            // Evento de tecla Enter no input manual
             const inp = document.getElementById('inputCodigoManual');
             inp.onkeydown = (e) => {
                 if (e.key === 'Enter') {
@@ -66,6 +69,48 @@ function prepararModalCameraVisual() {
             inp.value = '';
             setTimeout(() => inp.focus(), 150);
         }
+
+        // ==========================================
+        // SUPORTE PROFISSIONAL PARA PISTOLA USB / BLUETOOTH
+        // ==========================================
+        if (listenerTecladoGlobal) {
+            window.removeEventListener('keydown', listenerTecladoGlobal);
+        }
+
+        let bufferLeitor = '';
+        let ultimoTempo = Date.now();
+
+        listenerTecladoGlobal = (e) => {
+            const tempoAtual = Date.now();
+            const modalEstaAtivo = modalCam && !modalCam.classList.contains('hidden');
+
+            if (!modalEstaAtivo) return;
+
+            // Pistolas de código de barras digitam muito rápido (< 100ms entre caracteres)
+            if (tempoAtual - ultimoTempo > 100) {
+                bufferLeitor = '';
+            }
+            ultimoTempo = tempoAtual;
+
+            if (e.key === 'Enter') {
+                if (bufferLeitor.trim().length > 1) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const codigoLido = bufferLeitor.trim();
+                    bufferLeitor = '';
+                    processarCodigoCapturado(codigoLido);
+                }
+            } else if (e.key.length === 1) {
+                bufferLeitor += e.key;
+                
+                // Se o usuário estiver digitando e o foco não estiver no input, joga os caracteres lá para feedback visual
+                if (document.activeElement !== inp && inp) {
+                    inp.value += e.key;
+                }
+            }
+        };
+
+        window.addEventListener('keydown', listenerTecladoGlobal);
     }
 }
 
@@ -85,7 +130,13 @@ function processarCodigoCapturado(termoDigitado) {
 
     console.log(`PDV-VS: Processando termo [Origem: ${origemLeitor}] ->`, termoDigitado);
     
-    // Fecha o modal da câmera primeiro
+    // Remove o listener global para evitar duplicações ao fechar
+    if (listenerTecladoGlobal) {
+        window.removeEventListener('keydown', listenerTecladoGlobal);
+        listenerTecladoGlobal = null;
+    }
+
+    // Fecha o modal da câmera e limpa instâncias
     fecharLeitorCamera();
 
     if (origemLeitor === 'busca') {
@@ -103,11 +154,11 @@ function processarCodigoCapturado(termoDigitado) {
             alert(`PDV-VS: Nenhum produto correspondente a "${termoDigitado}" foi encontrado.`);
         }
     } else if (origemLeitor === 'admin') {
-        // Encontra especificamente o input do admin e injeta o valor de forma limpa
+        // Injeta o valor de forma limpa na aba/janela ao lado (Admin)
         const inputCodigo = document.getElementById('formCodigo');
         if (inputCodigo) {
             inputCodigo.value = termoDigitado;
-            inputCodigo.focus(); // Mantém o foco no input correto do admin
+            inputCodigo.focus();
             inputCodigo.dispatchEvent(new Event('input', { bubbles: true }));
             inputCodigo.dispatchEvent(new Event('change', { bubbles: true }));
             console.log("PDV-VS Admin: Campo #formCodigo preenchido com sucesso.");
@@ -167,7 +218,7 @@ export async function iniciarCameraComHtml5Qrcode() {
                 processarCodigoCapturado(decodedText.trim());
             },
             (errorMessage) => {
-                // Ignora ruídos de frame
+                // Ignora ruídos de frame da leitura por câmera
             }
         );
     } catch (err) {
@@ -176,6 +227,11 @@ export async function iniciarCameraComHtml5Qrcode() {
 }
 
 export async function fecharLeitorCamera() {
+    if (listenerTecladoGlobal) {
+        window.removeEventListener('keydown', listenerTecladoGlobal);
+        listenerTecladoGlobal = null;
+    }
+
     if (html5QrcodeInstance) {
         try {
             if (html5QrcodeInstance.isScanning) {
