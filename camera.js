@@ -12,6 +12,7 @@ export async function abrirLeitorCamera() {
     setOrigemLeitor('busca');
     const modalCam = document.getElementById('modalCamera');
     if (modalCam) {
+        modalCam.style.zIndex = "99999"; // Garante prioridade máxima na tela de vendas
         modalCam.classList.add('flex');
         modalCam.classList.remove('hidden');
     }
@@ -20,11 +21,17 @@ export async function abrirLeitorCamera() {
 
 export async function escanearCameraAdmin() {
     setOrigemLeitor('admin');
+    
+    // Oculta temporariamente o modal do painel/produto para a câmara assumir o foco limpo sem conflito de camadas
+    const modalAdmin = document.querySelector('.modal-produto, #modalGerenciarProduto, .fixed.inset-0.bg-black\\/60'); 
     const modalCam = document.getElementById('modalCamera');
+    
     if (modalCam) {
+        modalCam.style.zIndex = "99999"; // Fica acima de tudo
         modalCam.classList.add('flex');
         modalCam.classList.remove('hidden');
     }
+    
     await iniciarCameraComHtml5Qrcode();
 }
 
@@ -45,13 +52,13 @@ export async function iniciarCameraComHtml5Qrcode() {
         const instance = new Html5Qrcode(elementId);
         setHtml5QrcodeInstance(instance);
         
+        // Moldura em formato retangular horizontal ideal para código de barras
         const config = { 
-            fps: 20, 
+            fps: 25, 
             qrbox: { width: 300, height: 150 }, 
             aspectRatio: 1.777778 
         };
         
-        // Correção: Passando apenas a chave permitida pela biblioteca Html5Qrcode
         const cameraConfig = { facingMode: "environment" };
 
         await instance.start(
@@ -59,6 +66,7 @@ export async function iniciarCameraComHtml5Qrcode() {
             config,
             (decodedText) => {
                 fecharLeitorCamera();
+                
                 if (origemLeitor === 'busca') {
                     const p = produtosCache.find(prod => (prod.codigo && prod.codigo.trim() === decodedText.trim()) || prod.nome.toLowerCase().includes(decodedText.toLowerCase()));
                     if (p) { 
@@ -67,12 +75,17 @@ export async function iniciarCameraComHtml5Qrcode() {
                         alert(`PDV-VS: Código lido (${decodedText}), mas nenhum produto correspondente foi encontrado.`); 
                     }
                 } else if (origemLeitor === 'admin') {
+                    // Preenche o campo de código de barras no formulário do admin
                     const inputCodigo = document.getElementById('formCodigo');
-                    if (inputCodigo) inputCodigo.value = decodedText;
+                    if (inputCodigo) {
+                        inputCodigo.value = decodedText;
+                        // Dispara evento de input para atualizar eventuais estados reativos do formulário
+                        inputCodigo.dispatchEvent(new Event('input', { bubbles: true }));
+                    }
                 }
             },
             (errorMessage) => {
-                // Erros de leitura quadro a quadro são normais
+                // Ignora erros de leitura quadro a quadro
             }
         );
     } catch (err) {
