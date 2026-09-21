@@ -47,12 +47,12 @@ export async function iniciarCameraComHtml5Qrcode() {
         const instance = new Html5Qrcode(elementId);
         setHtml5QrcodeInstance(instance);
         
-        // Configuração focada em precisão estrita dentro da moldura central
+        // Configuração com caixa centralizada restrita e formatos essenciais limpos
         const config = { 
-            fps: 20, // Reduzido ligeiramente para dar tempo de processamento estável no iOS
+            fps: 20, 
             qrbox: (viewfinderWidth, viewfinderHeight) => {
-                let width = Math.floor(viewfinderWidth * 0.78);
-                let height = Math.floor(width * 0.38); 
+                let width = Math.floor(viewfinderWidth * 0.75);
+                let height = Math.floor(width * 0.40); 
                 return { width: width, height: height };
             },
             aspectRatio: 1.0,
@@ -61,15 +61,15 @@ export async function iniciarCameraComHtml5Qrcode() {
                 Html5QrcodeSupportedFormats.EAN_13,
                 Html5QrcodeSupportedFormats.EAN_8,
                 Html5QrcodeSupportedFormats.CODE_128,
-                Html5QrcodeSupportedFormats.CODE_39,
-                Html5QrcodeSupportedFormats.UPC_A,
-                Html5QrcodeSupportedFormats.UPC_E,
-                Html5QrcodeSupportedFormats.QR_CODE
+                Html5QrcodeSupportedFormats.QR_CODE,
+                Html5QrcodeSupportedFormats.UPC_A
             ]
         };
         
+        // Configuração avançada de mídia compatível com WebKit do iOS para evitar desfoque
         const cameraConfig = { 
-            facingMode: "environment" 
+            facingMode: "environment",
+            advanced: [{ focusMode: "continuous" }]
         };
 
         await instance.start(
@@ -79,8 +79,7 @@ export async function iniciarCameraComHtml5Qrcode() {
                 if (!decodedText) return;
                 const codigoLimpo = decodedText.trim();
 
-                // Filtro anti-falsos positivos: Valida se o comprimento é compatível com códigos comerciais reais
-                // (EAN tem 8 ou 13 dígitos, UPC tem 12, Code128 geralmente 4+, QR Codes variam mas exigem pelo menos 3 caracteres)
+                // Validação rigorosa de tamanho para evitar falsos positivos
                 if (codigoLimpo.length < 4) return;
 
                 fecharLeitorCamera();
@@ -101,12 +100,41 @@ export async function iniciarCameraComHtml5Qrcode() {
                 }
             },
             (errorMessage) => {
-                // Ignora falhas de frame iterativas
+                // Ignora ruídos de varredura
             }
         );
     } catch (err) {
-        console.error("PDV-VS Erro ao iniciar câmera profissional:", err);
-        alert("PDV-VS: Não foi possível acessar a câmera do dispositivo. Verifique as permissões de vídeo nas configurações do navegador e certifique-se de usar HTTPS.");
+        console.warn("Tentando fallback de câmara sem foco avançado para compatibilidade com iOS antigo...");
+        try {
+            // Fallback caso o Safari rejeite o parâmetro advanced de foco
+            if (html5QrcodeInstance) {
+                await html5QrcodeInstance.start(
+                    { facingMode: "environment" },
+                    { fps: 15, qrbox: { width: 250, height: 100 } },
+                    (decodedText) => {
+                        if (!decodedText || decodedText.trim().length < 4) return;
+                        fecharLeitorCamera();
+                        const codigoLimpo = decodedText.trim();
+                        if (origemLeitor === 'busca') {
+                            const p = produtosCache.find(prod => prod.codigo === codigoLimpo);
+                            if (p) tratarAdicaoProduto(p);
+                        } else if (origemLeitor === 'admin') {
+                            const inputCodigo = document.getElementById('formCodigo');
+                            if (inputCodigo) {
+                                inputCodigo.value = codigoLimpo;
+                                inputCodigo.dispatchEvent(new Event('input', { bubbles: true }));
+                            }
+                        }
+                    },
+                    () => {}
+                );
+                return;
+            }
+        } catch (fallbackErr) {
+            console.error("Erro crítico no fallback da câmera:", fallbackErr);
+        }
+
+        alert("PDV-VS: Não foi possível acessar a câmera do dispositivo. Verifique as permissões de vídeo nas configurações do seu navegador.");
         fecharLeitorCamera();
     }
 }
