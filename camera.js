@@ -42,6 +42,7 @@ function prepararModalCameraVisual() {
             `;
             cardModal.appendChild(containerManual);
 
+            // Evento direto no botão OK
             const btn = document.getElementById('btnConfirmarManual');
             btn.onclick = (e) => {
                 e.preventDefault();
@@ -49,6 +50,7 @@ function prepararModalCameraVisual() {
                 executarEntradaManual();
             };
 
+            // Evento de tecla Enter no input
             const inp = document.getElementById('inputCodigoManual');
             inp.onkeydown = (e) => {
                 if (e.key === 'Enter') {
@@ -82,10 +84,11 @@ function processarCodigoCapturado(termoDigitado) {
     if (!termoDigitado || termoDigitado.length < 1) return;
 
     console.log(`PDV-VS: Processando termo [Origem: ${origemLeitor}] ->`, termoDigitado);
+    
+    // Fecha o modal da câmera primeiro
     fecharLeitorCamera();
 
     if (origemLeitor === 'busca') {
-        // Busca inteligente e flexível: procura por código exato OU por parte do nome do produto
         const termoLower = termoDigitado.toLowerCase();
         
         const produtoEncontrado = produtosCache.find(prod => {
@@ -100,9 +103,11 @@ function processarCodigoCapturado(termoDigitado) {
             alert(`PDV-VS: Nenhum produto correspondente a "${termoDigitado}" foi encontrado.`);
         }
     } else if (origemLeitor === 'admin') {
+        // Encontra especificamente o input do admin e injeta o valor de forma limpa
         const inputCodigo = document.getElementById('formCodigo');
         if (inputCodigo) {
             inputCodigo.value = termoDigitado;
+            inputCodigo.focus(); // Mantém o foco no input correto do admin
             inputCodigo.dispatchEvent(new Event('input', { bubbles: true }));
             inputCodigo.dispatchEvent(new Event('change', { bubbles: true }));
             console.log("PDV-VS Admin: Campo #formCodigo preenchido com sucesso.");
