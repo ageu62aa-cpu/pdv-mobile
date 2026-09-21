@@ -42,6 +42,12 @@ export async function verificarStatusCaixaServidor() {
             setCaixaAberto(false);
             atualizarBadgesCaixaInterface();
         }
+
+        // Se for admin, garante o carregamento imediato dos operadores e histórico ao verificar o servidor
+        if (cargoUsuarioAtual === 'admin_mercado') {
+            if (typeof carregarOperadoresLoja === 'function') carregarOperadoresLoja();
+            if (typeof carregarHistoricoAdmin === 'function') carregarHistoricoAdmin();
+        }
     } catch (err) {
         console.error('Erro ao verificar status do caixa no servidor:', err);
     }
@@ -83,19 +89,24 @@ export function iniciarRealtimeCaixa() {
                 }
 
                 // Se o usuário atual for admin, atualiza também os dados gerenciais do painel
-                if (cargoUsuarioAtual === 'admin_mercado' && typeof carregarOperadoresLoja === 'function') {
-                    carregarOperadoresLoja();
-                    carregarHistoricoAdmin();
+                if (cargoUsuarioAtual === 'admin_mercado') {
+                    if (typeof carregarOperadoresLoja === 'function') carregarOperadoresLoja();
+                    if (typeof carregarHistoricoAdmin === 'function') carregarHistoricoAdmin();
                 }
             }
         )
         .subscribe();
 }
 
-// Inicializa o listener de tempo real logo ao carregar o módulo
+// Inicializa o listener de tempo real e checagem inicial logo ao carregar o módulo
 setTimeout(() => {
     iniciarRealtimeCaixa();
-}, 1000);
+    verificarStatusCaixaServidor();
+    if (cargoUsuarioAtual === 'admin_mercado') {
+        if (typeof carregarOperadoresLoja === 'function') carregarOperadoresLoja();
+        if (typeof carregarHistoricoAdmin === 'function') carregarHistoricoAdmin();
+    }
+}, 500);
 
 // Verifica o status sempre que a aba/janela ganha foco
 window.addEventListener('focus', () => {
@@ -107,8 +118,8 @@ export async function atualizarPaginaCompleta() {
         await carregarProdutosCache();
         await verificarStatusCaixaServidor();
         if (cargoUsuarioAtual === 'admin_mercado') {
-            await carregarHistoricoAdmin();
-            await carregarOperadoresLoja();
+            if (typeof carregarHistoricoAdmin === 'function') await carregarHistoricoAdmin();
+            if (typeof carregarOperadoresLoja === 'function') await carregarOperadoresLoja();
         }
         alert('PDV-VS: Dados sincronizados com sucesso!');
         focarBusca();
@@ -214,7 +225,6 @@ export async function confirmarAcaoCaixa() {
         valorTrocoAbertura = valorDigitado;
         horaAberturaCaixa = new Date();
 
-        // Insere ou atualiza o registro de caixa como ABERTO na tabela 'caixas'
         const { error } = await supabaseClient
             .from('caixas')
             .upsert({ 
@@ -256,7 +266,6 @@ export async function confirmarAcaoCaixa() {
         
         alert(`PDV-VS: Caixa Fechado com Sucesso!\n- Abertura: ${horaAberturaCaixa ? horaAberturaCaixa.toLocaleTimeString() : 'N/A'}\n- Fechamento: ${horaFechamento.toLocaleTimeString()}\n- Troco Inicial: R$ ${(valorTrocoAbertura || 0).toFixed(2)}\n- Vendas (Turno): R$ ${totalArrecadado.toFixed(2)}\n- Total Geral em Gaveta: R$ ${totalGeralGaveta.toFixed(2)}`);
         
-        // Atualiza o caixa atual para FECHADO no Supabase
         const { error } = await supabaseClient
             .from('caixas')
             .update({ 
@@ -282,6 +291,10 @@ export async function confirmarAcaoCaixa() {
     }
     
     atualizarBadgesCaixaInterface();
+    if (cargoUsuarioAtual === 'admin_mercado') {
+        if (typeof carregarOperadoresLoja === 'function') carregarOperadoresLoja();
+        if (typeof carregarHistoricoAdmin === 'function') carregarHistoricoAdmin();
+    }
     fecharModalCaixa();
     focarBusca();
 }
@@ -401,7 +414,6 @@ export async function finalizarVenda() {
     const txtFat = document.getElementById('txtFaturamentoDia');
     if (txtFat) txtFat.innerText = `R$ ${novoFat.toFixed(2)}`;
 
-    // Atualiza o faturamento atual na tabela de caixas no Supabase
     if (empresaAtualId && usuarioAtual) {
         await supabaseClient
             .from('caixas')
@@ -417,6 +429,10 @@ export async function finalizarVenda() {
     setItensVenda([]); 
     atualizarTabelaVenda(); 
     await carregarProdutosCache();
+    if (cargoUsuarioAtual === 'admin_mercado') {
+        if (typeof carregarOperadoresLoja === 'function') carregarOperadoresLoja();
+        if (typeof carregarHistoricoAdmin === 'function') carregarHistoricoAdmin();
+    }
     alert('PDV-VS: Venda concluída e estoque atualizado com sucesso!');
     focarBusca();
 }
