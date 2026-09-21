@@ -32,9 +32,18 @@ export async function escanearCameraAdmin() {
 
 export async function iniciarCameraComHtml5Qrcode() {
     try {
+        // Garante a paragem total e segura de qualquer instância anterior antes de recriar
         if (html5QrcodeInstance) {
-            await html5QrcodeInstance.stop().catch(() => {});
+            try {
+                if (html5QrcodeInstance.isScanning) {
+                    await html5QrcodeInstance.stop();
+                }
+            } catch (e) {
+                console.warn("Aviso ao limpar instância anterior:", e);
+            }
             setHtml5QrcodeInstance(null);
+            // Pequena pausa para o DOM libertar o stream de vídeo da câmara
+            await new Promise(resolve => setTimeout(resolve, 300));
         }
         
         const elementId = "videoPreviewCamera";
@@ -47,12 +56,11 @@ export async function iniciarCameraComHtml5Qrcode() {
         const instance = new Html5Qrcode(elementId);
         setHtml5QrcodeInstance(instance);
         
-        // Configuração com caixa centralizada restrita e formatos essenciais limpos
         const config = { 
             fps: 20, 
             qrbox: (viewfinderWidth, viewfinderHeight) => {
-                let width = Math.floor(viewfinderWidth * 0.75);
-                let height = Math.floor(width * 0.40); 
+                let width = Math.floor(viewfinderWidth * 0.78);
+                let height = Math.floor(width * 0.38); 
                 return { width: width, height: height };
             },
             aspectRatio: 1.0,
@@ -61,15 +69,16 @@ export async function iniciarCameraComHtml5Qrcode() {
                 Html5QrcodeSupportedFormats.EAN_13,
                 Html5QrcodeSupportedFormats.EAN_8,
                 Html5QrcodeSupportedFormats.CODE_128,
-                Html5QrcodeSupportedFormats.QR_CODE,
-                Html5QrcodeSupportedFormats.UPC_A
+                Html5QrcodeSupportedFormats.CODE_39,
+                Html5QrcodeSupportedFormats.UPC_A,
+                Html5QrcodeSupportedFormats.UPC_E,
+                Html5QrcodeSupportedFormats.QR_CODE
             ]
         };
         
-        // Configuração avançada de mídia compatível com WebKit do iOS para evitar desfoque
+        // Configuração universal limpa compatível com computadores, Android e iOS
         const cameraConfig = { 
-            facingMode: "environment",
-            advanced: [{ focusMode: "continuous" }]
+            facingMode: "environment" 
         };
 
         await instance.start(
@@ -78,9 +87,7 @@ export async function iniciarCameraComHtml5Qrcode() {
             (decodedText) => {
                 if (!decodedText) return;
                 const codigoLimpo = decodedText.trim();
-
-                // Validação rigorosa de tamanho para evitar falsos positivos
-                if (codigoLimpo.length < 4) return;
+                if (codigoLimpo.length < 2) return;
 
                 fecharLeitorCamera();
 
@@ -100,41 +107,12 @@ export async function iniciarCameraComHtml5Qrcode() {
                 }
             },
             (errorMessage) => {
-                // Ignora ruídos de varredura
+                // Ignora falhas de frame por segundo
             }
         );
     } catch (err) {
-        console.warn("Tentando fallback de câmara sem foco avançado para compatibilidade com iOS antigo...");
-        try {
-            // Fallback caso o Safari rejeite o parâmetro advanced de foco
-            if (html5QrcodeInstance) {
-                await html5QrcodeInstance.start(
-                    { facingMode: "environment" },
-                    { fps: 15, qrbox: { width: 250, height: 100 } },
-                    (decodedText) => {
-                        if (!decodedText || decodedText.trim().length < 4) return;
-                        fecharLeitorCamera();
-                        const codigoLimpo = decodedText.trim();
-                        if (origemLeitor === 'busca') {
-                            const p = produtosCache.find(prod => prod.codigo === codigoLimpo);
-                            if (p) tratarAdicaoProduto(p);
-                        } else if (origemLeitor === 'admin') {
-                            const inputCodigo = document.getElementById('formCodigo');
-                            if (inputCodigo) {
-                                inputCodigo.value = codigoLimpo;
-                                inputCodigo.dispatchEvent(new Event('input', { bubbles: true }));
-                            }
-                        }
-                    },
-                    () => {}
-                );
-                return;
-            }
-        } catch (fallbackErr) {
-            console.error("Erro crítico no fallback da câmera:", fallbackErr);
-        }
-
-        alert("PDV-VS: Não foi possível acessar a câmera do dispositivo. Verifique as permissões de vídeo nas configurações do seu navegador.");
+        console.error("PDV-VS Erro crítico ao iniciar câmera:", err);
+        alert("PDV-VS: Não foi possível acessar a câmera do dispositivo. Verifique as permissões de vídeo nas configurações do navegador e certifique-se de usar HTTPS.");
         fecharLeitorCamera();
     }
 }
@@ -142,7 +120,9 @@ export async function iniciarCameraComHtml5Qrcode() {
 export async function fecharLeitorCamera() {
     if (html5QrcodeInstance) {
         try {
-            await html5QrcodeInstance.stop();
+            if (html5QrcodeInstance.isScanning) {
+                await html5QrcodeInstance.stop();
+            }
         } catch(e) {
             console.error("PDV-VS Erro ao parar câmera:", e);
         }
