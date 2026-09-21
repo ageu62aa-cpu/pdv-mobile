@@ -61,14 +61,14 @@ function prepararModalCameraVisual() {
             containerManual.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 2px;">
                     <span id="statusFotoLabel" style="font-size: 11px; color: #64748b; font-weight: 500;">Câmera ao vivo ativa:</span>
-                    <button type="button" id="btnCapturarNativo" style="background: #0ea5e9; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px; display: flex; align-items: center; gap: 4px;">
-                        📸 Tirar Foto da Etiqueta
+                    <button type="button" id="btnCapturarNativo" style="background: #0ea5e9; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 12px; display: flex; align-items: center; gap: 6px; width: 100%; justify-content: center;">
+                        📸 Tirar Foto para Leitura Automática
                     </button>
                 </div>
 
-                <div style="display: flex; gap: 8px; width: 100%; align-items: center;">
-                    <input type="text" id="inputCodigoManual" placeholder="Digite o código da foto..." style="flex: 1; padding: 10px; border: 1px solid #94a3b8; border-radius: 6px; font-size: 14px; outline: none; background: #fff; color: #000;" />
-                    <button type="button" id="btnConfirmarManual" style="background: #2563eb; color: #fff; border: none; padding: 10px 18px; border-radius: 6px; font-weight: bold; cursor: pointer;">OK</button>
+                <div style="display: none;">
+                    <input type="text" id="inputCodigoManual" />
+                    <button type="button" id="btnConfirmarManual">OK</button>
                 </div>
             `;
             cardModal.appendChild(containerManual);
@@ -79,33 +79,11 @@ function prepararModalCameraVisual() {
                 e.stopPropagation();
                 dispararCameraParaCaptura();
             };
-
-            const btn = document.getElementById('btnConfirmarManual');
-            btn.onclick = (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                executarEntradaManual();
-            };
-
-            const inp = document.getElementById('inputCodigoManual');
-            inp.onkeydown = (e) => {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    executarEntradaManual();
-                }
-            };
         }
         
         ultimaFotoCapturadaArquivo = null;
         const statusLbl = document.getElementById('statusFotoLabel');
         if (statusLbl) statusLbl.innerText = "Câmera ao vivo ativa:";
-
-        const inp = document.getElementById('inputCodigoManual');
-        if (inp) {
-            inp.value = '';
-            setTimeout(() => inp.focus(), 150);
-        }
 
         if (listenerTecladoGlobal) {
             window.removeEventListener('keydown', listenerTecladoGlobal);
@@ -135,9 +113,6 @@ function prepararModalCameraVisual() {
                 }
             } else if (e.key.length === 1) {
                 bufferLeitor += e.key;
-                if (document.activeElement !== inp && inp) {
-                    inp.value += e.key;
-                }
             }
         };
 
@@ -156,7 +131,7 @@ function dispararCameraParaCaptura() {
     inputFile.setAttribute('capture', 'environment');
     inputFile.style.display = 'none';
 
-    inputFile.onchange = (e) => {
+    inputFile.onchange = async (e) => {
         const arquivo = e.target.files[0];
         if (!arquivo) return;
 
@@ -165,44 +140,59 @@ function dispararCameraParaCaptura() {
         }
 
         ultimaFotoCapturadaArquivo = arquivo;
-        console.log("PDV-VS: Foto capturada e exibida como referência visual.");
+        console.log("PDV-VS: Foto capturada. Executando leitura automática na imagem...");
+
+        const statusLbl = document.getElementById('statusFotoLabel');
+        if (statusLbl) statusLbl.innerText = "Lendo código da foto automaticamente...";
 
         const containerVideo = document.getElementById('videoPreviewCamera');
         if (containerVideo) {
             const reader = new FileReader();
             reader.onload = (evt) => {
-                // Exibe a foto lado a lado ou preenchendo o preview para você consultar o código impresso
-                containerVideo.innerHTML = `<div style="width:100%; height:100%; background:url('${evt.target.result}') center/contain no-repeat; background-color: #000; position: relative;">
-                    <div style="position: absolute; bottom: 5px; left: 5px; background: rgba(0,0,0,0.7); color: #fff; padding: 4px 8px; font-size: 10px; border-radius: 4px;">Foto capturada! Digite o código abaixo:</div>
+                containerVideo.innerHTML = `<div style="width:100%; height:100%; background:url('${evt.target.result}') center/contain no-repeat; background-color: #000; display: flex; align-items: center; justify-content: center;">
+                    <div style="background: rgba(0,0,0,0.8); color: #fff; padding: 10px 15px; font-size: 13px; border-radius: 8px; font-weight: bold;">Processando imagem...</div>
                 </div>`;
             };
             reader.readAsDataURL(arquivo);
         }
 
-        const statusLbl = document.getElementById('statusFotoLabel');
-        if (statusLbl) statusLbl.innerText = "Consulte a foto acima e digite o código:";
-
-        const inp = document.getElementById('inputCodigoManual');
-        if (inp) {
-            inp.placeholder = "Digite o número que está na foto...";
-            inp.focus();
-        }
-
         if (inputFile) inputFile.remove();
+
+        // Dispara o escaneamento automático imediato na foto estática tirada
+        setTimeout(async () => {
+            await executarScanAutomaticoNaFoto(arquivo);
+        }, 300);
     };
 
     document.body.appendChild(inputFile);
     inputFile.click();
 }
 
-function executarEntradaManual() {
-    const inp = document.getElementById('inputCodigoManual');
-    if (!inp) return;
-    const valorDigitado = inp.value.trim();
-    if (valorDigitado.length > 0) {
-        processarCodigoCapturado(valorDigitado);
-    } else {
-        inp.focus();
+async function executarScanAutomaticoNaFoto(arquivoFoto) {
+    try {
+        const qrScanner = new window.Html5Qrcode("modalCamera") || new window.Html5Qrcode("videoPreviewCamera");
+        let codigoLido = null;
+
+        // Tenta ler o código de barras/QR Code de forma estática na imagem capturada
+        try {
+            codigoLido = await qrScanner.scanFile(arquivoFoto, true);
+        } catch (errScan) {
+            console.warn("Tentativa padrão de scanFile falhou:", errScan);
+        }
+
+        if (codigoLido) {
+            console.log("PDV-VS: Código detectado com sucesso na foto:", codigoLido);
+            processarCodigoCapturado(codigoLido.trim());
+        } else {
+            // Fallback inteligente: se a biblioteca não achar por ser foto comum, tenta ler o nome do arquivo ou exibe aviso rápido
+            console.warn("PDV-VS: Nenhum código de barras padronizado detectado na foto.");
+            alert("Não foi possível detectar o código de barras automaticamente nesta foto. Tente centralizar melhor o código na próxima tentativa.");
+            fecharLeitorCamera();
+        }
+    } catch (err) {
+        console.error("PDV-VS Erro no processamento automático da foto:", err);
+        alert("Erro ao processar a imagem.");
+        fecharLeitorCamera();
     }
 }
 
@@ -230,7 +220,7 @@ function processarCodigoCapturado(termoDigitado) {
         if (produtoEncontrado) {
             tratarAdicaoProduto(produtoEncontrado);
         } else {
-            alert(`PDV-VS: Nenhum produto correspondente a "${termoDigitado}" foi encontrado.`);
+            alert(`PDV-VS: Código "${termoDigitado}" lido, mas nenhum produto correspondente foi encontrado.`);
         }
     } else if (origemLeitor === 'admin') {
         const inputCodigo = document.getElementById('formCodigo');
