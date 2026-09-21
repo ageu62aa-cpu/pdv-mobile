@@ -38,42 +38,13 @@ function prepararModalCameraVisual() {
             containerManual.id = 'containerManualCamera';
             containerManual.style.cssText = "margin-top: 15px; padding: 12px; background: #f8fafc; border-radius: 8px; border: 1px solid #cbd5e1; display: flex; flex-direction: column; gap: 8px; width: 100%; box-sizing: border-box; z-index: 100000; position: relative;";
             
-            // Painel com botão de Câmera Nativa e Botão de Fechar/Voltar explícito
             containerManual.innerHTML = `
-                <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 2px;">
-                    <span style="font-size: 11px; color: #64748b; font-weight: 500;">Uso opcional (iPhone / Falha):</span>
-                    <div style="display: flex; gap: 6px;">
-                        <button type="button" id="btnCapturarNativo" style="background: #0ea5e9; color: #fff; border: none; padding: 5px 10px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px; display: flex; align-items: center; gap: 4px;">
-                            📸 Câmera Nativa
-                        </button>
-                        <button type="button" id="btnFecharModalExtra" style="background: #64748b; color: #fff; border: none; padding: 5px 10px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px;">
-                            ✕ Fechar
-                        </button>
-                    </div>
-                </div>
-
                 <div style="display: flex; gap: 8px; width: 100%; align-items: center;">
-                    <input type="text" id="inputCodigoManual" placeholder="Código ou pistola..." style="flex: 1; padding: 10px; border: 1px solid #94a3b8; border-radius: 6px; font-size: 14px; outline: none; background: #fff; color: #000;" />
+                    <input type="text" id="inputCodigoManual" placeholder="Digite o código ou use a pistola..." style="flex: 1; padding: 10px; border: 1px solid #94a3b8; border-radius: 6px; font-size: 14px; outline: none; background: #fff; color: #000;" />
                     <button type="button" id="btnConfirmarManual" style="background: #2563eb; color: #fff; border: none; padding: 10px 18px; border-radius: 6px; font-weight: bold; cursor: pointer;">OK</button>
                 </div>
             `;
             cardModal.appendChild(containerManual);
-
-            // Ação do Botão Fechar
-            const btnFecharExtra = document.getElementById('btnFecharModalExtra');
-            btnFecharExtra.onclick = (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                fecharLeitorCamera();
-            };
-
-            // Ação do Botão Nativo
-            const btnNativo = document.getElementById('btnCapturarNativo');
-            btnNativo.onclick = (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                dispararSeletorCameraNativo();
-            };
 
             const btn = document.getElementById('btnConfirmarManual');
             btn.onclick = (e) => {
@@ -135,54 +106,6 @@ function prepararModalCameraVisual() {
 
         window.addEventListener('keydown', listenerTecladoGlobal);
     }
-}
-
-function dispararSeletorCameraNativo() {
-    let inputAntigo = document.getElementById('inputCameraNativoOculto');
-    if (inputAntigo) inputAntigo.remove();
-
-    const inputFile = document.createElement('input');
-    inputFile.type = 'file';
-    inputFile.id = 'inputCameraNativoOculto';
-    inputFile.accept = 'image/*';
-    inputFile.setAttribute('capture', 'environment');
-    inputFile.style.display = 'none';
-
-    inputFile.onchange = async (e) => {
-        const arquivo = e.target.files[0];
-        if (!arquivo) return;
-
-        console.log("PDV-VS: Foto capturada pela câmera nativa, decodificando...");
-
-        try {
-            const qrScanner = new window.Html5Qrcode("modalCamera") || new window.Html5Qrcode("videoPreviewCamera");
-            const codigoLido = await qrScanner.scanFile(arquivo, true);
-
-            if (codigoLido) {
-                console.log("PDV-VS: Código decodificado com sucesso da foto nativa:", codigoLido);
-                const inp = document.getElementById('inputCodigoManual');
-                if (inp) {
-                    inp.value = codigoLido.trim();
-                }
-                processarCodigoCapturado(codigoLido.trim());
-            } else {
-                // Não trava mais a tela: apenas avisa e devolve o foco para você tentar de novo ou digitar
-                console.warn("PDV-VS: Código não encontrado na imagem nativa.");
-                alert("Não foi possível ler o código de barras nesta foto. Tente aproximar mais ou ajustar o foco.");
-                const inp = document.getElementById('inputCodigoManual');
-                if (inp) inp.focus();
-            }
-        } catch (err) {
-            console.error("PDV-VS Erro ao decodificar imagem nativa:", err);
-            // Mantém a tela ativa e permite nova tentativa
-            alert("Falha ao processar a imagem. Tente capturar novamente.");
-            const inp = document.getElementById('inputCodigoManual');
-            if (inp) inp.focus();
-        }
-    };
-
-    document.body.appendChild(inputFile);
-    inputFile.click();
 }
 
 function executarEntradaManual() {
@@ -299,9 +222,6 @@ export async function fecharLeitorCamera() {
         window.removeEventListener('keydown', listenerTecladoGlobal);
         listenerTecladoGlobal = null;
     }
-
-    let inputAntigo = document.getElementById('inputCameraNativoOculto');
-    if (inputAntigo) inputAntigo.remove();
 
     if (html5QrcodeInstance) {
         try {
