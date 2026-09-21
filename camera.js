@@ -52,11 +52,15 @@ export async function iniciarCameraComHtml5Qrcode() {
         const instance = new Html5Qrcode(elementId);
         setHtml5QrcodeInstance(instance);
         
-        // Moldura em formato retangular horizontal ideal para código de barras
+        // Configuração ajustada para calcular dinamicamente e centralizar perfeitamente o retângulo no iOS e Android
         const config = { 
-            fps: 25, 
-            qrbox: { width: 300, height: 150 }, 
-            aspectRatio: 1.777778 
+            fps: 30, 
+            qrbox: (viewfinderWidth, viewfinderHeight) => {
+                let width = Math.floor(viewfinderWidth * 0.85);
+                let height = Math.floor(width * 0.38); // Proporção exata e otimizada para códigos de barras
+                return { width: width, height: height };
+            },
+            aspectRatio: 1.333334 // Mantém proporção estável e evita deslocamento da moldura para baixo no Safari
         };
         
         const cameraConfig = { facingMode: "environment" };
