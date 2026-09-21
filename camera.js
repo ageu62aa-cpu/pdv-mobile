@@ -15,9 +15,6 @@ export async function abrirLeitorCamera() {
         modalCam.style.zIndex = "99999";
         modalCam.classList.add('flex');
         modalCam.classList.remove('hidden');
-        
-        // Ajuste dinâmico: se for iOS, empurra o container visual para cima alinhando perfeitamente
-        ajustarPosicaoCameraIOS(true);
     }
     await iniciarCameraComHtml5Qrcode();
 }
@@ -29,21 +26,8 @@ export async function escanearCameraAdmin() {
         modalCam.style.zIndex = "99999";
         modalCam.classList.add('flex');
         modalCam.classList.remove('hidden');
-        
-        // Ajuste dinâmico para o painel admin no iOS
-        ajustarPosicaoCameraIOS(true);
     }
     await iniciarCameraComHtml5Qrcode();
-}
-
-function ajustarPosicaoCameraIOS(ativar) {
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    const containerVideo = document.getElementById('videoPreviewCamera');
-    
-    if (isIOS && containerVideo) {
-        // Subimos o container de vídeo consideravelmente no iOS para centralizar a mira de leitura
-        containerVideo.style.marginTop = ativar ? "-60px" : "0px";
-    }
 }
 
 export async function iniciarCameraComHtml5Qrcode() {
@@ -70,12 +54,17 @@ export async function iniciarCameraComHtml5Qrcode() {
         const instance = new Html5Qrcode(elementId);
         setHtml5QrcodeInstance(instance);
         
-        // Configuração padrão limpa mantendo a eficiência idêntica em ambos os sistemas
+        // Configuração perfeitamente centralizada e limpa para evitar áreas pretas ou deslocamento no iOS/Android
         const config = { 
-            fps: 10,
-            qrbox: { width: 250, height: 150 },
-            aspectRatio: 1.777778,
-            rememberLastUsedCamera: true
+            fps: 20,
+            qrbox: (viewfinderWidth, viewfinderHeight) => {
+                // Cria uma moldura proporcional dinâmica que se centraliza rigorosamente no meio do vídeo
+                let width = Math.floor(viewfinderWidth * 0.80);
+                let height = Math.floor(viewfinderHeight * 0.35);
+                return { width: width, height: height };
+            },
+            aspectRatio: 1.0, // Força proporção 1:1 equilibrada para alinhar perfeitamente com o renderizador do Safari
+            rememberLastUsedCommand: true
         };
         
         const cameraConfig = { 
@@ -93,7 +82,7 @@ export async function iniciarCameraComHtml5Qrcode() {
                 fecharLeitorCamera();
 
                 if (origemLeitor === 'busca') {
-                    const p =produtosCache.find(prod => (prod.codigo && prod.codigo.trim() === codigoLimpo) || prod.nome.toLowerCase().includes(codigoLimpo.toLowerCase()));
+                    const p = produtosCache.find(prod => (prod.codigo && prod.codigo.trim() === codigoLimpo) || prod.nome.toLowerCase().includes(codigoLimpo.toLowerCase()));
                     if (p) { 
                         tratarAdicaoProduto(p); 
                     } else { 
@@ -108,7 +97,7 @@ export async function iniciarCameraComHtml5Qrcode() {
                 }
             },
             (errorMessage) => {
-                // Ignora erros de frame contínuos
+                // Ignora ruídos de frame
             }
         );
     } catch (err) {
@@ -119,7 +108,6 @@ export async function iniciarCameraComHtml5Qrcode() {
 }
 
 export async function fecharLeitorCamera() {
-    ajustarPosicaoCameraIOS(false); // Reseta o espaçamento ao fechar
     if (html5QrcodeInstance) {
         try {
             if (html5QrcodeInstance.isScanning) {
