@@ -51,6 +51,11 @@ window.atualizarPaginaCompleta = atualizarPaginaCompleta;
 window.focarBusca = focarBusca;
 window.alterarQtd = alterarQtd;
 
+// --- FUNÇÃO GLOBAL DA CÂMERA ---
+window.abrirLeitorCamera = function() {
+    alert("PDV-VS: O leitor de código de barras por câmera está em desenvolvimento.");
+};
+
 // --- AUTENTICAÇÃO E LOGIN ---
 window.tratarEnterLogin = function(e) { 
     if (e.key === 'Enter') processarAutenticacao(); 
@@ -97,31 +102,37 @@ async function verificarSessaoEAlternarTelas() {
     if (session && session.user) {
         setUsuarioAtual(session.user);
 
+        // Correção: Consulta correta na tabela usuarios_empresas por user_id
         const { data: opData } = await window.supabaseClient
-            .from('operadores')
+            .from('usuarios_empresas')
             .select('empresa_id, cargo')
-            .eq('email', session.user.email)
+            .eq('user_id', session.user.id)
             .maybeSingle();
 
+        let cargoFinal = 'admin_mercado';
+        let empresaIdFinal = session.user.id;
+
         if (opData && opData.empresa_id) {
-            setEmpresaAtualId(opData.empresa_id);
-            setCargoUsuarioAtual(opData.cargo || 'admin_mercado');
-        } else {
-            setEmpresaAtualId(session.user.id);
-            setCargoUsuarioAtual('admin_mercado');
+            empresaIdFinal = opData.empresa_id;
+            cargoFinal = opData.cargo || 'admin_mercado';
         }
+
+        setEmpresaAtualId(empresaIdFinal);
+        setCargoUsuarioAtual(cargoFinal);
 
         if (telaLogin) telaLogin.classList.add('hidden');
         if (appPrincipal) appPrincipal.classList.remove('hidden');
         if (infoUsuario) infoUsuario.innerText = session.user.email;
         
-        const cargo = opData ? opData.cargo : 'admin_mercado';
+        // Ocultar ou exibir o botão Admin com base estrita no cargo
         const btnAdmin = document.getElementById('btnAdminMenu');
         if (btnAdmin) {
-            if (cargo === 'admin_mercado') {
+            if (cargoFinal === 'admin_mercado') {
                 btnAdmin.classList.remove('hidden');
+                btnAdmin.style.display = 'inline-flex';
             } else {
                 btnAdmin.classList.add('hidden');
+                btnAdmin.style.display = 'none';
             }
         }
 
