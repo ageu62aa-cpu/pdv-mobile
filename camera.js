@@ -35,13 +35,29 @@ export async function iniciarCameraComHtml5Qrcode() {
             setHtml5QrcodeInstance(null);
         }
         
-        const instance = new Html5Qrcode("videoPreviewCamera");
+        // Assegura que o elemento de container do leitor existe
+        const elementId = "videoPreviewCamera";
+        const container = document.getElementById(elementId);
+        if (!container) {
+            console.error("PDV-VS: Elemento #videoPreviewCamera não encontrado no DOM.");
+            return;
+        }
+
+        const instance = new Html5Qrcode(elementId);
         setHtml5QrcodeInstance(instance);
         
-        const config = { fps: 15, qrbox: { width: 280, height: 160 }, aspectRatio: 1.0 };
+        // Configuração otimizada com moldura horizontal para código de barras de supermercado e QR Code
+        const config = { 
+            fps: 20, 
+            qrbox: { width: 300, height: 150 }, 
+            aspectRatio: 1.777778 
+        };
         
+        // Parâmetros de câmara com preferência explícita pela câmara traseira (environment) para mobile e fallback seguro
+        const cameraConfig = { facingMode: "environment" };
+
         await instance.start(
-            { facingMode: "environment" },
+            cameraConfig,
             config,
             (decodedText) => {
                 fecharLeitorCamera();
@@ -57,11 +73,13 @@ export async function iniciarCameraComHtml5Qrcode() {
                     if (inputCodigo) inputCodigo.value = decodedText;
                 }
             },
-            () => {}
+            (errorMessage) => {
+                // Erros de leitura quadro a quadro são normais enquanto aguarda o posicionamento do código
+            }
         );
     } catch (err) {
         console.error("PDV-VS Erro ao iniciar câmera:", err);
-        alert("PDV-VS: Não foi possível acessar a câmera do dispositivo. Verifique as permissões de vídeo.");
+        alert("PDV-VS: Não foi possível acessar a câmera do dispositivo. Verifique as permissões de vídeo nas configurações do navegador e certifique-se de usar HTTPS.");
         fecharLeitorCamera();
     }
 }

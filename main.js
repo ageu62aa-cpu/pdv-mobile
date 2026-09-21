@@ -4,7 +4,7 @@
 
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
 import { setUsuarioAtual, setEmpresaAtualId, setCargoUsuarioAtual } from './state.js';
-import { abrirLeitorCamera, escanearCameraAdmin } from './camera.js';
+import { abrirLeitorCamera, escanearCameraAdmin, fecharLeitorCamera } from './camera.js';
 
 import { 
     verificarStatusCaixaServidor, 
@@ -55,6 +55,7 @@ window.alterarQtd = alterarQtd;
 // --- EXPOSIÇÃO GLOBAL DA CÂMERA (CORRIGIDO) ---
 window.abrirLeitorCamera = abrirLeitorCamera;
 window.escanearCameraAdmin = escanearCameraAdmin;
+window.fecharLeitorCamera = fecharLeitorCamera;
 
 // --- AUTENTICAÇÃO E LOGIN ---
 window.tratarEnterLogin = function(e) { 
@@ -157,6 +158,7 @@ function inicializarAtalhosTeclado() {
             fecharModalCaixa();
             fecharModalAutorizacao();
             fecharModalCancelarItem();
+            fecharLeitorCamera(); // Garante o fecho limpo da câmara ao carregar Esc
         }
     });
 }
