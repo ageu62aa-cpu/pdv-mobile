@@ -39,20 +39,28 @@ function prepararModalCameraVisual() {
             containerManual.style.cssText = "margin-top: 15px; padding: 12px; background: #f8fafc; border-radius: 8px; border: 1px solid #cbd5e1; display: flex; flex-direction: column; gap: 8px; width: 100%; box-sizing: border-box; z-index: 100000; position: relative;";
             
             containerManual.innerHTML = `
+                <!-- Botão de Foco / Re-tentativa para ajudar dispositivos difíceis como iPhone -->
+                <div style="display: flex; justify-content: center; width: 100%; margin-bottom: 4px;">
+                    <button type="button" id="btnForcarFoco" style="background: #0ea5e9; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 13px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                        📸 Ajustar Foco / Re-tentar Leitura
+                    </button>
+                </div>
+
                 <div style="display: flex; gap: 8px; width: 100%; align-items: center;">
                     <input type="text" id="inputCodigoManual" placeholder="Digite o código ou use a pistola..." style="flex: 1; padding: 10px; border: 1px solid #94a3b8; border-radius: 6px; font-size: 14px; outline: none; background: #fff; color: #000;" />
                     <button type="button" id="btnConfirmarManual" style="background: #2563eb; color: #fff; border: none; padding: 10px 18px; border-radius: 6px; font-weight: bold; cursor: pointer;">OK</button>
                 </div>
-                <!-- Botão exclusivo para dispositivos móveis / iPhone tirarem foto do código caso a câmera automática falhe -->
-                <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #e2e8f0; pt-2; margin-top: 4px; padding-top: 8px;">
-                    <span style="font-size: 12px; color: #64748b;">Dificuldade no iPhone? Tire uma foto do código:</span>
-                    <label for="inputFotoCodigo" style="background: #0ea5e9; color: #fff; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; display: inline-block;">
-                        📸 Capturar Foto / Arquivo
-                    </label>
-                    <input type="file" id="inputFotoCodigo" accept="image/*" capture="environment" style="display: none;" />
-                </div>
             `;
             cardModal.appendChild(containerManual);
+
+            // Botão para forçar reinicialização/foco da câmera caso trave no iPhone
+            const btnFoco = document.getElementById('btnForcarFoco');
+            btnFoco.onclick = async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log("PDV-VS: Reiniciando câmera para forçar foco...");
+                await iniciarCameraComHtml5Qrcode();
+            };
 
             // Evento do botão OK / Digitação Manual
             const btn = document.getElementById('btnConfirmarManual');
@@ -68,33 +76,6 @@ function prepararModalCameraVisual() {
                     e.preventDefault();
                     e.stopPropagation();
                     executarEntradaManual();
-                }
-            };
-
-            // Evento para capturar a foto tirada pelo iPhone/Celular e processar o arquivo de imagem
-            const inputFoto = document.getElementById('inputFotoCodigo');
-            inputFoto.onchange = async (e) => {
-                const arquivo = e.target.files[0];
-                if (!arquivo) return;
-
-                console.log("PDV-VS: Imagem capturada via arquivo/câmera nativa para leitura.");
-                
-                // Se houver uma instância de escaneamento ativa, pausa temporariamente
-                if (html5QrcodeInstance && html5QrcodeInstance.isScanning) {
-                    try { await html5QrcodeInstance.stop(); } catch (err) {}
-                }
-
-                try {
-                    // Utiliza a própria biblioteca Html5Qrcode para decodificar o arquivo de imagem enviado (funciona perfeitamente no iOS)
-                    const qrScanner = new window.Html5Qrcode("videoPreviewCamera");
-                    const resultadoDecodificado = await qrScanner.scanFile(arquivo, true);
-                    
-                    if (resultadoDecodificado) {
-                        processarCodigoCapturado(resultadoDecodificado.trim());
-                    }
-                } catch (err) {
-                    console.error("Erro ao decodificar a imagem enviada:", err);
-                    alert("Não foi possível ler o código de barras desta imagem. Tente aproximar ou digitar manualmente no campo acima.");
                 }
             };
         }
@@ -227,12 +208,13 @@ export async function iniciarCameraComHtml5Qrcode() {
         setHtml5QrcodeInstance(instance);
         
         const config = { 
-            fps: 20,
-            qrbox: { width: 260, height: 150 },
+            fps: 25,
+            qrbox: { width: 280, height: 160 },
             aspectRatio: 1.0,
             rememberLastUsedCamera: true
         };
         
+        // Configuração otimizada para forçar o uso da câmera traseira e focar melhor em celulares/iPhones
         const cameraConfig = { 
             facingMode: "environment" 
         };
@@ -245,7 +227,7 @@ export async function iniciarCameraComHtml5Qrcode() {
                 processarCodigoCapturado(decodedText.trim());
             },
             (errorMessage) => {
-                // Ignora ruídos de frame
+                // Ignora ruídos de frame contínuos
             }
         );
     } catch (err) {
