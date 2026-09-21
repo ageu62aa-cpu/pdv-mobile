@@ -35,7 +35,6 @@ export async function iniciarCameraComHtml5Qrcode() {
             setHtml5QrcodeInstance(null);
         }
         
-        // Assegura que o elemento de container do leitor existe
         const elementId = "videoPreviewCamera";
         const container = document.getElementById(elementId);
         if (!container) {
@@ -46,23 +45,14 @@ export async function iniciarCameraComHtml5Qrcode() {
         const instance = new Html5Qrcode(elementId);
         setHtml5QrcodeInstance(instance);
         
-        // Configuração otimizada com moldura horizontal para código de barras e QR Code
         const config = { 
-            fps: 25, // Aumentado levemente para maior fluidez na captura
+            fps: 20, 
             qrbox: { width: 300, height: 150 }, 
-            aspectRatio: 1.777778,
-            experimentalFeatures: {
-                useBarCodeDetectorIfSupported: true
-            }
+            aspectRatio: 1.777778 
         };
         
-        // Parâmetros de câmara robustos para compatibilidade com iOS (Safari) e Android
-        const cameraConfig = { 
-            facingMode: "environment",
-            // Força resoluções ideais para evitar travamentos no iPhone
-            width: { min: 640, ideal: 1280, max: 1920 },
-            height: { min: 480, ideal: 720, max: 1080 }
-        };
+        // Correção: Passando apenas a chave permitida pela biblioteca Html5Qrcode
+        const cameraConfig = { facingMode: "environment" };
 
         await instance.start(
             cameraConfig,
@@ -82,7 +72,7 @@ export async function iniciarCameraComHtml5Qrcode() {
                 }
             },
             (errorMessage) => {
-                // Erros de leitura quadro a quadro são normais enquanto aguarda o posicionamento
+                // Erros de leitura quadro a quadro são normais
             }
         );
     } catch (err) {
@@ -108,7 +98,6 @@ export async function fecharLeitorCamera() {
     }
 }
 
-// Vinculação global para garantir acesso direto via HTML e eventos do navegador
 window.abrirLeitorCamera = abrirLeitorCamera;
 window.escanearCameraAdmin = escanearCameraAdmin;
 window.fecharLeitorCamera = fecharLeitorCamera;
