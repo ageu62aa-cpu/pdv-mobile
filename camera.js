@@ -39,12 +39,26 @@ function prepararModalCameraVisual() {
             containerManual.style.cssText = "margin-top: 15px; padding: 12px; background: #f8fafc; border-radius: 8px; border: 1px solid #cbd5e1; display: flex; flex-direction: column; gap: 8px; width: 100%; box-sizing: border-box; z-index: 100000; position: relative;";
             
             containerManual.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 2px;">
+                    <span style="font-size: 11px; color: #64748b; font-weight: 500;">Alternativa (iPhone / Foto):</span>
+                    <button type="button" id="btnCapturarNativo" style="background: #0ea5e9; color: #fff; border: none; padding: 5px 10px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px; display: flex; align-items: center; gap: 4px;">
+                        📸 Câmera Nativa
+                    </button>
+                </div>
+
                 <div style="display: flex; gap: 8px; width: 100%; align-items: center;">
                     <input type="text" id="inputCodigoManual" placeholder="Digite o código ou use a pistola..." style="flex: 1; padding: 10px; border: 1px solid #94a3b8; border-radius: 6px; font-size: 14px; outline: none; background: #fff; color: #000;" />
                     <button type="button" id="btnConfirmarManual" style="background: #2563eb; color: #fff; border: none; padding: 10px 18px; border-radius: 6px; font-weight: bold; cursor: pointer;">OK</button>
                 </div>
             `;
             cardModal.appendChild(containerManual);
+
+            const btnNativo = document.getElementById('btnCapturarNativo');
+            btnNativo.onclick = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dispararSeletorCameraNativo();
+            };
 
             const btn = document.getElementById('btnConfirmarManual');
             btn.onclick = (e) => {
@@ -69,7 +83,6 @@ function prepararModalCameraVisual() {
             setTimeout(() => inp.focus(), 150);
         }
 
-        // Listener global para pistolas USB/Bluetooth
         if (listenerTecladoGlobal) {
             window.removeEventListener('keydown', listenerTecladoGlobal);
         }
@@ -106,6 +119,63 @@ function prepararModalCameraVisual() {
 
         window.addEventListener('keydown', listenerTecladoGlobal);
     }
+}
+
+function dispararSeletorCameraNativo() {
+    let inputAntigo = document.getElementById('inputCameraNativoOculto');
+    if (inputAntigo) inputAntigo.remove();
+
+    const inputFile = document.createElement('input');
+    inputFile.type = 'file';
+    inputFile.id = 'inputCameraNativoOculto';
+    inputFile.accept = 'image/*';
+    inputFile.setAttribute('capture', 'environment');
+    inputFile.style.display = 'none';
+
+    inputFile.onchange = async (e) => {
+        const arquivo = e.target.files[0];
+        if (!arquivo) return;
+
+        console.log("PDV-VS: Foto capturada pela câmera nativa, decodificando...");
+
+        try {
+            const qrScanner = new window.Html5Qrcode("modalCamera") || new window.Html5Qrcode("videoPreviewCamera");
+            
+            // Tenta escanear o arquivo de imagem bruto
+            let codigoLido = null;
+            try {
+                codigoLido = await qrScanner.scanFile(arquivo, true);
+            } catch (errScan) {
+                console.warn("Scan padrão falhou, tentando modo relaxado...", errScan);
+            }
+
+            if (codigoLido) {
+                console.log("PDV-VS: Código decodificado com sucesso:", codigoLido);
+                processarCodigoCapturado(codigoLido.trim());
+            } else {
+                // Se falhou em achar o código de barras exato na imagem, 
+                // não trava a tela: devolve o foco para o input permitindo tentar de novo ou digitar na hora
+                console.warn("PDV-VS: Não foi possível extrair o código automaticamente da foto.");
+                const inp = document.getElementById('inputCodigoManual');
+                if (inp) {
+                    inp.placeholder = "Não lido na foto. Digite o número visível...";
+                    inp.focus();
+                }
+                alert("A foto foi tirada, mas o leitor não reconheceu o código de barras nela. Por favor, digite o número visível na etiqueta.");
+            }
+        } catch (err) {
+            console.error("PDV-VS Erro geral ao processar imagem nativa:", err);
+            const inp = document.getElementById('inputCodigoManual');
+            if (inp) inp.focus();
+            alert("Erro ao processar a foto. Tente novamente ou digite o código.");
+        } finally {
+            // Garante a remoção do input temporário para limpar a memória do DOM
+            if (inputFile) inputFile.remove();
+        }
+    };
+
+    document.body.appendChild(inputFile);
+    inputFile.click();
 }
 
 function executarEntradaManual() {
@@ -222,6 +292,9 @@ export async function fecharLeitorCamera() {
         window.removeEventListener('keydown', listenerTecladoGlobal);
         listenerTecladoGlobal = null;
     }
+
+    let inputAntigo = document.getElementById('inputCameraNativoOculto');
+    if (inputAntigo) inputAntigo.remove();
 
     if (html5QrcodeInstance) {
         try {
