@@ -8,7 +8,6 @@ import {
 } from './state.js';
 import { tratarAdicaoProduto } from './produtos.js';
 
-// Variável para gerenciar o buffer global de pistolas USB/Bluetooth com segurança
 let listenerTecladoGlobal = null;
 
 export async function abrirLeitorCamera() {
@@ -37,15 +36,25 @@ function prepararModalCameraVisual() {
             const cardModal = modalCam.querySelector('div') || modalCam;
             containerManual = document.createElement('div');
             containerManual.id = 'containerManualCamera';
-            containerManual.style.cssText = "margin-top: 15px; padding: 12px; background: #f8fafc; border-radius: 8px; border: 1px solid #cbd5e1; display: flex; gap: 8px; align-items: center; width: 100%; box-sizing: border-box; z-index: 100000; position: relative;";
+            containerManual.style.cssText = "margin-top: 15px; padding: 12px; background: #f8fafc; border-radius: 8px; border: 1px solid #cbd5e1; display: flex; flex-direction: column; gap: 8px; width: 100%; box-sizing: border-box; z-index: 100000; position: relative;";
             
             containerManual.innerHTML = `
-                <input type="text" id="inputCodigoManual" placeholder="Digite o código ou use a pistola / câmera..." style="flex: 1; padding: 10px; border: 1px solid #94a3b8; border-radius: 6px; font-size: 14px; outline: none; background: #fff; color: #000;" />
-                <button type="button" id="btnConfirmarManual" style="background: #2563eb; color: #fff; border: none; padding: 10px 18px; border-radius: 6px; font-weight: bold; cursor: pointer;">OK</button>
+                <div style="display: flex; gap: 8px; width: 100%; align-items: center;">
+                    <input type="text" id="inputCodigoManual" placeholder="Digite o código ou use a pistola..." style="flex: 1; padding: 10px; border: 1px solid #94a3b8; border-radius: 6px; font-size: 14px; outline: none; background: #fff; color: #000;" />
+                    <button type="button" id="btnConfirmarManual" style="background: #2563eb; color: #fff; border: none; padding: 10px 18px; border-radius: 6px; font-weight: bold; cursor: pointer;">OK</button>
+                </div>
+                <!-- Botão exclusivo para dispositivos móveis / iPhone tirarem foto do código caso a câmera automática falhe -->
+                <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #e2e8f0; pt-2; margin-top: 4px; padding-top: 8px;">
+                    <span style="font-size: 12px; color: #64748b;">Dificuldade no iPhone? Tire uma foto do código:</span>
+                    <label for="inputFotoCodigo" style="background: #0ea5e9; color: #fff; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; display: inline-block;">
+                        📸 Capturar Foto / Arquivo
+                    </label>
+                    <input type="file" id="inputFotoCodigo" accept="image/*" capture="environment" style="display: none;" />
+                </div>
             `;
             cardModal.appendChild(containerManual);
 
-            // Evento direto no botão OK (Captura manual e envia para a aba/janela correta)
+            // Evento do botão OK / Digitação Manual
             const btn = document.getElementById('btnConfirmarManual');
             btn.onclick = (e) => {
                 e.preventDefault();
@@ -53,13 +62,39 @@ function prepararModalCameraVisual() {
                 executarEntradaManual();
             };
 
-            // Evento de tecla Enter no input manual
             const inp = document.getElementById('inputCodigoManual');
             inp.onkeydown = (e) => {
                 if (e.key === 'Enter') {
                     e.preventDefault();
                     e.stopPropagation();
                     executarEntradaManual();
+                }
+            };
+
+            // Evento para capturar a foto tirada pelo iPhone/Celular e processar o arquivo de imagem
+            const inputFoto = document.getElementById('inputFotoCodigo');
+            inputFoto.onchange = async (e) => {
+                const arquivo = e.target.files[0];
+                if (!arquivo) return;
+
+                console.log("PDV-VS: Imagem capturada via arquivo/câmera nativa para leitura.");
+                
+                // Se houver uma instância de escaneamento ativa, pausa temporariamente
+                if (html5QrcodeInstance && html5QrcodeInstance.isScanning) {
+                    try { await html5QrcodeInstance.stop(); } catch (err) {}
+                }
+
+                try {
+                    // Utiliza a própria biblioteca Html5Qrcode para decodificar o arquivo de imagem enviado (funciona perfeitamente no iOS)
+                    const qrScanner = new window.Html5Qrcode("videoPreviewCamera");
+                    const resultadoDecodificado = await qrScanner.scanFile(arquivo, true);
+                    
+                    if (resultadoDecodificado) {
+                        processarCodigoCapturado(resultadoDecodificado.trim());
+                    }
+                } catch (err) {
+                    console.error("Erro ao decodificar a imagem enviada:", err);
+                    alert("Não foi possível ler o código de barras desta imagem. Tente aproximar ou digitar manualmente no campo acima.");
                 }
             };
         }
@@ -70,9 +105,7 @@ function prepararModalCameraVisual() {
             setTimeout(() => inp.focus(), 150);
         }
 
-        // ==========================================
-        // SUPORTE PROFISSIONAL PARA PISTOLA USB / BLUETOOTH
-        // ==========================================
+        // Listener global para pistolas USB/Bluetooth
         if (listenerTecladoGlobal) {
             window.removeEventListener('keydown', listenerTecladoGlobal);
         }
@@ -86,7 +119,6 @@ function prepararModalCameraVisual() {
 
             if (!modalEstaAtivo) return;
 
-            // Pistolas de código de barras digitam muito rápido (< 100ms entre caracteres)
             if (tempoAtual - ultimoTempo > 100) {
                 bufferLeitor = '';
             }
@@ -102,8 +134,6 @@ function prepararModalCameraVisual() {
                 }
             } else if (e.key.length === 1) {
                 bufferLeitor += e.key;
-                
-                // Se o usuário estiver digitando e o foco não estiver no input, joga os caracteres lá para feedback visual
                 if (document.activeElement !== inp && inp) {
                     inp.value += e.key;
                 }
@@ -130,13 +160,11 @@ function processarCodigoCapturado(termoDigitado) {
 
     console.log(`PDV-VS: Processando termo [Origem: ${origemLeitor}] ->`, termoDigitado);
     
-    // Remove o listener global para evitar duplicações ao fechar
     if (listenerTecladoGlobal) {
         window.removeEventListener('keydown', listenerTecladoGlobal);
         listenerTecladoGlobal = null;
     }
 
-    // Fecha o modal da câmera e limpa instâncias
     fecharLeitorCamera();
 
     if (origemLeitor === 'busca') {
@@ -154,7 +182,6 @@ function processarCodigoCapturado(termoDigitado) {
             alert(`PDV-VS: Nenhum produto correspondente a "${termoDigitado}" foi encontrado.`);
         }
     } else if (origemLeitor === 'admin') {
-        // Injeta o valor de forma limpa na aba/janela ao lado (Admin)
         const inputCodigo = document.getElementById('formCodigo');
         if (inputCodigo) {
             inputCodigo.value = termoDigitado;
@@ -218,7 +245,7 @@ export async function iniciarCameraComHtml5Qrcode() {
                 processarCodigoCapturado(decodedText.trim());
             },
             (errorMessage) => {
-                // Ignora ruídos de frame da leitura por câmera
+                // Ignora ruídos de frame
             }
         );
     } catch (err) {
