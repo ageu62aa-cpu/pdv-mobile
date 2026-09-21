@@ -40,9 +40,9 @@ function prepararModalCameraVisual() {
             
             containerManual.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 2px;">
-                    <span style="font-size: 11px; color: #64748b; font-weight: 500;">Alternativa (iPhone / Foto):</span>
+                    <span style="font-size: 11px; color: #64748b; font-weight: 500;">Alternativa (Foto / Arquivo):</span>
                     <button type="button" id="btnCapturarNativo" style="background: #0ea5e9; color: #fff; border: none; padding: 5px 10px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px; display: flex; align-items: center; gap: 4px;">
-                        📸 Câmera Nativa
+                        📸 Enviar / Tirar Foto
                     </button>
                 </div>
 
@@ -129,47 +129,42 @@ function dispararSeletorCameraNativo() {
     inputFile.type = 'file';
     inputFile.id = 'inputCameraNativoOculto';
     inputFile.accept = 'image/*';
-    inputFile.setAttribute('capture', 'environment');
     inputFile.style.display = 'none';
 
     inputFile.onchange = async (e) => {
         const arquivo = e.target.files[0];
         if (!arquivo) return;
 
-        console.log("PDV-VS: Foto capturada pela câmera nativa, decodificando...");
+        console.log("PDV-VS: Imagem selecionada/capturada, decodificando...");
 
         try {
             const qrScanner = new window.Html5Qrcode("modalCamera") || new window.Html5Qrcode("videoPreviewCamera");
             
-            // Tenta escanear o arquivo de imagem bruto
             let codigoLido = null;
             try {
                 codigoLido = await qrScanner.scanFile(arquivo, true);
             } catch (errScan) {
-                console.warn("Scan padrão falhou, tentando modo relaxado...", errScan);
+                console.warn("Scan padrão falhou:", errScan);
             }
 
             if (codigoLido) {
                 console.log("PDV-VS: Código decodificado com sucesso:", codigoLido);
                 processarCodigoCapturado(codigoLido.trim());
             } else {
-                // Se falhou em achar o código de barras exato na imagem, 
-                // não trava a tela: devolve o foco para o input permitindo tentar de novo ou digitar na hora
                 console.warn("PDV-VS: Não foi possível extrair o código automaticamente da foto.");
                 const inp = document.getElementById('inputCodigoManual');
                 if (inp) {
                     inp.placeholder = "Não lido na foto. Digite o número visível...";
                     inp.focus();
                 }
-                alert("A foto foi tirada, mas o leitor não reconheceu o código de barras nela. Por favor, digite o número visível na etiqueta.");
+                alert("A imagem foi enviada, mas o leitor não reconheceu o código de barras. Digite o número visível na etiqueta.");
             }
         } catch (err) {
-            console.error("PDV-VS Erro geral ao processar imagem nativa:", err);
+            console.error("PDV-VS Erro geral ao processar imagem:", err);
             const inp = document.getElementById('inputCodigoManual');
             if (inp) inp.focus();
-            alert("Erro ao processar a foto. Tente novamente ou digite o código.");
+            alert("Erro ao processar a imagem. Tente novamente ou digite o código.");
         } finally {
-            // Garante a remoção do input temporário para limpar a memória do DOM
             if (inputFile) inputFile.remove();
         }
     };
