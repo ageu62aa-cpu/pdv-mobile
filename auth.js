@@ -13,6 +13,10 @@ import { carregarProdutosCache } from './produtos.js';
 import { atualizarBadgesCaixaInterface, focarBusca, atualizarTabelaVenda } from './caixa.js';
 import { carregarHistoricoAdmin, carregarOperadoresLoja } from './admin.js';
 
+// Variável de controle para o gatilho secreto de 5 cliques do SuperAdmin
+let contadorCliquesAdmin = 0;
+let tempoUltimoCliqueAdmin = 0;
+
 window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     setDeferredPrompt(e);
@@ -31,6 +35,23 @@ export async function instalarPwaApp() {
         setDeferredPrompt(null);
     } else {
         alert('PDV-VS: Instale diretamente pelas configurações ou menu do seu navegador.');
+    }
+}
+
+// Função de gatilho secreto por cliques (5 cliques para liberar o SuperAdmin)
+export function registrarCliqueSecretoAdmin() {
+    const agora = Date.now();
+    if (agora - tempoUltimoCliqueAdmin > 1000) {
+        contadorCliquesAdmin = 1;
+    } else {
+        contadorCliquesAdmin++;
+    }
+    tempoUltimoCliqueAdmin = agora;
+
+    if (contadorCliquesAdmin >= 5) {
+        contadorCliquesAdmin = 0;
+        alternarTelaAuth('admin');
+        console.log('PDV-VS: Acesso SuperAdmin desbloqueado por gestos.');
     }
 }
 
@@ -57,7 +78,11 @@ export function alternarTelaAuth(modo) {
         if (fields.titulo) fields.titulo.innerText = 'PDV-VS Enterprise'; 
         if (fields.subtitulo) fields.subtitulo.innerText = `Versão ${VERSAO_SISTEMA}`;
         if (fields.btn) fields.btn.innerText = 'Acessar Sistema';
-        if (fields.icone) fields.icone.className = 'fa-solid fa-cash-register text-4xl text-emerald-600 mb-2';
+        if (fields.icone) {
+            fields.icone.className = 'fa-solid fa-cash-register text-4xl text-emerald-600 mb-2 cursor-pointer';
+            // Atribui o evento de cliques secretos no icone de login
+            fields.icone.onclick = registrarCliqueSecretoAdmin;
+        }
         if (fields.divSenha) fields.divSenha.classList.remove('hidden'); 
         if (fields.links) fields.links.classList.remove('hidden');
         if (fields.voltar) fields.voltar.classList.add('hidden'); 
@@ -261,15 +286,21 @@ export function concluirLoginSucesso(cargoUser) {
             if (badgeLoja) badgeLoja.innerText = `Loja #${dadosEmpresaAtual.id.substring(0,6)}`;
         }
         
+        // Controle de visibilidade do Botão Admin no menu superior (Apenas para admin_mercado)
         const btnAdminMenu = document.getElementById('btnAdminMenu');
-        if (btnAdminMenu) btnAdminMenu.classList.toggle('hidden', cargoUser !== 'admin_mercado');
+        if (btnAdminMenu) {
+            if (cargoUser === 'admin_mercado') {
+                btnAdminMenu.classList.remove('hidden');
+            } else {
+                btnAdminMenu.classList.add('hidden');
+            }
+        }
 
         atualizarBadgesCaixaInterface();
     } catch (errUI) {
         console.warn('Aviso na interface de login:', errUI);
     }
 
-    // FORÇAR A ABERTURA DA TELA PRINCIPAL (MESMO SE HOUVER AVISOS SECUNDÁRIOS)
     const telaLogin = document.getElementById('telaLogin');
     const appPrincipal = document.getElementById('appPrincipal');
     if (telaLogin) telaLogin.classList.add('hidden');
@@ -413,3 +444,4 @@ window.abrirSuperAdminMaster = abrirSuperAdminMaster;
 window.fecharSuperAdminMaster = fecharSuperAdminMaster;
 window.alternarStatusEmpresa = alternarStatusEmpresa;
 window.instalarPwaApp = instalarPwaApp;
+window.registrarCliqueSecretoAdmin = registrarCliqueSecretoAdmin;

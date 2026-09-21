@@ -8,6 +8,9 @@ import {
 } from './state.js';
 import { atualizarTabelaVenda, focarBusca } from './caixa.js';
 
+// Índice do item selecionado via teclado na lista de sugestões
+let indiceItemSelecionadoTeclado = -1;
+
 export async function carregarProdutosCache() {
     if (!empresaAtualId) return;
     const { data, error } = await supabaseClient
@@ -26,14 +29,16 @@ export async function carregarProdutosCache() {
 export function aoDigitarBusca(termo) {
     const painel = document.getElementById('painelSugestoes');
     if (!painel) return;
+    indiceItemSelecionadoTeclado = -1; // Reseta a seleção ao digitar
+
     if (termo.length < 2) { painel.classList.add('hidden'); return; }
     
     const termoLower = termo.toLowerCase();
     const filtrados = produtosCache.filter(p => p.nome.toLowerCase().includes(termoLower) || (p.codigo && p.codigo.toLowerCase().includes(termoLower)));
     let html = '';
-    filtrados.forEach(p => {
+    filtrados.forEach((p, idx) => {
         const prodString = JSON.stringify(p).replace(/"/g, '&quot;');
-        html += `<div onclick="window.adicionarItemVendaPorObjeto('${prodString}')" class="p-3 hover:bg-slate-50 cursor-pointer border-b flex justify-between text-sm"> <div><span class="font-semibold text-slate-800">${p.nome}</span><span class="text-xs text-slate-400 block">Cód: ${p.codigo || 'N/A'} | Estoque: ${p.estoque} ${p.unidade === 'KG' ? '<span class="text-amber-600 font-bold">(Por Peso)</span>' : ''}</span></div> <b>R$ ${Number(p.preco).toFixed(2)} ${p.unidade === 'KG' ? '/kg' : ''}</b> </div>`;
+        html += `<div id="sugestao-item-${idx}" onclick="window.adicionarItemVendaPorObjeto('${prodString}')" class="p-3 hover:bg-slate-100 cursor-pointer border-b flex justify-between text-sm item-sugestao-busca"> <div><span class="font-semibold text-slate-800">${p.nome}</span><span class="text-xs text-slate-400 block">Cód: ${p.codigo || 'N/A'} | Estoque: ${p.estoque} ${p.unidade === 'KG' ? '<span class="text-amber-600 font-bold">(Por Peso)</span>' : ''}</span></div> <b>R$ ${Number(p.preco).toFixed(2)} ${p.unidade === 'KG' ? '/kg' : ''}</b> </div>`;
     });
     painel.innerHTML = html || '<div class="p-3 text-xs text-slate-400">Nenhum produto encontrado.</div>';
     painel.classList.remove('hidden');
@@ -51,6 +56,7 @@ export function adicionarItemVendaPorObjeto(prodStr) {
 export function tratarAdicaoProduto(produto) {
     const painel = document.getElementById('painelSugestoes');
     if (painel) painel.classList.add('hidden');
+    indiceItemSelecionadoTeclado = -1;
     
     const inputBusca = document.getElementById('inputBusca');
     if (inputBusca) {
@@ -167,9 +173,34 @@ export function adicionarItemVendaDireto(produto, qtd, isPeso = false) {
     atualizarTabelaVenda();
 }
 
+// Navegação por Teclado nas Sugestões de Busca (Setas e Enter)
 export function tratarEnterBuscaCaixa(e) {
+    const painel = document.getElementById('painelSugestoes');
+    const itens = painel ? painel.querySelectorAll('.item-sugestao-busca') : [];
+
+    if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (itens.length === 0) return;
+        indiceItemSelecionadoTeclado = (indiceItemSelecionadoTeclado + 1) % itens.length;
+        atualizarDestaqueSugestoes(itens);
+        return;
+    }
+
+    if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (itens.length === 0) return;
+        indiceItemSelecionadoTeclado = (indiceItemSelecionadoTeclado - 1 + itens.length) % itens.length;
+        atualizarDestaqueSugestoes(itens);
+        return;
+    }
+
     if (e.key === 'Enter') {
         e.preventDefault();
+        if (itens.length > 0 && indiceItemSelecionadoTeclado >= 0 && itens[indiceItemSelecionadoTeclado]) {
+            itens[indiceItemSelecionadoTeclado].click();
+            return;
+        }
+
         const termo = e.target.value.trim().toLowerCase();
         if (!termo) return;
         
@@ -182,6 +213,17 @@ export function tratarEnterBuscaCaixa(e) {
             else alert('PDV-VS: Produto não encontrado!');
         }
     }
+}
+
+function atualizarDestaqueSugestoes(itens) {
+    itens.forEach((el, idx) => {
+        if (idx === indiceItemSelecionadoTeclado) {
+            el.classList.add('bg-emerald-100', 'border-emerald-300');
+            el.scrollIntoView({ block: 'nearest' });
+        } else {
+            el.classList.remove('bg-emerald-100', 'border-emerald-300');
+        }
+    });
 }
 
 // Expondo funções deste módulo para o escopo global

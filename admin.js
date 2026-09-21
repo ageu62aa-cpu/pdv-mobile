@@ -24,7 +24,6 @@ export async function mudarAbaAdmin(aba) {
     if (conteudoAtivo) conteudoAtivo.classList.remove('hidden');
     if (btnAtivo) btnAtivo.className = 'px-3 py-1.5 text-xs font-bold bg-emerald-600 text-white rounded-lg';
     
-    // Garante o carregamento imediato e síncrono da aba selecionada
     if (aba === 'produtos' || aba === 'Produtos') {
         await carregarProdutosCache();
         renderizarTabelaAdmin(produtosCache);
@@ -58,7 +57,6 @@ export async function abrirPainelAdmin() {
         modalAdmin.classList.remove('hidden'); 
     }
 
-    // 1. Garante que o ID da empresa esteja resolvido ANTES de puxar os dados
     let idEmpresaAtual = empresaAtualId || localStorage.getItem('empresa_id') || localStorage.getItem('pdv_empresa_id');
 
     try {
@@ -82,7 +80,6 @@ export async function abrirPainelAdmin() {
         console.error("Erro ao validar empresa na sessão ao abrir painel:", e);
     }
 
-    // 2. Carrega todos os dados principais em tempo real assim que o painel abre
     try {
         await carregarProdutosCache(); 
         renderizarTabelaAdmin(produtosCache); 
@@ -556,7 +553,10 @@ window.abrirModalNovaMaquininha = abrirModalNovaMaquininha;
 window.fecharModalNovaMaquininha = fecharModalNovaMaquininha;
 window.salvarNovaMaquininha = salvarNovaMaquininha;
 window.excluirMaquininhaAdmin = excluirMaquininhaAdmin;
+window.carregarOperadoresLoja = carregarOperadoresLoja;
 window.excluirOperadorLoja = excluirOperadorLoja;
 window.abrirModalNovoOperador = abrirModalNovoOperador;
 window.fecharModalNovoOperador = fecharModalNovoOperador;
 window.salvarNovoOperador = salvarNovoOperador;
+window.carregarHistoricoAdmin = carregarHistoricoAdmin;
+window.renderizarHistoricoVendasPorJanelasDiarias = renderizarHistoricoVendasPorJanelasDiarias;

@@ -11,7 +11,10 @@ import { tratarAdicaoProduto } from './produtos.js';
 export async function abrirLeitorCamera() {
     setOrigemLeitor('busca');
     const modalCam = document.getElementById('modalCamera');
-    if (modalCam) modalCam.classList.remove('hidden');
+    if (modalCam) {
+        modalCam.classList.add('flex');
+        modalCam.classList.remove('hidden');
+    }
     await iniciarCameraComHtml5Qrcode();
 }
 
@@ -78,3 +81,8 @@ export async function fecharLeitorCamera() {
         modalCamera.classList.remove('flex');
     }
 }
+
+// Vinculação global para garantir acesso direto via HTML e eventos do navegador
+window.abrirLeitorCamera = abrirLeitorCamera;
+window.escanearCameraAdmin = escanearCameraAdmin;
+window.fecharLeitorCamera = fecharLeitorCamera;

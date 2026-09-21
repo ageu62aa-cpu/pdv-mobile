@@ -18,7 +18,6 @@ let horaAberturaCaixa = null;
 export async function verificarStatusCaixaServidor() {
     if (!empresaAtualId || !usuarioAtual) return;
     try {
-        // Busca o status e faturamento específico do usuário/operador atual logado na tabela 'caixas'
         const { data, error } = await supabaseClient
             .from('caixas')
             .select('status, valor_abertura, faturamento_dia')
@@ -43,7 +42,6 @@ export async function verificarStatusCaixaServidor() {
             atualizarBadgesCaixaInterface();
         }
 
-        // Se for admin, garante o carregamento imediato dos operadores e histórico ao verificar o servidor
         if (cargoUsuarioAtual === 'admin_mercado') {
             if (typeof carregarOperadoresLoja === 'function') carregarOperadoresLoja();
             if (typeof carregarHistoricoAdmin === 'function') carregarHistoricoAdmin();
@@ -64,13 +62,10 @@ export function iniciarRealtimeCaixa() {
             {
                 event: '*',
                 schema: 'public',
-                table: 'caixas', // Tabela dedicada ao controle de caixas individuais
+                table: 'caixas',
                 filter: `empresa_id=eq.${empresaAtualId}`
             },
             (payload) => {
-                console.log('Mudança detectada no Realtime:', payload);
-                
-                // Se a alteração pertencer ao usuário logado atual
                 if (payload.new && payload.new.user_id === usuarioAtual?.id) {
                     const novoStatus = payload.new.status === 'ABERTO';
                     const novoFat = Number(payload.new.faturamento_dia) || 0;
@@ -88,7 +83,6 @@ export function iniciarRealtimeCaixa() {
                     }
                 }
 
-                // Se o usuário atual for admin, atualiza também os dados gerenciais do painel
                 if (cargoUsuarioAtual === 'admin_mercado') {
                     if (typeof carregarOperadoresLoja === 'function') carregarOperadoresLoja();
                     if (typeof carregarHistoricoAdmin === 'function') carregarHistoricoAdmin();
@@ -98,7 +92,15 @@ export function iniciarRealtimeCaixa() {
         .subscribe();
 }
 
-// Inicializa o listener de tempo real e checagem inicial logo ao carregar o módulo
+// Inicializador de Atalhos Globais por Teclado (incluindo F6 para Cancelar Item)
+window.addEventListener('keydown', (e) => {
+    // Atalho F6 para Cancelar Item
+    if (e.key === 'F6') {
+        e.preventDefault();
+        abrirModalCancelarItem();
+    }
+});
+
 setTimeout(() => {
     iniciarRealtimeCaixa();
     verificarStatusCaixaServidor();
@@ -108,7 +110,6 @@ setTimeout(() => {
     }
 }, 500);
 
-// Verifica o status sempre que a aba/janela ganha foco
 window.addEventListener('focus', () => {
     verificarStatusCaixaServidor();
 });
@@ -479,3 +480,26 @@ export function alterarQtd(i, qtd) {
     const q = parseFloat(qtd); 
     if (q > 0) { itensVenda[i].qtd = q; atualizarTabelaVenda(); } 
 }
+
+// Expondo funções deste módulo para o escopo global
+window.verificarStatusCaixaServidor = verificarStatusCaixaServidor;
+window.iniciarRealtimeCaixa = iniciarRealtimeCaixa;
+window.atualizarPaginaCompleta = atualizarPaginaCompleta;
+window.realizarLogout = realizarLogout;
+window.focarBusca = focarBusca;
+window.gerenciarCaixaModal = gerenciarCaixaModal;
+window.tratarEnterModalCaixa = tratarEnterModalCaixa;
+window.fecharModalCaixa = fecharModalCaixa;
+window.confirmarAcaoCaixa = confirmarAcaoCaixa;
+window.atualizarBadgesCaixaInterface = atualizarBadgesCaixaInterface;
+window.salvarPinAdmin = salvarPinAdmin;
+window.solicitarRemocaoItem = solicitarRemocaoItem;
+window.tratarEnterModalAutorizacao = tratarEnterModalAutorizacao;
+window.confirmarAutorizacaoPin = confirmarAutorizacaoPin;
+window.fecharModalAutorizacao = fecharModalAutorizacao;
+window.abrirModalCancelarItem = abrirModalCancelarItem;
+window.fecharModalCancelarItem = fecharModalCancelarItem;
+window.cancelarVenda = cancelarVenda;
+window.finalizarVenda = finalizarVenda;
+window.atualizarTabelaVenda = atualizarTabelaVenda;
+window.alterarQtd = alterarQtd;
