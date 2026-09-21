@@ -6,7 +6,7 @@ import {
     usuarioAtual, empresaAtualId, cargoUsuarioAtual, caixaAberto, faturamentoDia, 
     acaoCaixaAtual, itensVenda, indiceItemParaRemover, setAcaoCaixaAtual, 
     setCaixaAberto, setFaturamentoDia, setIndiceItemParaRemover, setItensVenda, 
-    produtosCache 
+    produtosCache, setEmpresaAtualId 
 } from './state.js';
 import { carregarProdutosCache } from './produtos.js';
 import { carregarHistoricoAdmin, carregarOperadoresLoja } from './admin.js';
@@ -179,13 +179,36 @@ export function fecharModalCaixa() {
 }
 
 export async function confirmarAcaoCaixa() {
-    const inputValorCaixa = document.getElementById('inputValorCaixa');
-    const valorDigitado = inputValorCaixa ? parseFloat(inputValorCaixa.value) || 0 : 0;
+    let idEmpresaAtual = empresaAtualId || localStorage.getItem('empresa_id') || localStorage.getItem('pdv_empresa_id');
 
-    if (!empresaAtualId || !usuarioAtual) {
+    try {
+        const { data: { session } } = await window.supabaseClient.auth.getSession();
+        if (session && session.user) {
+            const { data: vincData } = await window.supabaseClient
+                .from('usuarios_empresas')
+                .select('empresa_id')
+                .eq('user_id', session.user.id)
+                .maybeSingle();
+            
+            if (vincData && vincData.empresa_id) {
+                idEmpresaAtual = vincData.empresa_id;
+            } else if (!idEmpresaAtual) {
+                idEmpresaAtual = session.user.id;
+            }
+            setEmpresaAtualId(idEmpresaAtual);
+            localStorage.setItem('empresa_id', idEmpresaAtual);
+        }
+    } catch (e) {
+        console.error("Erro ao validar empresa na sessão:", e);
+    }
+
+    if (!idEmpresaAtual || !usuarioAtual) {
         alert('PDV-VS: Erro: Sessão do usuário ou empresa não identificada.');
         return;
     }
+
+    const inputValorCaixa = document.getElementById('inputValorCaixa');
+    const valorDigitado = inputValorCaixa ? parseFloat(inputValorCaixa.value) || 0 : 0;
 
     if (acaoCaixaAtual === 'abrir') {
         valorTrocoAbertura = valorDigitado;
@@ -195,7 +218,7 @@ export async function confirmarAcaoCaixa() {
         const { error } = await supabaseClient
             .from('caixas')
             .upsert({ 
-                empresa_id: empresaAtualId,
+                empresa_id: idEmpresaAtual,
                 user_id: usuarioAtual.id,
                 status: 'ABERTO',
                 valor_abertura: valorTrocoAbertura,
@@ -203,15 +226,14 @@ export async function confirmarAcaoCaixa() {
                 data_abertura: new Date().toISOString(),
                 data_fechamento: null,
                 updated_at: new Date().toISOString()
-            }, { onConflict: 'empresa_id,user_id,status' }); // Ajuste conforme restrição única se houver
+            }, { onConflict: 'empresa_id,user_id,status' });
 
         if (error) {
             console.error('Erro ao abrir caixa no banco:', error);
-            // Fallback caso upsert dê conflito por chave primária genérica: tenta inserir diretamente
             const { error: errInsert } = await supabaseClient
                 .from('caixas')
                 .insert({ 
-                    empresa_id: empresaAtualId,
+                    empresa_id: idEmpresaAtual,
                     user_id: usuarioAtual.id,
                     status: 'ABERTO',
                     valor_abertura: valorTrocoAbertura,
@@ -243,7 +265,7 @@ export async function confirmarAcaoCaixa() {
                 data_fechamento: new Date().toISOString(),
                 updated_at: new Date().toISOString()
             })
-            .eq('empresa_id', empresaAtualId)
+            .eq('empresa_id', idEmpresaAtual)
             .eq('user_id', usuarioAtual.id)
             .eq('status', 'ABERTO');
 
