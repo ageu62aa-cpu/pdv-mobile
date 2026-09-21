@@ -1,5 +1,5 @@
 // ==========================================
-// MÓDULO DE LEITOR DE CÂMERA (PDV-VS) - BLINDADO PARA iOS
+// MÓDULO DE LEITOR DE CÂMERA (PDV-VS) - BLINDAGEM DE PERMISSÃO iOS
 // ==========================================
 
 import { 
@@ -94,6 +94,17 @@ export async function iniciarCameraComHtml5Qrcode() {
             return;
         }
 
+        // PASSO OBRIGATÓRIO PARA iOS: Força o navegador a exibir o pop-up de permissão antes de iniciar a lib
+        try {
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                const streamTemp = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+                // Encerra imediatamente o stream temporário apenas para garantir que a permissão foi concedida
+                streamTemp.getTracks().forEach(track => track.stop());
+            }
+        } catch (errPermissao) {
+            console.warn("Aviso na pré-permissão de mídia (pode já estar concedida):", errPermissao);
+        }
+
         const QrLib = window.Html5Qrcode;
         if (!QrLib) {
             console.error("PDV-VS: Biblioteca Html5Qrcode não encontrada no escopo global.");
@@ -103,7 +114,6 @@ export async function iniciarCameraComHtml5Qrcode() {
         const instance = new QrLib(elementId);
         setHtml5QrcodeInstance(instance);
         
-        // Configuração de quadros e moldura otimizada para leitura rápida
         const config = { 
             fps: 25,
             qrbox: { width: 280, height: 140 },
@@ -111,38 +121,13 @@ export async function iniciarCameraComHtml5Qrcode() {
             rememberLastUsedCamera: true
         };
 
-        let cameraIdParaUso = { facingMode: "environment" };
-
-        // TRUQUE DEFINITIVO PARA iOS: Tenta mapear as câmeras físicas reais do aparelho
-        try {
-            const devices = await QrLib.getCameras();
-            if (devices && devices.length > 0) {
-                console.log("PDV-VS: Câmeras detectadas:", devices);
-                // Busca preferencialmente por uma câmera traseira (back, rear, environment)
-                const cameraTraseira = devices.find(device => {
-                    const label = device.label.toLowerCase();
-                    return label.includes('back') || label.includes('traseira') || label.includes('rear') || label.includes('environment');
-                });
-
-                if (cameraTraseira) {
-                    cameraIdParaUso = cameraTraseira.id;
-                    console.log("PDV-VS: Usando ID específico da câmera traseira:", cameraTraseira.label);
-                } else {
-                    // Se não achar pelo rótulo, pega a última da lista (geralmente a principal traseira em iPhones com múltiplas lentes)
-                    cameraIdParaUso = devices[devices.length - 1].id;
-                }
-            }
-        } catch (errCamList) {
-            console.warn("PDV-VS: Não foi possível enumerar câmeras via getCameras, usando fallback facingMode.", errCamList);
-        }
-
-        // Força constraints avançadas de resolução e foco adaptadas para o WebKit/Safari do iOS
-        const constraintsAvancadas = typeof cameraIdParaUso === 'string' 
-            ? { deviceId: { exact: cameraIdParaUso }, width: { ideal: 1280 }, height: { ideal: 720 } }
-            : { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } };
+        // Configuração direta e segura compatível com iOS e Android sem travar na listagem de dispositivos
+        const cameraConfig = { 
+            facingMode: "environment" 
+        };
 
         await instance.start(
-            constraintsAvancadas,
+            cameraConfig,
             config,
             (decodedText) => {
                 if (!decodedText) return;
