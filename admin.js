@@ -46,9 +46,19 @@ export async function recarregarDadosAdmin() {
     alert('PDV-VS: Dados do painel administrativo atualizados com sucesso!');
 }
 
-export function abrirPainelAdmin() { 
+export async function abrirPainelAdmin() { 
+    // Garante o carregamento automático imediato ao abrir o painel
+    await carregarProdutosCache(); 
     renderizarTabelaAdmin(produtosCache); 
+    
+    if (cargoUsuarioAtual === 'admin_mercado') {
+        if (typeof carregarOperadoresLoja === 'function') await carregarOperadoresLoja();
+        if (typeof carregarHistoricoAdmin === 'function') await carregarHistoricoAdmin();
+        if (typeof carregarMaquininhasAdmin === 'function') await carregarMaquininhasAdmin();
+    }
+
     mudarAbaAdmin('produtos'); 
+    
     const modalAdmin = document.getElementById('modalAdmin');
     if (modalAdmin) {
         modalAdmin.classList.add('flex');
