@@ -58,16 +58,20 @@ export async function abrirPainelAdmin() {
         modalAdmin.classList.remove('hidden'); 
     }
 
-    // Carrega todos os dados principais em paralelo para garantir exibição imediata
-    await carregarProdutosCache(); 
-    renderizarTabelaAdmin(produtosCache); 
-    
-    if (cargoUsuarioAtual === 'admin_mercado') {
-        await Promise.all([
-            carregarOperadoresLoja(),
-            carregarHistoricoAdmin(),
-            carregarMaquininhasAdmin()
-        ]);
+    // Carrega todos os dados principais imediatamente ao abrir o painel
+    try {
+        await carregarProdutosCache(); 
+        renderizarTabelaAdmin(produtosCache); 
+        
+        if (cargoUsuarioAtual === 'admin_mercado') {
+            await Promise.all([
+                carregarOperadoresLoja(),
+                carregarHistoricoAdmin(),
+                carregarMaquininhasAdmin()
+            ]);
+        }
+    } catch (e) {
+        console.error("Erro ao carregar dados ao abrir o painel:", e);
     }
 
     mudarAbaAdmin('produtos'); 
