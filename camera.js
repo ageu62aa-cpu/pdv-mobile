@@ -1,30 +1,66 @@
 // ==========================================
-// MÓDULO DE LEITOR DE CÂMERA (PDV-VS)
+// MÓDULO DE LEITOR DE CÂMERA NATIVO (PDV-VS)
 // ==========================================
 
 import { 
-    origemLeitor, html5QrcodeInstance, setOrigemLeitor, 
-    setHtml5QrcodeInstance, produtosCache 
+    origemLeitor, setOrigemLeitor, produtosCache 
 } from './state.js';
 import { tratarAdicaoProduto } from './produtos.js';
 
-let listenerTecladoGlobal = null;
-
 export async function abrirLeitorCamera() {
-    console.log("PDV-VS: Abrindo leitor para Vendas (busca)");
+    console.log("PDV-VS: Abrindo leitor nativo para Vendas (busca)");
     setOrigemLeitor('busca');
-    prepararModalCameraVisual();
-    await iniciarCameraComHtml5Qrcode();
+    dispararSeletorCameraNativo();
 }
 
 export async function escanearCameraAdmin() {
-    console.log("PDV-VS: Abrindo leitor para Admin");
+    console.log("PDV-VS: Abrindo leitor nativo para Admin");
     setOrigemLeitor('admin');
-    prepararModalCameraVisual();
-    await iniciarCameraComHtml5Qrcode();
+    dispararSeletorCameraNativo();
 }
 
-function prepararModalCameraVisual() {
+function dispararSeletorCameraNativo() {
+    // Remove input anterior se existir
+    let inputAntigo = document.getElementById('inputCameraNativoOculto');
+    if (inputAntigo) inputAntigo.remove();
+
+    // Cria um input file oculto configurado estritamente para abrir a câmera traseira
+    const inputFile = document.createElement('input');
+    inputFile.type = 'file';
+    inputFile.id = 'inputCameraNativoOculto';
+    inputFile.accept = 'image/*';
+    inputFile.setAttribute('capture', 'environment');
+    inputFile.style.display = 'none';
+
+    inputFile.onchange = async (e) => {
+        const arquivo = e.target.files[0];
+        if (!arquivo) return;
+
+        console.log("PDV-VS: Imagem capturada pela câmera nativa, processando...");
+
+        try {
+            // Usa o decodificador estático da biblioteca em cima da foto nativa de alta qualidade
+            const qrScanner = new window.Html5Qrcode("modalCamera") || new window.Html5Qrcode("tempScannerDiv");
+            const codigoLido = await qrScanner.scanFile(arquivo, true);
+
+            if (codigoLido) {
+                console.log("PDV-VS: Código lido com sucesso pela câmera nativa:", codigoLido);
+                processarCodigoCapturado(codigoLido.trim());
+            } else {
+                alert("Não foi possível identificar o código de barras na foto. Tente novamente aproximando mais.");
+            }
+        } catch (err) {
+            console.error("PDV-VS Erro ao decodificar imagem nativa:", err);
+            // Se falhar na leitura automática da foto, abre o modal de digitação manual para garantir que o fluxo não trave
+            abrirModalFallbackManual();
+        }
+    };
+
+    document.body.appendChild(inputFile);
+    inputFile.click();
+}
+
+function abrirModalFallbackManual() {
     const modalCam = document.getElementById('modalCamera');
     if (modalCam) {
         modalCam.style.zIndex = "99999";
@@ -36,91 +72,33 @@ function prepararModalCameraVisual() {
             const cardModal = modalCam.querySelector('div') || modalCam;
             containerManual = document.createElement('div');
             containerManual.id = 'containerManualCamera';
-            containerManual.style.cssText = "margin-top: 15px; padding: 12px; background: #f8fafc; border-radius: 8px; border: 1px solid #cbd5e1; display: flex; flex-direction: column; gap: 8px; width: 100%; box-sizing: border-box; z-index: 100000; position: relative;";
+            containerManual.style.cssText = "margin-top: 15px; padding: 12px; background: #f8fafc; border-radius: 8px; border: 1px solid #cbd5e1; display: flex; flex-direction: column; gap: 8px; width: 100%; box-sizing: border-box;";
             
             containerManual.innerHTML = `
-                <!-- Barra superior limpa com status amigável -->
-                <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 2px;">
-                    <span style="font-size: 11px; color: #64748b; font-weight: 600;">Leitor Ativo (Aponte ou Digite)</span>
-                    <button type="button" id="btnZerarFoco" style="background: #e2e8f0; color: #334155; border: none; padding: 4px 8px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 11px;">
-                        🔄 Recarregar Câmera
-                    </button>
-                </div>
-
+                <span style="font-size: 11px; color: #dc2626; font-weight: 600;">A foto não foi lida automaticamente. Digite o código abaixo:</span>
                 <div style="display: flex; gap: 8px; width: 100%; align-items: center;">
-                    <input type="text" id="inputCodigoManual" placeholder="Digite o código ou use a pistola..." style="flex: 1; padding: 10px; border: 1px solid #94a3b8; border-radius: 6px; font-size: 14px; outline: none; background: #fff; color: #000;" />
+                    <input type="text" id="inputCodigoManual" placeholder="Digite o código..." style="flex: 1; padding: 10px; border: 1px solid #94a3b8; border-radius: 6px; font-size: 14px; outline: none; background: #fff; color: #000;" />
                     <button type="button" id="btnConfirmarManual" style="background: #2563eb; color: #fff; border: none; padding: 10px 18px; border-radius: 6px; font-weight: bold; cursor: pointer;">OK</button>
                 </div>
             `;
             cardModal.appendChild(containerManual);
 
-            // Botão para reiniciar a câmera caso o iPhone trave o foco
-            const btnZerar = document.getElementById('btnZerarFoco');
-            btnZerar.onclick = async (e) => {
+            document.getElementById('btnConfirmarManual').onclick = (e) => {
                 e.preventDefault();
-                await iniciarCameraComHtml5Qrcode();
-            };
-
-            // Evento do botão OK limpo e direto
-            const btn = document.getElementById('btnConfirmarManual');
-            btn.onclick = (e) => {
-                e.preventDefault();
-                e.stopPropagation();
                 executarEntradaManual();
             };
 
-            const inp = document.getElementById('inputCodigoManual');
-            inp.onkeydown = (e) => {
+            document.getElementById('inputCodigoManual').onkeydown = (e) => {
                 if (e.key === 'Enter') {
                     e.preventDefault();
-                    e.stopPropagation();
                     executarEntradaManual();
                 }
             };
         }
-        
-        const inp = document.getElementById('inputCodigoManual');
-        if (inp) {
-            inp.value = '';
-            setTimeout(() => inp.focus(), 150);
-        }
-
-        // Listener global para pistolas USB/Bluetooth
-        if (listenerTecladoGlobal) {
-            window.removeEventListener('keydown', listenerTecladoGlobal);
-        }
-
-        let bufferLeitor = '';
-        let ultimoTempo = Date.now();
-
-        listenerTecladoGlobal = (e) => {
-            const tempoAtual = Date.now();
-            const modalEstaAtivo = modalCam && !modalCam.classList.contains('hidden');
-
-            if (!modalEstaAtivo) return;
-
-            if (tempoAtual - ultimoTempo > 100) {
-                bufferLeitor = '';
-            }
-            ultimoTempo = tempoAtual;
-
-            if (e.key === 'Enter') {
-                if (bufferLeitor.trim().length > 1) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    const codigoLido = bufferLeitor.trim();
-                    bufferLeitor = '';
-                    processarCodigoCapturado(codigoLido);
-                }
-            } else if (e.key.length === 1) {
-                bufferLeitor += e.key;
-                if (document.activeElement !== inp && inp) {
-                    inp.value += e.key;
-                }
-            }
-        };
-
-        window.addEventListener('keydown', listenerTecladoGlobal);
+        setTimeout(() => {
+            const inp = document.getElementById('inputCodigoManual');
+            if (inp) { inp.value = ''; inp.focus(); }
+        }, 150);
     }
 }
 
@@ -140,16 +118,10 @@ function processarCodigoCapturado(termoDigitado) {
 
     console.log(`PDV-VS: Processando termo [Origem: ${origemLeitor}] ->`, termoDigitado);
     
-    if (listenerTecladoGlobal) {
-        window.removeEventListener('keydown', listenerTecladoGlobal);
-        listenerTecladoGlobal = null;
-    }
-
     fecharLeitorCamera();
 
     if (origemLeitor === 'busca') {
         const termoLower = termoDigitado.toLowerCase();
-        
         const produtoEncontrado = produtosCache.find(prod => {
             const codigoMatch = prod.codigo && prod.codigo.trim().toLowerCase() === termoLower;
             const nomeMatch = prod.nome && prod.nome.toLowerCase().includes(termoLower);
@@ -168,92 +140,20 @@ function processarCodigoCapturado(termoDigitado) {
             inputCodigo.focus();
             inputCodigo.dispatchEvent(new Event('input', { bubbles: true }));
             inputCodigo.dispatchEvent(new Event('change', { bubbles: true }));
-            console.log("PDV-VS Admin: Campo #formCodigo preenchido com sucesso.");
         } else {
-            console.error("PDV-VS Admin: Elemento #formCodigo não encontrado.");
             alert(`Código capturado: ${termoDigitado}`);
         }
     }
 }
 
-export async function iniciarCameraComHtml5Qrcode() {
-    try {
-        if (html5QrcodeInstance) {
-            try {
-                if (html5QrcodeInstance.isScanning) {
-                    await html5QrcodeInstance.stop();
-                }
-            } catch (e) {
-                console.warn("Aviso ao limpar instância anterior:", e);
-            }
-            setHtml5QrcodeInstance(null);
-            await new Promise(resolve => setTimeout(resolve, 250));
-        }
-        
-        const elementId = "videoPreviewCamera";
-        const container = document.getElementById(elementId);
-        if (!container) {
-            console.error("PDV-VS: Elemento #videoPreviewCamera não encontrado no DOM.");
-            return;
-        }
-
-        const QrLib = window.Html5Qrcode;
-        if (!QrLib) {
-            console.error("PDV-VS: Biblioteca Html5Qrcode não encontrada no escopo global.");
-            return;
-        }
-
-        const instance = new QrLib(elementId);
-        setHtml5QrcodeInstance(instance);
-        
-        const config = { 
-            fps: 25,
-            qrbox: { width: 280, height: 160 },
-            aspectRatio: 1.0,
-            rememberLastUsedCamera: true
-        };
-        
-        const cameraConfig = { 
-            facingMode: "environment" 
-        };
-
-        await instance.start(
-            cameraConfig,
-            config,
-            (decodedText) => {
-                if (!decodedText) return;
-                processarCodigoCapturado(decodedText.trim());
-            },
-            (errorMessage) => {
-                // Silencia erros de frame contínuos
-            }
-        );
-    } catch (err) {
-        console.error("PDV-VS Erro ao iniciar câmera:", err);
-    }
-}
-
 export async function fecharLeitorCamera() {
-    if (listenerTecladoGlobal) {
-        window.removeEventListener('keydown', listenerTecladoGlobal);
-        listenerTecladoGlobal = null;
-    }
-
-    if (html5QrcodeInstance) {
-        try {
-            if (html5QrcodeInstance.isScanning) {
-                await html5QrcodeInstance.stop();
-            }
-        } catch(e) {
-            console.error("PDV-VS Erro ao parar câmera:", e);
-        }
-        setHtml5QrcodeInstance(null);
-    }
     const modalCamera = document.getElementById('modalCamera');
     if (modalCamera) {
         modalCamera.classList.add('hidden');
         modalCamera.classList.remove('flex');
     }
+    let inputAntigo = document.getElementById('inputCameraNativoOculto');
+    if (inputAntigo) inputAntigo.remove();
 }
 
 window.abrirLeitorCamera = abrirLeitorCamera;
