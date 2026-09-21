@@ -9,7 +9,7 @@ import {
 import { tratarAdicaoProduto } from './produtos.js';
 
 let listenerTecladoGlobal = null;
-let ultimaFotoCapturadaArquivo = null; // Armazena o arquivo da foto tirada para processar no OK
+let ultimaFotoCapturadaArquivo = null; // Guarda o arquivo binário para leitura interna
 
 export async function abrirLeitorCamera() {
     console.log("PDV-VS: Abrindo leitor para Vendas (busca)");
@@ -141,10 +141,15 @@ function dispararCameraParaCaptura() {
         const arquivo = e.target.files[0];
         if (!arquivo) return;
 
-        ultimaFotoCapturadaArquivo = arquivo;
-        console.log("PDV-VS: Foto capturada e armazenada na janela. Aguardando OK.");
+        // Para a câmera ao vivo se estiver rodando para economizar processamento
+        if (html5QrcodeInstance && html5QrcodeInstance.isScanning) {
+            html5QrcodeInstance.stop().catch(() => {});
+        }
 
-        // Mostra a prévia da foto na mesma janela (substitui temporariamente o preview de vídeo se possível)
+        ultimaFotoCapturadaArquivo = arquivo;
+        console.log("PDV-VS: Foto capturada e fixada na tela. Pronto para leitura interna.");
+
+        // Exibe a foto estaticamente na mesma moldura da câmera
         const containerVideo = document.getElementById('videoPreviewCamera');
         if (containerVideo) {
             const reader = new FileReader();
@@ -155,11 +160,11 @@ function dispararCameraParaCaptura() {
         }
 
         const statusLbl = document.getElementById('statusFotoLabel');
-        if (statusLbl) statusLbl.innerText = "Foto capturada! Clique em OK para processar:";
+        if (statusLbl) statusLbl.innerText = "Foto na tela! Clique em OK para extrair o código:";
 
         const inp = document.getElementById('inputCodigoManual');
         if (inp) {
-            inp.placeholder = "Foto pronta. Clique em OK para extrair...";
+            inp.placeholder = "Pressione OK para ler a imagem...";
             inp.focus();
         }
 
@@ -171,31 +176,38 @@ function dispararCameraParaCaptura() {
 }
 
 async function executarBotaoOkOuManual() {
-    // Se houver uma foto capturada pendente, processa ela primeiro ao clicar em OK
+    // Se houver uma foto armazenada, faz a leitura interna (escaneamento sobreposto) sem reabrir imagens
     if (ultimaFotoCapturadaArquivo) {
-        console.log("PDV-VS: Processando a foto capturada através do botão OK...");
+        console.log("PDV-VS: Executando escaneamento interno sobre a foto...");
         try {
             const qrScanner = new window.Html5Qrcode("modalCamera") || new window.Html5Qrcode("videoPreviewCamera");
             let codigoLido = null;
             try {
                 codigoLido = await qrScanner.scanFile(ultimaFotoCapturadaArquivo, true);
             } catch (errScan) {
-                console.warn("Scan da foto pendente falhou:", errScan);
+                console.warn("Leitura direta do arquivo falhou:", errScan);
             }
 
             if (codigoLido) {
-                console.log("PDV-VS: Código extraído com sucesso da foto:", codigoLido);
+                console.log("PDV-VS: Código extraído com sucesso da foto fixa:", codigoLido);
                 processarCodigoCapturado(codigoLido.trim());
                 return;
             } else {
-                console.warn("PDV-VS: Não foi possível ler o código na foto. Usando valor digitado ou limpando.");
+                console.warn("PDV-VS: Não foi possível decodificar barras desta foto. Focando no campo manual.");
+                const inp = document.getElementById('inputCodigoManual');
+                if (inp) {
+                    inp.placeholder = "Não lido. Digite o código aqui...";
+                    inp.focus();
+                }
+                ultimaFotoCapturadaArquivo =pperware = null; // reseta para permitir digitar
             }
         } catch (err) {
-            console.error("PDV-VS Erro ao processar foto no OK:", err);
+            console.error("PDV-VS Erro ao escanear arquivo:", err);
         }
+        return;
     }
 
-    // Caso contrário, executa a entrada manual normal pelo texto digitado
+    // Caso contrário, segue o fluxo normal de texto digitado ou pistola
     executarEntradaManual();
 }
 
