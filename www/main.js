@@ -52,12 +52,26 @@ window.atualizarPaginaCompleta = atualizarPaginaCompleta;
 window.focarBusca = focarBusca;
 window.alterarQtd = alterarQtd;
 
-// --- EXPOSIÇÃO GLOBAL DA CÂMERA (CORRIGIDO) ---
+// --- EXPOSIÇÃO GLOBAL DA CÂMERA ---
 window.abrirLeitorCamera = abrirLeitorCamera;
 window.escanearCameraAdmin = escanearCameraAdmin;
 window.fecharLeitorCamera = fecharLeitorCamera;
 
-// --- AUTENTICAÇÃO E LOGIN ---
+// --- EXPOSIÇÃO GLOBAL DE AUTH E INTERFACE ---
+window.registrarCliqueSecretoAdmin = function() {
+    console.log("Clique secreto acionado no ícone de login.");
+    // Adicione aqui a lógica correspondente ao clique secreto, se houver
+};
+
+window.alternarTelaAuth = function(tipo) {
+    console.log("Alternar tela auth:", tipo);
+    // Lógica para alternar entre login, cadastro ou super admin
+};
+
+window.instalarAppPwa = function() {
+    console.log("Tentativa de instalação do PWA acionada.");
+};
+
 window.tratarEnterLogin = function(e) { 
     if (e.key === 'Enter') processarAutenticacao(); 
 };
@@ -78,10 +92,6 @@ window.processarAutenticacao = async function() {
     } catch (e) {
         alert("Erro ao autenticar: " + (e.message || e));
     }
-};
-
-window.alternarTelaAuth = function(tipo) {
-    console.log("Alternar tela auth:", tipo);
 };
 
 window.solicitarRecuperacaoSenha = function() {
@@ -158,7 +168,7 @@ function inicializarAtalhosTeclado() {
             fecharModalCaixa();
             fecharModalAutorizacao();
             fecharModalCancelarItem();
-            fecharLeitorCamera(); // Garante o fecho limpo da câmara ao carregar Esc
+            fecharLeitorCamera();
         }
     });
 }
