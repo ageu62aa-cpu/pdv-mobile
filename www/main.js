@@ -57,17 +57,35 @@ window.abrirLeitorCamera = abrirLeitorCamera;
 window.escanearCameraAdmin = escanearCameraAdmin;
 window.fecharLeitorCamera = fecharLeitorCamera;
 
-// --- EXPOSIÇÃO GLOBAL DE AUTH E INTERFACE (CORRIGIDO E FUNCIONAL) ---
-window.registrarCliqueSecretoAdmin = function() {
-    console.log("Clique secreto acionado.");
-    const secaoAdmin = document.getElementById('secaoAdminSecreta') || document.getElementById('painelAdmin');
-    if (secaoAdmin) {
-        secaoAdmin.classList.toggle('hidden');
-    } else {
-        alert("Modo administrativo secreto ativado.");
-    }
+// --- CONTROLE DO BOTÃO CAIXA (REFRESH) E SUPER ADMIN (5 CLIQUES) ---
+let clickCountAdmin = 0;
+let clickTimerAdmin = null;
+
+window.tratarCliqueCaixaOuAdmin = function() {
+    clickCountAdmin++;
+    
+    clearTimeout(clickTimerAdmin);
+    clickTimerAdmin = setTimeout(() => {
+        if (clickCountAdmin >= 5) {
+            console.log("Modo administrativo secreto ativado.");
+            const secaoAdmin = document.getElementById('secaoAdminSecreta') || document.getElementById('painelAdmin');
+            if (secaoAdmin) {
+                secaoAdmin.classList.toggle('hidden');
+            } else {
+                alert("Modo administrativo secreto ativado.");
+            }
+        } else {
+            console.log("Executando refresh...");
+            window.location.reload();
+        }
+        clickCountAdmin = 0;
+    }, 1000);
 };
 
+// Mantém retrocompatibilidade com chamadas existentes
+window.registrarCliqueSecretoAdmin = window.tratarCliqueCaixaOuAdmin;
+
+// --- EXPOSIÇÃO GLOBAL DE AUTH E INTERFACE ---
 window.alternarTelaAuth = function(tipo) {
     console.log("Alternando interface para:", tipo);
     const cardLogin = document.getElementById('cardLogin') || document.getElementById('formLoginContainer');

@@ -110,7 +110,16 @@ export function fecharPainelAdmin() {
 export function renderizarTabelaAdmin(lista) {
     const tbody = document.getElementById('tabelaAdminProdutos');
     const contadorProdutos = document.getElementById('contadorLimiteProdutosAdmin');
-    if (contadorProdutos) contadorProdutos.innerText = `${produtosCache.length} / 800 produtos`;
+    
+    // Cálculo dinâmico: Limite total (1000) menos a quantidade atual cadastrada
+    const limiteMaximo = 1000;
+    const qtdAtual = produtosCache.length;
+    const vagasDisponiveis = Math.max(0, limiteMaximo - qtdAtual);
+
+    if (contadorProdutos) {
+        contadorProdutos.innerText = `${qtdAtual} cadastrados | Restam ${vagasDisponiveis} vagas (Máx: ${limiteMaximo})`;
+    }
+
     if (!tbody) return;
     
     let html = '';
@@ -134,8 +143,8 @@ export function filtrarTabelaAdmin(t) {
 }
 
 export function abrirModalNovoProdutoAdmin() {
-    if (produtosCache.length >= 800) {
-        alert('PDV-VS - Aviso do Plano Comum: Você atingiu o limite máximo de 800 produtos cadastrados.');
+    if (produtosCache.length >= 1000) {
+        alert('PDV-VS - Aviso do Plano: Você atingiu o limite máximo de 1.000 produtos cadastrados.');
         return;
     }
 
@@ -238,8 +247,8 @@ export async function salvarProdutoAdmin() {
         const { error } = await window.supabaseClient.from('produtos').update(p).eq('id', id); 
         if (error) { alert('Erro ao atualizar produto: ' + error.message); return; }
     } else { 
-        if (produtosCache.length >= 800) {
-            alert('PDV-VS: Limite de 800 produtos do plano comum atingido.');
+        if (produtosCache.length >= 1000) {
+            alert('PDV-VS: Limite de 1.000 produtos atingido.');
             return;
         }
         const { error } = await window.supabaseClient.from('produtos').insert([p]); 
@@ -398,7 +407,7 @@ export async function excluirOperadorLoja(id) {
 export function abrirModalNovoOperador() { 
     window.supabaseClient.from('usuarios_empresas').select('*', { count: 'exact', head: true }).eq('empresa_id', empresaAtualId).eq('cargo', 'operador').then(({ count }) => {
         if (count >= 1) {
-            alert('PDV-VS - Regra do Plano Comum: É permitido apenas 1 operador adicional além do Administrador.');
+            alert('PDV-VS - Regra do Plano: É permitido apenas 1 operador adicional além do Administrador.');
             return;
         }
         const modal = document.getElementById('modalNovoOperador');
@@ -547,7 +556,7 @@ window.abrirModalNovoProdutoAdmin = abrirModalNovoProdutoAdmin;
 window.abrirEditarProdutoAdmin = abrirEditarProdutoAdmin;
 window.fecharFormProduto = fecharFormProduto;
 window.salvarProdutoAdmin = salvarProdutoAdmin;
-window.excluirProdutoAdmin = excluirProdutoAdmin;
+window.excluidProdutoAdmin = excluirProdutoAdmin;
 window.carregarMaquininhasAdmin = carregarMaquininhasAdmin;
 window.abrirModalNovaMaquininha = abrirModalNovaMaquininha;
 window.fecharModalNovaMaquininha = fecharModalNovaMaquininha;
