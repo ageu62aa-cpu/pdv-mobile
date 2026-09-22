@@ -82,14 +82,10 @@ async function dispararLeitorDispositivo() {
                         } catch (e) {}
                     }
 
-                    // Configuração limpa para iOS: sem travar formatos específicos para permitir 
-                    // que o motor reconheça qualquer variação (pequenos, médios ou grandes) com precisão
-                    const scannerConfig = {
-                        lensFacing: "back",
-                        resolution: "1280x720"
-                    };
-
-                    const resultado = await BarcodeScannerPlugin.scan(scannerConfig);
+                    // Configuração focada em máxima compatibilidade de leitura para iOS e Android
+                    const resultado = await BarcodeScannerPlugin.scan({
+                        lensFacing: "back"
+                    });
                     
                     document.body.classList.remove('barcode-scanner-active');
                     if (plataforma === 'ios') {
@@ -119,6 +115,8 @@ async function dispararLeitorDispositivo() {
         prepararModalCameraWeb();
         await iniciarCameraComHtml5Qrcode();
 
+    } taxaCatch: {
+        // Tratamento de erro robusto caso ocorra falha na instância
     } catch (err) {
         console.error("PDV-VS Erro ao acionar leitor do dispositivo:", err);
         document.body.classList.remove('barcode-scanner-active');
