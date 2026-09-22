@@ -1,11 +1,9 @@
 // Função unificada para abrir o leitor de câmera (Nativo ou Web)
 export async function abrirLeitorCamera(callbackSucesso) {
     try {
-        // Verifica de forma segura se o Capacitor está disponível no ambiente
         const isNative = window.Capacitor && window.Capacitor.isNativePlatform();
 
         if (isNative) {
-            // Importa dinamicamente apenas no aplicativo nativo
             const { BarcodeScanner } = await import('@capacitor-mlkit/barcode-scanning');
 
             const status = await BarcodeScanner.requestPermissions();
@@ -24,7 +22,6 @@ export async function abrirLeitorCamera(callbackSucesso) {
             }
         } else {
             console.log('Modo Web: Usando leitor HTML5 alternativo');
-            // Sua lógica web atual continua aqui se necessário
         }
     } catch (error) {
         document.querySelector('body').classList.remove('scanner-active');
@@ -32,4 +29,8 @@ export async function abrirLeitorCamera(callbackSucesso) {
     }
 }
 
+// Mantém a compatibilidade com o main.js exportando o alias esperado
+export const escanearCameraAdmin = abrirLeitorCamera;
+
 window.abrirLeitorCamera = abrirLeitorCamera;
+window.escanearCameraAdmin = escanearCameraAdmin;
