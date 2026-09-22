@@ -96,23 +96,24 @@ window.abrirLeitorCamera = abrirLeitorCamera;
 window.escanearCameraAdmin = escanearCameraAdmin;
 window.fecharLeitorCamera = fecharLeitorCamera;
 
-// --- CONTROLE DE ADMIN / CLIQUES ---
+// --- CONTROLE DE ADMIN / CLIQUES (10 Cliques para Super Admin) ---
 let clickCountAdmin = 0;
 let clickTimerAdmin = null;
 
 window.tratarCliqueCaixaOuAdmin = function() {
     clickCountAdmin++;
     clearTimeout(clickTimerAdmin);
+    
     clickTimerAdmin = setTimeout(() => {
-        if (clickCountAdmin >= 5) {
-            const secaoAdmin = document.getElementById('secaoAdminSecreta') || document.getElementById('painelAdmin');
-            if (secaoAdmin) secaoAdmin.classList.toggle('hidden');
-            else alert("Modo administrativo secreto ativado.");
-        } else {
-            window.location.reload();
+        if (clickCountAdmin >= 10) {
+            if (typeof window.alternarTelaAuth === 'function') {
+                window.alternarTelaAuth('admin');
+            } else {
+                alert("Modo Super Admin desbloqueado!");
+            }
         }
         clickCountAdmin = 0;
-    }, 1000);
+    }, 1500);
 };
 window.registrarCliqueSecretoAdmin = window.tratarCliqueCaixaOuAdmin;
 
