@@ -1,5 +1,5 @@
 // ==========================================
-// PDV-VS Enterprise - Módulo Principal (main.js)
+// PDV-VS Enterprise - Módulo Principal (main.js Corrigido)
 // ==========================================
 
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
@@ -24,7 +24,9 @@ import {
     realizarLogout, 
     atualizarPaginaCompleta, 
     focarBusca,
-    alterarQtd
+    alterarQtd,
+    aoDigitarBusca,
+    tratarEnterBuscaCaixa
 } from './caixa.js';
 
 const SUPABASE_URL = 'https://vbdglgmxaywntmjriccf.supabase.co';
@@ -33,7 +35,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 window.supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 console.log("🟢 [SUPABASE] Conectado com sucesso!");
 
-// --- EXPOSIÇÃO GLOBAL DE FUNÇÕES DO CAIXA ---
+// --- EXPOSIÇÃO GLOBAL DE FUNÇÕES ---
 window.gerenciarCaixaModal = gerenciarCaixaModal;
 window.fecharModalCaixa = fecharModalCaixa;
 window.confirmarAcaoCaixa = confirmarAcaoCaixa;
@@ -51,57 +53,84 @@ window.realizarLogout = realizarLogout;
 window.atualizarPaginaCompleta = atualizarPaginaCompleta;
 window.focarBusca = focarBusca;
 window.alterarQtd = alterarQtd;
+window.aoDigitarBusca = aoDigitarBusca;
+window.tratarEnterBuscaCaixa = tratarEnterBuscaCaixa;
 
-// --- EXPOSIÇÃO GLOBAL DA CÂMERA ---
 window.abrirLeitorCamera = abrirLeitorCamera;
 window.escanearCameraAdmin = escanearCameraAdmin;
 window.fecharLeitorCamera = fecharLeitorCamera;
 
-// --- CONTROLE DO BOTÃO CAIXA (REFRESH) E SUPER ADMIN (5 CLIQUES) ---
+// --- CONTROLE DE ADMIN / CLIQUES ---
 let clickCountAdmin = 0;
 let clickTimerAdmin = null;
 
 window.tratarCliqueCaixaOuAdmin = function() {
     clickCountAdmin++;
-    
     clearTimeout(clickTimerAdmin);
     clickTimerAdmin = setTimeout(() => {
         if (clickCountAdmin >= 5) {
-            console.log("Modo administrativo secreto ativado.");
             const secaoAdmin = document.getElementById('secaoAdminSecreta') || document.getElementById('painelAdmin');
-            if (secaoAdmin) {
-                secaoAdmin.classList.toggle('hidden');
-            } else {
-                alert("Modo administrativo secreto ativado.");
-            }
+            if (secaoAdmin) secaoAdmin.classList.toggle('hidden');
+            else alert("Modo administrativo secreto ativado.");
         } else {
-            console.log("Executando refresh...");
             window.location.reload();
         }
         clickCountAdmin = 0;
     }, 1000);
 };
-
-// Mantém retrocompatibilidade com chamadas existentes
 window.registrarCliqueSecretoAdmin = window.tratarCliqueCaixaOuAdmin;
 
-// --- EXPOSIÇÃO GLOBAL DE AUTH E INTERFACE ---
+// --- CORREÇÃO DA TELA DE AUTH (LOGIN / CADASTRO) ---
 window.alternarTelaAuth = function(tipo) {
-    console.log("Alternando interface para:", tipo);
-    const cardLogin = document.getElementById('cardLogin') || document.getElementById('formLoginContainer');
-    const cardCadastro = document.getElementById('cardCadastro') || document.getElementById('formCadastroContainer');
+    const tituloAuth = document.getElementById('tituloAuth');
+    const subtituloAuth = document.getElementById('subtituloAuth');
+    const btnAcaoAuth = document.getElementById('btnAcaoAuth');
+    const linksAuxiliares = document.getElementById('linksAuxiliares');
+    const linkVoltarLogin = document.getElementById('linkVoltarLogin');
+    
+    const divTipoPerfil = document.getElementById('divTipoPerfil');
+    const divNomeMercadoCadastro = document.getElementById('divNomeMercadoCadastro');
+    const divDocumentoCadastro = document.getElementById('divDocumentoCadastro');
+    const divCamposEnderecoCadastro = document.getElementById('divCamposEnderecoCadastro');
 
     if (tipo === 'cadastro') {
-        if (cardLogin) cardLogin.classList.add('hidden');
-        if (cardCadastro) cardCadastro.classList.remove('hidden');
+        if (tituloAuth) tituloAuth.innerText = "Criar Estabelecimento";
+        if (subtituloAuth) subtituloAuth.innerText = "Cadastre sua loja para começar a usar";
+        if (btnAcaoAuth) btnAcaoAuth.innerText = "Cadastrar Loja";
+        if (linksAuxiliares) linksAuxiliares.classList.add('hidden');
+        if (linkVoltarLogin) linkVoltarLogin.classList.remove('hidden');
+
+        if (divTipoPerfil) divTipoPerfil.classList.remove('hidden');
+        if (divNomeMercadoCadastro) divNomeMercadoCadastro.classList.remove('hidden');
+        if (divDocumentoCadastro) divDocumentoCadastro.classList.remove('hidden');
+        if (divCamposEnderecoCadastro) divCamposEnderecoCadastro.classList.remove('hidden');
+    } else if (tipo === 'admin') {
+        if (tituloAuth) tituloAuth.innerText = "Acesso Super Admin";
+        if (subtituloAuth) subtituloAuth.innerText = "Painel de Controle Mestre";
+        if (btnAcaoAuth) btnAcaoAuth.innerText = "Acessar Master";
+        if (linksAuxiliares) linksAuxiliares.classList.add('hidden');
+        if (linkVoltarLogin) linkVoltarLogin.classList.remove('hidden');
+
+        if (divTipoPerfil) divTipoPerfil.classList.add('hidden');
+        if (divNomeMercadoCadastro) divNomeMercadoCadastro.classList.add('hidden');
+        if (divDocumentoCadastro) divDocumentoCadastro.classList.add('hidden');
+        if (divCamposEnderecoCadastro) divCamposEnderecoCadastro.classList.add('hidden');
     } else {
-        if (cardCadastro) cardCadastro.classList.add('hidden');
-        if (cardLogin) cardLogin.classList.remove('hidden');
+        if (tituloAuth) tituloAuth.innerText = "PDV-VS Enterprise";
+        if (subtituloAuth) subtituloAuth.innerText = "Sistema de Gestão Comercial e PDV";
+        if (btnAcaoAuth) btnAcaoAuth.innerText = "Acessar Sistema";
+        if (linksAuxiliares) linksAuxiliares.classList.remove('hidden');
+        if (linkVoltarLogin) linkVoltarLogin.classList.add('hidden');
+
+        if (divTipoPerfil) divTipoPerfil.classList.add('hidden');
+        if (divNomeMercadoCadastro) divNomeMercadoCadastro.classList.add('hidden');
+        if (divDocumentoCadastro) divDocumentoCadastro.classList.add('hidden');
+        if (divCamposEnderecoCadastro) divCamposEnderecoCadastro.classList.add('hidden');
     }
 };
 
 window.instalarAppPwa = function() {
-    console.log("Tentativa de instalação do PWA acionada.");
+    console.log("Instalação PWA acionada.");
 };
 
 window.tratarEnterLogin = function(e) { 
@@ -127,7 +156,7 @@ window.processarAutenticacao = async function() {
 };
 
 window.solicitarRecuperacaoSenha = function() {
-    alert("Para recuperar a senha, contacte o administrador do sistema.");
+    alert("Para recuperar a senha, contacte o suporte técnico.");
 };
 
 document.addEventListener("DOMContentLoaded", () => {
