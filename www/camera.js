@@ -10,7 +10,7 @@ export async function abrirLeitorCamera(callbackSucesso) {
 
         if (isNative) {
             // Ambiente Nativo (Android / iOS): Usa o plugin oficial
-            const { BarcodeScanner } = await import('@capacitor-mlkit/barcode-scanning');
+            const { BarcodeScanner, BarcodeFormat } = await import('@capacitor-mlkit/barcode-scanning');
 
             const status = await BarcodeScanner.requestPermissions();
             if (status.camera !== 'granted') {
@@ -19,12 +19,34 @@ export async function abrirLeitorCamera(callbackSucesso) {
             }
 
             document.querySelector('body').classList.add('scanner-active');
-            const result = await BarcodeScanner.scan();
+            
+            // Executa a leitura definindo os formatos para otimizar a captura no iOS/Android
+            const result = await BarcodeScanner.scan({
+                formats: [
+                    BarcodeFormat.Ean13, 
+                    BarcodeFormat.Ean8, 
+                    BarcodeFormat.Code128, 
+                    BarcodeFormat.QrCode,
+                    BarcodeFormat.Code39,
+                    BarcodeFormat.UpcA,
+                    BarcodeFormat.UpcE
+                ]
+            });
+            
             document.querySelector('body').classList.remove('scanner-active');
 
+            // Extração robusta do código lido compatível com ambas as plataformas
+            let codigoLido = null;
             if (result.barcodes && result.barcodes.length > 0) {
-                const codigoLido = result.barcodes[0].displayValue;
+                codigoLido = result.barcodes[0].displayValue || result.barcodes[0].rawValue;
+            } else if (typeof result === 'string') {
+                codigoLido = result;
+            }
+
+            if (codigoLido) {
                 enviarParaCampo(codigoLido, callbackSucesso);
+            } else {
+                console.warn('Nenhum código de barras válido foi retornado pela leitura nativa.');
             }
         } else {
             // Modo Web / Navegador: Abre o modal com a webcam real via HTML5
@@ -71,7 +93,6 @@ export async function abrirLeitorCamera(callbackSucesso) {
                 { fps: 10, qrbox: { width: 250, height: 150 } },
                 (decodedText) => {
                     console.log(`Código lido com sucesso na Web: ${decodedText}`);
-                    // ORDEM CORRIGIDA: Envia primeiro para o campo, depois fecha
                     enviarParaCampo(decodedText, callbackSucesso);
                     fecharLeitorCamera();
                 },
@@ -90,10 +111,9 @@ export async function abrirLeitorCamera(callbackSucesso) {
 function enviarParaCampo(codigoLido, callbackSucesso) {
     if (callbackSucesso && typeof callbackSucesso === 'function') {
         try {
-            callbackSucesso(codigoLido);
-            return;
+            callbackSucesso(codigoLidor); // Mantido o fallback seguro abaixo se necessário
         } catch (e) {
-            console.warn('Erro no callback, a usar preenchimento automático:', e);
+            console.warn('Erro no callback customizado:', e);
         }
     }
 
