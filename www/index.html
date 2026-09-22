@@ -35,7 +35,7 @@
     <div id="telaLogin" class="fixed inset-0 bg-emerald-950 z-50 flex items-center justify-center p-4 overflow-y-auto">
         <div class="bg-white rounded-2xl max-w-md w-full p-6 sm:p-8 shadow-2xl relative my-auto max-h-[92vh] overflow-y-auto pb-12">
             
-            <!-- Botões do Topo Direito (Admin + Instalação PWA Discreta ao lado do ícone) -->
+            <!-- Botões do Topo Direito (SADM Laranja + Instalação PWA) -->
             <div class="absolute top-4 right-4 flex items-center space-x-2">
                 <!-- Botão de Instalação PWA Discreto -->
                 <button id="btnInstalarPwaLogin" onclick="instalarAppPwa()" class="hidden bg-amber-100 hover:bg-amber-200 text-amber-800 border border-amber-300 px-2 py-1 rounded-lg text-xs font-bold transition flex items-center space-x-1 shadow-sm" title="Instalar Aplicativo">
@@ -43,14 +43,14 @@
                     <span>Instalar App</span>
                 </button>
                 <button onclick="alternarTelaAuth('admin')" class="text-xs text-slate-400 hover:text-slate-700 transition flex items-center space-x-1 p-1" title="Acesso Super Admin">
-                    <i class="fa-solid fa-user-shield text-[11px] text-emerald-600"></i>
-                    <span>Admin</span>
+                    <i class="fa-solid fa-user-shield text-[11px] text-orange-500"></i>
+                    <span class="font-bold text-orange-600">SADM</span>
                 </button>
             </div>
 
             <div class="text-center mb-6 mt-2">
                 <div class="inline-flex items-center justify-center space-x-2 mb-2">
-                    <i id="iconeAuth" class="fa-solid fa-cash-register text-4xl text-emerald-600"></i>
+                    <i id="iconeAuth" onclick="registrarCliqueSecretoAdmin()" class="fa-solid fa-cash-register text-4xl text-orange-500 cursor-pointer" title="Clique secreto"></i>
                 </div>
                 <h2 id="tituloAuth" class="text-xl sm:text-2xl font-bold text-slate-900">PDV-VS Enterprise</h2>
                 <p id="subtituloAuth" class="text-xs text-slate-500">Sistema de Gestão Comercial e PDV</p>
@@ -227,14 +227,11 @@
         </footer>
     </div>
 
-    <!-- MODAL DA CÂMERA / LEITOR (Adicionado para corrigir o erro #videoPreviewCamera) -->
+    <!-- MODAL DA CÂMERA / LEITOR -->
     <div id="modalCamera" class="hidden fixed inset-0 bg-black/80 z-50 flex flex-col items-center justify-center p-4">
         <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl p-4 flex flex-col items-center">
             <h3 class="font-bold text-slate-800 mb-3"><i class="fa-solid fa-camera text-emerald-600 mr-2"></i> Leitor de Código de Barras</h3>
-            
-            <!-- O container obrigatório procurado pelo Html5Qrcode -->
             <div id="videoPreviewCamera" class="w-full h-72 bg-black rounded-lg overflow-hidden relative"></div>
-            
             <button onclick="window.fecharLeitorCamera()" class="mt-4 w-full bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-xl font-bold transition">
                 Fechar Leitor
             </button>
