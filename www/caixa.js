@@ -1,5 +1,5 @@
 // ==========================================
-// MÓDULO DE CAIXA E VENDAS (PDV-VS)
+// MÓDULO DE CAIXA E VENDAS (PDV-VS) - ATUALIZADO
 // ==========================================
 
 import { 
@@ -94,7 +94,6 @@ export function iniciarRealtimeCaixa() {
 
 // Inicializador de Atalhos Globais por Teclado (incluindo F6 para Cancelar Item)
 window.addEventListener('keydown', (e) => {
-    // Atalho F6 para Cancelar Item
     if (e.key === 'F6') {
         e.preventDefault();
         abrirModalCancelarItem();
@@ -141,6 +140,64 @@ export async function realizarLogout() {
 export function focarBusca() { 
     const input = document.getElementById('inputBusca');
     if (input) input.focus(); 
+}
+
+// --- FUNÇÕES DE BUSCA E DIGITAÇÃO (ADICIONADAS PARA SUPORTAR O MAIN.JS) ---
+export function aoDigitarBusca(e) {
+    const termo = e.target.value.trim().toLowerCase();
+    const suggestionsBox = document.getElementById('sugestoesBusca');
+    
+    if (!suggestionsBox) return;
+
+    if (!termo) {
+        suggestionsBox.classList.add('hidden');
+        suggestionsBox.innerHTML = '';
+        return;
+    }
+
+    const filtrados = produtosCache.filter(p => 
+        (p.nome && p.nome.toLowerCase().includes(termo)) || 
+        (p.codigo_barras && p.codigo_barras.toLowerCase().includes(termo))
+    );
+
+    if (filtrados.length === 0) {
+        suggestionsBox.innerHTML = '<div class="p-2 text-slate-400 text-sm">Nenhum produto encontrado.</div>';
+        suggestionsBox.classList.remove('hidden');
+        return;
+    }
+
+    let html = '';
+    filtrados.slice(0, 10).forEach(prod => {
+        html += `<div class="p-2 hover:bg-slate-100 cursor-pointer border-b flex justify-between items-center" onclick="window.adicionarProdutoPorId('${prod.id}')">
+            <span class="font-medium text-slate-700">${prod.nome}</span>
+            <span class="text-xs text-emerald-600 font-bold">R$ ${Number(prod.preco_venda || prod.preco || 0).toFixed(2)}</span>
+        </div>`;
+    });
+    
+    suggestionsBox.innerHTML = html;
+    suggestionsBox.classList.remove('hidden');
+}
+
+export function tratarEnterBuscaCaixa(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        const input = document.getElementById('inputBusca');
+        if (!input) return;
+        const valor = input.value.trim();
+        
+        // Tenta encontrar o produto pelo código de barras exato ou pelo ID
+        const encontrado = produtosCache.find(p => p.codigo_barras === valor || p.id === valor);
+        if (encontrado) {
+            if (typeof window.adicionarProdutoAoCarrinho === 'function') {
+                window.adicionarProdutoAoCarrinho(encontrado);
+            }
+            input.value = '';
+            const suggestionsBox = document.getElementById('sugestoesBusca');
+            if (suggestionsBox) suggestionsBox.classList.add('hidden');
+        } else {
+            alert('PDV-VS: Produto não encontrado pelo código digitado.');
+        }
+    }
 }
 
 export function gerenciarCaixaModal(tipo) {
@@ -487,6 +544,8 @@ window.iniciarRealtimeCaixa = iniciarRealtimeCaixa;
 window.atualizarPaginaCompleta = atualizarPaginaCompleta;
 window.realizarLogout = realizarLogout;
 window.focarBusca = focarBusca;
+window.aoDigitarBusca = aoDigitarBusca;
+window.tratarEnterBuscaCaixa = tratarEnterBuscaCaixa;
 window.gerenciarCaixaModal = gerenciarCaixaModal;
 window.tratarEnterModalCaixa = tratarEnterModalCaixa;
 window.fecharModalCaixa = fecharModalCaixa;
