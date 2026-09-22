@@ -79,7 +79,7 @@ export function alternarTelaAuth(modo) {
         if (fields.subtitulo) fields.subtitulo.innerText = `Versão ${VERSAO_SISTEMA}`;
         if (fields.btn) fields.btn.innerText = 'Acessar Sistema';
         if (fields.icone) {
-            fields.icone.className = 'fa-solid fa-cash-register text-4xl text-emerald-600 mb-2 cursor-pointer';
+            fields.icone.className = 'fa-solid fa-cash-register text-4xl text-orange-500 mb-2 cursor-pointer';
             fields.icone.onclick = registrarCliqueSecretoAdmin;
         }
         if (fields.divSenha) fields.divSenha.classList.remove('hidden'); 
@@ -433,6 +433,7 @@ export async function alternarStatusEmpresa(empresaId, statusAtual) {
     }
 }
 
+// Vinculação explícita para evitar erros de escopo global em módulos
 window.alternarTelaAuth = alternarTelaAuth;
 window.tratarEnterLogin = tratarEnterLogin;
 window.processarAutenticacao = processarAutenticacao;
