@@ -23,7 +23,7 @@ export async function abrirLeitorCamera(callbackSucesso) {
 
             if (result.barcodes && result.barcodes.length > 0) {
                 const codigoLido = result.barcodes[0].displayValue;
-                if (callbackSucesso) callbackSucesso(codigoLido);
+                tratarCodigoLido(codigoLido, callbackSucesso);
             }
         } else {
             // Modo Web: Utiliza a API de leitor HTML5 para navegadores
@@ -70,11 +70,9 @@ export async function abrirLeitorCamera(callbackSucesso) {
                 { facingMode: "environment" },
                 { fps: 10, qrbox: { width: 250, height: 150 } },
                 (decodedText) => {
-                    console.log(`Código lido com sucesso: ${decodedText}`);
+                    console.log(`🔍 [LEITOR] Código capturado com sucesso: "${decodedText}"`);
                     fecharLeitorCamera();
-                    if (callbackSucesso) {
-                        callbackSucesso(decodedText);
-                    }
+                    tratarCodigoLido(decodedText, callbackSucesso);
                 },
                 (errorMessage) => {
                     // Erros de varredura por frame (normal enquanto não encontra o código)
@@ -85,6 +83,46 @@ export async function abrirLeitorCamera(callbackSucesso) {
         document.querySelector('body').classList.remove('scanner-active');
         console.error('Erro ao acionar a câmera:', error);
         alert('Não foi possível aceder à câmara. Verifique as permissões do navegador.');
+    }
+}
+
+function tratarCodigoLido(codigoLido, callbackSucesso) {
+    // 1. Tenta usar o callback original se ele foi fornecido
+    if (callbackSucesso && typeof callbackSucesso === 'function') {
+        try {
+            console.log('⚡ [LEITOR] A enviar para o callback original...');
+            callbackSucesso(codigoLido);
+            return;
+        } catch (e) {
+            console.warn('⚠️ [LEITOR] Erro no callback original, a usar fallback de input:', e);
+        }
+    }
+
+    // 2. Tenta preencher primeiro o elemento que está atualmente em foco na tela
+    const elementoAtivo = document.activeElement;
+    if (elementoAtivo && (elementoAtivo.tagName === 'INPUT' || elementoAtivo.tagName === 'TEXTAREA')) {
+        console.log('🎯 [LEITOR] A preencher o input atualmente focado:', elementoAtivo.id || 'sem ID');
+        elementoAtivo.value = codigoLido;
+        elementoAtivo.dispatchEvent(new Event('input', { bubbles: true }));
+        elementoAtivo.dispatchEvent(new Event('change', { bubbles: true }));
+        elementoAtivo.dispatchEvent(new KeyboardEvent('keypress', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true }));
+        return;
+    }
+
+    // 3. Fallback inteligente para procurar campos de busca ou código de barras na interface
+    const inputPadrao = document.getElementById('buscaProduto') || 
+                        document.getElementById('codigoBarras') || 
+                        document.getElementById('skuProduto') ||
+                        document.querySelector('input[type="text"]');
+    
+    if (inputPadrao) {
+        console.log('📌 [LEITOR] A preencher input detetado automaticamente:', inputPadrao.id || 'input genérico');
+        inputPadrao.value = codigoLido;
+        inputPadrao.dispatchEvent(new Event('input', { bubbles: true }));
+        inputPadrao.dispatchEvent(new Event('change', { bubbles: true }));
+        inputPadrao.dispatchEvent(new KeyboardEvent('keypress', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true }));
+    } else {
+        console.warn('❌ [LEITOR] Nenhum campo de input encontrado para receber:', codigoLido);
     }
 }
 
