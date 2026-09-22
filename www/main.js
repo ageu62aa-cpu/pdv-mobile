@@ -1,5 +1,5 @@
 // ==========================================
-// PDV-VS Enterprise - Módulo Principal (main.js Corrigido)
+// PDV-VS Enterprise - Módulo Principal (main.js Corrigido e Atualizado)
 // ==========================================
 
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
@@ -34,6 +34,34 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 window.supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 console.log("🟢 [SUPABASE] Conectado com sucesso!");
+
+// --- AUTOCOMPLETAR CEP (VIACEP) ---
+window.consultarCep = async function(cep) {
+    const cepLimpo = cep.replace(/\D/g, '');
+    if (cepLimpo.length !== 8) return;
+
+    try {
+        const response = await fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`);
+        const data = await response.json();
+
+        if (data.erro) {
+            alert("CEP não encontrado.");
+            return;
+        }
+
+        const inputEndereco = document.getElementById('inputEndereco');
+        const inputUf = document.getElementById('inputUf');
+
+        if (inputEndereco) {
+            inputEndereco.value = `${data.logradouro || ''}, ${data.bairro || ''} - ${data.localidade || ''}`.trim();
+        }
+        if (inputUf) {
+            inputUf.value = data.uf || '';
+        }
+    } catch (error) {
+        console.error("Erro ao consultar o CEP:", error);
+    }
+};
 
 // --- EXPOSIÇÃO GLOBAL DE FUNÇÕES ---
 window.gerenciarCaixaModal = gerenciarCaixaModal;
@@ -92,6 +120,7 @@ window.alternarTelaAuth = function(tipo) {
     const divNomeMercadoCadastro = document.getElementById('divNomeMercadoCadastro');
     const divDocumentoCadastro = document.getElementById('divDocumentoCadastro');
     const divCamposEnderecoCadastro = document.getElementById('divCamposEnderecoCadastro');
+    const divCamposEnderecoCompleto = document.getElementById('divCamposEnderecoCompleto');
 
     if (tipo === 'cadastro') {
         if (tituloAuth) tituloAuth.innerText = "Criar Estabelecimento";
@@ -104,6 +133,7 @@ window.alternarTelaAuth = function(tipo) {
         if (divNomeMercadoCadastro) divNomeMercadoCadastro.classList.remove('hidden');
         if (divDocumentoCadastro) divDocumentoCadastro.classList.remove('hidden');
         if (divCamposEnderecoCadastro) divCamposEnderecoCadastro.classList.remove('hidden');
+        if (divCamposEnderecoCompleto) divCamposEnderecoCompleto.classList.remove('hidden');
     } else if (tipo === 'admin') {
         if (tituloAuth) tituloAuth.innerText = "Acesso Super Admin";
         if (subtituloAuth) subtituloAuth.innerText = "Painel de Controle Mestre";
@@ -115,6 +145,7 @@ window.alternarTelaAuth = function(tipo) {
         if (divNomeMercadoCadastro) divNomeMercadoCadastro.classList.add('hidden');
         if (divDocumentoCadastro) divDocumentoCadastro.classList.add('hidden');
         if (divCamposEnderecoCadastro) divCamposEnderecoCadastro.classList.add('hidden');
+        if (divCamposEnderecoCompleto) divCamposEnderecoCompleto.classList.add('hidden');
     } else {
         if (tituloAuth) tituloAuth.innerText = "PDV-VS Enterprise";
         if (subtituloAuth) subtituloAuth.innerText = "Sistema de Gestão Comercial e PDV";
@@ -126,6 +157,7 @@ window.alternarTelaAuth = function(tipo) {
         if (divNomeMercadoCadastro) divNomeMercadoCadastro.classList.add('hidden');
         if (divDocumentoCadastro) divDocumentoCadastro.classList.add('hidden');
         if (divCamposEnderecoCadastro) divCamposEnderecoCadastro.classList.add('hidden');
+        if (divCamposEnderecoCompleto) divCamposEnderecoCompleto.classList.add('hidden');
     }
 };
 
