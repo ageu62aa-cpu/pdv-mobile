@@ -58,65 +58,34 @@ export async function escanearCameraAdmin() {
     await dispararLeitorDispositivo();
 }
 
-// Decide se usa o leitor nativo do Capacitor (iOS/Android) ou abre a modal Web (Fallback)
+// Utiliza o motor visual customizável Html5Qrcode no Capacitor (com controle total da moldura)
 async function dispararLeitorDispositivo() {
     try {
         const isNative = window.Capacitor && window.Capacitor.isNativePlatform();
 
+        // Se estiver no ambiente nativo, garante a permissão de hardware da câmera primeiro
         if (isNative && window.Capacitor.Plugins && window.Capacitor.Plugins.BarcodeScanner) {
             const BarcodeScannerPlugin = window.Capacitor.Plugins.BarcodeScanner;
-            const plataforma = window.Capacitor.getPlatform(); 
-            console.log(`PDV-VS: Plataforma nativa detectada -> ${plataforma}`);
-
-            const sant = await BarcodeScannerPlugin.isSupported();
-            if (sant.supported) {
-                const perm = await BarcodeScannerPlugin.requestPermissions();
-                
-                if (perm.camera === 'granted' || perm.camera === 'limited') {
-                    document.body.classList.add('barcode-scanner-active');
-                    
-                    if (plataforma === 'ios') {
-                        document.documentElement.style.setProperty('--background', 'transparent');
-                        try {
-                            await BarcodeScannerPlugin.hideBackground();
-                        } catch (e) {}
+            try {
+                const sant = await BarcodeScannerPlugin.isSupported();
+                if (sant.supported) {
+                    const perm = await BarcodeScannerPlugin.requestPermissions();
+                    if (perm.camera !== 'granted' && perm.camera !== 'limited') {
+                        alert("Permissão de câmera negada nas configurações do seu dispositivo.");
+                        return;
                     }
-
-                    const resultado = await BarcodeScannerPlugin.scan({
-                        lensFacing: "back"
-                    });
-                    
-                    document.body.classList.remove('barcode-scanner-active');
-                    if (plataforma === 'ios') {
-                        document.documentElement.style.removeProperty('--background');
-                        try {
-                            await BarcodeScannerPlugin.showBackground();
-                        } catch (e) {}
-                    }
-
-                    if (resultado && resultado.barcodes && resultado.barcodes.length > 0) {
-                        const codigoLido = resultado.barcodes[0].displayValue || resultado.barcodes[0].rawValue;
-                        if (codigoLido) {
-                            setTimeout(() => {
-                                processarCodigoCapturadoUniversal(codigoLido.trim());
-                            }, 100);
-                            return;
-                        }
-                    }
-                    return;
-                } else {
-                    alert("Permissão de câmera negada nas configurações do seu dispositivo.");
                 }
+            } catch (e) {
+                console.warn("Aviso na checagem nativa de permissão:", e);
             }
         }
 
-        // Se não for nativo (ou falhar/PWA web), usa o modal visual HTML5 padrão
+        // Abre o modal visual e inicia a leitura com controle customizado de moldura
         prepararModalCameraWeb();
         await iniciarCameraComHtml5Qrcode();
 
     } catch (err) {
         console.error("PDV-VS Erro ao acionar leitor do dispositivo:", err);
-        document.body.classList.remove('barcode-scanner-active');
         await fecharLeitorCamera();
         
         const codigoManual = prompt("Não foi possível acessar a câmera automaticamente. Digite ou bipe o código:");
@@ -148,14 +117,22 @@ export async function iniciarCameraComHtml5Qrcode() {
         if (!container) return;
 
         const QrLib = window.Html5Qrcode;
-        if (!QrLib) return;
+        if (!QrLib) {
+            alert("Biblioteca de leitura web não carregada.");
+            return;
+        }
 
         const instance = new QrLib(elementId);
         setHtml5QrcodeInstance(instance);
         
+        // Moldura ajustada para leitura otimizada (você pode alterar width e height se precisar de um leitor mais largo ou estreito)
         await instance.start(
             { facingMode: "environment" },
-            { fps: 30, qrbox: { width: 280, height: 140 }, aspectRatio: 1.777778 },
+            { 
+                fps: 30, 
+                qrbox: { width: 300, height: 150 }, // Moldura controlada: ideal para abranger códigos médios e pequenos com precisão
+                aspectRatio: 1.777778 
+            },
             (decodedText) => {
                 if (!decodedText) return;
                 fecharLeitorCamera();
@@ -208,16 +185,6 @@ function processarCodigoCapturadoUniversal(termoDigitado) {
 }
 
 export async function fecharLeitorCamera() {
-    try {
-        const isNative = window.Capacitor && window.Capacitor.isNativePlatform();
-        if (isNative && window.Capacitor.Plugins && window.Capacitor.Plugins.BarcodeScanner) {
-            await window.Capacitor.Plugins.BarcodeScanner.stopScan().catch(() => {});
-            await window.Capacitor.Plugins.BarcodeScanner.showBackground().catch(() => {});
-            document.body.classList.remove('barcode-scanner-active');
-            document.documentElement.style.removeProperty('--background');
-        }
-    } catch(e) {}
-
     if (html5QrcodeInstance) {
         try {
             if (html5QrcodeInstance.isScanning) await html5QrcodeInstance.stop();
