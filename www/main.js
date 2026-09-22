@@ -57,15 +57,29 @@ window.abrirLeitorCamera = abrirLeitorCamera;
 window.escanearCameraAdmin = escanearCameraAdmin;
 window.fecharLeitorCamera = fecharLeitorCamera;
 
-// --- EXPOSIÇÃO GLOBAL DE AUTH E INTERFACE ---
+// --- EXPOSIÇÃO GLOBAL DE AUTH E INTERFACE (CORRIGIDO E FUNCIONAL) ---
 window.registrarCliqueSecretoAdmin = function() {
-    console.log("Clique secreto acionado no ícone de login.");
-    // Adicione aqui a lógica correspondente ao clique secreto, se houver
+    console.log("Clique secreto acionado.");
+    const secaoAdmin = document.getElementById('secaoAdminSecreta') || document.getElementById('painelAdmin');
+    if (secaoAdmin) {
+        secaoAdmin.classList.toggle('hidden');
+    } else {
+        alert("Modo administrativo secreto ativado.");
+    }
 };
 
 window.alternarTelaAuth = function(tipo) {
-    console.log("Alternar tela auth:", tipo);
-    // Lógica para alternar entre login, cadastro ou super admin
+    console.log("Alternando interface para:", tipo);
+    const cardLogin = document.getElementById('cardLogin') || document.getElementById('formLoginContainer');
+    const cardCadastro = document.getElementById('cardCadastro') || document.getElementById('formCadastroContainer');
+
+    if (tipo === 'cadastro') {
+        if (cardLogin) cardLogin.classList.add('hidden');
+        if (cardCadastro) cardCadastro.classList.remove('hidden');
+    } else {
+        if (cardCadastro) cardCadastro.classList.add('hidden');
+        if (cardLogin) cardLogin.classList.remove('hidden');
+    }
 };
 
 window.instalarAppPwa = function() {
@@ -104,52 +118,56 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 async function verificarSessaoEAlternarTelas() {
-    const { data: { session } } = await window.supabaseClient.auth.getSession();
-    
-    const telaLogin = document.getElementById('telaLogin');
-    const appPrincipal = document.getElementById('appPrincipal');
-    const infoUsuario = document.getElementById('infoUsuarioLogado');
-
-    if (session && session.user) {
-        setUsuarioAtual(session.user);
-
-        const { data: opData } = await window.supabaseClient
-            .from('usuarios_empresas')
-            .select('empresa_id, cargo')
-            .eq('user_id', session.user.id)
-            .maybeSingle();
-
-        let cargoFinal = 'admin_mercado';
-        let empresaIdFinal = session.user.id;
-
-        if (opData && opData.empresa_id) {
-            empresaIdFinal = opData.empresa_id;
-            cargoFinal = opData.cargo || 'admin_mercado';
-        }
-
-        setEmpresaAtualId(empresaIdFinal);
-        setCargoUsuarioAtual(cargoFinal);
-
-        if (telaLogin) telaLogin.classList.add('hidden');
-        if (appPrincipal) appPrincipal.classList.remove('hidden');
-        if (infoUsuario) infoUsuario.innerText = session.user.email;
+    try {
+        const { data: { session } } = await window.supabaseClient.auth.getSession();
         
-        const btnAdmin = document.getElementById('btnAdminMenu');
-        if (btnAdmin) {
-            if (cargoFinal === 'admin_mercado') {
-                btnAdmin.classList.remove('hidden');
-                btnAdmin.style.display = 'inline-flex';
-            } else {
-                btnAdmin.classList.add('hidden');
-                btnAdmin.style.display = 'none';
-            }
-        }
+        const telaLogin = document.getElementById('telaLogin');
+        const appPrincipal = document.getElementById('appPrincipal');
+        const infoUsuario = document.getElementById('infoUsuarioLogado');
 
-        await verificarStatusCaixaServidor();
-        focarBusca();
-    } else {
-        if (telaLogin) telaLogin.classList.remove('hidden');
-        if (appPrincipal) appPrincipal.classList.add('hidden');
+        if (session && session.user) {
+            setUsuarioAtual(session.user);
+
+            const { data: opData } = await window.supabaseClient
+                .from('usuarios_empresas')
+                .select('empresa_id, cargo')
+                .eq('user_id', session.user.id)
+                .maybeSingle();
+
+            let cargoFinal = 'admin_mercado';
+            let empresaIdFinal = session.user.id;
+
+            if (opData && opData.empresa_id) {
+                empresaIdFinal = opData.empresa_id;
+                cargoFinal = opData.cargo || 'admin_mercado';
+            }
+
+            setEmpresaAtualId(empresaIdFinal);
+            setCargoUsuarioAtual(cargoFinal);
+
+            if (telaLogin) telaLogin.classList.add('hidden');
+            if (appPrincipal) appPrincipal.classList.remove('hidden');
+            if (infoUsuario) infoUsuario.innerText = session.user.email;
+            
+            const btnAdmin = document.getElementById('btnAdminMenu');
+            if (btnAdmin) {
+                if (cargoFinal === 'admin_mercado') {
+                    btnAdmin.classList.remove('hidden');
+                    btnAdmin.style.display = 'inline-flex';
+                } else {
+                    btnAdmin.classList.add('hidden');
+                    btnAdmin.style.display = 'none';
+                }
+            }
+
+            await verificarStatusCaixaServidor();
+            focarBusca();
+        } else {
+            if (telaLogin) telaLogin.classList.remove('hidden');
+            if (appPrincipal) appPrincipal.classList.add('hidden');
+        }
+    } catch (err) {
+        console.error("Erro na verificação de sessão:", err);
     }
 }
 
