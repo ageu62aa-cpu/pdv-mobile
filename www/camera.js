@@ -110,7 +110,6 @@ async function dispararLeitorDispositivo() {
             }
         }
 
-        // Se não for nativo (ou falhar/PWA web), usa o modal visual HTML5 padrão
         prepararModalCameraWeb();
         await iniciarCameraComHtml5Qrcode();
 
@@ -233,36 +232,53 @@ export async function fecharLeitorCamera() {
 }
 
 // ---------------------------------------------------------
-// COMPONENTES VISUAIS DE AVISO DE COMPATIBILIDADE (ADMIN)
+// AVISOS DE COMPATIBILIDADE (ANDROID x iOS) NO ADMIN
 // ---------------------------------------------------------
-export function renderizarAvisosCompatibilidadeAdmin(containerId) {
-    const container = document.getElementById(containerId);
-    if (!container) return;
+window.mostrarDetalhesCompatibilidade = function(sistema) {
+    if (sistema === 'android') {
+        alert("Android: Compatibilidade 100%\n\nO Android consegue capturar com muita eficiência todos os códigos de barras através da câmera.");
+    } else if (sistema === 'ios') {
+        alert("iOS (iPhone): Compatibilidade 50%\n\nO iOS tem dificuldades em capturas de códigos de barras menores através da câmera nativa/web.");
+    }
+};
 
-    container.innerHTML = `
-        <div style="display: flex; gap: 15px; justify-content: center; margin: 15px 0; font-family: sans-serif;">
-            <!-- iOS -->
-            <div style="border: 1px solid #ddd; padding: 12px; border-radius: 8px; text-align: center; width: 140px; background: #fafafa;">
-                <span style="font-size: 24px;">🍏</span>
-                <div style="font-weight: bold; margin: 5px 0; font-size: 14px;">iOS / iPhone</div>
-                <div style="color: #d9534f; font-weight: bold; font-size: 12px;">Compatibilidade: 50%</div>
-                <button onclick="alert('iOS possui restrições severas de foco macro e câmera em WebViews nativas para códigos pequenos. Recomendado uso de pistola física USB/Bluetooth.')" style="margin-top: 8px; background: none; border: none; color: #0275d8; cursor: pointer; font-size: 11px; text-decoration: underline;">Por que isso?</button>
-            </div>
+export function renderizarAvisosCompatibilidadeAdmin() {
+    // Tenta injetar automaticamente abaixo do campo de código de barras se o modal estiver aberto
+    const inputCodigo = document.getElementById('formCodigo');
+    if (!inputCodigo) return;
 
-            <!-- Android -->
-            <div style="border: 1px solid #ddd; padding: 12px; border-radius: 8px; text-align: center; width: 140px; background: #fafafa;">
-                <span style="font-size: 24px;">🤖</span>
-                <div style="font-weight: bold; margin: 5px 0; font-size: 14px;">Android</div>
-                <div style="color: #5cb85c; font-weight: bold; font-size: 12px;">Compatibilidade: 100%</div>
-                <button onclick="alert('O Android possui suporte nativo total ao motor de leitura de código de barras e foco automático otimizado.')" style="margin-top: 8px; background: none; border: none; color: #0275d8; cursor: pointer; font-size: 11px; text-decoration: underline;">Por que isso?</button>
+    let containerAvisos = document.getElementById('painelAvisosCompatibilidade');
+    if (!containerAvisos) {
+        containerAvisos = document.createElement('div');
+        containerAvisos.id = 'painelAvisosCompatibilidade';
+        containerAvisos.style.cssText = "display: flex; gap: 10px; margin-top: 8px; justify-content: space-between;";
+        
+        containerAvisos.innerHTML = `
+            <div onclick="window.mostrarDetalhesCompatibilidade('android')" style="flex: 1; border: 1px solid #d1e7dd; background: #f8f9fa; padding: 6px; border-radius: 6px; text-align: center; cursor: pointer;">
+                <span style="font-size: 16px;">🤖</span>
+                <div style="font-size: 11px; font-weight: bold; color: #155724;">Android: 100%</div>
             </div>
-        </div>
-    `;
+            <div onclick="window.mostrarDetalhesCompatibilidade('ios')" style="flex: 1; border: 1px solid #f8d7da; background: #f8f9fa; padding: 6px; border-radius: 6px; text-align: center; cursor: pointer;">
+                <span style="font-size: 16px;">🍏</span>
+                <div style="font-size: 11px; font-weight: bold; color: #721c24;">iOS: 50%</div>
+            </div>
+        `;
+        
+        // Insere logo abaixo do input do código de barras do produto
+        inputCodigo.parentNode.insertBefore(containerAvisos, inputCodigo.nextSibling);
+    }
 }
+
+// Executa verificação periódica para injetar no modal do admin assim que ele abrir
+setInterval(() => {
+    const modalProduto = document.getElementById('formCodigo');
+    if (modalProduto) {
+        renderizarAvisosCompatibilidadeAdmin();
+    }
+}, 1000);
 
 inicializarLeitorTecladoPistola();
 
 window.abrirLeitorCamera = abrirLeitorCamera;
 window.escanearCameraAdmin = escanearCameraAdmin;
 window.fecharLeitorCamera = fecharLeitorCamera;
-window.renderizarAvisosCompatibilidadeAdmin = renderizarAvisosCompatibilidadeAdmin;
