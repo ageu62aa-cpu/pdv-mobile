@@ -1,5 +1,5 @@
 // ==========================================
-// PDV-VS Enterprise - Módulo Principal (main.js Corrigido e Atualizado)
+// PDV-VS Enterprise - Módulo Principal (main.js Atualizado)
 // ==========================================
 
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
@@ -49,14 +49,22 @@ window.consultarCep = async function(cep) {
             return;
         }
 
-        const inputEndereco = document.getElementById('inputEndereco');
-        const inputUf = document.getElementById('inputUf');
+        const inputEndereco = document.getElementById('authEndereco');
+        const inputCidade = document.getElementById('authCidade');
+        const inputUf = document.getElementById('authUf');
+        const inputNumero = document.getElementById('authNumeroImovel');
 
         if (inputEndereco) {
-            inputEndereco.value = `${data.logradouro || ''}, ${data.bairro || ''} - ${data.localidade || ''}`.trim();
+            inputEndereco.value = `${data.logradouro || ''}, ${data.bairro || ''}`.trim();
+        }
+        if (inputCidade) {
+            inputCidade.value = data.localidade || '';
         }
         if (inputUf) {
             inputUf.value = data.uf || '';
+        }
+        if (inputNumero) {
+            inputNumero.focus();
         }
     } catch (error) {
         console.error("Erro ao consultar o CEP:", error);
