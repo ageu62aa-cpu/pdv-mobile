@@ -128,7 +128,6 @@ window.alternarTelaAuth = function(tipo) {
     const divNomeMercadoCadastro = document.getElementById('divNomeMercadoCadastro');
     const divDocumentoCadastro = document.getElementById('divDocumentoCadastro');
     const divCamposEnderecoCadastro = document.getElementById('divCamposEnderecoCadastro');
-    const divCamposEnderecoCompleto = document.getElementById('divCamposEnderecoCompleto');
 
     if (tipo === 'cadastro') {
         if (tituloAuth) tituloAuth.innerText = "Criar Estabelecimento";
@@ -141,7 +140,6 @@ window.alternarTelaAuth = function(tipo) {
         if (divNomeMercadoCadastro) divNomeMercadoCadastro.classList.remove('hidden');
         if (divDocumentoCadastro) divDocumentoCadastro.classList.remove('hidden');
         if (divCamposEnderecoCadastro) divCamposEnderecoCadastro.classList.remove('hidden');
-        if (divCamposEnderecoCompleto) divCamposEnderecoCompleto.classList.remove('hidden');
     } else if (tipo === 'admin') {
         if (tituloAuth) tituloAuth.innerText = "Acesso Super Admin";
         if (subtituloAuth) subtituloAuth.innerText = "Painel de Controle Mestre";
@@ -153,7 +151,6 @@ window.alternarTelaAuth = function(tipo) {
         if (divNomeMercadoCadastro) divNomeMercadoCadastro.classList.add('hidden');
         if (divDocumentoCadastro) divDocumentoCadastro.classList.add('hidden');
         if (divCamposEnderecoCadastro) divCamposEnderecoCadastro.classList.add('hidden');
-        if (divCamposEnderecoCompleto) divCamposEnderecoCompleto.classList.add('hidden');
     } else {
         if (tituloAuth) tituloAuth.innerText = "PDV-VS Enterprise";
         if (subtituloAuth) subtituloAuth.innerText = "Sistema de Gestão Comercial e PDV";
@@ -165,7 +162,6 @@ window.alternarTelaAuth = function(tipo) {
         if (divNomeMercadoCadastro) divNomeMercadoCadastro.classList.add('hidden');
         if (divDocumentoCadastro) divDocumentoCadastro.classList.add('hidden');
         if (divCamposEnderecoCadastro) divCamposEnderecoCadastro.classList.add('hidden');
-        if (divCamposEnderecoCompleto) divCamposEnderecoCompleto.classList.add('hidden');
     }
 };
 
