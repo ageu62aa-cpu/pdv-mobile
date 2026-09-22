@@ -1,4 +1,7 @@
-// Função unificada para abrir o leitor de câmera (Nativo ou Web)
+// ==========================================
+// MÓDULO DE CÂMERA E LEITOR (PDV-VS)
+// ==========================================
+
 export async function abrirLeitorCamera(callbackSucesso) {
     try {
         const isNative = window.Capacitor && window.Capacitor.isNativePlatform();
@@ -29,8 +32,15 @@ export async function abrirLeitorCamera(callbackSucesso) {
     }
 }
 
-// Mantém a compatibilidade com o main.js exportando o alias esperado
+// Exportações extras exigidas pelo main.js
 export const escanearCameraAdmin = abrirLeitorCamera;
 
+export function fecharLeitorCamera() {
+    document.querySelector('body').classList.remove('scanner-active');
+    console.log('Leitor de câmera fechado.');
+}
+
+// Expõe globalmente para fallback
 window.abrirLeitorCamera = abrirLeitorCamera;
 window.escanearCameraAdmin = escanearCameraAdmin;
+window.fecharLeitorCamera = fecharLeitorCamera;
