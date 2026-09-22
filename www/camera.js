@@ -82,7 +82,20 @@ async function dispararLeitorDispositivo() {
                         } catch (e) {}
                     }
 
-                    const resultado = await BarcodeScannerPlugin.scan();
+                    // Executa a leitura nativa otimizada para suportar códigos menores 
+                    // e centralizar corretamente a moldura/foco no iOS e Android
+                    const resultado = await BarcodeScannerPlugin.scan({
+                        formats: [
+                            "EAN_13",
+                            "EAN_8",
+                            "QR_CODE",
+                            "CODE_128",
+                            "CODE_39",
+                            "UPC_A",
+                            "UPC_E"
+                        ],
+                        lensFacing: "back"
+                    });
                     
                     document.body.classList.remove('barcode-scanner-active');
                     if (plataforma === 'ios') {
