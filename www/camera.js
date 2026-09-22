@@ -8,9 +8,6 @@ import {
 } from './state.js';
 import { tratarAdicaoProduto } from './produtos.js';
 
-// Importação dinâmica segura do plugin nativo do Capacitor (caso esteja no mobile)
-import { BarcodeScanner } from '@capacitor-mlkit/barcode-scanning';
-
 let listenerTecladoGlobal = null;
 
 // Inicializa o listener global da pistola de código de barras física / teclado (PC e Web)
@@ -23,11 +20,9 @@ export function inicializarLeitorTecladoPistola() {
     listenerTecladoGlobal = (e) => {
         const tempoAtual = Date.now();
 
-        // Se o modal de câmera nativa estiver aberto, ignora a pistola para não duplicar
         const modalCam = document.getElementById('modalCamera');
         if (modalCam && !modalCam.classList.contains('hidden')) return;
 
-        // Se o usuário estiver digitando normalmente devagar em outro input, limpa o buffer
         if (tempoAtual - ultimoTempo > 100) {
             bufferLeitor = '';
         }
@@ -63,49 +58,43 @@ export async function escanearCameraAdmin() {
     await dispararLeitorDispositivo();
 }
 
-// Decide se usa o leitor nativo do celular (Capacitor - iOS/Android) ou abre a modal Web (Fallback)
+// Decide se usa o leitor nativo do Capacitor (iOS/Android) ou abre a modal Web (Fallback)
 async function dispararLeitorDispositivo() {
     try {
         const isNative = window.Capacitor && window.Capacitor.isNativePlatform();
 
-        if (isNative) {
-            const plataforma = window.Capacitor.getPlatform(); // 'ios' ou 'android'
+        if (isNative && window.Capacitor.Plugins && window.Capacitor.Plugins.BarcodeScanner) {
+            const BarcodeScannerPlugin = window.Capacitor.Plugins.BarcodeScanner;
+            const plataforma = window.Capacitor.getPlatform(); 
             console.log(`PDV-VS: Plataforma nativa detectada -> ${plataforma}`);
 
-            const sant = await BarcodeScanner.isSupported();
+            const sant = await BarcodeScannerPlugin.isSupported();
             if (sant.supported) {
-                const perm = await BarcodeScanner.requestPermissions();
+                const perm = await BarcodeScannerPlugin.requestPermissions();
                 
                 if (perm.camera === 'granted' || perm.camera === 'limited') {
-                    // Configurações específicas para exibição correta no iOS e Android
                     document.body.classList.add('barcode-scanner-active');
                     
                     if (plataforma === 'ios') {
-                        // Tratamento de transparência de fundo específico para iOS renderizar a câmera nativa
                         document.documentElement.style.setProperty('--background', 'transparent');
                         try {
-                            await BarcodeScanner.hideBackground();
-                        } catch (e) {
-                            console.warn("Aviso ao ocultar fundo no iOS:", e);
-                        }
+                            await BarcodeScannerPlugin.hideBackground();
+                        } catch (e) {}
                     }
 
-                    // Dispara a leitura nativa
-                    const resultado = await BarcodeScanner.scan();
+                    const resultado = await BarcodeScannerPlugin.scan();
                     
-                    // Restaura os padrões visuais após a leitura
                     document.body.classList.remove('barcode-scanner-active');
                     if (plataforma === 'ios') {
                         document.documentElement.style.removeProperty('--background');
                         try {
-                            await BarcodeScanner.showBackground();
+                            await BarcodeScannerPlugin.showBackground();
                         } catch (e) {}
                     }
 
                     if (resultado && resultado.barcodes && resultado.barcodes.length > 0) {
                         const codigoLido = resultado.barcodes[0].displayValue || resultado.barcodes[0].rawValue;
                         if (codigoLido) {
-                            // Pequeno atraso para garantir que o DOM retomou o foco corretamente após fechar a view nativa
                             setTimeout(() => {
                                 processarCodigoCapturadoUniversal(codigoLido.trim());
                             }, 100);
@@ -147,9 +136,7 @@ export async function iniciarCameraComHtml5Qrcode() {
         if (html5QrcodeInstance) {
             try {
                 if (html5QrcodeInstance.isScanning) await html5QrcodeInstance.stop();
-            } catch (e) {
-                console.warn("Aviso ao limpar instância anterior:", e);
-            }
+            } catch (e) {}
             setHtml5QrcodeInstance(null);
             await new Promise(resolve => setTimeout(resolve, 200));
         }
@@ -180,7 +167,6 @@ export async function iniciarCameraComHtml5Qrcode() {
     }
 }
 
-// Núcleo unificado que entrega o código lido para o PDV ou para o Admin
 function processarCodigoCapturadoUniversal(termoDigitado) {
     if (!termoDigitado || termoDigitado.length < 1) return;
 
@@ -209,7 +195,6 @@ function processarCodigoCapturadoUniversal(termoDigitado) {
             }
         }
     } else if (origemLeitor === 'admin') {
-        // Direciona especificamente para o campo do modal administrativo (visível na sua imagem do painel)
         const inputCodigo = document.getElementById('formCodigo');
         if (inputCodigo) {
             inputCodigo.value = termoDigitado;
@@ -223,9 +208,9 @@ function processarCodigoCapturadoUniversal(termoDigitado) {
 export async function fecharLeitorCamera() {
     try {
         const isNative = window.Capacitor && window.Capacitor.isNativePlatform();
-        if (isNative) {
-            await BarcodeScanner.stopScan().catch(() => {});
-            await BarcodeScanner.showBackground().catch(() => {});
+        if (isNative && window.Capacitor.Plugins && window.Capacitor.Plugins.BarcodeScanner) {
+            await window.Capacitor.Plugins.BarcodeScanner.stopScan().catch(() => {});
+            await window.Capacitor.Plugins.BarcodeScanner.showBackground().catch(() => {});
             document.body.classList.remove('barcode-scanner-active');
             document.documentElement.style.removeProperty('--background');
         }
@@ -245,7 +230,6 @@ export async function fecharLeitorCamera() {
     }
 }
 
-// Inicializa o leitor de teclado/pistola assim que o script é carregado
 inicializarLeitorTecladoPistola();
 
 window.abrirLeitorCamera = abrirLeitorCamera;
