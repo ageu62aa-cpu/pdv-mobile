@@ -1,0 +1,6 @@
+{
+  "appId": "com.vancely.pdventerprise",
+  "appName": "PDV-VS Enterprise",
+  "webDir": "www",
+  "bundledWebRuntime": false
+}
