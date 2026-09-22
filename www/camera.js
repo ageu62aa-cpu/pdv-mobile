@@ -82,7 +82,6 @@ async function dispararLeitorDispositivo() {
                         } catch (e) {}
                     }
 
-                    // Configuração focada em máxima compatibilidade de leitura para iOS e Android
                     const resultado = await BarcodeScannerPlugin.scan({
                         lensFacing: "back"
                     });
@@ -115,8 +114,6 @@ async function dispararLeitorDispositivo() {
         prepararModalCameraWeb();
         await iniciarCameraComHtml5Qrcode();
 
-    } taxaCatch: {
-        // Tratamento de erro robusto caso ocorra falha na instância
     } catch (err) {
         console.error("PDV-VS Erro ao acionar leitor do dispositivo:", err);
         document.body.classList.remove('barcode-scanner-active');
