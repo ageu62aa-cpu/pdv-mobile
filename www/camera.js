@@ -71,8 +71,9 @@ export async function abrirLeitorCamera(callbackSucesso) {
                 { fps: 10, qrbox: { width: 250, height: 150 } },
                 (decodedText) => {
                     console.log(`Código lido com sucesso na Web: ${decodedText}`);
-                    fecharLeitorCamera();
+                    // ORDEM CORRIGIDA: Envia primeiro para o campo, depois fecha
                     enviarParaCampo(decodedText, callbackSucesso);
+                    fecharLeitorCamera();
                 },
                 (errorMessage) => {
                     // Ignora erros de frame contínuos enquanto busca o código
@@ -101,9 +102,13 @@ function enviarParaCampo(codigoLido, callbackSucesso) {
         : (document.getElementById('buscaProduto') || document.getElementById('codigoBarras') || document.querySelector('input[type="text"]'));
 
     if (inputAlvo) {
+        inputAlvo.focus();
         inputAlvo.value = codigoLido;
         inputAlvo.dispatchEvent(new Event('input', { bubbles: true }));
-        inputAlvo.dispatchEvent(new KeyboardEvent('keypress', { key: 'Enter', keyCode: 13, bubbles: true }));
+        inputAlvo.dispatchEvent(new Event('change', { bubbles: true }));
+        inputAlvo.dispatchEvent(new KeyboardEvent('keypress', { key: 'Enter', keyCode: 13, which: 13, bubbles: true }));
+    } else {
+        console.warn('Nenhum input alvo encontrado para preencher o código:', codigoLido);
     }
 }
 
