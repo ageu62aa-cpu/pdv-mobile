@@ -82,9 +82,8 @@ async function dispararLeitorDispositivo() {
                         } catch (e) {}
                     }
 
-                    // Executa a leitura nativa otimizada para suportar códigos menores 
-                    // e centralizar corretamente a moldura/foco no iOS e Android
-                    const resultado = await BarcodeScannerPlugin.scan({
+                    // Configuração otimizada para iOS: força alta resolução e suporte amplo a formatos densos e compactos
+                    const scannerConfig = {
                         formats: [
                             "EAN_13",
                             "EAN_8",
@@ -92,10 +91,19 @@ async function dispararLeitorDispositivo() {
                             "CODE_128",
                             "CODE_39",
                             "UPC_A",
-                            "UPC_E"
+                            "UPC_E",
+                            "ITF",
+                            "CODABAR"
                         ],
                         lensFacing: "back"
-                    });
+                    };
+
+                    // Adiciona parâmetros de resolução estendidos caso a plataforma seja iOS para forçar nitidez em códigos pequenos
+                    if (plataforma === 'ios') {
+                        scannerConfig.resolution = "1280x720";
+                    }
+
+                    const resultado = await BarcodeScannerPlugin.scan(scannerConfig);
                     
                     document.body.classList.remove('barcode-scanner-active');
                     if (plataforma === 'ios') {
@@ -231,7 +239,7 @@ export async function fecharLeitorCamera() {
 
     if (html5QrcodeInstance) {
         try {
-            if (html5QrcodeInstance.isScanning) await html5QrcodeInstance.stop();
+            if (html5QrcodeInstance.isScanning) await html5QrcodInstance.stop();
         } catch(e) {}
         setHtml5QrcodeInstance(null);
     }
