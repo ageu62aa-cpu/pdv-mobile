@@ -1,10 +1,12 @@
-import { BarcodeScanner } from '@capacitor-mlkit/barcode-scanning';
 import { Capacitor } from '@capacitor/core';
 
 // Função unificada para abrir o leitor de câmera (Nativo ou Web)
 export async function abrirLeitorCamera(callbackSucesso) {
     if (Capacitor.isNativePlatform()) {
         try {
+            // Importa dinamicamente para rodar apenas no ambiente nativo (Android/iOS)
+            const { BarcodeScanner } = await import('@capacitor-mlkit/barcode-scanning');
+
             // Solicita permissão para a câmera nativa
             const status = await BarcodeScanner.requestPermissions();
             if (status.camera !== 'granted') {
