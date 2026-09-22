@@ -80,7 +80,6 @@ export function alternarTelaAuth(modo) {
         if (fields.btn) fields.btn.innerText = 'Acessar Sistema';
         if (fields.icone) {
             fields.icone.className = 'fa-solid fa-cash-register text-4xl text-emerald-600 mb-2 cursor-pointer';
-            // Atribui o evento de cliques secretos no icone de login
             fields.icone.onclick = registrarCliqueSecretoAdmin;
         }
         if (fields.divSenha) fields.divSenha.classList.remove('hidden'); 
@@ -96,7 +95,7 @@ export function alternarTelaAuth(modo) {
         if (fields.btn) fields.btn.innerText = 'Criar Conta';
         if (fields.icone) fields.icone.className = 'fa-solid fa-store text-4xl text-blue-600 mb-2';
         if (fields.voltar) fields.voltar.classList.remove('hidden'); 
-        if (fields.perfil) fields.perfil.classList.remove('hidden');
+        if (fields.perfil) fields.perfil.classList.add('hidden'); // Ocultado para que o cadastro externo seja exclusivamente de administrador
         if (fields.mercado) fields.mercado.classList.remove('hidden'); 
         if (fields.doc) fields.doc.classList.remove('hidden');
         if (fields.endereco) fields.endereco.classList.remove('hidden');
@@ -146,7 +145,6 @@ export async function processarAutenticacao() {
         } else if (modoTelaAuth === 'cadastro') {
             const nomeMercadoEl = document.getElementById('authNomeMercado');
             const documentoEl = document.getElementById('authDocumento');
-            const selectPerfilEl = document.getElementById('selectTipoPerfil');
             const cepEl = document.getElementById('authCep');
             const enderecoEl = document.getElementById('authEndereco');
             const numeroEl = document.getElementById('authNumeroImovel');
@@ -154,7 +152,7 @@ export async function processarAutenticacao() {
 
             const nomeMercado = nomeMercadoEl ? nomeMercadoEl.value.trim() : '';
             const documento = documentoEl ? documentoEl.value.trim() : '';
-            const tipoPerfil = selectPerfilEl ? selectPerfilEl.value : 'operador';
+            const tipoPerfil = 'admin_mercado'; // Força o perfil criado externamente a ser sempre o administrador da empresa
             const cep = cepEl ? cepEl.value.trim() : '';
             const endereco = enderecoEl ? enderecoEl.value.trim() : '';
             const numero = numeroEl ? numeroEl.value.trim() : '';
@@ -286,7 +284,6 @@ export function concluirLoginSucesso(cargoUser) {
             if (badgeLoja) badgeLoja.innerText = `Loja #${dadosEmpresaAtual.id.substring(0,6)}`;
         }
         
-        // Controle de visibilidade do Botão Admin no menu superior (Apenas para admin_mercado)
         const btnAdminMenu = document.getElementById('btnAdminMenu');
         if (btnAdminMenu) {
             if (cargoUser === 'admin_mercado') {
