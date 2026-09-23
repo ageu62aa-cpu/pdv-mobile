@@ -155,17 +155,18 @@ export async function iniciarCameraComHtml5Qrcode() {
         let ultimoCodigoLido = '';
         let tempoUltimoDisparo = 0;
 
-        // Configuração sênior refinada para forçar a renderização limpa da moldura de mira nos 4 cantos
+        // Configuração sênior otimizada para alta resolução (Foco melhorado para códigos pequenos no iOS)
         await instance.start(
             { facingMode: "environment" },
             { 
-                fps: 30, 
-                qrbox: { width: 240, height: 240 }, 
-                aspectRatio: 1.33333, // Proporção padrão 4:3 que garante o encaixe perfeito da moldura de mira do Html5Qrcode no iOS
+                fps: 40, // Aumentado para processar quadros mais rapidamente
+                qrbox: { width: 250, height: 250 }, 
+                aspectRatio: 1.33333, 
                 videoConstraints: {
-                    width: { ideal: 1280 },
-                    height: { ideal: 720 },
-                    facingMode: "environment"
+                    width: { ideal: 1920 }, // Força alta resolução para nitidez em códigos pequenos
+                    height: { ideal: 1080 },
+                    facingMode: "environment",
+                    focusMode: "continuous" // Tenta forçar foco contínuo se suportado pelo navegador
                 }
             },
             (decodedText) => {
@@ -173,7 +174,8 @@ export async function iniciarCameraComHtml5Qrcode() {
                 const codigoLimpo = decodedText.trim();
                 const agora = Date.now();
 
-                if (codigoLimpo === ultimoCodigoLido && (agora - tempoUltimoDisparo) < 1200) {
+                // Intervalo ajustado para garantir agilidade na leitura contínua
+                if (codigoLimpo === ultimoCodigoLido && (agora - tempoUltimoDisparo) < 800) {
                     return;
                 }
                 ultimoCodigoLido = codigoLimpo;
