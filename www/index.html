@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PDV-VS Enterprise - v1.0.2 | Vancely Software</title>
+    <title>PDV-VS Enterprise - v1.0.3 | Vancely Software</title>
     <meta name="theme-color" content="#047857">
     <meta name="author" content="Vancely Software">
     
@@ -48,7 +48,7 @@
                 </div>
                 <h2 id="tituloAuth" class="text-xl sm:text-2xl font-bold text-slate-900">PDV-VS Enterprise</h2>
                 <p id="subtituloAuth" class="text-xs text-slate-500">Sistema de Gestão Comercial e PDV</p>
-                <div class="mt-2 inline-block bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full"><span class="text-[10px] sm:text-[11px] font-bold text-emerald-800 tracking-wider uppercase">Versão 1.0.2 • Vancely Software</span></div>
+                <div class="mt-2 inline-block bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full"><span class="text-[10px] sm:text-[11px] font-bold text-emerald-800 tracking-wider uppercase">Versão 1.0.3 • Vancely Software</span></div>
             </div>
             
             <div class="space-y-3.5">
@@ -136,24 +136,29 @@
 
     <!-- APLICAÇÃO PRINCIPAL (PDV) -->
     <div id="appPrincipal" class="hidden flex-1 flex flex-col justify-between">
-        <header id="headerTopoApp" class="bg-emerald-700 text-white px-4 py-3 flex justify-between items-center shadow-md">
-            <div class="flex items-center space-x-3 cursor-pointer select-none" onclick="location.reload()" title="Atualizar Página">
+        <header id="headerTopoApp" class="bg-emerald-700 text-white px-4 py-3 grid grid-cols-3 items-center shadow-md">
+            <!-- Esquerda: Logo, Nome do PDV e Versão -->
+            <div class="flex items-center space-x-3 cursor-pointer select-none justify-start" onclick="location.reload()" title="Atualizar Página">
                 <img src="assets/mascote.jpeg" alt="Mascote" class="w-9 h-9 rounded-lg object-contain bg-white/10 p-0.5 border border-emerald-500 shadow-sm">
                 <div>
-                    <h1 id="tituloAppEmpresa" class="font-bold text-sm leading-tight text-white">PDV-VS Enterprise</h1>
-                    <div class="flex items-center space-x-2">
-                        <span id="badgeNumeroLoja" class="text-[11px] text-emerald-200 font-medium">Carregando loja...</span>
-                        <span id="badgeEmpresaLogada" class="text-[10px] bg-emerald-800 text-emerald-100 px-1.5 py-0.2 rounded font-mono hidden sm:inline">CNPJ: ...</span>
-                    </div>
+                    <span class="text-[10px] text-emerald-200 font-bold uppercase tracking-wider block">PDV-VS Enterprise</span>
+                    <span id="badgeNumeroLoja" class="text-[11px] text-emerald-100 font-medium">Versão 1.0.3</span>
                 </div>
             </div>
             
-            <div class="flex items-center space-x-2">
+            <!-- Centro: Nome do Estabelecimento Cadastrado em Destaque Absoluto -->
+            <div class="text-center px-2">
+                <h1 id="tituloAppEmpresa" class="font-extrabold text-lg sm:text-xl text-white tracking-tight truncate drop-shadow-sm" title="Nome do Estabelecimento">Mercado Sandbox</h1>
+                <span id="badgeEmpresaLogada" class="text-[10px] bg-emerald-800 text-emerald-100 px-2 py-0.5 rounded font-mono shadow-inner border border-emerald-600">CNPJ: 00.000.000/0001-00</span>
+            </div>
+
+            <!-- Direita: Ações e Botões do Sistema -->
+            <div class="flex items-center space-x-2 justify-end">
                 <button id="btnInstalarPwaHeader" onclick="instalarAppPwa()" class="hidden bg-amber-500 hover:bg-amber-600 text-slate-950 px-3 py-1.5 rounded text-xs font-bold transition flex items-center space-x-1.5 shadow" title="Instalar Aplicativo">
                     <i class="fa-solid fa-download"></i><span>Instalar App</span>
                 </button>
                 <span class="badgeCaixaStatus text-xs bg-amber-500/20 text-amber-300 border border-amber-500/30 px-3 py-1.5 rounded font-semibold">FECHADO</span>
-                <span id="infoUsuarioLogado" class="text-xs text-emerald-100 hidden sm:inline"></span>
+                <span id="infoUsuarioLogado" class="text-xs text-emerald-100 hidden xl:inline"></span>
                 <button id="btnAdminMenu" onclick="abrirPainelAdmin()" class="hidden bg-emerald-800 hover:bg-emerald-900 text-white px-3 py-1.5 rounded text-xs font-bold transition flex items-center space-x-1.5"><i class="fa-solid fa-user-shield text-emerald-300"></i><span>Admin</span></button>
                 <button onclick="realizarLogout()" class="bg-rose-900/60 hover:bg-rose-900 text-rose-100 px-2.5 py-1.5 rounded text-xs font-bold transition" title="Sair"><i class="fa-solid fa-power-off"></i></button>
             </div>
@@ -223,7 +228,7 @@
         </main>
 
         <footer id="rodapeSistema" class="bg-white border-t py-2 px-4 text-center text-xs text-slate-500 flex justify-between items-center max-w-7xl mx-auto w-full">
-            <span id="gatilhoRodapeSuperAdmin" onclick="if(typeof tentarAcessoSuperAdminMasterSecreto === 'function') tentarAcessoSuperAdminMasterSecreto(); else console.log('Super Admin indisponível neste escopo');" class="cursor-pointer select-none hover:text-emerald-700 transition" title="Clique para abrir o Super Admin">PDV-Vancely Software Enterprise | Versão 1.0.2 | Suporte Técnico Ativo</span>
+            <span id="gatilhoRodapeSuperAdmin" onclick="tentarAcessoSuperAdminMasterSeguro()" class="cursor-pointer select-none hover:text-emerald-700 transition" title="Área Restrita do Sistema">PDV-Vancely Software Enterprise | Versão 1.0.3 | Suporte Técnico Ativo</span>
             <a href="https://wa.me/" target="_blank" class="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1 rounded-full shadow flex items-center space-x-1 text-[11px] font-bold transition">
                 <i class="fa-brands fa-whatsapp text-xs"></i>
                 <span>Suporte</span>
@@ -571,7 +576,12 @@
                     <h3 class="font-bold text-xl text-slate-900"><i class="fa-solid fa-shield-halved text-purple-600 mr-2"></i> Super Admin Master - Controle de Clientes</h3>
                     <button onclick="carregarListaClientesSuperAdmin()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1" title="Atualizar Lista"><i class="fa-solid fa-rotate text-purple-600"></i><span>Atualizar</span></button>
                 </div>
-                <button onclick="fecharSuperAdminMaster()" class="text-slate-400 hover:text-slate-600 text-xl font-bold px-2 py-1"><i class="fa-solid fa-xmark"></i></button>
+                <div class="flex items-center space-x-2">
+                    <button onclick="abrirModalNovoClienteSuperAdmin()" class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow transition flex items-center space-x-1.5">
+                        <i class="fa-solid fa-plus"></i><span>Novo Cliente / Loja</span>
+                    </button>
+                    <button onclick="fecharSuperAdminMaster()" class="text-slate-400 hover:text-slate-600 text-xl font-bold px-2 py-1"><i class="fa-solid fa-xmark"></i></button>
+                </div>
             </div>
             
             <div class="flex-1 flex flex-col overflow-hidden">
@@ -592,6 +602,48 @@
                         </tbody>
                     </table>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE CADASTRO DE NOVO CLIENTE (SUPER ADMIN) -->
+    <div id="modalNovoClienteSuperAdmin" class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-3">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center border-b pb-3">
+                <h3 class="font-bold text-base text-slate-900"><i class="fa-solid fa-store text-purple-600 mr-2"></i> Cadastrar Nova Loja / Cliente</h3>
+                <button onclick="fecharModalNovoClienteSuperAdmin()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div class="space-y-3 max-h-[70vh] overflow-y-auto pr-1">
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">Nome do Estabelecimento</label>
+                    <input type="text" id="novoCliNomeLoja" class="w-full p-2.5 border rounded-lg text-sm" placeholder="Ex: Mercearia Central">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">Nome do Responsável / Admin</label>
+                    <input type="text" id="novoCliResponsavel" class="w-full p-2.5 border rounded-lg text-sm" placeholder="Ex: Ageu Alves">
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">CNPJ ou CPF</label>
+                        <input type="text" id="novoCliDocumento" class="w-full p-2.5 border rounded-lg text-sm" placeholder="00.000.000/0001-00">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">WhatsApp</label>
+                        <input type="text" id="novoCliWhatsapp" class="w-full p-2.5 border rounded-lg text-sm" placeholder="(92) 99999-9999">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">E-mail de Acesso</label>
+                    <input type="email" id="novoCliEmail" class="w-full p-2.5 border rounded-lg text-sm" placeholder="cliente@email.com">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">Senha Inicial</label>
+                    <input type="password" id="novoCliSenha" class="w-full p-2.5 border rounded-lg text-sm" placeholder="••••••••">
+                </div>
+            </div>
+            <div class="flex justify-end space-x-2 pt-2 border-t">
+                <button onclick="fecharModalNovoClienteSuperAdmin()" class="bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-xs font-bold">Cancelar</button>
+                <button onclick="salvarNovoClienteSuperAdmin()" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-xs font-bold shadow">Criar Cliente</button>
             </div>
         </div>
     </div>
