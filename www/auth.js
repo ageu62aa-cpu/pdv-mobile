@@ -38,7 +38,7 @@ export async function instalarPwaApp() {
     }
 }
 
-// Função de gatilho secreto por cliques (5 cliques para liberar o SuperAdmin)
+// Função de gatilho secreto por cliques (5 cliques exatos no mascote para liberar o SuperAdmin)
 export function registrarCliqueSecretoAdmin() {
     const agora = Date.now();
     if (agora - tempoUltimoCliqueAdmin > 1000) {
@@ -51,7 +51,7 @@ export function registrarCliqueSecretoAdmin() {
     if (contadorCliquesAdmin >= 5) {
         contadorCliquesAdmin = 0;
         alternarTelaAuth('admin');
-        console.log('PDV-VS: Acesso SuperAdmin desbloqueado por gestos.');
+        console.log('PDV-VS: Acesso SuperAdmin desbloqueado por gestos no mascote.');
     }
 }
 
@@ -109,10 +109,6 @@ export function alternarTelaAuth(modo) {
         if (fields.titulo) fields.titulo.innerText = 'PDV-VS Enterprise'; 
         if (fields.subtitulo) fields.subtitulo.innerText = `Versão ${VERSAO_SISTEMA}`;
         if (fields.btn) fields.btn.innerText = 'Acessar Sistema';
-        if (fields.icone) {
-            fields.icone.className = 'fa-solid fa-cash-register text-4xl text-orange-500 mb-2 cursor-pointer';
-            fields.icone.onclick = registrarCliqueSecretoAdmin;
-        }
         if (fields.divSenha) fields.divSenha.classList.remove('hidden'); 
         if (fields.links) fields.links.classList.remove('hidden');
         if (fields.voltar) fields.voltar.classList.add('hidden'); 
@@ -124,7 +120,6 @@ export function alternarTelaAuth(modo) {
         if (fields.titulo) fields.titulo.innerText = 'Novo Estabelecimento'; 
         if (fields.subtitulo) fields.subtitulo.innerText = 'Cadastre sua loja (Plano Comum)';
         if (fields.btn) fields.btn.innerText = 'Criar Conta';
-        if (fields.icone) fields.icone.className = 'fa-solid fa-store text-4xl text-blue-600 mb-2';
         if (fields.voltar) fields.voltar.classList.remove('hidden'); 
         if (fields.perfil) fields.perfil.classList.add('hidden'); 
         if (fields.mercado) fields.mercado.classList.remove('hidden'); 
@@ -135,7 +130,6 @@ export function alternarTelaAuth(modo) {
         if (fields.titulo) fields.titulo.innerText = 'Super Admin Master'; 
         if (fields.subtitulo) fields.subtitulo.innerText = 'Acesso Restrito ao Desenvolvedor';
         if (fields.btn) fields.btn.innerText = 'Entrar como Super Admin';
-        if (fields.icone) fields.icone.className = 'fa-solid fa-shield-halved text-4xl text-purple-600 mb-2';
         if (fields.divSenha) fields.divSenha.classList.remove('hidden'); 
         if (fields.links) fields.links.classList.add('hidden');
         if (fields.voltar) fields.voltar.classList.remove('hidden'); 
@@ -180,8 +174,6 @@ export async function processarAutenticacao() {
             }
 
             setUsuarioAtual(authData.user);
-            
-            // Valida e entra direto ou direciona para o fluxo padrão acompanhado
             await validarVinculoEmpresaUsuarioSuperAdmin(authData.user);
             return;
         }
@@ -291,7 +283,6 @@ export async function validarVinculoEmpresaUsuario() {
     try {
         const { data: vincData, error: vincError } = await supabaseClient.from('usuarios_empresas').select('empresa_id, cargo').eq('user_id', usuarioAtual.id).single();
         if (vincError || !vincData) {
-            // Se for um Super Admin logando pela tela comum, tratamos de forma leve sem quebrar
             const { data: adminCheck } = await supabaseClient.from('super_admins').select('email').eq('email', usuarioAtual.email).single();
             if (adminCheck) {
                 concluirLoginSucesso('admin_mercado');
@@ -361,7 +352,6 @@ export async function concluirLoginSucesso(cargoUser) {
             const infoLogado = document.getElementById('infoUsuarioLogado');
             if (infoLogado) infoLogado.innerHTML = `<i class="fa-solid fa-user text-emerald-300 mr-1"></i> ${usuarioNomeExibicao} (${cargoUser === 'admin_mercado' ? 'Admin' : 'Caixa'})`;
             
-            // VERIFICAÇÃO DE SEGURANÇA NO BANCO: Exibe o botão do Super Admin na barra superior APENAS se o e-mail estiver na tabela 'super_admins'
             if (usuarioAtual.email) {
                 const { data: checkSuper } = await supabaseClient
                     .from('super_admins')
