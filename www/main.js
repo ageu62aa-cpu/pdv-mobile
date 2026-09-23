@@ -192,7 +192,7 @@ document.addEventListener("DOMContentLoaded", () => {
     inicializarAtalhosTeclado();
 });
 
-// --- VERIFICAÇÃO DE SESSÃO E CARREGAMENTO ISOLADO DA EMPRESA ---
+// --- VERIFICAÇÃO DE SESSÃO E BUSCA DINÂMICA DO NOME_MERCADO ---
 async function verificarSessaoEAlternarTelas() {
     try {
         const { data: { session } } = await window.supabaseClient.auth.getSession();
@@ -204,7 +204,7 @@ async function verificarSessaoEAlternarTelas() {
         if (session && session.user) {
             setUsuarioAtual(session.user);
 
-            // Busca vinculação segura na tabela de relaciomento
+            // Busca vinculação do usuário com a empresa
             const { data: opData } = await window.supabaseClient
                 .from('usuarios_empresas')
                 .select('empresa_id, cargo')
@@ -222,20 +222,20 @@ async function verificarSessaoEAlternarTelas() {
             setEmpresaAtualId(empresaIdFinal);
             setCargoUsuarioAtual(cargoFinal);
 
-            // Busca rigorosa e isolada do nome comercial cadastrado pelo cliente específico
+            // Busca correta utilizando a coluna exata 'nome_mercado' e 'documento' da tabela empresas
             let nomeLojaExibicao = "Nome do Estabelecimento";
             let cnpjLojaExibicao = "";
 
             if (empresaIdFinal) {
                 const { data: dadosEmpresa, error: errEmpresa } = await window.supabaseClient
                     .from('empresas')
-                    .select('nome_fantasia, razao_social, cnpj')
+                    .select('nome_mercado, documento')
                     .eq('id', empresaIdFinal)
                     .maybeSingle();
 
                 if (!errEmpresa && dadosEmpresa) {
-                    nomeLojaExibicao = dadosEmpresa.nome_fantasia || dadosEmpresa.razao_social || "Nome do Estabelecimento";
-                    cnpjLojaExibicao = dadosEmpresa.cnpj ? `CNPJ: ${dadosEmpresa.cnpj}` : "";
+                    nomeLojaExibicao = dadosEmpresa.nome_mercado || "Nome do Estabelecimento";
+                    cnpjLojaExibicao = dadosEmpresa.documento ? `CNPJ/CPF: ${dadosEmpresa.documento}` : "";
                 }
             }
 
