@@ -333,6 +333,26 @@ export async function concluirLoginSucesso(cargoUser) {
             if (badgeLoja) badgeLoja.innerText = `${dadosEmpresaAtual.nome_mercado} (Loja #${dadosEmpresaAtual.id.substring(0,6)})`;
         }
         
+        // Injeta ou atualiza o Mascote + Nome da Loja na página principal funcionando como Refresh
+        const headerTopo = document.getElementById('headerTopoApp') || document.querySelector('header');
+        if (headerTopo) {
+            let containerMascote = document.getElementById('containerMascoteRefresh');
+            if (!containerMascote) {
+                containerMascote = document.createElement('div');
+                containerMascote.id = 'containerMascoteRefresh';
+                containerMascote.className = 'flex items-center gap-2 cursor-pointer select-none';
+                containerMascote.title = 'Atualizar / Sincronizar dados';
+                containerMascote.onclick = () => location.reload();
+                headerTopo.prepend(containerMascote);
+            }
+            
+            const nomeLojaTexto = dadosEmpresaAtual ? dadosEmpresaAtual.nome_mercado : 'PDV-VS';
+            containerMascote.innerHTML = `
+                <img src="assets/mascote.jpeg" alt="Mascote PDV" class="w-9 h-9 rounded-full object-cover border-2 border-emerald-500 shadow-md hover:scale-105 transition-transform">
+                <span class="font-bold text-sm tracking-tight text-slate-800">${nomeLojaTexto}</span>
+            `;
+        }
+        
         const btnAdminMenu = document.getElementById('btnAdminMenu');
         if (btnAdminMenu) {
             if (cargoUser === 'admin_mercado') {
@@ -484,7 +504,9 @@ export async function alternarStatusEmpresa(empresaId, statusAtual) {
     }
 }
 
-// Vinculação explícita para o escopo global (Garante o funcionamento via HTML onclick)
+// ==========================================
+// EXPOSIÇÃO GLOBAL PARA COMPATIBILIDADE HTML
+// ==========================================
 window.alternarTelaAuth = alternarTelaAuth;
 window.tratarEnterLogin = tratarEnterLogin;
 window.processarAutenticacao = processarAutenticacao;
