@@ -44,16 +44,16 @@ export function inicializarLeitorTecladoPistola() {
     window.addEventListener('keydown', listenerTecladoGlobal);
 }
 
-// Executado ao abrir leitor para Vendas
+// Executado ao abrir leitor para Vendas (Modo Contínuo / Pistola por Vídeo)
 export async function abrirLeitorCamera() {
-    console.log("PDV-VS: Abrindo leitor para Vendas");
+    console.log("PDV-VS: Abrindo leitor contínuo para Vendas");
     setOrigemLeitor('busca');
     await dispararLeitorDispositivo();
 }
 
-// Executado ao abrir leitor no Admin
+// Executado ao abrir leitor no Admin (Modo Único / Fechamento Automático)
 export async function escanearCameraAdmin() {
-    console.log("PDV-VS: Abrindo leitor para Admin");
+    console.log("PDV-VS: Abrindo leitor único para Admin");
     setOrigemLeitor('admin');
     await dispararLeitorDispositivo();
 }
@@ -129,6 +129,21 @@ function prepararModalCameraWeb() {
         modalCam.style.zIndex = "99999";
         modalCam.classList.add('flex');
         modalCam.classList.remove('hidden');
+
+        // Garante a existência do botão visível de fechar na modal web para o modo contínuo de vendas
+        let btnConcluir = document.getElementById('btnFecharLeitorModal');
+        if (!btnConcluir) {
+            const containerVideo = document.getElementById('videoPreviewCamera');
+            if (containerVideo && containerVideo.parentNode) {
+                btnConcluir = document.createElement('button');
+                btnConcluir.id = 'btnFecharLeitorModal';
+                btnConcluir.type = 'button';
+                btnConcluir.innerText = 'CONCLUIR / FECHAR LEITOR';
+                btnConcluir.style.cssText = "margin-top: 15px; width: 100%; background: #dc3545; color: #fff; border: none; padding: 12px; font-weight: bold; border-radius: 8px; cursor: pointer; font-size: 16px; z-index: 100000;";
+                btnConcluir.onclick = () => fecharLeitorCamera();
+                containerVideo.parentNode.appendChild(btnConcluir);
+            }
+        }
     }
 }
 
@@ -139,7 +154,7 @@ export async function iniciarCameraComHtml5Qrcode() {
                 if (html5QrcodeInstance.isScanning) await html5QrcodeInstance.stop();
             } catch (e) {}
             setHtml5QrcodeInstance(null);
-            await new Promise(resolve => setTimeout(resolve, 200));
+            await new Promise(resolve => setTimeout(resolve, 80)); // Reduzido drasticamente para abrir instantaneamente
         }
         
         const elementId = "videoPreviewCamera";
@@ -152,6 +167,10 @@ export async function iniciarCameraComHtml5Qrcode() {
         const instance = new QrLib(elementId);
         setHtml5QrcodeInstance(instance);
         
+        // Controle de throttle para evitar múltiplos disparos idênticos seguidos no modo contínuo
+        let ultimoCodigoLido = '';
+        let tempoUltimoDisparo = 0;
+
         await instance.start(
             { facingMode: "environment" },
             { 
@@ -166,8 +185,17 @@ export async function iniciarCameraComHtml5Qrcode() {
             },
             (decodedText) => {
                 if (!decodedText) return;
-                fecharLeitorCamera();
-                processarCodigoCapturadoUniversal(decodedText.trim());
+                const codigoLimpo = decodedText.trim();
+                const agora = Date.now();
+
+                // Evita leitura duplicada fantasma em menos de 1.2 segundos para o mesmo item
+                if (codigoLimpo === ultimoCodigoLido && (agora - tempoUltimoDisparo) < 1200) {
+                    return;
+                }
+                ultimoCodigoLido = codigoLimpo;
+                tempoUltimoDisparo = agora;
+
+                processarCodigoCapturadoUniversal(codigoLimpo);
             },
             () => {}
         );
@@ -179,7 +207,7 @@ export async function iniciarCameraComHtml5Qrcode() {
                 videoElement.style.width = '100%';
                 videoElement.style.height = '100%';
             }
-        }, 300);
+        }, 150);
 
     } catch (err) {
         console.error("PDV-VS Erro Html5Qrcode:", err);
@@ -192,7 +220,11 @@ function processarCodigoCapturadoUniversal(termoDigitado) {
 
     console.log(`PDV-VS: Processando termo [Origem: ${origemLeitor}] ->`, termoDigitado);
     
-    fecharLeitorCamera();
+    // Regra sênior: Se for admin, fecha automaticamente a câmara após ler o único produto.
+    // Se for vendas (busca), MANTÉM A CÂMARA ABERTA em modo contínuo para passar vários itens!
+    if (origemLeitor === 'admin') {
+        fecharLeitorCamera();
+    }
 
     if (origemLeitor === 'busca') {
         const termoLower = termoDigitado.toLowerCase();
