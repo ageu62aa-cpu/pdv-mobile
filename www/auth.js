@@ -1,5 +1,5 @@
 // ==========================================
-// MÓDULO DE AUTENTICAÇÃO E ADMIN MASTER (PDV-VS)
+// MÓDULO DE AUTENTICAÇÃO E ADMIN MASTER (auth.js)
 // ==========================================
 
 import { 
@@ -11,7 +11,6 @@ import {
 } from './state.js';
 import { carregarProdutosCache } from './produtos.js';
 import { atualizarBadgesCaixaInterface, focarBusca, atualizarTabelaVenda } from './caixa.js';
-import { carregarHistoricoAdmin, carregarOperadoresLoja } from './admin.js';
 
 let intervaloMonitoramentoSessao = null;
 
@@ -89,19 +88,9 @@ function limparErrosCampos() {
     });
 }
 
-// --- FUNÇÃO DE REFRESH LOCAL DA TELA DE AUTH (MANTÉM O UTILIZADOR NO MESMO LUGAR) ---
+// --- FUNÇÃO DE REFRESH COMPLETO DA PÁGINA AO CLICAR NO MASCOTE ---
 export function atualizarEstadoTelaAuthLocal() {
-    limparErrosCampos();
-    
-    const inputsAuth = document.querySelectorAll('#telaLogin input');
-    inputsAuth.forEach(input => {
-        if (input.id !== 'authCep') input.value = '';
-    });
-
-    const fb = document.getElementById('feedbackAuth');
-    if (fb) fb.classList.add('hidden');
-
-    console.log("🟢 [PDV-VS] Estado da tela de autenticação atualizado localmente.");
+    window.location.reload();
 }
 
 export function alternarTelaAuth(modo) {
@@ -354,22 +343,11 @@ export async function concluirLoginSucesso(cargoUser) {
                 containerMascote = document.createElement('div');
                 containerMascote.id = 'containerMascoteRefresh';
                 containerMascote.className = 'flex items-center gap-2 cursor-pointer select-none';
-                containerMascote.title = 'Atualizar / Sincronizar dados locais e itens novos';
+                containerMascote.title = 'Recarregar / Atualizar Página Completa';
                 
-                // Botão de refresh local na barra superior do PDV (força resgate de produtos, itens novos e cache)
-                containerMascote.onclick = async () => {
-                    try {
-                        console.log("🔄 [PDV-VS] Atualização local e resgate de novos itens acionados no PDV.");
-                        await carregarProdutosCache();
-                        if (typeof window.renderizarTabelaAdmin === 'function' && window.produtosCache) {
-                            window.renderizarTabelaAdmin(window.produtosCache);
-                        }
-                        if (typeof atualizarTabelaVenda === 'function') atualizarTabelaVenda();
-                        if (typeof atualizarBadgesCaixaInterface === 'function') atualizarBadgesCaixaInterface();
-                        if (typeof focarBusca === 'function') focarBusca();
-                    } catch (errSync) {
-                        console.warn('Erro ao atualizar dados locais:', errSync);
-                    }
+                // REFRESH COMPLETO AO CLICAR NO MASCOTE DO CABEÇALHO DO PDV
+                containerMascote.onclick = () => {
+                    window.location.reload();
                 };
                 
                 headerTopo.prepend(containerMascote);
@@ -377,7 +355,7 @@ export async function concluirLoginSucesso(cargoUser) {
             
             const nomeLojaTexto = dadosEmpresaAtual ? dadosEmpresaAtual.nome_mercado : 'PDV-VS';
             containerMascote.innerHTML = `
-                <img src="assets/mascote.jpeg" alt="Mascote PDV" class="w-9 h-9 rounded-full object-cover border-2 border-emerald-500 shadow-md hover:scale-105 transition-transform">
+                <img id="iconeAppPrincipal" src="assets/mascote.jpeg" alt="Mascote PDV" class="w-9 h-9 rounded-full object-cover border-2 border-emerald-500 shadow-md hover:scale-105 transition-transform">
                 <span class="font-bold text-sm tracking-tight text-slate-800">${nomeLojaTexto}</span>
             `;
         }

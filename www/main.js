@@ -1,11 +1,11 @@
 // ==========================================  
-// PDV-VS Enterprise - Módulo Principal (main.js Restaurado e Completo)  
+// PDV-VS Enterprise - Módulo Principal (main.js)  
 // ==========================================  
-  
+
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'  
 import { setUsuarioAtual, setEmpresaAtualId, setCargoUsuarioAtual } from './state.js';  
 import { abrirLeitorCamera, escanearCameraAdmin, fecharLeitorCamera } from './camera.js';  
-  
+
 import {   
     verificarStatusCaixaServidor,   
     gerenciarCaixaModal,   
@@ -28,32 +28,32 @@ import {
     aoDigitarBusca,  
     tratarEnterBuscaCaixa  
 } from './caixa.js';  
-  
+
 const SUPABASE_URL = 'https://vbdglgmxaywntmjriccf.supabase.co';  
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiZGdsZ214YXl3bnRtanJpY2NmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk1ODgzOTEsImV4cCI6MjEwNTE2NDM5MX0.S_IUvajnn7Qk7yNtkfBru9xsOjUkKhkJ0J0doikrWSs';  
-  
+
 window.supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);  
 console.log("🟢 [SUPABASE] Conectado com sucesso!");  
-  
+
 // --- AUTOCOMPLETAR CEP (VIACEP) ---  
 window.consultarCep = async function(cep) {  
     const cepLimpo = cep.replace(/\D/g, '');  
     if (cepLimpo.length !== 8) return;  
-  
+
     try {  
         const response = await fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`);  
         const data = await response.json();  
-  
+
         if (data.erro) {  
             alert("CEP não encontrado.");  
             return;  
         }  
-  
+
         const inputEndereco = document.getElementById('authEndereco');  
         const inputCidade = document.getElementById('authCidade');  
         const inputUf = document.getElementById('authUf');  
         const inputNumero = document.getElementById('authNumeroImovel');  
-  
+
         if (inputEndereco) inputEndereco.value = `${data.logradouro || ''}, ${data.bairro || ''}`.trim();  
         if (inputCidade) inputCidade.value = data.localidade || '';  
         if (inputUf) inputUf.value = data.uf || '';  
@@ -62,7 +62,7 @@ window.consultarCep = async function(cep) {
         console.error("Erro ao consultar o CEP:", error);  
     }  
 };  
-  
+
 // --- EXPOSIÇÃO GLOBAL DE FUNÇÕES DO CAIXA E CÂMERA ---  
 window.gerenciarCaixaModal = gerenciarCaixaModal;  
 window.fecharModalCaixa = fecharModalCaixa;  
@@ -83,32 +83,11 @@ window.focarBusca = focarBusca;
 window.alterarQtd = alterarQtd;  
 window.aoDigitarBusca = aoDigitarBusca;  
 window.tratarEnterBuscaCaixa = tratarEnterBuscaCaixa;  
-  
+
 window.abrirLeitorCamera = abrirLeitorCamera;  
 window.escanearCameraAdmin = escanearCameraAdmin;  
 window.fecharLeitorCamera = fecharLeitorCamera;  
 
-// --- FUNÇÃO DE REFRESH LOCAL DA TELA DE AUTH (EXATAMENTE O QUE FOI PEDIDO) ---  
-window.atualizarEstadoTelaAuthLocal = function() {  
-    // Limpa os campos de input do container de login/cadastro mantendo o usuário no mesmo lugar  
-    const inputs = document.querySelectorAll('#telaLogin input');  
-    inputs.forEach(input => {  
-        input.style.borderColor = '';  
-        input.classList.remove('border-red-500');  
-        if (input.id !== 'authCep') input.value = '';  
-    });  
-
-    // Remove mensagens de erro dinâmicas se houverem  
-    const spansErro = document.querySelectorAll('#telaLogin span[id^="erro-"]');  
-    spansErro.forEach(span => span.remove());  
-
-    // Oculta alertas temporários de feedback  
-    const fb = document.getElementById('feedbackAuth');  
-    if (fb) fb.classList.add('hidden');  
-
-    console.log("🟢 [PDV-VS] Tela de autenticação atualizada localmente com sucesso.");  
-};  
-  
 // --- CONTROLE DO SUPER ADMIN MASTER (GATILHO SEGURO) ---  
 window.tentarAcessoSuperAdminMasterSeguro = function() {  
     const modal = document.getElementById('modalSuperAdminMaster');  
@@ -123,12 +102,12 @@ window.tentarAcessoSuperAdminMasterSeguro = function() {
         alert("Painel Super Admin Master não encontrado no HTML.");  
     }  
 };  
-  
+
 window.fecharSuperAdminMaster = function() {  
     const modal = document.getElementById('modalSuperAdminMaster');  
     if (modal) modal.classList.add('hidden');  
 };  
-  
+
 // --- TELA DE AUTH / ALTERNÂNCIA ---  
 window.alternarTelaAuth = function(tipo) {  
     const tituloAuth = document.getElementById('tituloAuth');  
@@ -141,14 +120,14 @@ window.alternarTelaAuth = function(tipo) {
     const divNomeMercadoCadastro = document.getElementById('divNomeMercadoCadastro');  
     const divDocumentoCadastro = document.getElementById('divDocumentoCadastro');  
     const divCamposEnderecoCadastro = document.getElementById('divCamposEnderecoCadastro');  
-  
+
     if (tipo === 'cadastro') {  
         if (tituloAuth) tituloAuth.innerText = "Criar Estabelecimento";  
         if (subtituloAuth) subtituloAuth.innerText = "Cadastre sua loja para começar a usar";  
         if (btnAcaoAuth) btnAcaoAuth.innerText = "Cadastrar Loja";  
         if (linksAuxiliares) linksAuxiliares.classList.add('hidden');  
         if (linkVoltarLogin) linkVoltarLogin.classList.remove('hidden');  
-  
+
         if (divTipoPerfil) divTipoPerfil.classList.remove('hidden');  
         if (divNomeMercadoCadastro) divNomeMercadoCadastro.classList.remove('hidden');  
         if (divDocumentoCadastro) divDocumentoCadastro.classList.remove('hidden');  
@@ -159,7 +138,7 @@ window.alternarTelaAuth = function(tipo) {
         if (btnAcaoAuth) btnAcaoAuth.innerText = "Acessar Master";  
         if (linksAuxiliares) linksAuxiliares.classList.add('hidden');  
         if (linkVoltarLogin) linkVoltarLogin.classList.remove('hidden');  
-  
+
         if (divTipoPerfil) divTipoPerfil.classList.add('hidden');  
         if (divNomeMercadoCadastro) divNomeMercadoCadastro.classList.add('hidden');  
         if (divDocumentoCadastro) divDocumentoCadastro.classList.add('hidden');  
@@ -170,31 +149,31 @@ window.alternarTelaAuth = function(tipo) {
         if (btnAcaoAuth) btnAcaoAuth.innerText = "Acessar Sistema";  
         if (linksAuxiliares) linksAuxiliares.classList.remove('hidden');  
         if (linkVoltarLogin) linkVoltarLogin.classList.add('hidden');  
-  
+
         if (divTipoPerfil) divTipoPerfil.classList.add('hidden');  
         if (divNomeMercadoCadastro) divNomeMercadoCadastro.classList.add('hidden');  
         if (divDocumentoCadastro) divDocumentoCadastro.classList.add('hidden');  
         if (divCamposEnderecoCadastro) divCamposEnderecoCadastro.classList.add('hidden');  
     }  
 };  
-  
+
 window.instalarAppPwa = function() {  
     console.log("Instalação PWA acionada.");  
 };  
-  
+
 window.tratarEnterLogin = function(e) {   
     if (e.key === 'Enter') window.processarAutenticacao();   
 };  
-  
+
 window.processarAutenticacao = async function() {  
     const email = document.getElementById('authEmail')?.value.trim();  
     const senha = document.getElementById('authSenha')?.value.trim();  
-  
+
     if (!email || !senha) {  
         alert("Preencha o e-mail e a senha.");  
         return;  
     }  
-  
+
     try {  
         const { error } = await window.supabaseClient.auth.signInWithPassword({ email, password: senha });  
         if (error) throw error;  
@@ -203,27 +182,30 @@ window.processarAutenticacao = async function() {
         alert("Erro ao autenticar: " + (e.message || e));  
     }  
 };  
-  
+
 window.solicitarRecuperacaoSenha = function() {  
     alert("Para recuperar a senha, contacte o suporte técnico.");  
 };  
-  
+
 document.addEventListener("DOMContentLoaded", () => {  
     verificarSessaoEAlternarTelas();  
     inicializarAtalhosTeclado();  
 
-    // VINCULAÇÃO DIRETA: Transforma o mascote em um botão de refresh local estrito  
-    const iconeMascote = document.getElementById('iconeAuth');  
-    if (iconeMascote) {  
-        iconeMascote.addEventListener('click', (e) => {  
-            e.preventDefault();  
-            if (typeof window.atualizarEstadoTelaAuthLocal === 'function') {  
-                window.atualizarEstadoTelaAuthLocal();  
-            }  
-        });  
-    }  
+    // REFRESH COMPLETO AO CLICAR NOS MASCOTES (GLOBAL)
+    const ativarRefreshMascote = (idElemento) => {
+        const el = document.getElementById(idElemento);
+        if (el) {
+            el.addEventListener('click', (e) => {
+                e.preventDefault();
+                window.location.reload();
+            });
+        }
+    };
+
+    ativarRefreshMascote('iconeAuth');
+    ativarRefreshMascote('iconeAppPrincipal');
 });  
-  
+
 // --- VERIFICAÇÃO DE SESSÃO E BUSCA DINÂMICA DO NOME_MERCADO ---  
 async function verificarSessaoEAlternarTelas() {  
     try {  
@@ -232,47 +214,46 @@ async function verificarSessaoEAlternarTelas() {
         const telaLogin = document.getElementById('telaLogin');  
         const appPrincipal = document.getElementById('appPrincipal');  
         const infoUsuario = document.getElementById('infoUsuarioLogado');  
-  
+
         if (session && session.user) {  
             setUsuarioAtual(session.user);  
-  
-            // Busca vinculação do usuário com a empresa  
+
             const { data: opData } = await window.supabaseClient  
                 .from('usuarios_empresas')  
                 .select('empresa_id, cargo')  
                 .eq('user_id', session.user.id)  
                 .maybeSingle();  
-  
+
             let cargoFinal = 'admin_mercado';  
             let empresaIdFinal = session.user.id;  
-  
+
             if (opData && opData.empresa_id) {  
                 empresaIdFinal = opData.empresa_id;  
                 cargoFinal = opData.cargo || 'admin_mercado';  
             }  
-  
+
             setEmpresaAtualId(empresaIdFinal);  
             setCargoUsuarioAtual(cargoFinal);  
-  
+
             let nomeLojaExibicao = "Nome do Estabelecimento";  
             let cnpjLojaExibicao = "";  
-  
+
             if (empresaIdFinal) {  
                 const { data: dadosEmpresa, error: errEmpresa } = await window.supabaseClient  
                     .from('empresas')  
                     .select('nome_mercado, documento')  
                     .eq('id', empresaIdFinal)  
                     .maybeSingle();  
-  
+
                 if (!errEmpresa && dadosEmpresa) {  
                     nomeLojaExibicao = dadosEmpresa.nome_mercado || "Nome do Estabelecimento";  
                     cnpjLojaExibicao = dadosEmpresa.documento ? `CNPJ/CPF: ${dadosEmpresa.documento}` : "";  
                 }  
             }  
-  
+
             const elTituloApp = document.getElementById('tituloAppEmpresa');  
             const elBadgeCnpj = document.getElementById('badgeEmpresaLogada');  
-  
+
             if (elTituloApp) elTituloApp.textContent = nomeLojaExibicao;  
             if (elBadgeCnpj) {  
                 if (cnpjLojaExibicao) {  
@@ -282,7 +263,7 @@ async function verificarSessaoEAlternarTelas() {
                     elBadgeCnpj.classList.add('hidden');  
                 }  
             }  
-  
+
             if (telaLogin) telaLogin.classList.add('hidden');  
             if (appPrincipal) appPrincipal.classList.remove('hidden');  
             if (infoUsuario) infoUsuario.innerText = session.user.email;  
@@ -297,7 +278,7 @@ async function verificarSessaoEAlternarTelas() {
                     btnAdmin.style.display = 'none';  
                 }  
             }  
-  
+
             await verificarStatusCaixaServidor();  
             focarBusca();  
         } else {  
@@ -308,7 +289,7 @@ async function verificarSessaoEAlternarTelas() {
         console.error("Erro crítico na verificação de sessão:", err);  
     }  
 }  
-  
+
 function inicializarAtalhosTeclado() {  
     document.addEventListener('keydown', (e) => {  
         if (e.key === 'F1') {  
