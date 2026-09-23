@@ -181,6 +181,11 @@ export async function processarAutenticacao() {
             }
 
             setUsuarioAtual(authData.user);
+            
+            // Oculta a tela de login e abre diretamente o painel master
+            const telaLogin = document.getElementById('telaLogin');
+            if (telaLogin) telaLogin.classList.add('hidden');
+            
             await abrirSuperAdminMaster();
             return;
         }
