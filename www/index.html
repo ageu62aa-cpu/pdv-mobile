@@ -173,7 +173,15 @@
                             <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><i class="fa-solid fa-barcode"></i></span>
                             <input type="text" id="inputBusca" oninput="aoDigitarBusca(this.value)" onkeydown="tratarEnterBuscaCaixa(event)" placeholder="Digite o código ou nome do produto (F5)..." class="w-full pl-10 pr-3 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
                         </div>
-                        <button onclick="abrirLeitorCamera()" class="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2.5 rounded-lg text-sm font-bold transition flex items-center space-x-1 shadow" title="Escanear com Câmera ou Pistola"><i class="fa-solid fa-camera"></i><span class="hidden sm:inline">Câmera / Scanner</span></button>
+                        <button onclick="abrirLeitorCamera()" class="bg-slate-800 hover:bg-slate-900 text-white px-3 py-2 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 shadow" title="Escanear Código de Barras">
+                            <i class="fa-solid fa-camera"></i>
+                            <div class="flex items-center space-x-1 bg-slate-700 px-1.5 py-0.5 rounded">
+                                <i class="fa-brands fa-android text-[10px] text-emerald-400" title="Android: 100%"></i>
+                                <span class="text-[9px] font-mono text-emerald-400">100%</span>
+                                <i class="fa-brands fa-apple text-[10px] text-amber-400" title="iOS: 50%"></i>
+                                <span class="text-[9px] font-mono text-amber-400">50%</span>
+                            </div>
+                        </button>
                     </div>
                     <div id="painelSugestoes" class="hidden absolute left-3 right-3 top-16 bg-white border border-slate-200 rounded-lg shadow-xl z-30 max-h-60 overflow-y-auto"></div>
                 </div>
