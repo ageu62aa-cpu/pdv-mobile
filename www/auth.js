@@ -55,7 +55,38 @@ export function registrarCliqueSecretoAdmin() {
     }
 }
 
+// Funções auxiliares para feedback visual de campos (Borda vermelha em caso de erro)
+function destacarErroCampo(idElemento, mensagem) {
+    const elemento = document.getElementById(idElemento);
+    if (!elemento) return;
+
+    elemento.style.borderColor = '#ef4444';
+    elemento.classList.add('border-red-500');
+
+    let spanErro = document.getElementById(`erro-${idElemento}`);
+    if (!spanErro) {
+        spanErro = document.createElement('span');
+        spanErro.id = `erro-${idElemento}`;
+        spanErro.style.cssText = "color: #ef4444; font-size: 11px; margin-top: 2px; display: block; font-weight: 500;";
+        if (elemento.parentNode) {
+            elemento.parentNode.appendChild(spanErro);
+        }
+    }
+    spanErro.textContent = mensagem;
+}
+
+function limparErrosCampos() {
+    const inputs = document.querySelectorAll('input');
+    inputs.forEach(input => {
+        input.style.borderColor = '';
+        input.classList.remove('border-red-500');
+        const spanErro = document.getElementById(`erro-${input.id}`);
+        if (spanErro) spanErro.remove();
+    });
+}
+
 export function alternarTelaAuth(modo) {
+    limparErrosCampos();
     setModoTelaAuth(modo);
     const fields = {
         titulo: document.getElementById('tituloAuth'), 
@@ -95,7 +126,7 @@ export function alternarTelaAuth(modo) {
         if (fields.btn) fields.btn.innerText = 'Criar Conta';
         if (fields.icone) fields.icone.className = 'fa-solid fa-store text-4xl text-blue-600 mb-2';
         if (fields.voltar) fields.voltar.classList.remove('hidden'); 
-        if (fields.perfil) fields.perfil.classList.add('hidden'); // Ocultado para que o cadastro externo seja exclusivamente de administrador
+        if (fields.perfil) fields.perfil.classList.add('hidden'); 
         if (fields.mercado) fields.mercado.classList.remove('hidden'); 
         if (fields.doc) fields.doc.classList.remove('hidden');
         if (fields.endereco) fields.endereco.classList.remove('hidden');
@@ -120,18 +151,25 @@ export function tratarEnterLogin(e) {
 }
 
 export async function processarAutenticacao() {
+    limparErrosCampos();
     const emailEl = document.getElementById('authEmail');
     const senhaEl = document.getElementById('authSenha');
     const email = emailEl ? emailEl.value.trim() : '';
     const senha = senhaEl ? senhaEl.value.trim() : '';
     
-    if (!email) { mostrarFeedback('PDV-VS: Por favor, informe o e-mail.', 'rose'); return; }
+    if (!email) { 
+        destacarErroCampo('authEmail', 'Informe o e-mail de acesso.');
+        mostrarFeedback('PDV-VS: Por favor, informe o e-mail.', 'rose'); 
+        return; 
+    }
 
     try {
         if (modoTelaAuth === 'admin') {
             if (email === 'vancely@admin.com' && senha === '123456') {
                 await abrirSuperAdminMaster();
             } else {
+                destacarErroCampo('authEmail', 'Credenciais inválidas');
+                destacarErroCampo('authSenha', 'Credenciais inválidas');
                 mostrarFeedback('PDV-VS: Credenciais de Super Admin inválidas.', 'rose');
             }
             return;
@@ -152,14 +190,20 @@ export async function processarAutenticacao() {
 
             const nomeMercado = nomeMercadoEl ? nomeMercadoEl.value.trim() : '';
             const documento = documentoEl ? documentoEl.value.trim() : '';
-            const tipoPerfil = 'admin_mercado'; // Força o perfil criado externamente a ser sempre o administrador da empresa
+            const tipoPerfil = 'admin_mercado'; 
             const cep = cepEl ? cepEl.value.trim() : '';
             const endereco = enderecoEl ? enderecoEl.value.trim() : '';
             const numero = numeroEl ? numeroEl.value.trim() : '';
             const whatsapp = whatsappEl ? whatsappEl.value.trim() : '';
 
-            if (!nomeMercado || !documento || !whatsapp) {
-                mostrarFeedback('PDV-VS: Preencha o nome do mercado, documento e WhatsApp.', 'rose');
+            let temErro = false;
+            if (!nomeMercado) { destacarErroCampo('authNomeMercado', 'Informe o nome da loja'); temErro = true; }
+            if (!documento) { destacarErroCampo('authDocumento', 'Informe o CPF ou CNPJ'); temErro = true; }
+            if (!whatsapp) { destacarErroCampo('authWhatsapp', 'Informe o WhatsApp'); temErro = true; }
+            if (!senha) { destacarErroCampo('authSenha', 'Informe uma senha'); temErro = true; }
+
+            if (temErro) {
+                mostrarFeedback('PDV-VS: Preencha os campos destacados.', 'rose');
                 return;
             }
 
@@ -195,14 +239,27 @@ export async function processarAutenticacao() {
             alternarTelaAuth('login');
         }
     } catch (e) { 
+        const msgErro = e.message ? e.message.toLowerCase() : '';
+        
+        if (msgErro.includes('invalid login credentials') || msgErro.includes('invalid') || msgErro.includes('credentials')) {
+            destacarErroCampo('authEmail', 'Verifique o e-mail');
+            destacarErroCampo('authSenha', 'Senha incorreta');
+        } else if (msgErro.includes('password') || msgErro.includes('senha')) {
+            destacarErroCampo('authSenha', 'Senha muito fraca (mín. 6 caracteres)');
+        } else if (msgErro.includes('email') || msgErro.includes('already registered')) {
+            destacarErroCampo('authEmail', 'E-mail inválido ou já cadastrado');
+        }
+
         mostrarFeedback('PDV-VS: ' + e.message, 'rose'); 
     }
 }
 
 export async function solicitarRecuperacaoSenha() {
+    limparErrosCampos();
     const emailEl = document.getElementById('authEmail');
     const email = emailEl ? emailEl.value.trim() : '';
     if (!email) {
+        destacarErroCampo('authEmail', 'Digite o e-mail para recuperar');
         mostrarFeedback('PDV-VS: Digite seu e-mail no campo acima para recuperar a senha.', 'amber');
         if (emailEl) emailEl.focus();
         return;
@@ -214,6 +271,7 @@ export async function solicitarRecuperacaoSenha() {
         if (error) throw error;
         mostrarFeedback('PDV-VS: E-mail de recuperação enviado com sucesso! Verifique sua caixa de entrada.', 'emerald');
     } catch (e) {
+        destacarErroCampo('authEmail', 'Erro ao enviar recuperação');
         mostrarFeedback('PDV-VS: Erro ao solicitar recuperação: ' + e.message, 'rose');
     }
 }
