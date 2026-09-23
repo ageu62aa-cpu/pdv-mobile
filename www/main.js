@@ -222,7 +222,6 @@ async function verificarSessaoEAlternarTelas() {
             setEmpresaAtualId(empresaIdFinal);
             setCargoUsuarioAtual(cargoFinal);
 
-            // Busca correta utilizando a coluna exata 'nome_mercado' e 'documento' da tabela empresas
             let nomeLojaExibicao = "Nome do Estabelecimento";
             let cnpjLojaExibicao = "";
 

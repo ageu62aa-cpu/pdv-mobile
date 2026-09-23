@@ -328,7 +328,7 @@ export async function concluirLoginSucesso(cargoUser) {
             if (badgeLoja) badgeLoja.innerText = `${dadosEmpresaAtual.nome_mercado} (Loja #${dadosEmpresaAtual.id.substring(0,6)})`;
         }
         
-        // Renderiza o Mascote + Nome da Loja no cabeçalho (ao lado do botão refresh automático)
+        // Renderiza o Mascote + Nome da Loja no cabeçalho (atualização local sem reload)
         const headerTopo = document.getElementById('headerTopoApp') || document.querySelector('header');
         if (headerTopo) {
             let containerMascote = document.getElementById('containerMascoteRefresh');
@@ -337,7 +337,22 @@ export async function concluirLoginSucesso(cargoUser) {
                 containerMascote.id = 'containerMascoteRefresh';
                 containerMascote.className = 'flex items-center gap-2 cursor-pointer select-none';
                 containerMascote.title = 'Atualizar / Sincronizar dados';
-                containerMascote.onclick = () => location.reload();
+                
+                // Correção aplicada: Atualiza apenas os dados locais sem recarregar a página inteira
+                containerMascote.onclick = async () => {
+                    try {
+                        await carregarProdutosCache();
+                        if (typeof window.renderizarTabelaAdmin === 'function' && window.produtosCache) {
+                            window.renderizarTabelaAdmin(window.produtosCache);
+                        }
+                        atualizarTabelaVenda();
+                        atualizarBadgesCaixaInterface();
+                        focarBusca();
+                    } catch (errSync) {
+                        console.warn('Erro ao atualizar dados locais:', errSync);
+                    }
+                };
+                
                 headerTopo.prepend(containerMascote);
             }
             
