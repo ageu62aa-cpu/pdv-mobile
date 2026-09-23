@@ -111,7 +111,6 @@ export function renderizarTabelaAdmin(lista) {
     const tbody = document.getElementById('tabelaAdminProdutos');
     const contadorProdutos = document.getElementById('contadorLimiteProdutosAdmin');
     
-    // Cálculo dinâmico: Limite total (1000) menos a quantidade atual cadastrada
     const limiteMaximo = 1000;
     const qtdAtual = produtosCache.length;
     const vagasDisponiveis = Math.max(0, limiteMaximo - qtdAtual);
@@ -546,7 +545,7 @@ export function renderizarHistoricoVendasPorJanelasDiarias() {
     container.innerHTML = htmlJanelas;
 }
 
-// Expondo funções globais
+// Expondo funções globais com correção no nome da exclusão
 window.mudarAbaAdmin = mudarAbaAdmin;
 window.recarregarDadosAdmin = recarregarDadosAdmin;
 window.abrirPainelAdmin = abrirPainelAdmin;
@@ -556,7 +555,7 @@ window.abrirModalNovoProdutoAdmin = abrirModalNovoProdutoAdmin;
 window.abrirEditarProdutoAdmin = abrirEditarProdutoAdmin;
 window.fecharFormProduto = fecharFormProduto;
 window.salvarProdutoAdmin = salvarProdutoAdmin;
-window.excluidProdutoAdmin = excluirProdutoAdmin;
+window.excluirProdutoAdmin = excluirProdutoAdmin;
 window.carregarMaquininhasAdmin = carregarMaquininhasAdmin;
 window.abrirModalNovaMaquininha = abrirModalNovaMaquininha;
 window.fecharModalNovaMaquininha = fecharModalNovaMaquininha;
