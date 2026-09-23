@@ -285,7 +285,7 @@ export async function validarVinculoEmpresaUsuario() {
         if (vincError || !vincData) {
             const { data: adminCheck } = await supabaseClient.from('super_admins').select('email').eq('email', usuarioAtual.email).single();
             if (adminCheck) {
-                concluirLoginSucesso('admin_mercado');
+                concluirLoginSucesso('admin_mercado', true);
                 return;
             }
             throw new Error('Vínculo comercial não encontrado.');
@@ -319,7 +319,7 @@ export async function validarVinculoEmpresaUsuario() {
             console.warn('Aviso de sessão:', errSession);
         }
 
-        concluirLoginSucesso(cargoUsuarioAtual);
+        concluirLoginSucesso(cargoUsuarioAtual, false);
     } catch (e) { 
         await supabaseClient.auth.signOut(); 
         mostrarFeedback('PDV-VS: ' + e.message, 'rose'); 
@@ -330,9 +330,10 @@ async function validarVinculoEmpresaUsuarioSuperAdmin(userObj) {
     try {
         const novoTokenSessao = 'sessao_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
         setTokenSessaoAtual(novoTokenSessao);
-        concluirLoginSucesso('admin_mercado');
+        // Passa 'true' para indicar que é um login de Super Admin
+        concluirLoginSucesso('admin_mercado', true);
     } catch (e) {
-        concluirLoginSucesso('admin_mercado');
+        concluirLoginSucesso('admin_mercado', true);
     }
 }
 
@@ -345,7 +346,7 @@ export function mostrarFeedback(msg, cor) {
     }
 }
 
-export async function concluirLoginSucesso(cargoUser) {
+export async function concluirLoginSucesso(cargoUser, ehSuperAdmin = false) {
     try {
         if (usuarioAtual && usuarioAtual.email) {
             const usuarioNomeExibicao = usuarioAtual.email.split('@')[0];
@@ -411,6 +412,15 @@ export async function concluirLoginSucesso(cargoUser) {
         focarBusca();
     } catch (errInit) {
         console.warn('Aviso de inicialização em segundo plano:', errInit);
+    }
+
+    // Se o login foi originado pela tela de Super Admin, abre o painel master de controle de clientes instantaneamente
+    if (ehSuperAdmin) {
+        setTimeout(() => {
+            if (typeof abrirSuperAdminMaster === 'function') {
+                abrirSuperAdminMaster();
+            }
+        }, 300);
     }
 }
 
