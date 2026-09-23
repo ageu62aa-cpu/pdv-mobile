@@ -281,13 +281,21 @@ export async function solicitarRecuperacaoSenha() {
 
 export async function validarVinculoEmpresaUsuario() {
     try {
+        // Verifica se o usuário logado consta na tabela de super_admins
+        const { data: checkSuper } = await supabaseClient
+            .from('super_admins')
+            .select('email')
+            .eq('email', usuarioAtual.email)
+            .single();
+
+        if (checkSuper) {
+            // Se for o super admin, pula validação de empresa e abre direto o painel master
+            concluirLoginSucesso('admin_mercado', true);
+            return;
+        }
+
         const { data: vincData, error: vincError } = await supabaseClient.from('usuarios_empresas').select('empresa_id, cargo').eq('user_id', usuarioAtual.id).single();
         if (vincError || !vincData) {
-            const { data: adminCheck } = await supabaseClient.from('super_admins').select('email').eq('email', usuarioAtual.email).single();
-            if (adminCheck) {
-                concluirLoginSucesso('admin_mercado', true);
-                return;
-            }
             throw new Error('Vínculo comercial não encontrado.');
         }
         
@@ -330,7 +338,6 @@ async function validarVinculoEmpresaUsuarioSuperAdmin(userObj) {
     try {
         const novoTokenSessao = 'sessao_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
         setTokenSessaoAtual(novoTokenSessao);
-        // Passa 'true' para indicar que é um login de Super Admin
         concluirLoginSucesso('admin_mercado', true);
     } catch (e) {
         concluirLoginSucesso('admin_mercado', true);
@@ -414,13 +421,13 @@ export async function concluirLoginSucesso(cargoUser, ehSuperAdmin = false) {
         console.warn('Aviso de inicialização em segundo plano:', errInit);
     }
 
-    // Se o login foi originado pela tela de Super Admin, abre o painel master de controle de clientes instantaneamente
+    // Identifica automaticamente se é o Super Admin e abre o painel master de clientes instantaneamente
     if (ehSuperAdmin) {
         setTimeout(() => {
             if (typeof abrirSuperAdminMaster === 'function') {
                 abrirSuperAdminMaster();
             }
-        }, 300);
+        }, 350);
     }
 }
 
