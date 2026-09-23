@@ -36,6 +36,12 @@ export async function mudarAbaAdmin(aba) {
         if (inputPinConfig) {
             inputPinConfig.value = localStorage.getItem('pdv_admin_pin_' + empresaAtualId) || '123456';
         }
+        const inputNomeConfig = document.getElementById('inputAdminNomeEmpresaConfig');
+        const inputWapConfig = document.getElementById('inputAdminWhatsappConfig');
+        if (window.dadosEmpresaAtual) {
+            if (inputNomeConfig) inputNomeConfig.value = window.dadosEmpresaAtual.nome_mercado || '';
+            if (inputWapConfig) inputWapConfig.value = window.dadosEmpresaAtual.whatsapp || '';
+        }
     }
 }
 
@@ -105,6 +111,34 @@ export function fecharPainelAdmin() {
         modalAdmin.classList.remove('flex');
     }
     focarBusca();
+}
+
+export async function salvarConfiguracoesEmpresaAdmin() {
+    const inputNome = document.getElementById('inputAdminNomeEmpresaConfig');
+    const inputWap = document.getElementById('inputAdminWhatsappConfig');
+    const novoNome = inputNome ? inputNome.value.trim() : '';
+    const novoWap = inputWap ? inputWap.value.trim() : '';
+
+    if (!novoNome) {
+        alert('PDV-VS: O nome do estabelecimento não pode ficar vazio.');
+        return;
+    }
+
+    try {
+        const { error } = await window.supabaseClient
+            .from('empresas')
+            .update({ nome_mercado: novoNome, whatsapp: novoWap })
+            .eq('id', empresaAtualId);
+
+        if (error) throw error;
+
+        const tituloAppEmpresa = document.getElementById('tituloAppEmpresa');
+        if (tituloAppEmpresa) tituloAppEmpresa.innerText = novoNome;
+
+        alert('PDV-VS: Dados do estabelecimento atualizados com sucesso!');
+    } catch (e) {
+        alert('PDV-VS: Erro ao atualizar configurações: ' + e.message);
+    }
 }
 
 export function renderizarTabelaAdmin(lista) {
@@ -545,7 +579,7 @@ export function renderizarHistoricoVendasPorJanelasDiarias() {
     container.innerHTML = htmlJanelas;
 }
 
-// Expondo funções globais com correção no nome da exclusão
+// Expondo todas as funções globalmente para os botões do HTML
 window.mudarAbaAdmin = mudarAbaAdmin;
 window.recarregarDadosAdmin = recarregarDadosAdmin;
 window.abrirPainelAdmin = abrirPainelAdmin;
@@ -568,3 +602,4 @@ window.fecharModalNovoOperador = fecharModalNovoOperador;
 window.salvarNovoOperador = salvarNovoOperador;
 window.carregarHistoricoAdmin = carregarHistoricoAdmin;
 window.renderizarHistoricoVendasPorJanelasDiarias = renderizarHistoricoVendasPorJanelasDiarias;
+window.salvarConfiguracoesEmpresaAdmin = salvarConfiguracoesEmpresaAdmin;
