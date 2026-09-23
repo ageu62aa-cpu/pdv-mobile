@@ -88,7 +88,7 @@ window.abrirLeitorCamera = abrirLeitorCamera;
 window.escanearCameraAdmin = escanearCameraAdmin;
 window.fecharLeitorCamera = fecharLeitorCamera;
 
-// --- CONTROLE DO SUPER ADMIN MASTER (GATILHO DO RODAPÉ SEGURO) ---
+// --- CONTROLE DO SUPER ADMIN MASTER (GATILHO SEGURO) ---
 window.tentarAcessoSuperAdminMasterSeguro = function() {
     const modal = document.getElementById('modalSuperAdminMaster');
     if (modal) {
@@ -151,7 +151,7 @@ window.alternarTelaAuth = function(tipo) {
         if (linkVoltarLogin) linkVoltarLogin.classList.add('hidden');
 
         if (divTipoPerfil) divTipoPerfil.classList.add('hidden');
-        if (divNomeMercadoCadastro) divNomeMercadoCadastro.classList.add('hidden');
+        if (divNomeMercadoCadastro) divTipoPerfil.classList.add('hidden');
         if (divDocumentoCadastro) divDocumentoCadastro.classList.add('hidden');
         if (divCamposEnderecoCadastro) divCamposEnderecoCadastro.classList.add('hidden');
     }
@@ -192,7 +192,7 @@ document.addEventListener("DOMContentLoaded", () => {
     inicializarAtalhosTeclado();
 });
 
-// --- VERIFICAÇÃO DE SESSÃO E CARREGAMENTO DOS DADOS DA LOJA NO CABEÇALHO ---
+// --- VERIFICAÇÃO DE SESSÃO E CARREGAMENTO ISOLADO DA EMPRESA ---
 async function verificarSessaoEAlternarTelas() {
     try {
         const { data: { session } } = await window.supabaseClient.auth.getSession();
@@ -204,7 +204,7 @@ async function verificarSessaoEAlternarTelas() {
         if (session && session.user) {
             setUsuarioAtual(session.user);
 
-            // Busca vínculo do usuário com a empresa/mercado[cite: 8]
+            // Busca vinculação segura na tabela de relaciomento
             const { data: opData } = await window.supabaseClient
                 .from('usuarios_empresas')
                 .select('empresa_id, cargo')
@@ -222,22 +222,23 @@ async function verificarSessaoEAlternarTelas() {
             setEmpresaAtualId(empresaIdFinal);
             setCargoUsuarioAtual(cargoFinal);
 
-            // Buscar dados cadastrais da loja para exibir de forma dinâmica no cabeçalho
+            // Busca rigorosa e isolada do nome comercial cadastrado pelo cliente específico
             let nomeLojaExibicao = "Nome do Estabelecimento";
             let cnpjLojaExibicao = "";
 
-            const { data: dadosEmpresa } = await window.supabaseClient
-                .from('empresas')
-                .select('nome_fantasia, razao_social, cnpj')
-                .eq('id', empresaIdFinal)
-                .maybeSingle();
+            if (empresaIdFinal) {
+                const { data: dadosEmpresa, error: errEmpresa } = await window.supabaseClient
+                    .from('empresas')
+                    .select('nome_fantasia, razao_social, cnpj')
+                    .eq('id', empresaIdFinal)
+                    .maybeSingle();
 
-            if (dadosEmpresa) {
-                nomeLojaExibicao = dadosEmpresa.nome_fantasia || dadosEmpresa.razao_social || "Nome do Estabelecimento";
-                cnpjLojaExibicao = dadosEmpresa.cnpj ? `CNPJ: ${dadosEmpresa.cnpj}` : "";
+                if (!errEmpresa && dadosEmpresa) {
+                    nomeLojaExibicao = dadosEmpresa.nome_fantasia || dadosEmpresa.razao_social || "Nome do Estabelecimento";
+                    cnpjLojaExibicao = dadosEmpresa.cnpj ? `CNPJ: ${dadosEmpresa.cnpj}` : "";
+                }
             }
 
-            // Atualiza os elementos visuais do cabeçalho de forma sincronizada com o HTML
             const elTituloApp = document.getElementById('tituloAppEmpresa');
             const elBadgeCnpj = document.getElementById('badgeEmpresaLogada');
 
@@ -273,7 +274,7 @@ async function verificarSessaoEAlternarTelas() {
             if (appPrincipal) appPrincipal.classList.add('hidden');
         }
     } catch (err) {
-        console.error("Erro na verificação de sessão:", err);
+        console.error("Erro crítico na verificação de sessão:", err);
     }
 }
 
