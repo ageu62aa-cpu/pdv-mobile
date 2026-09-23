@@ -165,13 +165,23 @@ export async function processarAutenticacao() {
 
     try {
         if (modoTelaAuth === 'admin') {
-            if (email === 'vancely@admin.com' && senha === '123456') {
-                await abrirSuperAdminMaster();
-            } else {
-                destacarErroCampo('authEmail', 'Credenciais inválidas');
-                destacarErroCampo('authSenha', 'Credenciais inválidas');
-                mostrarFeedback('PDV-VS: Credenciais de Super Admin inválidas.', 'rose');
+            // Autenticação segura validada via banco de dados (tabela super_admins)
+            const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({ email, password: senha });
+            if (authError) throw new Error('Credenciais de Super Admin inválidas.');
+
+            const { data: adminData, error: adminError } = await supabaseClient
+                .from('super_admins')
+                .select('email')
+                .eq('email', email)
+                .single();
+
+            if (adminError || !adminData) {
+                await supabaseClient.auth.signOut();
+                throw new Error('Acesso negado. Este usuário não possui privilégios de Super Admin.');
             }
+
+            setUsuarioAtual(authData.user);
+            await abrirSuperAdminMaster();
             return;
         }
 
