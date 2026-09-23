@@ -89,6 +89,22 @@ function limparErrosCampos() {
     });
 }
 
+// --- FUNÇÃO DE REFRESH LOCAL DA TELA DE AUTH (MANTÉM O USUÁRIO NO MESMO LUGAR) ---
+export function atualizarEstadoTelaAuthLocal() {
+    limparErrosCampos();
+    
+    // Limpa apenas os inputs visíveis na tela de autenticação atual sem recarregar a janela
+    const inputsAuth = document.querySelectorAll('#telaLogin input');
+    inputsAuth.forEach(input => {
+        if (input.id !== 'authCep') input.value = '';
+    });
+
+    const fb = document.getElementById('feedbackAuth');
+    if (fb) fb.classList.add('hidden');
+
+    console.log("🟢 [PDV-VS] Estado da tela de autenticação atualizado localmente.");
+}
+
 export function alternarTelaAuth(modo) {
     limparErrosCampos();
     setModoTelaAuth(modo);
@@ -274,7 +290,11 @@ export async function validarVinculoEmpresaUsuario() {
         if (empData && empData.ativo === false) {
             await window.supabaseClient.auth.signOut(); 
             alert('PDV-VS - ACESSO SUSPENSO: Este estabelecimento encontra-se bloqueado por pendência financeira.'); 
-            location.reload(); 
+            
+            const appPrincipal = document.getElementById('appPrincipal');
+            const telaLogin = document.getElementById('telaLogin');
+            if (appPrincipal) appPrincipal.classList.add('hidden');
+            if (telaLogin) telaLogin.classList.remove('hidden');
             return;
         }
         if (empData) {
@@ -328,7 +348,6 @@ export async function concluirLoginSucesso(cargoUser) {
             if (badgeLoja) badgeLoja.innerText = `${dadosEmpresaAtual.nome_mercado} (Loja #${dadosEmpresaAtual.id.substring(0,6)})`;
         }
         
-        // Renderiza o Mascote + Nome da Loja no cabeçalho (atualização local sem reload)
         const headerTopo = document.getElementById('headerTopoApp') || document.querySelector('header');
         if (headerTopo) {
             let containerMascote = document.getElementById('containerMascoteRefresh');
@@ -338,7 +357,7 @@ export async function concluirLoginSucesso(cargoUser) {
                 containerMascote.className = 'flex items-center gap-2 cursor-pointer select-none';
                 containerMascote.title = 'Atualizar / Sincronizar dados';
                 
-                // Correção aplicada: Atualiza apenas os dados locais sem recarregar a página inteira
+                // Botão de refresh local dentro do painel principal (atualiza o cache e tabelas no lugar)
                 containerMascote.onclick = async () => {
                     try {
                         await carregarProdutosCache();
@@ -408,7 +427,11 @@ function iniciarMonitoramentoSessaoUnica() {
                 clearInterval(intervaloMonitoramentoSessao);
                 alert('PDV-VS: Sua conta foi acessada em outro dispositivo. Esta sessão foi encerrada.');
                 await window.supabaseClient.auth.signOut();
-                location.reload();
+                
+                const appPrincipal = document.getElementById('appPrincipal');
+                const telaLogin = document.getElementById('telaLogin');
+                if (appPrincipal) appPrincipal.classList.add('hidden');
+                if (telaLogin) telaLogin.classList.remove('hidden');
             }
         } catch (err) {
             console.error('Erro ao verificar sessão única:', err);
@@ -437,7 +460,10 @@ export function iniciarSincronizacaoRealtime() {
                 if (payload.new) {
                     if (payload.new.ativo === false) {
                         alert('PDV-VS: Este estabelecimento foi bloqueado.');
-                        location.reload();
+                        const appPrincipal = document.getElementById('appPrincipal');
+                        const telaLogin = document.getElementById('telaLogin');
+                        if (appPrincipal) appPrincipal.classList.add('hidden');
+                        if (telaLogin) telaLogin.classList.remove('hidden');
                         return;
                     }
                     if (payload.new.caixa_aberto !== undefined) {
@@ -563,6 +589,7 @@ export async function alternarStatusEmpresa(empresaId, statusAtual) {
 // EXPOSIÇÃO GLOBAL PARA COMPATIBILIDADE HTML
 // ==========================================
 window.alternarTelaAuth = alternarTelaAuth;
+window.atualizarEstadoTelaAuthLocal = atualizarEstadoTelaAuthLocal;
 window.tratarEnterLogin = tratarEnterLogin;
 window.processarAutenticacao = processarAutenticacao;
 window.solicitarRecuperacaoSenha = solicitarRecuperacaoSenha;
