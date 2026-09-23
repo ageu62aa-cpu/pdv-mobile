@@ -89,11 +89,10 @@ function limparErrosCampos() {
     });
 }
 
-// --- FUNÇÃO DE REFRESH LOCAL DA TELA DE AUTH (MANTÉM O USUÁRIO NO MESMO LUGAR) ---
+// --- FUNÇÃO DE REFRESH LOCAL DA TELA DE AUTH (MANTÉM O UTILIZADOR NO MESMO LUGAR) ---
 export function atualizarEstadoTelaAuthLocal() {
     limparErrosCampos();
     
-    // Limpa apenas os inputs visíveis na tela de autenticação atual sem recarregar a janela
     const inputsAuth = document.querySelectorAll('#telaLogin input');
     inputsAuth.forEach(input => {
         if (input.id !== 'authCep') input.value = '';
@@ -355,18 +354,19 @@ export async function concluirLoginSucesso(cargoUser) {
                 containerMascote = document.createElement('div');
                 containerMascote.id = 'containerMascoteRefresh';
                 containerMascote.className = 'flex items-center gap-2 cursor-pointer select-none';
-                containerMascote.title = 'Atualizar / Sincronizar dados';
+                containerMascote.title = 'Atualizar / Sincronizar dados locais';
                 
-                // Botão de refresh local dentro do painel principal (atualiza o cache e tabelas no lugar)
+                // Botão de refresh local na barra superior do painel principal (atualiza o cache e tabelas no lugar)
                 containerMascote.onclick = async () => {
                     try {
+                        console.log("🔄 [PDV-VS] Atualização local acionada no painel principal.");
                         await carregarProdutosCache();
                         if (typeof window.renderizarTabelaAdmin === 'function' && window.produtosCache) {
                             window.renderizarTabelaAdmin(window.produtosCache);
                         }
-                        atualizarTabelaVenda();
-                        atualizarBadgesCaixaInterface();
-                        focarBusca();
+                        if (typeof atualizarTabelaVenda === 'function') atualizarTabelaVenda();
+                        if (typeof atualizarBadgesCaixaInterface === 'function') atualizarBadgesCaixaInterface();
+                        if (typeof focarBusca === 'function') focarBusca();
                     } catch (errSync) {
                         console.warn('Erro ao atualizar dados locais:', errSync);
                     }
