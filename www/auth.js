@@ -13,10 +13,6 @@ import { carregarProdutosCache } from './produtos.js';
 import { atualizarBadgesCaixaInterface, focarBusca, atualizarTabelaVenda } from './caixa.js';
 import { carregarHistoricoAdmin, carregarOperadoresLoja } from './admin.js';
 
-// Variável de controle para o gatilho secreto de 5 cliques do SuperAdmin
-let contadorCliquesAdmin = 0;
-let tempoUltimoCliqueAdmin = 0;
-
 window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     setDeferredPrompt(e);
@@ -38,20 +34,28 @@ export async function instalarPwaApp() {
     }
 }
 
-// Função de gatilho secreto por cliques (5 cliques exatos no mascote para liberar o SuperAdmin)
-export function registrarCliqueSecretoAdmin() {
-    const agora = Date.now();
-    if (agora - tempoUltimoCliqueAdmin > 1000) {
-        contadorCliquesAdmin = 1;
-    } else {
-        contadorCliquesAdmin++;
-    }
-    tempoUltimoCliqueAdmin = agora;
+// Variável de controle para o gatilho de cliques do rodapé (Senha Mestre)
+let contadorCliquesRodape = 0;
+let tempoUltimoCliqueRodape = 0;
 
-    if (contadorCliquesAdmin >= 5) {
-        contadorCliquesAdmin = 0;
-        alternarTelaAuth('admin');
-        console.log('PDV-VS: Acesso SuperAdmin desbloqueado por gestos no mascote.');
+export function tentarAcessoSuperAdminMasterSecreto() {
+    const agora = Date.now();
+    if (agora - tempoUltimoCliqueRodape > 1200) {
+        contadorCliquesRodape = 1;
+    } else {
+        contadorCliquesRodape++;
+    }
+    tempoUltimoCliqueRodape = agora;
+
+    if (contadorCliquesRodape >= 5) {
+        contadorCliquesRodape = 0;
+        const senhaMestre = prompt('PDV-VS: Digite a Senha Mestre do Desenvolvedor:');
+        
+        if (senhaMestre === 'vancely2026@master') {
+            abrirSuperAdminMaster();
+        } else if (senhaMestre !== null) {
+            alert('PDV-VS: Senha mestre incorreta.');
+        }
     }
 }
 
@@ -126,17 +130,6 @@ export function alternarTelaAuth(modo) {
         if (fields.doc) fields.doc.classList.remove('hidden');
         if (fields.endereco) fields.endereco.classList.remove('hidden');
         if (fields.links) fields.links.classList.add('hidden');
-    } else if (modo === 'admin') {
-        if (fields.titulo) fields.titulo.innerText = 'Super Admin Master'; 
-        if (fields.subtitulo) fields.subtitulo.innerText = 'Acesso Restrito ao Desenvolvedor';
-        if (fields.btn) fields.btn.innerText = 'Entrar como Super Admin';
-        if (fields.divSenha) fields.divSenha.classList.remove('hidden'); 
-        if (fields.links) fields.links.classList.add('hidden');
-        if (fields.voltar) fields.voltar.classList.remove('hidden'); 
-        if (fields.perfil) fields.perfil.classList.add('hidden');
-        if (fields.mercado) fields.mercado.classList.add('hidden'); 
-        if (fields.doc) fields.doc.classList.add('hidden');
-        if (fields.endereco) fields.endereco.classList.add('hidden');
     }
 }
 
@@ -158,26 +151,6 @@ export async function processarAutenticacao() {
     }
 
     try {
-        if (modoTelaAuth === 'admin') {
-            const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({ email, password: senha });
-            if (authError) throw new Error('Credenciais de Super Admin inválidas.');
-
-            const { data: adminData, error: adminError } = await supabaseClient
-                .from('super_admins')
-                .select('email')
-                .eq('email', email)
-                .single();
-
-            if (adminError || !adminData) {
-                await supabaseClient.auth.signOut();
-                throw new Error('Acesso negado. Este usuário não possui privilégios de Super Admin.');
-            }
-
-            setUsuarioAtual(authData.user);
-            await validarVinculoEmpresaUsuarioSuperAdmin(authData.user);
-            return;
-        }
-
         if (modoTelaAuth === 'login') {
             const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password: senha });
             if (error) throw error;
@@ -281,19 +254,6 @@ export async function solicitarRecuperacaoSenha() {
 
 export async function validarVinculoEmpresaUsuario() {
     try {
-        // Verifica se o usuário logado consta na tabela de super_admins
-        const { data: checkSuper } = await supabaseClient
-            .from('super_admins')
-            .select('email')
-            .eq('email', usuarioAtual.email)
-            .single();
-
-        if (checkSuper) {
-            // Se for o super admin, pula validação de empresa e abre direto o painel master
-            concluirLoginSucesso('admin_mercado', true);
-            return;
-        }
-
         const { data: vincData, error: vincError } = await supabaseClient.from('usuarios_empresas').select('empresa_id, cargo').eq('user_id', usuarioAtual.id).single();
         if (vincError || !vincData) {
             throw new Error('Vínculo comercial não encontrado.');
@@ -327,20 +287,10 @@ export async function validarVinculoEmpresaUsuario() {
             console.warn('Aviso de sessão:', errSession);
         }
 
-        concluirLoginSucesso(cargoUsuarioAtual, false);
+        concluirLoginSucesso(cargoUsuarioAtual);
     } catch (e) { 
         await supabaseClient.auth.signOut(); 
         mostrarFeedback('PDV-VS: ' + e.message, 'rose'); 
-    }
-}
-
-async function validarVinculoEmpresaUsuarioSuperAdmin(userObj) {
-    try {
-        const novoTokenSessao = 'sessao_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
-        setTokenSessaoAtual(novoTokenSessao);
-        concluirLoginSucesso('admin_mercado', true);
-    } catch (e) {
-        concluirLoginSucesso('admin_mercado', true);
     }
 }
 
@@ -353,35 +303,12 @@ export function mostrarFeedback(msg, cor) {
     }
 }
 
-export async function concluirLoginSucesso(cargoUser, ehSuperAdmin = false) {
+export async function concluirLoginSucesso(cargoUser) {
     try {
         if (usuarioAtual && usuarioAtual.email) {
             const usuarioNomeExibicao = usuarioAtual.email.split('@')[0];
             const infoLogado = document.getElementById('infoUsuarioLogado');
             if (infoLogado) infoLogado.innerHTML = `<i class="fa-solid fa-user text-emerald-300 mr-1"></i> ${usuarioNomeExibicao} (${cargoUser === 'admin_mercado' ? 'Admin' : 'Caixa'})`;
-            
-            if (usuarioAtual.email) {
-                const { data: checkSuper } = await supabaseClient
-                    .from('super_admins')
-                    .select('email')
-                    .eq('email', usuarioAtual.email)
-                    .single();
-
-                if (checkSuper) {
-                    let btnMasterGlobal = document.getElementById('btnSuperAdminGlobal');
-                    if (!btnMasterGlobal) {
-                        const barraTopo = document.querySelector('header') || document.getElementById('infoUsuarioLogado')?.parentElement;
-                        if (barraTopo) {
-                            btnMasterGlobal = document.createElement('button');
-                            btnMasterGlobal.id = 'btnSuperAdminGlobal';
-                            btnMasterGlobal.innerHTML = '<i class="fa-solid fa-shield-halved mr-1"></i> Painel Master';
-                            btnMasterGlobal.className = 'bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded text-xs font-bold shadow transition ml-2 flex items-center cursor-pointer';
-                            btnMasterGlobal.onclick = () => abrirSuperAdminMaster();
-                            barraTopo.appendChild(btnMasterGlobal);
-                        }
-                    }
-                }
-            }
         }
         
         if (dadosEmpresaAtual) {
@@ -390,7 +317,7 @@ export async function concluirLoginSucesso(cargoUser, ehSuperAdmin = false) {
             const badgeLoja = document.getElementById('badgeNumeroLoja');
             if (tituloEmpresa) tituloEmpresa.innerText = dadosEmpresaAtual.nome_mercado;
             if (badgeEmpresa) badgeEmpresa.innerText = `CNPJ: ${dadosEmpresaAtual.documento}`;
-            if (badgeLoja) badgeLoja.innerText = `Loja #${dadosEmpresaAtual.id.substring(0,6)}`;
+            if (badgeLoja) badgeLoja.innerText = `${dadosEmpresaAtual.nome_mercado} (Loja #${dadosEmpresaAtual.id.substring(0,6)})`;
         }
         
         const btnAdminMenu = document.getElementById('btnAdminMenu');
@@ -419,15 +346,6 @@ export async function concluirLoginSucesso(cargoUser, ehSuperAdmin = false) {
         focarBusca();
     } catch (errInit) {
         console.warn('Aviso de inicialização em segundo plano:', errInit);
-    }
-
-    // Identifica automaticamente se é o Super Admin e abre o painel master de clientes instantaneamente
-    if (ehSuperAdmin) {
-        setTimeout(() => {
-            if (typeof abrirSuperAdminMaster === 'function') {
-                abrirSuperAdminMaster();
-            }
-        }, 350);
     }
 }
 
@@ -559,4 +477,4 @@ window.abrirSuperAdminMaster = abrirSuperAdminMaster;
 window.fecharSuperAdminMaster = fecharSuperAdminMaster;
 window.alternarStatusEmpresa = alternarStatusEmpresa;
 window.instalarPwaApp = instalarPwaApp;
-window.registrarCliqueSecretoAdmin = registrarCliqueSecretoAdmin;
+window.tentarAcessoSuperAdminMasterSecreto = tentarAcessoSuperAdminMasterSecreto;

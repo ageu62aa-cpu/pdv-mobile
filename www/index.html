@@ -35,9 +35,7 @@
     <div id="telaLogin" class="fixed inset-0 bg-emerald-950 z-50 flex items-center justify-center p-4 overflow-y-auto">
         <div class="bg-white rounded-2xl max-w-md w-full p-6 sm:p-8 shadow-2xl relative my-auto max-h-[92vh] overflow-y-auto pb-12">
             
-            <!-- Botões do Topo Direito (Apenas Instalação PWA - Botão SADM direto removido por segurança) -->
             <div class="absolute top-4 right-4 flex items-center space-x-2">
-                <!-- Botão de Instalação PWA Discreto -->
                 <button id="btnInstalarPwaLogin" onclick="instalarAppPwa()" class="hidden bg-amber-100 hover:bg-amber-200 text-amber-800 border border-amber-300 px-2 py-1 rounded-lg text-xs font-bold transition flex items-center space-x-1 shadow-sm" title="Instalar Aplicativo">
                     <i class="fa-solid fa-download text-amber-600"></i>
                     <span>Instalar App</span>
@@ -46,8 +44,8 @@
 
             <div class="text-center mb-6 mt-2">
                 <div class="inline-flex items-center justify-center space-x-2 mb-2">
-                    <!-- Mascote Vancely Software com o gatilho secreto de 5 cliques configurado -->
-                    <img id="iconeAuth" src="assets/mascote.jpeg" onclick="registrarCliqueSecretoAdmin()" class="w-16 h-16 object-contain rounded-2xl cursor-pointer hover:scale-105 transition-transform shadow-sm" title="Painel Administrativo" alt="Mascote Vancely Software">
+                    <!-- Mascote configurado apenas para dar Refresh na tela de login -->
+                    <img id="iconeAuth" src="assets/mascote.jpeg" onclick="location.reload()" class="w-16 h-16 object-contain rounded-2xl cursor-pointer hover:scale-105 transition-transform shadow-sm" title="Atualizar Página" alt="Mascote Vancely Software">
                 </div>
                 <h2 id="tituloAuth" class="text-xl sm:text-2xl font-bold text-slate-900">PDV-VS Enterprise</h2>
                 <p id="subtituloAuth" class="text-xs text-slate-500">Sistema de Gestão Comercial e PDV</p>
@@ -141,11 +139,12 @@
     <div id="appPrincipal" class="hidden flex-1 flex flex-col justify-between">
         <header class="bg-emerald-700 text-white px-4 py-3 flex justify-between items-center shadow-md">
             <div class="flex items-center space-x-3">
-                <button onclick="atualizarPaginaCompleta()" class="text-emerald-200 hover:text-white transition flex items-center space-x-2 bg-emerald-800/60 hover:bg-emerald-800 px-2.5 py-1.5 rounded-lg" title="Atualizar Página">
-                    <i class="fa-solid fa-rotate text-lg"></i>
-                    <div class="text-left hidden sm:block">
+                <!-- Botão de Refresh e Nome do Estabelecimento lado a lado -->
+                <button onclick="atualizarPaginaCompleta()" class="text-emerald-200 hover:text-white transition flex items-center space-x-2.5 bg-emerald-800/60 hover:bg-emerald-800 px-3 py-1.5 rounded-lg" title="Atualizar Página">
+                    <i class="fa-solid fa-rotate text-lg text-emerald-300"></i>
+                    <div class="text-left">
                         <h1 id="tituloAppEmpresa" class="font-bold text-xs leading-tight">PDV-VS Enterprise</h1>
-                        <span id="badgeNumeroLoja" class="text-[9px] text-emerald-200 font-mono">Loja #...</span>
+                        <span id="badgeNumeroLoja" class="text-[10px] text-emerald-200 font-mono tracking-wide">Carregando loja...</span>
                     </div>
                 </button>
                 <div>
@@ -226,8 +225,9 @@
             </div>
         </main>
 
+        <!-- RODAPÉ COM O GATILHO SECRETO (5 CLIQUES PARA PEDIR A SENHA MESTRE) -->
         <footer id="rodapeSistema" class="bg-white border-t py-2 px-4 text-center text-xs text-slate-500 flex justify-between items-center max-w-7xl mx-auto w-full">
-            <span>PDV-Vancely Software Enterprise | Versão 1.0.2 | Suporte Técnico Ativo</span>
+            <span id="gatilhoRodapeSuperAdmin" onclick="tentarAcessoSuperAdminMasterSecreto()" class="cursor-pointer select-none hover:text-emerald-700 transition" title="Clique 5 vezes para abrir o Super Admin">PDV-Vancely Software Enterprise | Versão 1.0.2 | Suporte Técnico Ativo</span>
             <a href="https://wa.me/" target="_blank" class="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1 rounded-full shadow flex items-center space-x-1 text-[11px] font-bold transition">
                 <i class="fa-brands fa-whatsapp text-xs"></i>
                 <span>Suporte</span>
@@ -567,7 +567,7 @@
         </div>
     </div>
 
-    <!-- PAINEL SUPER ADMIN MASTER (CONTROLE DE CLIENTES / ESTABELECIMENTOS) -->
+    <!-- PAINEL SUPER ADMIN MASTER (CONTROLE DE CLIENTES) -->
     <div id="modalSuperAdminMaster" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-3">
         <div class="bg-white rounded-2xl max-w-6xl w-full p-6 shadow-2xl max-h-[92vh] flex flex-col">
             <div class="flex justify-between items-center border-b pb-3 mb-4">
@@ -600,7 +600,7 @@
         </div>
     </div>
 
-    <!-- CARREGAMENTO ÚNICO DO SCRIPT PRINCIPAL COMO MÓDULO -->
+    <!-- SCRIPT PRINCIPAL -->
     <script type="module" src="main.js"></script>
 </body>
 </html>
