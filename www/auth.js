@@ -13,6 +13,9 @@ import { carregarProdutosCache } from './produtos.js';
 import { atualizarBadgesCaixaInterface, focarBusca, atualizarTabelaVenda } from './caixa.js';
 import { carregarHistoricoAdmin, carregarOperadoresLoja } from './admin.js';
 
+// Instância segura para temporizador de sessão única
+let intervaloMonitoramentoSessao = null;
+
 window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     setDeferredPrompt(e);
@@ -59,7 +62,7 @@ export function tentarAcessoSuperAdminMasterSecreto() {
     }
 }
 
-// Funções auxiliares para feedback visual de campos (Borda vermelha em caso de erro)
+// Funções auxiliares para feedback visual de campos
 function destacarErroCampo(idElemento, mensagem) {
     const elemento = document.getElementById(idElemento);
     if (!elemento) return;
@@ -152,7 +155,7 @@ export async function processarAutenticacao() {
 
     try {
         if (modoTelaAuth === 'login') {
-            const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password: senha });
+            const { data, error } = await window.supabaseClient.auth.signInWithPassword({ email, password: senha });
             if (error) throw error;
             setUsuarioAtual(data.user); 
             await validarVinculoEmpresaUsuario();
@@ -183,7 +186,7 @@ export async function processarAutenticacao() {
                 return;
             }
 
-            const { data: authData, error: authError } = await supabaseClient.auth.signUp({ 
+            const { data: authData, error: authError } = await window.supabaseClient.auth.signUp({ 
                 email, 
                 password: senha, 
                 options: { data: { perfil: tipoPerfil } } 
@@ -191,7 +194,7 @@ export async function processarAutenticacao() {
             if (authError) throw authError;
 
             const prefixoResponsavel = email.split('@')[0];
-            const { data: empData, error: empError } = await supabaseClient.from('empresas').insert([{ 
+            const { data: empData, error: empError } = await window.supabaseClient.from('empresas').insert([{ 
                 nome_mercado: nomeMercado, 
                 responsavel: prefixoResponsavel, 
                 documento, 
@@ -205,7 +208,7 @@ export async function processarAutenticacao() {
             
             if (empError) throw empError;
 
-            await supabaseClient.from('usuarios_empresas').insert([{ 
+            await window.supabaseClient.from('usuarios_empresas').insert([{ 
                 user_id: authData.user.id, 
                 empresa_id: empData.id, 
                 cargo: tipoPerfil 
@@ -241,7 +244,7 @@ export async function solicitarRecuperacaoSenha() {
         return;
     }
     try {
-        const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+        const { error } = await window.supabaseClient.auth.resetPasswordForEmail(email, {
             redirectTo: window.location.href,
         });
         if (error) throw error;
@@ -254,7 +257,12 @@ export async function solicitarRecuperacaoSenha() {
 
 export async function validarVinculoEmpresaUsuario() {
     try {
-        const { data: vincData, error: vincError } = await supabaseClient.from('usuarios_empresas').select('empresa_id, cargo').eq('user_id', usuarioAtual.id).single();
+        const { data: vincData, error: vincError } = await window.supabaseClient
+            .from('usuarios_empresas')
+            .select('empresa_id, cargo')
+            .eq('user_id', usuarioAtual.id)
+            .single();
+            
         if (vincError || !vincData) {
             throw new Error('Vínculo comercial não encontrado.');
         }
@@ -262,9 +270,14 @@ export async function validarVinculoEmpresaUsuario() {
         setEmpresaAtualId(vincData.empresa_id); 
         setCargoUsuarioAtual(vincData.cargo);
         
-        const { data: empData } = await supabaseClient.from('empresas').select('*').eq('id', empresaAtualId).single();
+        const { data: empData } = await window.supabaseClient
+            .from('empresas')
+            .select('*')
+            .eq('id', vincData.empresa_id)
+            .single();
+            
         if (empData && empData.ativo === false) {
-            await supabaseClient.auth.signOut(); 
+            await window.supabaseClient.auth.signOut(); 
             alert('PDV-VS - ACESSO SUSPENSO: Este estabelecimento encontra-se bloqueado por pendência financeira.'); 
             location.reload(); 
             return;
@@ -278,7 +291,7 @@ export async function validarVinculoEmpresaUsuario() {
         setTokenSessaoAtual(novoTokenSessao);
 
         try {
-            await supabaseClient.from('sessoes_ativas').upsert({
+            await window.supabaseClient.from('sessoes_ativas').upsert({
                 user_id: usuarioAtual.id,
                 token_sessao: novoTokenSessao,
                 updated_at: new Date()
@@ -287,9 +300,9 @@ export async function validarVinculoEmpresaUsuario() {
             console.warn('Aviso de sessão:', errSession);
         }
 
-        concluirLoginSucesso(cargoUsuarioAtual);
+        concluirLoginSucesso(vincData.cargo);
     } catch (e) { 
-        await supabaseClient.auth.signOut(); 
+        await window.supabaseClient.auth.signOut(); 
         mostrarFeedback('PDV-VS: ' + e.message, 'rose'); 
     }
 }
@@ -350,18 +363,21 @@ export async function concluirLoginSucesso(cargoUser) {
 }
 
 function iniciarMonitoramentoSessaoUnica() {
-    setInterval(async () => {
+    if (intervaloMonitoramentoSessao) clearInterval(intervaloMonitoramentoSessao);
+    
+    intervaloMonitoramentoSessao = setInterval(async () => {
         if (!usuarioAtual || !tokenSessaoAtual) return;
         try {
-            const { data, error } = await supabaseClient
+            const { data, error } = await window.supabaseClient
                 .from('sessoes_ativas')
                 .select('token_sessao')
                 .eq('user_id', usuarioAtual.id)
                 .single();
 
             if (error || !data || data.token_sessao !== tokenSessaoAtual) {
+                clearInterval(intervaloMonitoramentoSessao);
                 alert('PDV-VS: Sua conta foi acessada em outro dispositivo. Esta sessão foi encerrada.');
-                await supabaseClient.auth.signOut();
+                await window.supabaseClient.auth.signOut();
                 location.reload();
             }
         } catch (err) {
@@ -374,7 +390,7 @@ export function iniciarSincronizacaoRealtime() {
     if (!empresaAtualId) return;
 
     try {
-        supabaseClient
+        window.supabaseClient
             .channel('public:produtos_sync')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'produtos', filter: `empresa_id=eq.${empresaAtualId}` }, async () => {
                 await carregarProdutosCache();
@@ -385,7 +401,7 @@ export function iniciarSincronizacaoRealtime() {
             })
             .subscribe();
 
-        supabaseClient
+        window.supabaseClient
             .channel('public:empresas_sync')
             .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'empresas', filter: `id=eq.${empresaAtualId}` }, payload => {
                 if (payload.new) {
@@ -422,7 +438,7 @@ export async function carregarListaClientesSuperAdmin() {
     if (!tbody) return;
     try {
         tbody.innerHTML = '<tr><td colspan="5" class="p-6 text-center text-slate-400">Buscando estabelecimentos...</td></tr>';
-        const { data, error } = await supabaseClient.from('empresas').select('*').order('created_at', { ascending: false });
+        const { data, error } = await window.supabaseClient.from('empresas').select('*').order('created_at', { ascending: false });
         if (error) throw error;
         
         setListaEmpresasCache(data || []);
@@ -459,7 +475,7 @@ export function renderizarTabelaSuperAdmin(lista) {
 
 export async function alternarStatusEmpresa(empresaId, statusAtual) {
     if (!confirm(`PDV-VS: Deseja realmente alterar o status comercial deste estabelecimento?`)) return;
-    const { error } = await supabaseClient.from('empresas').update({ ativo: !statusAtual }).eq('id', empresaId);
+    const { error } = await window.supabaseClient.from('empresas').update({ ativo: !statusAtual }).eq('id', empresaId);
     if (!error) { 
         alert('PDV-VS: Status atualizado com sucesso!'); 
         await carregarListaClientesSuperAdmin(); 
@@ -468,7 +484,7 @@ export async function alternarStatusEmpresa(empresaId, statusAtual) {
     }
 }
 
-// Vinculação explícita para evitar erros de escopo global em módulos
+// Vinculação explícita para o escopo global (Garante o funcionamento via HTML onclick)
 window.alternarTelaAuth = alternarTelaAuth;
 window.tratarEnterLogin = tratarEnterLogin;
 window.processarAutenticacao = processarAutenticacao;
