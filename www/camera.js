@@ -29,7 +29,6 @@ export function inicializarLeitorTecladoPistola() {
         ultimoTempo = tempoAtual;
 
         if (e.key === 'Enter') {
-            // Correção aplicada aqui com o encadeamento opcional e checagem de nulidade
             if (bufferLeitor && bufferLeitor.trim().length > 1) {
                 e.preventDefault();
                 e.stopPropagation();
@@ -155,7 +154,16 @@ export async function iniciarCameraComHtml5Qrcode() {
         
         await instance.start(
             { facingMode: "environment" },
-            { fps: 30, qrbox: { width: 280, height: 140 }, aspectRatio: 1.777778 },
+            { 
+                fps: 30, 
+                qrbox: { width: 250, height: 250 }, 
+                aspectRatio: 0.5625,
+                videoConstraints: {
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 },
+                    facingMode: "environment"
+                }
+            },
             (decodedText) => {
                 if (!decodedText) return;
                 fecharLeitorCamera();
@@ -163,6 +171,16 @@ export async function iniciarCameraComHtml5Qrcode() {
             },
             () => {}
         );
+
+        setTimeout(() => {
+            const videoElement = container.querySelector('video');
+            if (videoElement) {
+                videoElement.style.objectFit = 'cover';
+                videoElement.style.width = '100%';
+                videoElement.style.height = '100%';
+            }
+        }, 300);
+
     } catch (err) {
         console.error("PDV-VS Erro Html5Qrcode:", err);
         fecharLeitorCamera();
@@ -232,9 +250,6 @@ export async function fecharLeitorCamera() {
     }
 }
 
-// ---------------------------------------------------------
-// AVISOS DE COMPATIBILIDADE (ANDROID x iOS) NO ADMIN
-// ---------------------------------------------------------
 window.mostrarDetalhesCompatibilidade = function(sistema) {
     if (sistema === 'android') {
         alert("Android: Compatibilidade 100%\n\nO Android consegue capturar com muita eficiência todos os códigos de barras através da câmera.");
@@ -244,7 +259,6 @@ window.mostrarDetalhesCompatibilidade = function(sistema) {
 };
 
 export function renderizarAvisosCompatibilidadeAdmin() {
-    // Tenta injetar automaticamente abaixo do campo de código de barras se o modal estiver aberto
     const inputCodigo = document.getElementById('formCodigo');
     if (!inputCodigo) return;
 
@@ -254,23 +268,12 @@ export function renderizarAvisosCompatibilidadeAdmin() {
         containerAvisos.id = 'painelAvisosCompatibilidade';
         containerAvisos.style.cssText = "display: flex; gap: 10px; margin-top: 8px; justify-content: space-between;";
         
-        containerAvisos.innerHTML = `
-            <div onclick="window.mostrarDetalhesCompatibilidade('android')" style="flex: 1; border: 1px solid #d1e7dd; background: #f8f9fa; padding: 6px; border-radius: 6px; text-align: center; cursor: pointer;">
-                <span style="font-size: 16px;">🤖</span>
-                <div style="font-size: 11px; font-weight: bold; color: #155724;">Android: 100%</div>
-            </div>
-            <div onclick="window.mostrarDetalhesCompatibilidade('ios')" style="flex: 1; border: 1px solid #f8d7da; background: #f8f9fa; padding: 6px; border-radius: 6px; text-align: center; cursor: pointer;">
-                <span style="font-size: 16px;">🍏</span>
-                <div style="font-size: 11px; font-weight: bold; color: #721c24;">iOS: 50%</div>
-            </div>
-        `;
+        containerAvisos.innerHTML = '<div onclick="window.mostrarDetalhesCompatibilidade(\'android\')" style="flex: 1; border: 1px solid #d1e7dd; background: #f8f9fa; padding: 6px; border-radius: 6px; text-align: center; cursor: pointer;"><span style="font-size: 16px;">🤖</span><div style="font-size: 11px; font-weight: bold; color: #155724;">Android: 100%</div></div><div onclick="window.mostrarDetalhesCompatibilidade(\'ios\')" style="flex: 1; border: 1px solid #f8d7da; background: #f8f9fa; padding: 6px; border-radius: 6px; text-align: center; cursor: pointer;"><span style="font-size: 16px;">🍏</span><div style="font-size: 11px; font-weight: bold; color: #721c24;">iOS: 50%</div></div>';
         
-        // Insere logo abaixo do input do código de barras do produto
         inputCodigo.parentNode.insertBefore(containerAvisos, inputCodigo.nextSibling);
     }
 }
 
-// Executa verificação periódica para injetar no modal do admin assim que ele abrir
 setInterval(() => {
     const modalProduto = document.getElementById('formCodigo');
     if (modalProduto) {
