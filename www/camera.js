@@ -139,7 +139,7 @@ export async function iniciarCameraComHtml5Qrcode() {
                 if (html5QrcodeInstance.isScanning) await html5QrcodeInstance.stop();
             } catch (e) {}
             setHtml5QrcodeInstance(null);
-            await new Promise(resolve => setTimeout(resolve, 80)); // Otimizado para abertura rápida
+            await new Promise(resolve => setTimeout(resolve, 80));
         }
         
         const elementId = "videoPreviewCamera";
@@ -155,12 +155,16 @@ export async function iniciarCameraComHtml5Qrcode() {
         let ultimoCodigoLido = '';
         let tempoUltimoDisparo = 0;
 
+        // Configuração sênior ajustada para forçar o layout padrão consistente (Moldura Quadrada Perfeita)
+        const larguraTela = container.clientWidth || 250;
+        const tamanhoQrBox = Math.min(Math.floor(larguraTela * 0.8), 280);
+
         await instance.start(
             { facingMode: "environment" },
             { 
                 fps: 30, 
-                qrbox: { width: 250, height: 250 }, 
-                aspectRatio: 0.5625,
+                qrbox: { width: tamanhoQrBox, height: tamanhoQrBox }, 
+                aspectRatio: 1.0, // Força proporção 1:1 padronizada idêntica no iOS e Android
                 videoConstraints: {
                     width: { ideal: 1280 },
                     height: { ideal: 720 },
