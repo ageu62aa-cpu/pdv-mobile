@@ -155,16 +155,13 @@ export async function iniciarCameraComHtml5Qrcode() {
         let ultimoCodigoLido = '';
         let tempoUltimoDisparo = 0;
 
-        // Configuração sênior ajustada para forçar o layout padrão consistente (Moldura Quadrada Perfeita)
-        const larguraTela = container.clientWidth || 250;
-        const tamanhoQrBox = Math.min(Math.floor(larguraTela * 0.8), 280);
-
+        // Configuração sênior refinada para forçar a renderização limpa da moldura de mira nos 4 cantos
         await instance.start(
             { facingMode: "environment" },
             { 
                 fps: 30, 
-                qrbox: { width: tamanhoQrBox, height: tamanhoQrBox }, 
-                aspectRatio: 1.0, // Força proporção 1:1 padronizada idêntica no iOS e Android
+                qrbox: { width: 240, height: 240 }, 
+                aspectRatio: 1.33333, // Proporção padrão 4:3 que garante o encaixe perfeito da moldura de mira do Html5Qrcode no iOS
                 videoConstraints: {
                     width: { ideal: 1280 },
                     height: { ideal: 720 },
