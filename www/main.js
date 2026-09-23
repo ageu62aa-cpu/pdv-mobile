@@ -1,5 +1,5 @@
 // ==========================================
-// PDV-VS Enterprise - Módulo Principal (main.js Atualizado)
+// PDV-VS Enterprise - Módulo Principal (main.js Otimizado)
 // ==========================================
 
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
@@ -54,24 +54,16 @@ window.consultarCep = async function(cep) {
         const inputUf = document.getElementById('authUf');
         const inputNumero = document.getElementById('authNumeroImovel');
 
-        if (inputEndereco) {
-            inputEndereco.value = `${data.logradouro || ''}, ${data.bairro || ''}`.trim();
-        }
-        if (inputCidade) {
-            inputCidade.value = data.localidade || '';
-        }
-        if (inputUf) {
-            inputUf.value = data.uf || '';
-        }
-        if (inputNumero) {
-            inputNumero.focus();
-        }
+        if (inputEndereco) inputEndereco.value = `${data.logradouro || ''}, ${data.bairro || ''}`.trim();
+        if (inputCidade) inputCidade.value = data.localidade || '';
+        if (inputUf) inputUf.value = data.uf || '';
+        if (inputNumero) inputNumero.focus();
     } catch (error) {
         console.error("Erro ao consultar o CEP:", error);
     }
 };
 
-// --- EXPOSIÇÃO GLOBAL DE FUNÇÕES ---
+// --- EXPOSIÇÃO GLOBAL DE FUNÇÕES DO CAIXA E CÂMERA ---
 window.gerenciarCaixaModal = gerenciarCaixaModal;
 window.fecharModalCaixa = fecharModalCaixa;
 window.confirmarAcaoCaixa = confirmarAcaoCaixa;
@@ -96,28 +88,27 @@ window.abrirLeitorCamera = abrirLeitorCamera;
 window.escanearCameraAdmin = escanearCameraAdmin;
 window.fecharLeitorCamera = fecharLeitorCamera;
 
-// --- CONTROLE DE ADMIN / CLIQUES (10 Cliques para Super Admin) ---
-let clickCountAdmin = 0;
-let clickTimerAdmin = null;
-
-window.tratarCliqueCaixaOuAdmin = function() {
-    clickCountAdmin++;
-    clearTimeout(clickTimerAdmin);
-    
-    clickTimerAdmin = setTimeout(() => {
-        if (clickCountAdmin >= 10) {
-            if (typeof window.alternarTelaAuth === 'function') {
-                window.alternarTelaAuth('admin');
-            } else {
-                alert("Modo Super Admin desbloqueado!");
-            }
+// --- CONTROLE DO SUPER ADMIN MASTER (GATILHO DO RODAPÉ) ---
+window.tentarAcessoSuperAdminMasterSecreto = function() {
+    const modal = document.getElementById('modalSuperAdminMaster');
+    if (modal) {
+        modal.classList.remove('hidden');
+        if (typeof window.carregarListaClientesSuperAdmin === 'function') {
+            window.carregarListaClientesSuperAdmin();
+        } else {
+            console.log("Painel Super Admin Master aberto.");
         }
-        clickCountAdmin = 0;
-    }, 1500);
+    } else {
+        alert("Painel Super Admin Master não encontrado no HTML.");
+    }
 };
-window.registrarCliqueSecretoAdmin = window.tratarCliqueCaixaOuAdmin;
 
-// --- CORREÇÃO DA TELA DE AUTH (LOGIN / CADASTRO) ---
+window.fecharSuperAdminMaster = function() {
+    const modal = document.getElementById('modalSuperAdminMaster');
+    if (modal) modal.classList.add('hidden');
+};
+
+// --- TELA DE AUTH / ALTERNÂNCIA ---
 window.alternarTelaAuth = function(tipo) {
     const tituloAuth = document.getElementById('tituloAuth');
     const subtituloAuth = document.getElementById('subtituloAuth');
@@ -171,7 +162,7 @@ window.instalarAppPwa = function() {
 };
 
 window.tratarEnterLogin = function(e) { 
-    if (e.key === 'Enter') processarAutenticacao(); 
+    if (e.key === 'Enter') window.processarAutenticacao(); 
 };
 
 window.processarAutenticacao = async function() {
@@ -201,6 +192,7 @@ document.addEventListener("DOMContentLoaded", () => {
     inicializarAtalhosTeclado();
 });
 
+// --- VERIFICAÇÃO DE SESSÃO E CARREGAMENTO DOS DADOS DA LOJA NO CABEÇALHO ---
 async function verificarSessaoEAlternarTelas() {
     try {
         const { data: { session } } = await window.supabaseClient.auth.getSession();
@@ -212,6 +204,7 @@ async function verificarSessaoEAlternarTelas() {
         if (session && session.user) {
             setUsuarioAtual(session.user);
 
+            // Busca vínculo do usuário com a empresa/mercado
             const { data: opData } = await window.supabaseClient
                 .from('usuarios_empresas')
                 .select('empresa_id, cargo')
@@ -228,6 +221,37 @@ async function verificarSessaoEAlternarTelas() {
 
             setEmpresaAtualId(empresaIdFinal);
             setCargoUsuarioAtual(cargoFinal);
+
+            // Buscar dados cadastrais da loja para exibir no cabeçalho
+            let nomeLojaExibicao = "PDV-VS Enterprise";
+            let cnpjLojaExibicao = "";
+
+            const { data: dadosEmpresa } = await window.supabaseClient
+                .from('empresas')
+                .select('nome_fantasia, razao_social, cnpj')
+                .eq('id', empresaIdFinal)
+                .maybeSingle();
+
+            if (dadosEmpresa) {
+                nomeLojaExibicao = dadosEmpresa.nome_fantasia || dadosEmpresa.razao_social || "PDV-VS Enterprise";
+                cnpjLojaExibicao = dadosEmpresa.cnpj ? `CNPJ: ${dadosEmpresa.cnpj}` : "";
+            }
+
+            // Atualiza os elementos visuais do cabeçalho de forma limpa e imediata
+            const elTituloApp = document.getElementById('tituloAppEmpresa');
+            const elBadgeLoja = document.getElementById('badgeNumeroLoja');
+            const elBadgeCnpj = document.getElementById('badgeEmpresaLogada');
+
+            if (elTituloApp) elTituloApp.textContent = nomeLojaExibicao;
+            if (elBadgeLoja) elBadgeLoja.textContent = nomeLojaExibicao;
+            if (elBadgeCnpj) {
+                if (cnpjLojaExibicao) {
+                    elBadgeCnpj.textContent = cnpjLojaExibicao;
+                    elBadgeCnpj.classList.remove('hidden');
+                } else {
+                    elBadgeCnpj.classList.add('hidden');
+                }
+            }
 
             if (telaLogin) telaLogin.classList.add('hidden');
             if (appPrincipal) appPrincipal.classList.remove('hidden');
@@ -271,6 +295,7 @@ function inicializarAtalhosTeclado() {
             fecharModalAutorizacao();
             fecharModalCancelarItem();
             fecharLeitorCamera();
+            fecharSuperAdminMaster();
         }
     });
 }
