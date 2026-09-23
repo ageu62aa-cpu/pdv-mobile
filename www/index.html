@@ -173,7 +173,7 @@
                             <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><i class="fa-solid fa-barcode"></i></span>
                             <input type="text" id="inputBusca" oninput="aoDigitarBusca(this.value)" onkeydown="tratarEnterBuscaCaixa(event)" placeholder="Digite o código ou nome do produto (F5)..." class="w-full pl-10 pr-3 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
                         </div>
-                        <button onclick="abrirLeitorCamera()" class="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2.5 rounded-lg text-sm font-bold transition flex items-center space-x-1" title="Escanear com Câmera"><i class="fa-solid fa-camera"></i><span class="hidden sm:inline">Câmera</span></button>
+                        <button onclick="abrirLeitorCamera()" class="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2.5 rounded-lg text-sm font-bold transition flex items-center space-x-1 shadow" title="Escanear com Câmera ou Pistola"><i class="fa-solid fa-camera"></i><span class="hidden sm:inline">Câmera / Scanner</span></button>
                     </div>
                     <div id="painelSugestoes" class="hidden absolute left-3 right-3 top-16 bg-white border border-slate-200 rounded-lg shadow-xl z-30 max-h-60 overflow-y-auto"></div>
                 </div>
@@ -240,7 +240,7 @@
     <!-- MODAIS RESTANTES -->
     <div id="modalCamera" class="hidden fixed inset-0 bg-black/80 z-50 flex flex-col items-center justify-center p-4">
         <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl p-4 flex flex-col items-center">
-            <h3 class="font-bold text-slate-800 mb-3"><i class="fa-solid fa-camera text-emerald-600 mr-2"></i> Leitor de Código de Barras</h3>
+            <h3 class="font-bold text-slate-800 mb-3"><i class="fa-solid fa-camera text-emerald-600 mr-2"></i> Leitor de Código de Barras / Câmera</h3>
             <div id="videoPreviewCamera" class="w-full h-72 bg-black rounded-lg overflow-hidden relative"></div>
             <button onclick="window.fecharLeitorCamera()" class="mt-4 w-full bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-xl font-bold transition">
                 Fechar Leitor
