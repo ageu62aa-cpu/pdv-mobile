@@ -155,18 +155,17 @@ export async function iniciarCameraComHtml5Qrcode() {
         let ultimoCodigoLido = '';
         let tempoUltimoDisparo = 0;
 
-        // Configuração sênior otimizada para alta resolução (Foco melhorado para códigos pequenos no iOS)
+        // Configuração sênior fixa: trava a moldura idêntica à referência visual e otimiza captura de códigos pequenos
         await instance.start(
             { facingMode: "environment" },
             { 
-                fps: 40, // Aumentado para processar quadros mais rapidamente
-                qrbox: { width: 250, height: 250 }, 
-                aspectRatio: 1.33333, 
+                fps: 35, 
+                qrbox: { width: 250, height: 250 }, // Mantém o tamanho exato dos 4 cantos da referência
+                aspectRatio: 1.33333, // Proporção 4:3 fixa que impede o encolhimento indevido da moldura no iOS
                 videoConstraints: {
-                    width: { ideal: 1920 }, // Força alta resolução para nitidez em códigos pequenos
-                    height: { ideal: 1080 },
-                    facingMode: "environment",
-                    focusMode: "continuous" // Tenta forçar foco contínuo se suportado pelo navegador
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 },
+                    facingMode: "environment"
                 }
             },
             (decodedText) => {
@@ -174,8 +173,7 @@ export async function iniciarCameraComHtml5Qrcode() {
                 const codigoLimpo = decodedText.trim();
                 const agora = Date.now();
 
-                // Intervalo ajustado para garantir agilidade na leitura contínua
-                if (codigoLimpo === ultimoCodigoLido && (agora - tempoUltimoDisparo) < 800) {
+                if (codigoLimpo === ultimoCodigoLido && (agora - tempoUltimoDisparo) < 900) {
                     return;
                 }
                 ultimoCodigoLido = codigoLimpo;
@@ -284,7 +282,7 @@ export function renderizarAvisosCompatibilidadeAdmin() {
         containerAvisos.id = 'painelAvisosCompatibilidade';
         containerAvisos.style.cssText = "display: flex; gap: 10px; margin-top: 8px; justify-content: space-between;";
         
-        containerAvisos.innerHTML = '<div onclick="window.mostrarDetalhesCompatibilidade(\'android\')" style="flex: 1; border: 1px solid #d1e7dd; background: #f8f9fa; padding: 6px; border-radius: 6px; text-align: center; cursor: pointer;"><span style="font-size: 16px;">🤖</span><div style="font-size: 11px; font-weight: bold; color: #155724;">Android: 100%</div></div><div onclick="window.mostrarDetalhesCompatibilidade(\'ios\')" style="flex: 1; border: 1px solid #f8d7da; background: #f8f9fa; padding: 6px; border-radius: 6px; text-align: center; cursor: pointer;"><span style="font-size: 16px;">🍏</span><div style="font-size: 11px; font-weight: bold; color: #721c24;">iOS: 50%</div></div>';
+        containerAvisos.innerHTML = '<div onclick="window.mostrarDetalhesCompatibilidade(\'android\')" style="flex: 1; border: 1px solid #d1e7dd; background: #f8f9fa; padding: 6px; border-radius: 6px; text-align: center; cursor: pointer;"><span style="font-size: 16px;">🤖</span><div style="font-size: 11px; font-weight: bold; color: #155724;">Android: 100%</div></div><div onclick="window.mostrarDetalhesCompatibilidade(\'ios\')" style="flex: 1; border: 1px solid #f8f7da; background: #f8f9fa; padding: 6px; border-radius: 6px; text-align: center; cursor: pointer;"><span style="font-size: 16px;">🍏</span><div style="font-size: 11px; font-weight: bold; color: #721c24;">iOS: 50%</div></div>';
         
         inputCodigo.parentNode.insertBefore(containerAvisos, inputCodigo.nextSibling);
     }
