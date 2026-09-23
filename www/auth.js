@@ -354,12 +354,12 @@ export async function concluirLoginSucesso(cargoUser) {
                 containerMascote = document.createElement('div');
                 containerMascote.id = 'containerMascoteRefresh';
                 containerMascote.className = 'flex items-center gap-2 cursor-pointer select-none';
-                containerMascote.title = 'Atualizar / Sincronizar dados locais';
+                containerMascote.title = 'Atualizar / Sincronizar dados locais e itens novos';
                 
-                // Botão de refresh local na barra superior do painel principal (atualiza o cache e tabelas no lugar)
+                // Botão de refresh local na barra superior do PDV (força resgate de produtos, itens novos e cache)
                 containerMascote.onclick = async () => {
                     try {
-                        console.log("🔄 [PDV-VS] Atualização local acionada no painel principal.");
+                        console.log("🔄 [PDV-VS] Atualização local e resgate de novos itens acionados no PDV.");
                         await carregarProdutosCache();
                         if (typeof window.renderizarTabelaAdmin === 'function' && window.produtosCache) {
                             window.renderizarTabelaAdmin(window.produtosCache);
