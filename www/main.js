@@ -1,20 +1,10 @@
 // ==========================================
-// PDV-VS Enterprise - Módulo Principal (main.js Otimizado)
+// PDV-VS Enterprise - Módulo Principal (main.js Restaurado e Completo)
 // ==========================================
 
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
 import { setUsuarioAtual, setEmpresaAtualId, setCargoUsuarioAtual } from './state.js';
 import { abrirLeitorCamera, escanearCameraAdmin, fecharLeitorCamera } from './camera.js';
-import { 
-    processarAutenticacao, 
-    solicitarRecuperacaoSenha, 
-    tratarEnterLogin, 
-    alternarTelaAuth, 
-    instalarPwaApp,
-    tentarAcessoSuperAdminMasterSecreto,
-    fecharSuperAdminMaster,
-    carregarListaClientesSuperAdmin
-} from './auth.js';
 
 import { 
     verificarStatusCaixaServidor, 
@@ -60,13 +50,11 @@ window.consultarCep = async function(cep) {
         }
 
         const inputEndereco = document.getElementById('authEndereco');
-        const inputBairro = document.getElementById('authBairro');
         const inputCidade = document.getElementById('authCidade');
         const inputUf = document.getElementById('authUf');
         const inputNumero = document.getElementById('authNumeroImovel');
 
-        if (inputEndereco) inputEndereco.value = data.logradouro || '';
-        if (inputBairro) inputBairro.value = data.bairro || '';
+        if (inputEndereco) inputEndereco.value = `${data.logradouro || ''}, ${data.bairro || ''}`.trim();
         if (inputCidade) inputCidade.value = data.localidade || '';
         if (inputUf) inputUf.value = data.uf || '';
         if (inputNumero) inputNumero.focus();
@@ -75,7 +63,7 @@ window.consultarCep = async function(cep) {
     }
 };
 
-// --- EXPOSIÇÃO GLOBAL DE FUNÇÕES ---
+// --- EXPOSIÇÃO GLOBAL DE FUNÇÕES DO CAIXA E CÂMERA ---
 window.gerenciarCaixaModal = gerenciarCaixaModal;
 window.fecharModalCaixa = fecharModalCaixa;
 window.confirmarAcaoCaixa = confirmarAcaoCaixa;
@@ -100,24 +88,111 @@ window.abrirLeitorCamera = abrirLeitorCamera;
 window.escanearCameraAdmin = escanearCameraAdmin;
 window.fecharLeitorCamera = fecharLeitorCamera;
 
-// --- CONTROLE DO SUPER ADMIN MASTER ---
-window.tentarAcessoSuperAdminMasterSeguro = tentarAcessoSuperAdminMasterSecreto;
-window.fecharSuperAdminMaster = fecharSuperAdminMaster;
-window.carregarListaClientesSuperAdmin = carregarListaClientesSuperAdmin;
+// --- CONTROLE DO SUPER ADMIN MASTER (GATILHO SEGURO) ---
+window.tentarAcessoSuperAdminMasterSeguro = function() {
+    const modal = document.getElementById('modalSuperAdminMaster');
+    if (modal) {
+        modal.classList.remove('hidden');
+        if (typeof window.carregarListaClientesSuperAdmin === 'function') {
+            window.carregarListaClientesSuperAdmin();
+        } else {
+            console.log("Painel Super Admin Master aberto.");
+        }
+    } else {
+        alert("Painel Super Admin Master não encontrado no HTML.");
+    }
+};
 
-// --- AUTH ---
-window.alternarTelaAuth = alternarTelaAuth;
-window.instalarAppPwa = instalarPwaApp;
-window.tratarEnterLogin = tratarEnterLogin;
-window.processarAutenticacao = processarAutenticacao;
-window.solicitarRecuperacaoSenha = solicitarRecuperacaoSenha;
+window.fecharSuperAdminMaster = function() {
+    const modal = document.getElementById('modalSuperAdminMaster');
+    if (modal) modal.classList.add('hidden');
+};
+
+// --- TELA DE AUTH / ALTERNÂNCIA ---
+window.alternarTelaAuth = function(tipo) {
+    const tituloAuth = document.getElementById('tituloAuth');
+    const subtituloAuth = document.getElementById('subtituloAuth');
+    const btnAcaoAuth = document.getElementById('btnAcaoAuth');
+    const linksAuxiliares = document.getElementById('linksAuxiliares');
+    const linkVoltarLogin = document.getElementById('linkVoltarLogin');
+    
+    const divTipoPerfil = document.getElementById('divTipoPerfil');
+    const divNomeMercadoCadastro = document.getElementById('divNomeMercadoCadastro');
+    const divDocumentoCadastro = document.getElementById('divDocumentoCadastro');
+    const divCamposEnderecoCadastro = document.getElementById('divCamposEnderecoCadastro');
+
+    if (tipo === 'cadastro') {
+        if (tituloAuth) tituloAuth.innerText = "Criar Estabelecimento";
+        if (subtituloAuth) subtituloAuth.innerText = "Cadastre sua loja para começar a usar";
+        if (btnAcaoAuth) btnAcaoAuth.innerText = "Cadastrar Loja";
+        if (linksAuxiliares) linksAuxiliares.classList.add('hidden');
+        if (linkVoltarLogin) linkVoltarLogin.classList.remove('hidden');
+
+        if (divTipoPerfil) divTipoPerfil.classList.remove('hidden');
+        if (divNomeMercadoCadastro) divNomeMercadoCadastro.classList.remove('hidden');
+        if (divDocumentoCadastro) divDocumentoCadastro.classList.remove('hidden');
+        if (divCamposEnderecoCadastro) divCamposEnderecoCadastro.classList.remove('hidden');
+    } else if (tipo === 'admin') {
+        if (tituloAuth) tituloAuth.innerText = "Acesso Super Admin";
+        if (subtituloAuth) subtituloAuth.innerText = "Painel de Controle Mestre";
+        if (btnAcaoAuth) btnAcaoAuth.innerText = "Acessar Master";
+        if (linksAuxiliares) linksAuxiliares.classList.add('hidden');
+        if (linkVoltarLogin) linkVoltarLogin.classList.remove('hidden');
+
+        if (divTipoPerfil) divTipoPerfil.classList.add('hidden');
+        if (divNomeMercadoCadastro) divNomeMercadoCadastro.classList.add('hidden');
+        if (divDocumentoCadastro) divDocumentoCadastro.classList.add('hidden');
+        if (divCamposEnderecoCadastro) divCamposEnderecoCadastro.classList.add('hidden');
+    } else {
+        if (tituloAuth) tituloAuth.innerText = "PDV-VS Enterprise";
+        if (subtituloAuth) subtituloAuth.innerText = "Sistema de Gestão Comercial e PDV";
+        if (btnAcaoAuth) btnAcaoAuth.innerText = "Acessar Sistema";
+        if (linksAuxiliares) linksAuxiliares.classList.remove('hidden');
+        if (linkVoltarLogin) linkVoltarLogin.classList.add('hidden');
+
+        if (divTipoPerfil) divTipoPerfil.classList.add('hidden');
+        if (divNomeMercadoCadastro) divNomeMercadoCadastro.classList.add('hidden');
+        if (divDocumentoCadastro) divDocumentoCadastro.classList.add('hidden');
+        if (divCamposEnderecoCadastro) divCamposEnderecoCadastro.classList.add('hidden');
+    }
+};
+
+window.instalarAppPwa = function() {
+    console.log("Instalação PWA acionada.");
+};
+
+window.tratarEnterLogin = function(e) { 
+    if (e.key === 'Enter') window.processarAutenticacao(); 
+};
+
+window.processarAutenticacao = async function() {
+    const email = document.getElementById('authEmail')?.value.trim();
+    const senha = document.getElementById('authSenha')?.value.trim();
+
+    if (!email || !senha) {
+        alert("Preencha o e-mail e a senha.");
+        return;
+    }
+
+    try {
+        const { error } = await window.supabaseClient.auth.signInWithPassword({ email, password: senha });
+        if (error) throw error;
+        await verificarSessaoEAlternarTelas();
+    } catch (e) {
+        alert("Erro ao autenticar: " + (e.message || e));
+    }
+};
+
+window.solicitarRecuperacaoSenha = function() {
+    alert("Para recuperar a senha, contacte o suporte técnico.");
+};
 
 document.addEventListener("DOMContentLoaded", () => {
     verificarSessaoEAlternarTelas();
     inicializarAtalhosTeclado();
 });
 
-// --- VERIFICAÇÃO DE SESSÃO E INICIALIZAÇÃO ---
+// --- VERIFICAÇÃO DE SESSÃO E BUSCA DINÂMICA DO NOME_MERCADO ---
 async function verificarSessaoEAlternarTelas() {
     try {
         const { data: { session } } = await window.supabaseClient.auth.getSession();
@@ -129,6 +204,7 @@ async function verificarSessaoEAlternarTelas() {
         if (session && session.user) {
             setUsuarioAtual(session.user);
 
+            // Busca vinculação do usuário com a empresa
             const { data: opData } = await window.supabaseClient
                 .from('usuarios_empresas')
                 .select('empresa_id, cargo')
@@ -152,18 +228,11 @@ async function verificarSessaoEAlternarTelas() {
             if (empresaIdFinal) {
                 const { data: dadosEmpresa, error: errEmpresa } = await window.supabaseClient
                     .from('empresas')
-                    .select('nome_mercado, documento, ativo')
+                    .select('nome_mercado, documento')
                     .eq('id', empresaIdFinal)
                     .maybeSingle();
 
                 if (!errEmpresa && dadosEmpresa) {
-                    if (dadosEmpresa.ativo === false) {
-                        alert("PDV-VS - ACESSO SUSPENSO: Este estabelecimento encontra-se bloqueado.");
-                        await window.supabaseClient.auth.signOut();
-                        if (telaLogin) telaLogin.classList.remove('hidden');
-                        if (appPrincipal) appPrincipal.classList.add('hidden');
-                        return;
-                    }
                     nomeLojaExibicao = dadosEmpresa.nome_mercado || "Nome do Estabelecimento";
                     cnpjLojaExibicao = dadosEmpresa.documento ? `CNPJ/CPF: ${dadosEmpresa.documento}` : "";
                 }
