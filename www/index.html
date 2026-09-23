@@ -138,9 +138,10 @@
     <!-- APLICAÇÃO PRINCIPAL (PDV) -->
     <div id="appPrincipal" class="hidden flex-1 flex flex-col justify-between">
         <header id="headerTopoApp" class="bg-emerald-700 text-white px-4 py-3 flex justify-between items-center shadow-md">
-            <div class="flex items-center space-x-3">
-                <!-- O auth.js injeta dinamicamente o Mascote + Nome da Loja aqui (com refresh automático ao clicar) -->
-                <div class="hidden">
+            <!-- BLOCO CORRIGIDO: Mascote + Nome da Loja lado a lado com Refresh ao clicar -->
+            <div class="flex items-center space-x-3 cursor-pointer select-none" onclick="location.reload()" title="Atualizar Página">
+                <img src="assets/mascote.jpeg" alt="Mascote" class="w-9 h-9 rounded-lg object-contain bg-white/10 p-0.5 border border-emerald-500 shadow-sm">
+                <div>
                     <h1 id="tituloAppEmpresa" class="font-bold text-xs leading-tight">PDV-VS Enterprise</h1>
                     <span id="badgeNumeroLoja" class="text-[10px] text-emerald-200 font-mono tracking-wide">Carregando loja...</span>
                 </div>
@@ -148,6 +149,7 @@
                     <span id="badgeEmpresaLogada" class="text-[10px] text-emerald-200 block sm:hidden">CNPJ: ...</span>
                 </div>
             </div>
+            
             <div class="flex items-center space-x-2">
                 <button id="btnInstalarPwaHeader" onclick="instalarAppPwa()" class="hidden bg-amber-500 hover:bg-amber-600 text-slate-950 px-3 py-1.5 rounded text-xs font-bold transition flex items-center space-x-1.5 shadow" title="Instalar Aplicativo">
                     <i class="fa-solid fa-download"></i><span>Instalar App</span>
@@ -222,7 +224,7 @@
             </div>
         </main>
 
-        <!-- RODAPÉ COM O GATILHO SECRETO (5 CLIQUES PARA PEDIR A SENHA MESTRE) -->
+        <!-- RODAPÉ COM O GATILHO SECRETO -->
         <footer id="rodapeSistema" class="bg-white border-t py-2 px-4 text-center text-xs text-slate-500 flex justify-between items-center max-w-7xl mx-auto w-full">
             <span id="gatilhoRodapeSuperAdmin" onclick="tentarAcessoSuperAdminMasterSecreto()" class="cursor-pointer select-none hover:text-emerald-700 transition" title="Clique 5 vezes para abrir o Super Admin">PDV-Vancely Software Enterprise | Versão 1.0.2 | Suporte Técnico Ativo</span>
             <a href="https://wa.me/" target="_blank" class="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1 rounded-full shadow flex items-center space-x-1 text-[11px] font-bold transition">
