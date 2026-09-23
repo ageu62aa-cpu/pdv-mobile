@@ -13,7 +13,6 @@ import { carregarProdutosCache } from './produtos.js';
 import { atualizarBadgesCaixaInterface, focarBusca, atualizarTabelaVenda } from './caixa.js';
 import { carregarHistoricoAdmin, carregarOperadoresLoja } from './admin.js';
 
-// Instância segura para temporizador de sessão única
 let intervaloMonitoramentoSessao = null;
 
 window.addEventListener('beforeinstallprompt', (e) => {
@@ -37,7 +36,6 @@ export async function instalarPwaApp() {
     }
 }
 
-// Variável de controle para o gatilho de cliques do rodapé (Senha Mestre)
 let contadorCliquesRodape = 0;
 let tempoUltimoCliqueRodape = 0;
 
@@ -62,7 +60,6 @@ export function tentarAcessoSuperAdminMasterSecreto() {
     }
 }
 
-// Funções auxiliares para feedback visual de campos
 function destacarErroCampo(idElemento, mensagem) {
     const elemento = document.getElementById(idElemento);
     if (!elemento) return;
@@ -219,7 +216,6 @@ export async function processarAutenticacao() {
         }
     } catch (e) { 
         const msgErro = e.message ? e.message.toLowerCase() : '';
-        
         if (msgErro.includes('invalid login credentials') || msgErro.includes('invalid') || msgErro.includes('credentials')) {
             destacarErroCampo('authEmail', 'Verifique o e-mail');
             destacarErroCampo('authSenha', 'Senha incorreta');
@@ -228,7 +224,6 @@ export async function processarAutenticacao() {
         } else if (msgErro.includes('email') || msgErro.includes('already registered')) {
             destacarErroCampo('authEmail', 'E-mail inválido ou já cadastrado');
         }
-
         mostrarFeedback('PDV-VS: ' + e.message, 'rose'); 
     }
 }
@@ -333,7 +328,7 @@ export async function concluirLoginSucesso(cargoUser) {
             if (badgeLoja) badgeLoja.innerText = `${dadosEmpresaAtual.nome_mercado} (Loja #${dadosEmpresaAtual.id.substring(0,6)})`;
         }
         
-        // Injeta ou atualiza o Mascote + Nome da Loja na página principal funcionando como Refresh
+        // Renderiza o Mascote + Nome da Loja no cabeçalho (ao lado do botão refresh automático)
         const headerTopo = document.getElementById('headerTopoApp') || document.querySelector('header');
         if (headerTopo) {
             let containerMascote = document.getElementById('containerMascoteRefresh');
@@ -493,6 +488,51 @@ export function renderizarTabelaSuperAdmin(lista) {
     tbody.innerHTML = html;
 }
 
+export async function adicionarNovoClienteSuperAdmin() {
+    const nome = prompt('Nome do Novo Estabelecimento / Loja:');
+    if (!nome) return;
+    const documento = prompt('CNPJ ou CPF do Estabelecimento:');
+    if (!documento) return;
+    const email = prompt('E-mail de Acesso Admin:');
+    if (!email) return;
+    const senha = prompt('Senha inicial para o Admin:');
+    if (!senha) return;
+    const whatsapp = prompt('WhatsApp de contato:') || '';
+
+    try {
+        const { data: authData, error: authError } = await window.supabaseClient.auth.signUp({
+            email,
+            password: senha,
+            options: { data: { perfil: 'admin_mercado' } }
+        });
+        if (authError) throw authError;
+
+        const prefixo = email.split('@')[0];
+        const { data: empData, error: empError } = await window.supabaseClient.from('empresas').insert([{
+            nome_mercado: nome,
+            responsavel: prefixo,
+            documento,
+            email_admin: email,
+            whatsapp,
+            ativo: true,
+            caixa_aberto: false
+        }]).select().single();
+
+        if (empError) throw empError;
+
+        await window.supabaseClient.from('usuarios_empresas').insert([{
+            user_id: authData.user.id,
+            empresa_id: empData.id,
+            cargo: 'admin_mercado'
+        }]);
+
+        alert('PDV-VS: Estabelecimento adicionado com sucesso!');
+        await carregarListaClientesSuperAdmin();
+    } catch (e) {
+        alert('PDV-VS: Erro ao cadastrar cliente: ' + e.message);
+    }
+}
+
 export async function alternarStatusEmpresa(empresaId, statusAtual) {
     if (!confirm(`PDV-VS: Deseja realmente alterar o status comercial deste estabelecimento?`)) return;
     const { error } = await window.supabaseClient.from('empresas').update({ ativo: !statusAtual }).eq('id', empresaId);
@@ -513,6 +553,7 @@ window.processarAutenticacao = processarAutenticacao;
 window.solicitarRecuperacaoSenha = solicitarRecuperacaoSenha;
 window.abrirSuperAdminMaster = abrirSuperAdminMaster;
 window.fecharSuperAdminMaster = fecharSuperAdminMaster;
+window.adicionarNovoClienteSuperAdmin = adicionarNovoClienteSuperAdmin;
 window.alternarStatusEmpresa = alternarStatusEmpresa;
 window.instalarPwaApp = instalarPwaApp;
 window.tentarAcessoSuperAdminMasterSecreto = tentarAcessoSuperAdminMasterSecreto;
