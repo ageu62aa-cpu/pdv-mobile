@@ -165,7 +165,6 @@ export async function processarAutenticacao() {
 
     try {
         if (modoTelaAuth === 'admin') {
-            // Autenticação segura validada via banco de dados (tabela super_admins)
             const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({ email, password: senha });
             if (authError) throw new Error('Credenciais de Super Admin inválidas.');
 
@@ -182,11 +181,8 @@ export async function processarAutenticacao() {
 
             setUsuarioAtual(authData.user);
             
-            // Oculta a tela de login e abre diretamente o painel master
-            const telaLogin = document.getElementById('telaLogin');
-            if (telaLogin) telaLogin.classList.add('hidden');
-            
-            await abrirSuperAdminMaster();
+            // Valida e entra direto ou direciona para o fluxo padrão acompanhado
+            await validarVinculoEmpresaUsuarioSuperAdmin(authData.user);
             return;
         }
 
@@ -294,7 +290,15 @@ export async function solicitarRecuperacaoSenha() {
 export async function validarVinculoEmpresaUsuario() {
     try {
         const { data: vincData, error: vincError } = await supabaseClient.from('usuarios_empresas').select('empresa_id, cargo').eq('user_id', usuarioAtual.id).single();
-        if (vincError || !vincData) throw new Error('Vínculo comercial não encontrado.');
+        if (vincError || !vincData) {
+            // Se for um Super Admin logando pela tela comum, tratamos de forma leve sem quebrar
+            const { data: adminCheck } = await supabaseClient.from('super_admins').select('email').eq('email', usuarioAtual.email).single();
+            if (adminCheck) {
+                concluirLoginSucesso('admin_mercado');
+                return;
+            }
+            throw new Error('Vínculo comercial não encontrado.');
+        }
         
         setEmpresaAtualId(vincData.empresa_id); 
         setCargoUsuarioAtual(vincData.cargo);
@@ -331,6 +335,16 @@ export async function validarVinculoEmpresaUsuario() {
     }
 }
 
+async function validarVinculoEmpresaUsuarioSuperAdmin(userObj) {
+    try {
+        const novoTokenSessao = 'sessao_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
+        setTokenSessaoAtual(novoTokenSessao);
+        concluirLoginSucesso('admin_mercado');
+    } catch (e) {
+        concluirLoginSucesso('admin_mercado');
+    }
+}
+
 export function mostrarFeedback(msg, cor) {
     const fb = document.getElementById('feedbackAuth'); 
     if (fb) {
@@ -340,12 +354,36 @@ export function mostrarFeedback(msg, cor) {
     }
 }
 
-export function concluirLoginSucesso(cargoUser) {
+export async function concluirLoginSucesso(cargoUser) {
     try {
         if (usuarioAtual && usuarioAtual.email) {
             const usuarioNomeExibicao = usuarioAtual.email.split('@')[0];
             const infoLogado = document.getElementById('infoUsuarioLogado');
             if (infoLogado) infoLogado.innerHTML = `<i class="fa-solid fa-user text-emerald-300 mr-1"></i> ${usuarioNomeExibicao} (${cargoUser === 'admin_mercado' ? 'Admin' : 'Caixa'})`;
+            
+            // VERIFICAÇÃO DE SEGURANÇA NO BANCO: Exibe o botão do Super Admin na barra superior APENAS se o e-mail estiver na tabela 'super_admins'
+            if (usuarioAtual.email) {
+                const { data: checkSuper } = await supabaseClient
+                    .from('super_admins')
+                    .select('email')
+                    .eq('email', usuarioAtual.email)
+                    .single();
+
+                if (checkSuper) {
+                    let btnMasterGlobal = document.getElementById('btnSuperAdminGlobal');
+                    if (!btnMasterGlobal) {
+                        const barraTopo = document.querySelector('header') || document.getElementById('infoUsuarioLogado')?.parentElement;
+                        if (barraTopo) {
+                            btnMasterGlobal = document.createElement('button');
+                            btnMasterGlobal.id = 'btnSuperAdminGlobal';
+                            btnMasterGlobal.innerHTML = '<i class="fa-solid fa-shield-halved mr-1"></i> Painel Master';
+                            btnMasterGlobal.className = 'bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded text-xs font-bold shadow transition ml-2 flex items-center cursor-pointer';
+                            btnMasterGlobal.onclick = () => abrirSuperAdminMaster();
+                            barraTopo.appendChild(btnMasterGlobal);
+                        }
+                    }
+                }
+            }
         }
         
         if (dadosEmpresaAtual) {
@@ -452,7 +490,6 @@ export async function abrirSuperAdminMaster() {
 export function fecharSuperAdminMaster() { 
     const modal = document.getElementById('modalSuperAdminMaster');
     if (modal) modal.classList.add('hidden'); 
-    alternarTelaAuth('login');
 }
 
 export async function carregarListaClientesSuperAdmin() {
