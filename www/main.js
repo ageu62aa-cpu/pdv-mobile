@@ -88,8 +88,8 @@ window.abrirLeitorCamera = abrirLeitorCamera;
 window.escanearCameraAdmin = escanearCameraAdmin;
 window.fecharLeitorCamera = fecharLeitorCamera;
 
-// --- CONTROLE DO SUPER ADMIN MASTER (GATILHO DO RODAPÉ) ---
-window.tentarAcessoSuperAdminMasterSecreto = function() {
+// --- CONTROLE DO SUPER ADMIN MASTER (GATILHO DO RODAPÉ SEGURO) ---
+window.tentarAcessoSuperAdminMasterSeguro = function() {
     const modal = document.getElementById('modalSuperAdminMaster');
     if (modal) {
         modal.classList.remove('hidden');
@@ -204,7 +204,7 @@ async function verificarSessaoEAlternarTelas() {
         if (session && session.user) {
             setUsuarioAtual(session.user);
 
-            // Busca vínculo do usuário com a empresa/mercado
+            // Busca vínculo do usuário com a empresa/mercado[cite: 8]
             const { data: opData } = await window.supabaseClient
                 .from('usuarios_empresas')
                 .select('empresa_id, cargo')
@@ -222,8 +222,8 @@ async function verificarSessaoEAlternarTelas() {
             setEmpresaAtualId(empresaIdFinal);
             setCargoUsuarioAtual(cargoFinal);
 
-            // Buscar dados cadastrais da loja para exibir no cabeçalho
-            let nomeLojaExibicao = "PDV-VS Enterprise";
+            // Buscar dados cadastrais da loja para exibir de forma dinâmica no cabeçalho
+            let nomeLojaExibicao = "Nome do Estabelecimento";
             let cnpjLojaExibicao = "";
 
             const { data: dadosEmpresa } = await window.supabaseClient
@@ -233,17 +233,15 @@ async function verificarSessaoEAlternarTelas() {
                 .maybeSingle();
 
             if (dadosEmpresa) {
-                nomeLojaExibicao = dadosEmpresa.nome_fantasia || dadosEmpresa.razao_social || "PDV-VS Enterprise";
+                nomeLojaExibicao = dadosEmpresa.nome_fantasia || dadosEmpresa.razao_social || "Nome do Estabelecimento";
                 cnpjLojaExibicao = dadosEmpresa.cnpj ? `CNPJ: ${dadosEmpresa.cnpj}` : "";
             }
 
-            // Atualiza os elementos visuais do cabeçalho de forma limpa e imediata
+            // Atualiza os elementos visuais do cabeçalho de forma sincronizada com o HTML
             const elTituloApp = document.getElementById('tituloAppEmpresa');
-            const elBadgeLoja = document.getElementById('badgeNumeroLoja');
             const elBadgeCnpj = document.getElementById('badgeEmpresaLogada');
 
             if (elTituloApp) elTituloApp.textContent = nomeLojaExibicao;
-            if (elBadgeLoja) elBadgeLoja.textContent = nomeLojaExibicao;
             if (elBadgeCnpj) {
                 if (cnpjLojaExibicao) {
                     elBadgeCnpj.textContent = cnpjLojaExibicao;
