@@ -29,14 +29,15 @@ export function inicializarLeitorTecladoPistola() {
         ultimoTempo = tempoAtual;
 
         if (e.key === 'Enter') {
-            if (bufferLeitor.trim().length > 1) {
+            // Correção aplicada aqui com o encadeamento opcional e checagem de nulidade
+            if (bufferLeitor && bufferLeitor.trim().length > 1) {
                 e.preventDefault();
                 e.stopPropagation();
                 const codigoLido = bufferLeitor.trim();
                 bufferLeitor = '';
                 processarCodigoCapturadoUniversal(codigoLido);
             }
-        } else if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+        } else if (e.key && e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
             bufferLeitor += e.key;
         }
     };
