@@ -21,17 +21,20 @@ export async function dispararLeitorNativo() {
             return null;
         }
 
+        // Limpa qualquer listener anterior pendente
         if (activeScanListener) {
             await activeScanListener.remove().catch(() => {});
             activeScanListener = null;
         }
 
+        // Garante que o fundo fica transparente para exibir perfeitamente as cantoneiras quadradas nativas
         document.body.classList.add('barcode-scanner-active');
 
         return new Promise(async (resolve) => {
             let resolvido = false;
 
             try {
+                // Ouve o evento exclusivo de leitura limpa (startScan)
                 activeScanListener = await BarcodeScannerPlugin.addListener('barcodeScanned', async event => {
                     if (event && event.barcode && !resolvido) {
                         resolvido = true;
@@ -41,7 +44,7 @@ export async function dispararLeitorNativo() {
                     }
                 });
 
-                // startScan usa showUIElements = false internamente, exibindo a moldura limpa com cantoneiras
+                // Força exclusivamente o startScan (showUIElements = false -> moldura limpa com cantoneiras)
                 await BarcodeScannerPlugin.startScan({
                     formats: ["EAN_13", "EAN_8", "CODE_128", "QR_CODE", "UPC_A", "UPC_E"],
                     lensFacing: "back"
