@@ -140,6 +140,9 @@ export function focarBusca() {
 
 // --- BUSCA E SUGESTÕES ---
 export function aoDigitarBusca(e) {
+    // Verificação defensiva para evitar crash caso 'e' ou 'e.target' venham indefinidos
+    if (!e || !e.target) return;
+    
     const termo = e.target.value.trim().toLowerCase();
     const suggestionsBox = document.getElementById('sugestoesBusca');
     
@@ -172,24 +175,6 @@ export function aoDigitarBusca(e) {
     
     suggestionsBox.innerHTML = html;
     suggestionsBox.classList.remove('hidden');
-}
-
-export function tratarEnterBuscaCaixa(e) {
-    if (e.key === 'Enter') {
-        e.preventDefault();
-        const input = document.getElementById('inputBusca');
-        if (!input) return;
-        const valor = input.value.trim();
-        
-        const encontrado = produtosCache.find(p => p.codigo_barras === valor || p.id === valor);
-        if (encontrado) {
-            window.adicionarProdutoAoCarrinho?.(encontrado);
-            input.value = '';
-            document.getElementById('sugestoesBusca')?.classList.add('hidden');
-        } else {
-            alert('PDV-VS: Produto não encontrado pelo código digitado.');
-        }
-    }
 }
 
 // --- MODAL DE CAIXA ---
