@@ -21,13 +21,11 @@ export async function dispararLeitorNativo() {
             return null;
         }
 
-        // Remove listener anterior se existir para evitar duplicações
         if (activeScanListener) {
             await activeScanListener.remove().catch(() => {});
             activeScanListener = null;
         }
 
-        // Oculta a WebView para revelar a câmara nativa com a moldura de cantoneiras quadradas
         document.body.classList.add('barcode-scanner-active');
 
         return new Promise(async (resolve) => {
@@ -38,20 +36,19 @@ export async function dispararLeitorNativo() {
                     if (event && event.barcode && !resolvido) {
                         resolvido = true;
                         const codigo = event.barcode.displayValue || event.barcode.rawValue;
-                        
-                        // Limpa o leitor e o listener imediatamente após a leitura com sucesso
                         await fecharLeitorNativo();
                         resolve(codigo);
                     }
                 });
 
-                // Inicia o stream nativo que exibe o layout correto de cantoneiras no iOS
+                // startScan usa showUIElements = false internamente, exibindo a moldura limpa com cantoneiras
                 await BarcodeScannerPlugin.startScan({
-                    formats: ["EAN_13", "EAN_8", "CODE_128", "QR_CODE", "UPC_A", "UPC_E"]
+                    formats: ["EAN_13", "EAN_8", "CODE_128", "QR_CODE", "UPC_A", "UPC_E"],
+                    lensFacing: "back"
                 });
 
             } catch (err) {
-                console.error("PDV-VS Erro ao iniciar startScan:", err);
+                console.error("PDV-VS Erro no startScan nativo:", err);
                 await fecharLeitorNativo();
                 if (!resolvido) {
                     resolvido = true;
