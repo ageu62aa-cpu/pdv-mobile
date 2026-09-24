@@ -1,579 +1,534 @@
 // ==========================================
-// MÓDULO DE AUTENTICAÇÃO E ADMIN MASTER (auth.js)
+// MÓDULO DE GESTÃO ADMINISTRATIVA DA LOJA (PDV-VS)
 // ==========================================
 
 import { 
-    VERSAO_SISTEMA, deferredPrompt, modoTelaAuth, usuarioAtual, empresaAtualId, 
-    cargoUsuarioAtual, dadosEmpresaAtual, caixaAberto, tokenSessaoAtual,
-    setDeferredPrompt, setModoTelaAuth, setUsuarioAtual, setEmpresaAtualId, 
-    setCargoUsuarioAtual, setDadosEmpresaAtual, setCaixaAberto, setTokenSessaoAtual,
-    setListaEmpresasCache, listaEmpresasCache 
+    empresaAtualId, produtosCache, cargoUsuarioAtual, historicoVendasCache, 
+    setHistoricoVendasCache, setProdutosCache, setEmpresaAtualId 
 } from './state.js';
 import { carregarProdutosCache } from './produtos.js';
-import { atualizarBadgesCaixaInterface, focarBusca, atualizarTabelaVenda } from './caixa.js';
+import { focarBusca } from './caixa.js';
 
-let intervaloMonitoramentoSessao = null;
-
-window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    setDeferredPrompt(e);
-    const btnInstalar = document.getElementById('btnInstalarPwa');
-    if (btnInstalar) btnInstalar.classList.remove('hidden');
-});
-
-export async function instalarPwaApp() {
-    if (deferredPrompt) {
-        deferredPrompt.prompt();
-        const { outcome } = await deferredPrompt.userChoice;
-        if (outcome === 'accepted') {
-            const btnInstalar = document.getElementById('btnInstalarPwa');
-            if (btnInstalar) btnInstalar.classList.add('hidden');
+// --- UTILITÁRIO INTERNO: RESOLUÇÃO DE EMPRESA ---
+async function resolverEmpresaIdAtual() {
+    let idEmpresa = empresaAtualId || localStorage.getItem('empresa_id') || localStorage.getItem('pdv_empresa_id');
+    try {
+        const { data: { session } } = await window.supabaseClient.auth.getSession();
+        if (session && session.user) {
+            const { data: vincData } = await window.supabaseClient
+                .from('usuarios_empresas')
+                .select('empresa_id')
+                .eq('user_id', session.user.id)
+                .maybeSingle();
+            
+            if (vincData && vincData.empresa_id) {
+                idEmpresa = vincData.empresa_id;
+            } else if (!idEmpresa) {
+                idEmpresa = session.user.id;
+            }
+            setEmpresaAtualId(idEmpresa);
+            localStorage.setItem('empresa_id', idEmpresa);
         }
-        setDeferredPrompt(null);
-    } else {
-        alert('PDV-VS: Instale diretamente pelas configurações ou menu do seu navegador.');
+    } catch (e) {
+        console.error("PDV-VS: Erro ao validar empresa na sessão:", e);
     }
+    return idEmpresa;
 }
 
-let contadorCliquesRodape = 0;
-let tempoUltimoCliqueRodape = 0;
-
-export function tentarAcessoSuperAdminMasterSecreto() {
-    const agora = Date.now();
-    if (agora - tempoUltimoCliqueRodape > 1200) {
-        contadorCliquesRodape = 1;
-    } else {
-        contadorCliquesRodape++;
-    }
-    tempoUltimoCliqueRodape = agora;
-
-    if (contadorCliquesRodape >= 5) {
-        contadorCliquesRodape = 0;
-        const senhaMestre = prompt('PDV-VS: Digite a Senha Mestre do Desenvolvedor:');
-        
-        if (senhaMestre === 'vancely2026@master') {
-            abrirSuperAdminMaster();
-        } else if (senhaMestre !== null) {
-            alert('PDV-VS: Senha mestre incorreta.');
-        }
-    }
-}
-
-function destacarErroCampo(idElemento, mensagem) {
-    const elemento = document.getElementById(idElemento);
-    if (!elemento) return;
-
-    elemento.style.borderColor = '#ef4444';
-    elemento.classList.add('border-red-500');
-
-    let spanErro = document.getElementById(`erro-${idElemento}`);
-    if (!spanErro) {
-        spanErro = document.createElement('span');
-        spanErro.id = `erro-${idElemento}`;
-        spanErro.style.cssText = "color: #ef4444; font-size: 11px; margin-top: 2px; display: block; font-weight: 500;";
-        if (elemento.parentNode) {
-            elemento.parentNode.appendChild(spanErro);
-        }
-    }
-    spanErro.textContent = mensagem;
-}
-
-function limparErrosCampos() {
-    const inputs = document.querySelectorAll('input');
-    inputs.forEach(input => {
-        input.style.borderColor = '';
-        input.classList.remove('border-red-500');
-        const spanErro = document.getElementById(`erro-${input.id}`);
-        if (spanErro) spanErro.remove();
+// ==========================================
+// NAVEGAÇÃO DE ABAS
+// ==========================================
+export async function mudarAbaAdmin(aba) {
+    const abasPossiveis = ['Produtos', 'Operadores', 'Maquininhas', 'Historico', 'Configuracoes'];
+    
+    abasPossiveis.forEach(a => {
+        const conteudo = document.getElementById(`conteudoAba${a}`);
+        const btn = document.getElementById(`btnAba${a}`);
+        if (conteudo) conteudo.classList.add('hidden');
+        if (btn) btn.className = 'px-3 py-1.5 text-xs font-bold bg-slate-200 text-slate-700 rounded-lg';
     });
-}
-
-// --- FUNÇÃO DE REFRESH COMPLETO DA PÁGINA AO CLICAR NO MASCOTE ---
-export function atualizarEstadoTelaAuthLocal() {
-    window.location.reload();
-}
-
-export function alternarTelaAuth(modo) {
-    limparErrosCampos();
-    setModoTelaAuth(modo);
-    const fields = {
-        titulo: document.getElementById('tituloAuth'), 
-        subtitulo: document.getElementById('subtituloAuth'),
-        icone: document.getElementById('iconeAuth'), 
-        btn: document.getElementById('btnAcaoAuth'),
-        divSenha: document.getElementById('divAuthSenha'), 
-        links: document.getElementById('linksAuxiliares'),
-        voltar: document.getElementById('linkVoltarLogin'), 
-        perfil: document.getElementById('divTipoPerfil'),
-        mercado: document.getElementById('divNomeMercadoCadastro'), 
-        doc: document.getElementById('divDocumentoCadastro'),
-        endereco: document.getElementById('divCamposEnderecoCadastro')
-    };
     
-    const fb = document.getElementById('feedbackAuth');
-    if (fb) fb.classList.add('hidden');
-
-    if (modo === 'login') {
-        if (fields.titulo) fields.titulo.innerText = 'PDV-VS Enterprise'; 
-        if (fields.subtitulo) fields.subtitulo.innerText = `Versão ${VERSAO_SISTEMA}`;
-        if (fields.btn) fields.btn.innerText = 'Acessar Sistema';
-        if (fields.divSenha) fields.divSenha.classList.remove('hidden'); 
-        if (fields.links) fields.links.classList.remove('hidden');
-        if (fields.voltar) fields.voltar.classList.add('hidden'); 
-        if (fields.perfil) fields.perfil.classList.add('hidden');
-        if (fields.mercado) fields.mercado.classList.add('hidden'); 
-        if (fields.doc) fields.doc.classList.add('hidden');
-        if (fields.endereco) fields.endereco.classList.add('hidden');
-    } else if (modo === 'cadastro') {
-        if (fields.titulo) fields.titulo.innerText = 'Novo Estabelecimento'; 
-        if (fields.subtitulo) fields.subtitulo.innerText = 'Cadastre sua loja (Plano Comum)';
-        if (fields.btn) fields.btn.innerText = 'Criar Conta';
-        if (fields.voltar) fields.voltar.classList.remove('hidden'); 
-        if (fields.perfil) fields.perfil.classList.add('hidden'); 
-        if (fields.mercado) fields.mercado.classList.remove('hidden'); 
-        if (fields.doc) fields.doc.classList.remove('hidden');
-        if (fields.endereco) fields.endereco.classList.remove('hidden');
-        if (fields.links) fields.links.classList.add('hidden');
+    const activeAba = aba.charAt(0).toUpperCase() + aba.slice(1);
+    const conteudoAtivo = document.getElementById(`conteudoAba${activeAba}`);
+    const btnAtivo = document.getElementById(`btnAba${activeAba}`);
+    
+    if (conteudoAtivo) conteudoAtivo.classList.remove('hidden');
+    if (btnAtivo) btnAtivo.className = 'px-3 py-1.5 text-xs font-bold bg-emerald-600 text-white rounded-lg';
+    
+    switch (activeAba) {
+        case 'Produtos':
+            await carregarProdutosCache();
+            renderizarTabelaAdmin(produtosCache);
+            break;
+        case 'Operadores':
+            await carregarOperadoresLoja();
+            break;
+        case 'Maquininhas':
+            await carregarMaquininhasAdmin();
+            break;
+        case 'Historico':
+            await carregarHistoricoAdmin();
+            break;
+        case 'Configuracoes':
+            preencherDadosConfiguracao();
+            break;
     }
 }
 
-export function tratarEnterLogin(e) { 
-    if (e.key === 'Enter') { e.preventDefault(); processarAutenticacao(); } 
+function preencherDadosConfiguracao() {
+    const inputPinConfig = document.getElementById('inputAdminPinConfig');
+    if (inputPinConfig) {
+        inputPinConfig.value = localStorage.getItem('pdv_admin_pin_' + empresaAtualId) || '123456';
+    }
+    const inputNomeConfig = document.getElementById('inputAdminNomeEmpresaConfig');
+    const inputWapConfig = document.getElementById('inputAdminWhatsappConfig');
+    if (window.dadosEmpresaAtual) {
+        if (inputNomeConfig) inputNomeConfig.value = window.dadosEmpresaAtual.nome_mercado || '';
+        if (inputWapConfig) inputWapConfig.value = window.dadosEmpresaAtual.whatsapp || '';
+    }
 }
 
-export async function processarAutenticacao() {
-    limparErrosCampos();
-    const emailEl = document.getElementById('authEmail');
-    const senhaEl = document.getElementById('authSenha');
-    const email = emailEl ? emailEl.value.trim() : '';
-    const senha = senhaEl ? senhaEl.value.trim() : '';
-    
-    if (!email) { 
-        destacarErroCampo('authEmail', 'Informe o e-mail de acesso.');
-        mostrarFeedback('PDV-VS: Por favor, informe o e-mail.', 'rose'); 
-        return; 
+export async function recarregarDadosAdmin() {
+    await carregarProdutosCache();
+    renderizarTabelaAdmin(produtosCache);
+    if (cargoUsuarioAtual === 'admin_mercado') {
+        await Promise.all([
+            carregarHistoricoAdmin(),
+            carregarOperadoresLoja(),
+            carregarMaquininhasAdmin()
+        ]);
     }
+    alert('PDV-VS: Dados do painel administrativo atualizados com sucesso!');
+}
+
+export async function abrirPainelAdmin() { 
+    const modalAdmin = document.getElementById('modalAdmin');
+    if (modalAdmin) {
+        modalAdmin.classList.add('flex');
+        modalAdmin.classList.remove('hidden'); 
+    }
+
+    await resolverEmpresaIdAtual();
 
     try {
-        if (modoTelaAuth === 'login') {
-            const { data, error } = await window.supabaseClient.auth.signInWithPassword({ email, password: senha });
-            if (error) throw error;
-            setUsuarioAtual(data.user); 
-            await validarVinculoEmpresaUsuario();
-        } else if (modoTelaAuth === 'cadastro') {
-            const nomeMercadoEl = document.getElementById('authNomeMercado');
-            const documentoEl = document.getElementById('authDocumento');
-            const cepEl = document.getElementById('authCep');
-            const enderecoEl = document.getElementById('authEndereco');
-            const numeroEl = document.getElementById('authNumeroImovel');
-            const whatsappEl = document.getElementById('authWhatsapp');
-
-            const nomeMercado = nomeMercadoEl ? nomeMercadoEl.value.trim() : '';
-            const documento = documentoEl ? documentoEl.value.trim() : '';
-            const tipoPerfil = 'admin_mercado'; 
-            const cep = cepEl ? cepEl.value.trim() : '';
-            const endereco = enderecoEl ? enderecoEl.value.trim() : '';
-            const numero = numeroEl ? numeroEl.value.trim() : '';
-            const whatsapp = whatsappEl ? whatsappEl.value.trim() : '';
-
-            let temErro = false;
-            if (!nomeMercado) { destacarErroCampo('authNomeMercado', 'Informe o nome da loja'); temErro = true; }
-            if (!documento) { destacarErroCampo('authDocumento', 'Informe o CPF ou CNPJ'); temErro = true; }
-            if (!whatsapp) { destacarErroCampo('authWhatsapp', 'Informe o WhatsApp'); temErro = true; }
-            if (!senha) { destacarErroCampo('authSenha', 'Informe uma senha'); temErro = true; }
-
-            if (temErro) {
-                mostrarFeedback('PDV-VS: Preencha os campos destacados.', 'rose');
-                return;
-            }
-
-            const { data: authData, error: authError } = await window.supabaseClient.auth.signUp({ 
-                email, 
-                password: senha, 
-                options: { data: { perfil: tipoPerfil } } 
-            });
-            if (authError) throw authError;
-
-            const prefixoResponsavel = email.split('@')[0];
-            const { data: empData, error: empError } = await window.supabaseClient.from('empresas').insert([{ 
-                nome_mercado: nomeMercado, 
-                responsavel: prefixoResponsavel, 
-                documento, 
-                email_admin: email, 
-                cep,
-                endereco: `${endereco}, nº ${numero}`,
-                whatsapp,
-                ativo: true,
-                caixa_aberto: false
-            }]).select().single();
-            
-            if (empError) throw empError;
-
-            await window.supabaseClient.from('usuarios_empresas').insert([{ 
-                user_id: authData.user.id, 
-                empresa_id: empData.id, 
-                cargo: tipoPerfil 
-            }]);
-            
-            alert('PDV-VS: Estabelecimento cadastrado com sucesso! Faça o login para iniciar.'); 
-            alternarTelaAuth('login');
+        await carregarProdutosCache(); 
+        renderizarTabelaAdmin(produtosCache); 
+        
+        if (cargoUsuarioAtual === 'admin_mercado') {
+            await Promise.all([
+                carregarOperadoresLoja(),
+                carregarHistoricoAdmin(),
+                carregarMaquininhasAdmin()
+            ]);
         }
-    } catch (e) { 
-        const msgErro = e.message ? e.message.toLowerCase() : '';
-        if (msgErro.includes('invalid login credentials') || msgErro.includes('invalid') || msgErro.includes('credentials')) {
-            destacarErroCampo('authEmail', 'Verifique o e-mail');
-            destacarErroCampo('authSenha', 'Senha incorreta');
-        } else if (msgErro.includes('password') || msgErro.includes('senha')) {
-            destacarErroCampo('authSenha', 'Senha muito fraca (mín. 6 caracteres)');
-        } else if (msgErro.includes('email') || msgErro.includes('already registered')) {
-            destacarErroCampo('authEmail', 'E-mail inválido ou já cadastrado');
-        }
-        mostrarFeedback('PDV-VS: ' + e.message, 'rose'); 
-    }
-}
-
-export async function solicitarRecuperacaoSenha() {
-    limparErrosCampos();
-    const emailEl = document.getElementById('authEmail');
-    const email = emailEl ? emailEl.value.trim() : '';
-    if (!email) {
-        destacarErroCampo('authEmail', 'Digite o e-mail para recuperar');
-        mostrarFeedback('PDV-VS: Digite seu e-mail no campo acima para recuperar a senha.', 'amber');
-        if (emailEl) emailEl.focus();
-        return;
-    }
-    try {
-        const { error } = await window.supabaseClient.auth.resetPasswordForEmail(email, {
-            redirectTo: window.location.href,
-        });
-        if (error) throw error;
-        mostrarFeedback('PDV-VS: E-mail de recuperação enviado com sucesso! Verifique sua caixa de entrada.', 'emerald');
     } catch (e) {
-        destacarErroCampo('authEmail', 'Erro ao enviar recuperação');
-        mostrarFeedback('PDV-VS: Erro ao solicitar recuperação: ' + e.message, 'rose');
+        console.error("PDV-VS: Erro ao carregar dados do painel:", e);
     }
+
+    mudarAbaAdmin('produtos'); 
 }
 
-export async function validarVinculoEmpresaUsuario() {
-    try {
-        const { data: vincData, error: vincError } = await window.supabaseClient
-            .from('usuarios_empresas')
-            .select('empresa_id, cargo')
-            .eq('user_id', usuarioAtual.id)
-            .single();
-            
-        if (vincError || !vincData) {
-            throw new Error('Vínculo comercial não encontrado.');
-        }
-        
-        setEmpresaAtualId(vincData.empresa_id); 
-        setCargoUsuarioAtual(vincData.cargo);
-        
-        const { data: empData } = await window.supabaseClient
-            .from('empresas')
-            .select('*')
-            .eq('id', vincData.empresa_id)
-            .single();
-            
-        if (empData && empData.ativo === false) {
-            await window.supabaseClient.auth.signOut(); 
-            alert('PDV-VS - ACESSO SUSPENSO: Este estabelecimento encontra-se bloqueado por pendência financeira.'); 
-            
-            const appPrincipal = document.getElementById('appPrincipal');
-            const telaLogin = document.getElementById('telaLogin');
-            if (appPrincipal) appPrincipal.classList.add('hidden');
-            if (telaLogin) telaLogin.classList.remove('hidden');
-            return;
-        }
-        if (empData) {
-            setDadosEmpresaAtual(empData); 
-            setCaixaAberto(empData.caixa_aberto === true);
-        }
-
-        const novoTokenSessao = 'sessao_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
-        setTokenSessaoAtual(novoTokenSessao);
-
-        try {
-            await window.supabaseClient.from('sessoes_ativas').upsert({
-                user_id: usuarioAtual.id,
-                token_sessao: novoTokenSessao,
-                updated_at: new Date()
-            });
-        } catch (errSession) {
-            console.warn('Aviso de sessão:', errSession);
-        }
-
-        concluirLoginSucesso(vincData.cargo);
-    } catch (e) { 
-        await window.supabaseClient.auth.signOut(); 
-        mostrarFeedback('PDV-VS: ' + e.message, 'rose'); 
+export function fecharPainelAdmin() { 
+    const modalAdmin = document.getElementById('modalAdmin');
+    if (modalAdmin) {
+        modalAdmin.classList.add('hidden'); 
+        modalAdmin.classList.remove('flex');
     }
+    focarBusca();
 }
 
-export function mostrarFeedback(msg, cor) {
-    const fb = document.getElementById('feedbackAuth'); 
-    if (fb) {
-        fb.innerText = msg;
-        fb.className = `text-xs text-center text-${cor}-600 font-semibold mt-2`; 
-        fb.classList.remove('hidden');
-    }
-}
-
-export async function concluirLoginSucesso(cargoUser) {
-    try {
-        if (usuarioAtual && usuarioAtual.email) {
-            const usuarioNomeExibicao = usuarioAtual.email.split('@')[0];
-            const infoLogado = document.getElementById('infoUsuarioLogado');
-            if (infoLogado) infoLogado.innerHTML = `<i class="fa-solid fa-user text-emerald-300 mr-1"></i> ${usuarioNomeExibicao} (${cargoUser === 'admin_mercado' ? 'Admin' : 'Caixa'})`;
-        }
-        
-        if (dadosEmpresaAtual) {
-            const tituloEmpresa = document.getElementById('tituloAppEmpresa');
-            const badgeEmpresa = document.getElementById('badgeEmpresaLogada');
-            const badgeLoja = document.getElementById('badgeNumeroLoja');
-            if (tituloEmpresa) tituloEmpresa.innerText = dadosEmpresaAtual.nome_mercado;
-            if (badgeEmpresa) badgeEmpresa.innerText = `CNPJ: ${dadosEmpresaAtual.documento}`;
-            if (badgeLoja) badgeLoja.innerText = `${dadosEmpresaAtual.nome_mercado} (Loja #${dadosEmpresaAtual.id.substring(0,6)})`;
-        }
-        
-        const headerTopo = document.getElementById('headerTopoApp') || document.querySelector('header');
-        if (headerTopo) {
-            let containerMascote = document.getElementById('containerMascoteRefresh');
-            if (!containerMascote) {
-                containerMascote = document.createElement('div');
-                containerMascote.id = 'containerMascoteRefresh';
-                containerMascote.className = 'flex items-center gap-2 cursor-pointer select-none';
-                containerMascote.title = 'Recarregar / Atualizar Página Completa';
-                
-                // REFRESH COMPLETO AO CLICAR NO MASCOTE DO CABEÇALHO DO PDV
-                containerMascote.onclick = () => {
-                    window.location.reload();
-                };
-                
-                headerTopo.prepend(containerMascote);
-            }
-            
-            const nomeLojaTexto = dadosEmpresaAtual ? dadosEmpresaAtual.nome_mercado : 'PDV-VS';
-            containerMascote.innerHTML = `
-                <img id="iconeAppPrincipal" src="assets/mascote.jpeg" alt="Mascote PDV" class="w-9 h-9 rounded-full object-cover border-2 border-emerald-500 shadow-md hover:scale-105 transition-transform">
-                <span class="font-bold text-sm tracking-tight text-slate-800">${nomeLojaTexto}</span>
-            `;
-        }
-        
-        const btnAdminMenu = document.getElementById('btnAdminMenu');
-        if (btnAdminMenu) {
-            if (cargoUser === 'admin_mercado') {
-                btnAdminMenu.classList.remove('hidden');
-            } else {
-                btnAdminMenu.classList.add('hidden');
-            }
-        }
-
-        atualizarBadgesCaixaInterface();
-    } catch (errUI) {
-        console.warn('Aviso na interface de login:', errUI);
-    }
-
-    const telaLogin = document.getElementById('telaLogin');
-    const appPrincipal = document.getElementById('appPrincipal');
-    if (telaLogin) telaLogin.classList.add('hidden');
-    if (appPrincipal) appPrincipal.classList.remove('hidden');
+// ==========================================
+// GESTÃO DE PRODUTOS (ADMIN)
+// ==========================================
+export function renderizarTabelaAdmin(lista) {
+    const tbody = document.getElementById('tabelaAdminProdutos');
+    const contadorProdutos = document.getElementById('contadorLimiteProdutosAdmin');
     
-    try {
-        carregarProdutosCache(); 
-        iniciarSincronizacaoRealtime();
-        iniciarMonitoramentoSessaoUnica();
-        focarBusca();
-    } catch (errInit) {
-        console.warn('Aviso de inicialização em segundo plano:', errInit);
+    const limiteMaximo = 1000;
+    const qtdAtual = produtosCache.length;
+    const vagasDisponiveis = Math.max(0, limiteMaximo - qtdAtual);
+
+    if (contadorProdutos) {
+        contadorProdutos.innerText = `${qtdAtual} cadastrados | Restam ${vagasDisponiveis} vagas (Máx: ${limiteMaximo})`;
     }
-}
 
-function iniciarMonitoramentoSessaoUnica() {
-    if (intervaloMonitoramentoSessao) clearInterval(intervaloMonitoramentoSessao);
-    
-    intervaloMonitoramentoSessao = setInterval(async () => {
-        if (!usuarioAtual || !tokenSessaoAtual) return;
-        try {
-            const { data, error } = await window.supabaseClient
-                .from('sessoes_ativas')
-                .select('token_sessao')
-                .eq('user_id', usuarioAtual.id)
-                .single();
-
-            if (error || !data || data.token_sessao !== tokenSessaoAtual) {
-                clearInterval(intervaloMonitoramentoSessao);
-                alert('PDV-VS: Sua conta foi acessada em outro dispositivo. Esta sessão foi encerrada.');
-                await window.supabaseClient.auth.signOut();
-                
-                const appPrincipal = document.getElementById('appPrincipal');
-                const telaLogin = document.getElementById('telaLogin');
-                if (appPrincipal) appPrincipal.classList.add('hidden');
-                if (telaLogin) telaLogin.classList.remove('hidden');
-            }
-        } catch (err) {
-            console.error('Erro ao verificar sessão única:', err);
-        }
-    }, 10000);
-}
-
-export function iniciarSincronizacaoRealtime() {
-    if (!empresaAtualId) return;
-
-    try {
-        window.supabaseClient
-            .channel('public:produtos_sync')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'produtos', filter: `empresa_id=eq.${empresaAtualId}` }, async () => {
-                await carregarProdutosCache();
-                if (typeof window.renderizarTabelaAdmin === 'function') {
-                    window.renderizarTabelaAdmin(window.produtosCache);
-                }
-                atualizarTabelaVenda();
-            })
-            .subscribe();
-
-        window.supabaseClient
-            .channel('public:empresas_sync')
-            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'empresas', filter: `id=eq.${empresaAtualId}` }, payload => {
-                if (payload.new) {
-                    if (payload.new.ativo === false) {
-                        alert('PDV-VS: Este estabelecimento foi bloqueado.');
-                        const appPrincipal = document.getElementById('appPrincipal');
-                        const telaLogin = document.getElementById('telaLogin');
-                        if (appPrincipal) appPrincipal.classList.add('hidden');
-                        if (telaLogin) telaLogin.classList.remove('hidden');
-                        return;
-                    }
-                    if (payload.new.caixa_aberto !== undefined) {
-                        setCaixaAberto(payload.new.caixa_aberto);
-                        atualizarBadgesCaixaInterface();
-                    }
-                }
-            })
-            .subscribe();
-    } catch (errRt) {
-        console.warn('Aviso de realtime:', errRt);
-    }
-}
-
-export async function abrirSuperAdminMaster() {
-    const modal = document.getElementById('modalSuperAdminMaster');
-    if (modal) modal.classList.remove('hidden');
-    await carregarListaClientesSuperAdmin();
-}
-
-export function fecharSuperAdminMaster() { 
-    const modal = document.getElementById('modalSuperAdminMaster');
-    if (modal) modal.classList.add('hidden'); 
-}
-
-export async function carregarListaClientesSuperAdmin() {
-    const tbody = document.getElementById('tabelaClientesSuperAdmin');
     if (!tbody) return;
-    try {
-        tbody.innerHTML = '<tr><td colspan="5" class="p-6 text-center text-slate-400">Buscando estabelecimentos...</td></tr>';
-        const { data, error } = await window.supabaseClient.from('empresas').select('*').order('created_at', { ascending: false });
-        if (error) throw error;
-        
-        setListaEmpresasCache(data || []);
-        renderizarTabelaSuperAdmin(listaEmpresasCache);
-    } catch (e) {
-        tbody.innerHTML = '<tr><td colspan="5" class="p-6 text-center text-rose-500">PDV-VS: Erro ao carregar dados.</td></tr>';
-    }
-}
-
-export function renderizarTabelaSuperAdmin(lista) {
-    const tbody = document.getElementById('tabelaClientesSuperAdmin');
-    if (!tbody) return;
-    if (!lista || lista.length === 0) { 
-        tbody.innerHTML = '<tr><td colspan="5" class="p-6 text-center text-slate-400">Nenhum estabelecimento cadastrado.</td></tr>'; 
-        return; 
-    }
     
     let html = '';
-    lista.forEach(emp => {
-        html += `<tr class="border-b hover:bg-slate-50">
-            <td class="p-3 font-bold">${emp.nome_mercado}</td>
-            <td class="p-3">${emp.responsavel || '-'}</td>
-            <td class="p-3 text-xs">${emp.documento} <br><span class="text-slate-400">${emp.whatsapp || ''}</span></td>
-            <td class="p-3 text-xs">${emp.email_admin}</td>
+    lista.forEach(p => {
+        html += `<tr class="border-b">
+            <td class="p-2 text-xs">${p.codigo || '-'}</td>
+            <td class="p-2 font-medium">${p.nome} ${p.unidade === 'KG' ? '<span class="text-amber-600 text-[10px] font-bold">(KG)</span>' : ''}</td>
+            <td class="p-2">R$ ${Number(p.preco).toFixed(2)}${p.unidade === 'KG' ? '/kg' : ''}</td>
+            <td class="p-2">${p.estoque} ${p.unidade || 'UN'}</td>
+            <td class="p-2 text-center">
+                <button onclick="window.abrirEditarProdutoAdmin(${p.id},'${p.nome}','${p.codigo || ''}',${p.preco},${p.estoque}, '${p.unidade || 'UN'}')" class="text-blue-500 hover:text-blue-700 mr-3"><i class="fa-solid fa-pen"></i></button>
+                <button onclick="window.excluirProdutoAdmin(${p.id})" class="text-rose-500 hover:text-rose-700"><i class="fa-solid fa-trash"></i></button>
+            </td>
+        </tr>`;
+    });
+    tbody.innerHTML = html || '<tr><td colspan="5" class="p-4 text-center text-slate-400">Nenhum produto cadastrado.</td></tr>';
+}
+
+export function filtrarTabelaAdmin(t) { 
+    const termo = t.toLowerCase();
+    renderizarTabelaAdmin(produtosCache.filter(p => p.nome.toLowerCase().includes(termo) || (p.codigo && p.codigo.toLowerCase().includes(termo)))); 
+}
+
+export function abrirModalNovoProdutoAdmin() {
+    if (produtosCache.length >= 1000) {
+        alert('PDV-VS - Aviso do Plano: Você atingiu o limite máximo de 1.000 produtos cadastrados.');
+        return;
+    }
+
+    alternarCamposFormProduto({ id: '', nome: '', codigo: '', preco: '', estoque: '', unidade: 'UN' });
+    document.getElementById('modalFormProduto')?.classList.remove('hidden');
+}
+
+export function abrirEditarProdutoAdmin(id, nome, cod, preco, est, unidade = 'UN') {
+    alternarCamposFormProduto({ id, nome, codigo: cod, preco, estoque: est, unidade });
+    document.getElementById('modalFormProduto')?.classList.remove('hidden');
+}
+
+function alternarCamposFormProduto(dados) {
+    const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+    setVal('formProdId', dados.id);
+    setVal('formNome', dados.nome);
+    setVal('formCodigo', dados.codigo);
+    setVal('formPreco', dados.preco);
+    setVal('formEstoque', dados.estoque);
+    setVal('formUnidade', dados.unidade);
+}
+
+export function fecharFormProduto() { 
+    document.getElementById('modalFormProduto')?.classList.add('hidden'); 
+}
+
+export async function salvarProdutoAdmin() {
+    const idEmpresa = await resolverEmpresaIdAtual();
+    if (!idEmpresa) {
+        alert('PDV-VS Erro Crítico: ID da empresa não encontrado. Faça login novamente.');
+        return;
+    }
+
+    const id = document.getElementById('formProdId')?.value || '';
+    const p = { 
+        empresa_id: idEmpresa,
+        nome: document.getElementById('formNome')?.value.trim() || '', 
+        codigo: document.getElementById('formCodigo')?.value.trim() || '', 
+        preco: parseFloat(document.getElementById('formPreco')?.value) || 0, 
+        estoque: parseFloat(document.getElementById('formEstoque')?.value) || 0,
+        unidade: document.getElementById('formUnidade')?.value || 'UN'
+    };
+
+    if (!p.nome) {
+        alert('PDV-VS: Informe o nome do produto.');
+        return;
+    }
+    
+    if (id) { 
+        const { error } = await window.supabaseClient.from('produtos').update(p).eq('id', id); 
+        if (error) { alert('Erro ao atualizar produto: ' + error.message); return; }
+    } else { 
+        if (produtosCache.length >= 1000) {
+            alert('PDV-VS: Limite de 1.000 produtos atingido.');
+            return;
+        }
+        const { error } = await window.supabaseClient.from('produtos').insert([p]); 
+        if (error) { alert('Erro ao inserir produto: ' + error.message); return; }
+    }
+    
+    fecharFormProduto(); 
+    await carregarProdutosCache(); 
+    renderizarTabelaAdmin(produtosCache);
+    alert('PDV-VS: Produto salvo com sucesso!');
+}
+
+export async function excluirProdutoAdmin(id) { 
+    if (confirm('PDV-VS: Deseja excluir este item permanentemente?')) { 
+        await window.supabaseClient.from('produtos').delete().eq('id', id); 
+        await carregarProdutosCache(); 
+        renderizarTabelaAdmin(produtosCache); 
+    } 
+}
+
+// ==========================================
+// GESTÃO DE MAQUININHAS E TAXAS
+// ==========================================
+export async function carregarMaquininhasAdmin() {
+    if (!empresaAtualId) return;
+    const { data, error } = await window.supabaseClient
+        .from('maquininhas_taxas')
+        .select('*')
+        .eq('empresa_id', empresaAtualId);
+
+    const tbody = document.getElementById('tabelaMaquininhasAdmin');
+    if (!tbody) return;
+
+    if (error || !data || data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-slate-400">Nenhuma maquininha cadastrada.</td></tr>';
+        return;
+    }
+
+    let html = '';
+    data.forEach(m => {
+        html += `<tr class="border-b">
+            <td class="p-3 font-bold text-slate-800">${m.nome_maquina}</td>
+            <td class="p-3">Débito: ${m.taxa_debito}% | Créd. À Vista: ${m.taxa_credito_avista}%</td>
+            <td class="p-3 text-xs text-slate-600">Parcelado configurado</td>
             <td class="p-3 text-center">
-                <button onclick="window.alternarStatusEmpresa('${emp.id}', ${emp.ativo})" class="${emp.ativo ? 'bg-rose-600 hover:bg-rose-700' : 'bg-emerald-600 hover:bg-emerald-700'} text-white px-3 py-1 rounded text-xs font-semibold shadow transition">
-                    ${emp.ativo ? 'Bloquear' : 'Ativar'}
-                </button>
+                <button onclick="window.excluirMaquininhaAdmin(${m.id})" class="text-rose-600 hover:text-rose-800 text-xs font-bold"><i class="fa-solid fa-trash"></i> Excluir</button>
             </td>
         </tr>`;
     });
     tbody.innerHTML = html;
 }
 
-export async function adicionarNovoClienteSuperAdmin() {
-    const nome = prompt('Nome do Novo Estabelecimento / Loja:');
-    if (!nome) return;
-    const documento = prompt('CNPJ ou CPF do Estabelecimento:');
-    if (!documento) return;
-    const email = prompt('E-mail de Acesso Admin:');
-    if (!email) return;
-    const senha = prompt('Senha inicial para o Admin:');
-    if (!senha) return;
-    const whatsapp = prompt('WhatsApp de contato:') || '';
+export function abrirModalNovaMaquininha() { document.getElementById('modalNovaMaquininha')?.classList.remove('hidden'); }
+export function fecharModalNovaMaquininha() { document.getElementById('modalNovaMaquininha')?.classList.add('hidden'); }
+
+export async function salvarNovaMaquininha() {
+    const nome = document.getElementById('maqNome')?.value.trim();
+    if (!nome) { alert('Informe o nome da maquininha (Ex: Ton, Stone)'); return; }
+
+    const taxasObj = {
+        "2": parseFloat(document.getElementById('maq2x')?.value) || 0,
+        "3": parseFloat(document.getElementById('maq3x')?.value) || 0,
+        "6": parseFloat(document.getElementById('maq6x')?.value) || 0,
+        "12": parseFloat(document.getElementById('maq12x')?.value) || 0
+    };
+
+    const { error } = await window.supabaseClient.from('maquininhas_taxas').insert([{
+        empresa_id: empresaAtualId,
+        nome_maquina: nome,
+        taxa_debito: parseFloat(document.getElementById('maqDebito')?.value) || 0,
+        taxa_credito_avista: parseFloat(document.getElementById('maqCreditoAvista')?.value) || 0,
+        taxas_parcelamento: taxasObj
+    }]);
+
+    if (error) { alert('Erro ao salvar maquininha: ' + error.message); return; }
+
+    fecharModalNovaMaquininha();
+    await carregarMaquininhasAdmin();
+    alert('Maquininha cadastrada com sucesso!');
+}
+
+export async function excluirMaquininhaAdmin(id) {
+    if (confirm('Deseja realmente excluir esta maquininha?')) {
+        await window.supabaseClient.from('maquininhas_taxas').delete().eq('id', id);
+        await carregarMaquininhasAdmin();
+    }
+}
+
+// ==========================================
+// GESTÃO DE OPERADORES DA LOJA
+// ==========================================
+export async function carregarOperadoresLoja() {
+    if (!empresaAtualId) return;
+
+    const [{ data: operadores }, { data: caixasAbertos }] = await Promise.all([
+        window.supabaseClient.from('usuarios_empresas').select('*').eq('empresa_id', empresaAtualId),
+        window.supabaseClient.from('caixas').select('user_id, status, faturamento_dia').eq('empresa_id', empresaAtualId).eq('status', 'ABERTO')
+    ]);
+
+    const mapaCaixas = {};
+    (caixasAbertos || []).forEach(c => { mapaCaixas[c.user_id] = c; });
+
+    let html = '';
+    if (operadores && operadores.length > 0) {
+        operadores.forEach(op => {
+            const caixaInfo = mapaCaixas[op.user_id];
+            const faturamentoAtual = caixaInfo ? Number(caixaInfo.faturamento_dia || 0) : 0;
+            const statusCaixaBadge = caixaInfo 
+                ? `<span class="bg-emerald-100 text-emerald-800 text-xs px-2.5 py-1 rounded-full font-bold">ABERTO (Fat: R$ ${faturamentoAtual.toFixed(2)})</span>` 
+                : '<span class="bg-amber-100 text-amber-800 text-xs px-2.5 py-1 rounded-full font-bold">FECHADO</span>';
+            
+            const cargoNome = op.cargo === 'admin_mercado' ? 'Administrador' : 'Operador de Caixa';
+
+            html += `<tr class="border-b">
+                <td class="p-3 text-xs font-mono">${op.user_id}</td>
+                <td class="p-3 font-semibold text-slate-800">${cargoNome}</td>
+                <td class="p-3 text-center">${statusCaixaBadge}</td>
+                <td class="p-3 text-center">
+                    ${op.cargo !== 'admin_mercado' ? `<button onclick="window.excluirOperadorLoja('${op.user_id}')" class="text-rose-600 hover:text-rose-800 text-xs font-bold"><i class="fa-solid fa-trash mr-1"></i> Remover</button>` : '<span class="text-xs text-slate-400">Principal</span>'}
+                </td>
+            </tr>`;
+        });
+    }
+    const tabelaOps = document.getElementById('tabelaOperadoresLoja');
+    if (tabelaOps) tabelaOps.innerHTML = html || '<tr><td colspan="4" class="p-4 text-center text-slate-400">Nenhum operador cadastrado.</td></tr>';
+}
+
+export async function excluirOperadorLoja(id) { 
+    if (confirm('PDV-VS: Deseja remover este operador da equipe?')) { 
+        await window.supabaseClient.from('usuarios_empresas').delete().eq('user_id', id); 
+        await carregarOperadoresLoja(); 
+    } 
+}
+
+export function abrirModalNovoOperador() { 
+    window.supabaseClient.from('usuarios_empresas').select('*', { count: 'exact', head: true }).eq('empresa_id', empresaAtualId).eq('cargo', 'operador').then(({ count }) => {
+        if (count >= 1) {
+            alert('PDV-VS - Regra do Plano: É permitido apenas 1 operador adicional além do Administrador.');
+            return;
+        }
+        document.getElementById('modalNovoOperador')?.classList.remove('hidden'); 
+    });
+}
+
+export function fecharModalNovoOperador() { document.getElementById('modalNovoOperador')?.classList.add('hidden'); }
+
+export async function salvarNovoOperador() {
+    const email = document.getElementById('novoOpEmail')?.value.trim() || '';
+    const password = document.getElementById('novoOpSenha')?.value.trim() || '';
+
+    if (!email || !password) { alert('PDV-VS: Preencha os campos de acesso provisório.'); return; }
+    
+    const { data, error } = await window.supabaseClient.auth.signUp({ email, password });
+    if (error) { alert('PDV-VS: Erro ao criar usuário: ' + error.message); return; }
+    
+    if (data && data.user) {
+        await window.supabaseClient.from('usuarios_empresas').insert([{ user_id: data.user.id, empresa_id: empresaAtualId, cargo: 'operador' }]);
+        fecharModalNovoOperador(); 
+        await carregarOperadoresLoja();
+        alert('PDV-VS: Operador cadastrado com sucesso!');
+    }
+}
+
+// ==========================================
+// HISTÓRICO DE VENDAS E CONFIGURAÇÕES
+// ==========================================
+export async function carregarHistoricoAdmin() {
+    const dataLimite = new Date();
+    dataLimite.setDate(dataLimite.getDate() - 15);
+
+    const { data } = await window.supabaseClient.from('vendas')
+        .select('*')
+        .eq('empresa_id', empresaAtualId)
+        .gte('created_at', dataLimite.toISOString())
+        .order('created_at', { ascending: false });
+
+    setHistoricoVendasCache(data || []); 
+    renderizarHistoricoVendasPorJanelasDiarias();
+}
+
+export function renderizarHistoricoVendasPorJanelasDiarias() {
+    const container = document.getElementById('containerJanelasFaturamentoDiario');
+    const lblFatHoje = document.getElementById('adminFatHoje');
+    const lblFatSemanal = document.getElementById('adminFatSemanal');
+    const lblFatTotal = document.getElementById('adminFatTotal15Dias');
+
+    if (!container) return;
+
+    if (!historicoVendasCache || historicoVendasCache.length === 0) {
+        container.innerHTML = '<div class="p-6 text-center text-slate-400">Nenhuma venda registrada nos últimos 15 dias.</div>';
+        if (lblFatHoje) lblFatHoje.innerText = 'R$ 0,00';
+        if (lblFatSemanal) lblFatSemanal.innerText = 'R$ 0,00';
+        if (lblFatTotal) lblFatTotal.innerText = 'R$ 0,00';
+        return;
+    }
+
+    let total15Dias = 0, totalHoje = 0, totalSemanal = 0;
+    const hojeStr = new Date().toDateString();
+    const gruposPorDia = {};
+
+    historicoVendasCache.forEach(v => {
+        total15Dias += v.valor_total;
+        const dataVenda = new Date(v.created_at);
+        const diaKey = dataVenda.toISOString().split('T')[0];
+
+        if (dataVenda.toDateString() === hojeStr) totalHoje += v.valor_total;
+        if ((new Date() - dataVenda) / (1000 * 60 * 60 * 24) <= 7) totalSemanal += v.valor_total;
+
+        if (!gruposPorDia[diaKey]) {
+            gruposPorDia[diaKey] = { dataStr: dataVenda.toLocaleDateString('pt-BR'), totalDia: 0, vendas: [] };
+        }
+        gruposPorDia[diaKey].totalDia += v.valor_total;
+        gruposPorDia[diaKey].vendas.push(v);
+    });
+
+    if (lblFatHoje) lblFatHoje.innerText = `R$ ${totalHoje.toFixed(2)}`;
+    if (lblFatSemanal) lblFatSemanal.innerText = `R$ ${totalSemanal.toFixed(2)}`;
+    if (lblFatTotal) lblFatTotal.innerText = `R$ ${total15Dias.toFixed(2)}`;
+
+    let htmlJanelas = '';
+    Object.keys(gruposPorDia).sort().reverse().forEach((diaKey, idx) => {
+        const grupo = gruposPorDia[diaKey];
+        const collapseId = `detalheDia_${idx}`;
+
+        let htmlItensVendasDia = '';
+        grupo.vendas.forEach(v => {
+            const horaVenda = new Date(v.created_at).toLocaleTimeString();
+            const itensDesc = v.itens ? v.itens.map(i => i.isPeso ? `${i.nome} (${i.qtd.toFixed(3)}kg)` : `${i.nome} (x${i.qtd})`).join(', ') : 'Itens diversos';
+            htmlItensVendasDia += `
+                <div class="py-2 px-3 bg-white border-b flex justify-between items-center text-xs">
+                    <div>
+                        <span class="font-bold text-slate-700">${horaVenda}</span> - <span class="text-slate-600">Op: ${v.operador}</span>
+                        <p class="text-[11px] text-slate-500 mt-0.5">${itensDesc}</p>
+                    </div>
+                    <span class="font-bold text-emerald-700">R$ ${v.valor_total.toFixed(2)}</span>
+                </div>`;
+        });
+
+        htmlJanelas += `
+            <div class="bg-slate-50 border-b">
+                <div onclick="const el = document.getElementById('${collapseId}'); el.classList.toggle('hidden');" class="p-3.5 flex justify-between items-center cursor-pointer hover:bg-slate-100 transition">
+                    <div class="flex items-center space-x-2">
+                        <i class="fa-solid fa-calendar-day text-emerald-600"></i>
+                        <span class="font-bold text-slate-800 text-sm">Data: ${grupo.dataStr}</span>
+                        <span class="text-xs bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full font-semibold">${grupo.vendas.length} venda(s)</span>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <span class="font-black text-emerald-700 text-sm">R$ ${grupo.totalDia.toFixed(2)}</span>
+                        <i class="fa-solid fa-chevron-down text-xs text-slate-400"></i>
+                    </div>
+                </div>
+                <div id="${collapseId}" class="hidden pl-6 pr-3 pb-3 space-y-1 border-t bg-slate-100/60">
+                    <div class="py-1 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Detalhamento das Vendas do Dia</div>
+                    ${htmlItensVendasDia}
+                </div>
+            </div>`;
+    });
+
+    container.innerHTML = htmlJanelas;
+}
+
+export async function salvarConfiguracoesEmpresaAdmin() {
+    const novoNome = document.getElementById('inputAdminNomeEmpresaConfig')?.value.trim() || '';
+    const novoWap = document.getElementById('inputAdminWhatsappConfig')?.value.trim() || '';
+
+    if (!novoNome) {
+        alert('PDV-VS: O nome do estabelecimento não pode ficar vazio.');
+        return;
+    }
 
     try {
-        const { data: authData, error: authError } = await window.supabaseClient.auth.signUp({
-            email,
-            password: senha,
-            options: { data: { perfil: 'admin_mercado' } }
-        });
-        if (authError) throw authError;
+        const { error } = await window.supabaseClient
+            .from('empresas')
+            .update({ nome_mercado: novoNome, whatsapp: novoWap })
+            .eq('id', empresaAtualId);
 
-        const prefixo = email.split('@')[0];
-        const { data: empData, error: empError } = await window.supabaseClient.from('empresas').insert([{
-            nome_mercado: nome,
-            responsavel: prefixo,
-            documento,
-            email_admin: email,
-            whatsapp,
-            ativo: true,
-            caixa_aberto: false
-        }]).select().single();
+        if (error) throw error;
 
-        if (empError) throw empError;
+        const tituloAppEmpresa = document.getElementById('tituloAppEmpresa');
+        if (tituloAppEmpresa) tituloAppEmpresa.innerText = novoNome;
 
-        await window.supabaseClient.from('usuarios_empresas').insert([{
-            user_id: authData.user.id,
-            empresa_id: empData.id,
-            cargo: 'admin_mercado'
-        }]);
-
-        alert('PDV-VS: Estabelecimento adicionado com sucesso!');
-        await carregarListaClientesSuperAdmin();
+        alert('PDV-VS: Dados do estabelecimento atualizados com sucesso!');
     } catch (e) {
-        alert('PDV-VS: Erro ao cadastrar cliente: ' + e.message);
-    }
-}
-
-export async function alternarStatusEmpresa(empresaId, statusAtual) {
-    if (!confirm(`PDV-VS: Deseja realmente alterar o status comercial deste estabelecimento?`)) return;
-    const { error } = await window.supabaseClient.from('empresas').update({ ativo: !statusAtual }).eq('id', empresaId);
-    if (!error) { 
-        alert('PDV-VS: Status atualizado com sucesso!'); 
-        await carregarListaClientesSuperAdmin(); 
-    } else {
-        alert('PDV-VS: Erro ao atualizar status: ' + error.message);
+        alert('PDV-VS: Erro ao atualizar configurações: ' + e.message);
     }
 }
 
 // ==========================================
-// EXPOSIÇÃO GLOBAL PARA COMPATIBILIDADE HTML
+// REGISTO GLOBAL DE EXPORTAÇÕES (WINDOW)
 // ==========================================
-window.alternarTelaAuth = alternarTelaAuth;
-window.atualizarEstadoTelaAuthLocal = atualizarEstadoTelaAuthLocal;
-window.tratarEnterLogin = tratarEnterLogin;
-window.processarAutenticacao = processarAutenticacao;
-window.solicitarRecuperacaoSenha = solicitarRecuperacaoSenha;
-window.abrirSuperAdminMaster = abrirSuperAdminMaster;
-window.fecharSuperAdminMaster = fecharSuperAdminMaster;
-window.adicionarNovoClienteSuperAdmin = adicionarNovoClienteSuperAdmin;
-window.alternarStatusEmpresa = alternarStatusEmpresa;
-window.instalarPwaApp = instalarPwaApp;
-window.tentarAcessoSuperAdminMasterSecreto = tentarAcessoSuperAdminMasterSecreto;
+Object.assign(window, {
+    mudarAbaAdmin, recarregarDadosAdmin, abrirPainelAdmin, fecharPainelAdmin,
+    filtrarTabelaAdmin, abrirModalNovoProdutoAdmin, abrirEditarProdutoAdmin,
+    fecharFormProduto, salvarProdutoAdmin, excluirProdutoAdmin,
+    carregarMaquininhasAdmin, abrirModalNovaMaquininha, fecharModalNovaMaquininha,
+    salvarNovaMaquininha, excluirMaquininhaAdmin, carregarOperadoresLoja,
+    excluirOperadorLoja, abrirModalNovoOperador, fecharModalNovoOperador,
+    salvarNovoOperador, carregarHistoricoAdmin, renderizarHistoricoVendasPorJanelasDiarias,
+    salvarConfiguracoesEmpresaAdmin
+});
