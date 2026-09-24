@@ -9,7 +9,7 @@ import { iniciarCameraWeb, fecharCameraWeb } from './camera-web.js';
 
 let listenerTecladoGlobal = null;  
 
-// Inicializa o listener global da pistola de código de barras física / teclado (PC e Web/USB/Bluetooth)  
+// Inicializa o listener global da pistola de código de barras física / teclado  
 export function inicializarLeitorTecladoPistola() {  
     if (listenerTecladoGlobal) return;  
 
@@ -43,29 +43,57 @@ export function inicializarLeitorTecladoPistola() {
     window.addEventListener('keydown', listenerTecladoGlobal);  
 }  
 
-// Executado ao abrir leitor para Vendas  
+// Executado ao abrir leitor na Tela Principal de Vendas (Modo Contínuo / Não fecha sozinho)  
 export async function abrirLeitorCamera() {  
     console.log("PDV-VS: Abrindo leitor contínuo para Vendas");  
     setOrigemLeitor('busca');  
-    await gerenciarAberturaLeitor();  
+    await executarLoopLeituraVendas();  
 }  
 
-// Executado ao abrir leitor no Admin  
+// Executado ao abrir leitor no Admin (Modo Único / Fechamento Automático)  
 export async function escanearCameraAdmin() {  
     console.log("PDV-VS: Abrindo leitor único para Admin");  
     setOrigemLeitor('admin');  
-    await gerenciarAberturaLeitor();  
+    await gerenciarAberturaLeitorUnico();  
 }  
 
-// Executado pelo botão de scan no modal de produtos  
+// Executado pelo botão de scan no modal de produtos do admin
 export async function abrirLeitorCameraParaCampo() {  
-    console.log("PDV-VS: Abrindo leitor para preenchimento de campo específico");  
+    console.log("PDV-VS: Abrindo leitor para preenchimento de campo específico no Admin");  
     setOrigemLeitor('admin');  
-    await gerenciarAberturaLeitor();  
+    await gerenciarAberturaLeitorUnico();  
 }  
 
-// Roteador inteligente entre Nativo e Web
-async function gerenciarAberturaLeitor() {  
+// Loop contínuo exclusivo para Vendas (fica ativo lendo vários produtos seguidos)
+async function executarLoopLeituraVendas() {
+    const isNative = window.Capacitor && window.Capacitor.isNativePlatform();
+
+    if (isNative) {
+        // No nativo, criamos um ciclo contínuo até o utilizador fechar manualmente
+        try {
+            while (origemLeitor === 'busca') {
+                const codigoNativo = await dispararLeitorNativo();
+                if (codigoNativo) {
+                    processarCodigoCapturadoUniversal(codigoNativo.trim());
+                    // Pequena pausa para evitar leitura dupla instantânea do mesmo item
+                    await new Promise(resolve => setTimeout(resolve, 800));
+                } else {
+                    break; // Se cancelou ou fechou a câmara, sai do loop
+                }
+            }
+        } catch (err) {
+            console.error("PDV-VS Erro no loop de vendas nativo:", err);
+        }
+    } else {
+        // Fallback Web para Vendas (modo contínuo na web)
+        await iniciarCameraWeb((codigoLido) => {
+            processarCodigoCapturadoUniversal(codigoLido);
+        });
+    }
+}
+
+// Abertura única para o Admin (fecha logo após ler o código)
+async function gerenciarAberturaLeitorUnico() {  
     try {  
         const isNative = window.Capacitor && window.Capacitor.isNativePlatform();  
 
@@ -74,34 +102,27 @@ async function gerenciarAberturaLeitor() {
             if (codigoNativo) {
                 processarCodigoCapturadoUniversal(codigoNativo.trim());
             }
+            await fecharLeitorCamera();
             return;
         }  
 
-        // Fallback Web
         await iniciarCameraWeb((codigoLido) => {
             processarCodigoCapturadoUniversal(codigoLido);
             fecharLeitorCamera();
         });  
 
     } catch (err) {  
-        console.error("PDV-VS Erro geral ao gerenciar leitor:", err);  
+        console.error("PDV-VS Erro geral ao gerenciar leitor único:", err);  
         await fecharLeitorCamera();  
-        
-        const codigoManual = prompt("Não foi possível aceder à câmara automaticamente. Digite ou bipe o código:");  
-        if (codigoManual) processarCodigoCapturadoUniversal(codigoManual.trim());  
     }  
 }  
 
-// Processamento unificado direcionando para Vendas ou Admin
+// Processamento unificado direcionando para o Carrinho (Vendas) ou Input (Admin)
 function processarCodigoCapturadoUniversal(termoDigitado) {  
     if (!termoDigitado || termoDigitado.length < 1) return;  
 
     console.log(`PDV-VS: Processando termo [Origem: ${origemLeitor}] ->`, termoDigitado);  
     
-    if (origemLeitor === 'admin') {  
-        fecharLeitorCamera();  
-    }  
-
     if (origemLeitor === 'busca') {  
         const termoLower = termoDigitado.toLowerCase();  
         
@@ -112,6 +133,7 @@ function processarCodigoCapturadoUniversal(termoDigitado) {
         });  
 
         if (produtoEncontrado) {  
+            // Adiciona direto à sacola/carrinho somando o total instantaneamente
             tratarAdicaoProduto(produtoEncontrado);  
         } else {  
             const inputBusca = document.getElementById('inputBusca');  
@@ -134,6 +156,7 @@ function processarCodigoCapturadoUniversal(termoDigitado) {
 }  
 
 export async function fecharLeitorCamera() {  
+    setOrigemLeitor(null); // Reseta a origem para quebrar o loop de vendas
     await fecharLeitorNativo();
     await fecharCameraWeb();
 }  
