@@ -1,5 +1,5 @@
 // ==========================================
-// MÓDULO DE CAIXA E VENDAS (PDV-VS) - ATUALIZADO
+// MÓDULO DE CAIXA E VENDAS (PDV-VS) - OTIMIZADO
 // ==========================================
 
 import { 
@@ -14,11 +14,14 @@ import { carregarHistoricoAdmin, carregarOperadoresLoja } from './admin.js';
 let valorTrocoAbertura = 0;
 let horaAberturaCaixa = null;
 
-// Função para checar o status e faturamento real do caixa individual direto no Supabase
+// --- UTILITÁRIO DE CLIENTE SUPABASE ---
+const getSupabase = () => window.supabaseClient;
+
+// Checagem de status e faturamento do caixa individual
 export async function verificarStatusCaixaServidor() {
     if (!empresaAtualId || !usuarioAtual) return;
     try {
-        const { data, error } = await supabaseClient
+        const { data, error } = await getSupabase()
             .from('caixas')
             .select('status, valor_abertura, faturamento_dia')
             .eq('empresa_id', empresaAtualId)
@@ -36,35 +39,29 @@ export async function verificarStatusCaixaServidor() {
                 const txtFat = document.getElementById('txtFaturamentoDia');
                 if (txtFat) txtFat.innerText = `R$ ${fatNoBanco.toFixed(2)}`;
             }
-            atualizarBadgesCaixaInterface();
         } else {
             setCaixaAberto(false);
-            atualizarBadgesCaixaInterface();
         }
+        atualizarBadgesCaixaInterface();
 
         if (cargoUsuarioAtual === 'admin_mercado') {
-            if (typeof carregarOperadoresLoja === 'function') carregarOperadoresLoja();
-            if (typeof carregarHistoricoAdmin === 'function') carregarHistoricoAdmin();
+            carregarOperadoresLoja?.();
+            carregarHistoricoAdmin?.();
         }
     } catch (err) {
-        console.error('Erro ao verificar status do caixa no servidor:', err);
+        console.error('PDV-VS: Erro ao verificar status do caixa no servidor:', err);
     }
 }
 
-// Configurar escuta em Tempo Real (Supabase Realtime) para sincronização instantânea
+// Configuração de Tempo Real (Supabase Realtime)
 export function iniciarRealtimeCaixa() {
     if (!empresaAtualId) return;
     
-    supabaseClient
+    getSupabase()
         .channel('escuta_mudancas_caixa')
         .on(
             'postgres_changes',
-            {
-                event: '*',
-                schema: 'public',
-                table: 'caixas',
-                filter: `empresa_id=eq.${empresaAtualId}`
-            },
+            { event: '*', schema: 'public', table: 'caixas', filter: `empresa_id=eq.${empresaAtualId}` },
             (payload) => {
                 if (payload.new && payload.new.user_id === usuarioAtual?.id) {
                     const novoStatus = payload.new.status === 'ABERTO';
@@ -84,15 +81,15 @@ export function iniciarRealtimeCaixa() {
                 }
 
                 if (cargoUsuarioAtual === 'admin_mercado') {
-                    if (typeof carregarOperadoresLoja === 'function') carregarOperadoresLoja();
-                    if (typeof carregarHistoricoAdmin === 'function') carregarHistoricoAdmin();
+                    carregarOperadoresLoja?.();
+                    carregarHistoricoAdmin?.();
                 }
             }
         )
         .subscribe();
 }
 
-// Inicializador de Atalhos Globais por Teclado (incluindo F6 para Cancelar Item)
+// Atalhos globais e inicialização controlada
 window.addEventListener('keydown', (e) => {
     if (e.key === 'F6') {
         e.preventDefault();
@@ -104,8 +101,8 @@ setTimeout(() => {
     iniciarRealtimeCaixa();
     verificarStatusCaixaServidor();
     if (cargoUsuarioAtual === 'admin_mercado') {
-        if (typeof carregarOperadoresLoja === 'function') carregarOperadoresLoja();
-        if (typeof carregarHistoricoAdmin === 'function') carregarHistoricoAdmin();
+        carregarOperadoresLoja?.();
+        carregarHistoricoAdmin?.();
     }
 }, 500);
 
@@ -118,8 +115,8 @@ export async function atualizarPaginaCompleta() {
         await carregarProdutosCache();
         await verificarStatusCaixaServidor();
         if (cargoUsuarioAtual === 'admin_mercado') {
-            if (typeof carregarHistoricoAdmin === 'function') await carregarHistoricoAdmin();
-            if (typeof carregarOperadoresLoja === 'function') await carregarOperadoresLoja();
+            await carregarHistoricoAdmin?.();
+            await carregarOperadoresLoja?.();
         }
         alert('PDV-VS: Dados sincronizados com sucesso!');
         focarBusca();
@@ -128,21 +125,20 @@ export async function atualizarPaginaCompleta() {
 
 export async function realizarLogout() { 
     if (caixaAberto) {
-        alert('PDV-VS: ATENÇÃO! Você não pode sair do sistema com o caixa individual aberto. Faça o fechamento do caixa antes de sair.');
+        alert('PDV-VS: ATENÇÃO! Você não pode sair do sistema com o caixa individual aberto. Faça o fechamento antes de sair.');
         return;
     }
     if (confirm('PDV-VS: Deseja realmente encerrar a sessão?')) {
-        await supabaseClient.auth.signOut(); 
+        await getSupabase().auth.signOut(); 
         location.reload(); 
     }
 }
 
 export function focarBusca() { 
-    const input = document.getElementById('inputBusca');
-    if (input) input.focus(); 
+    document.getElementById('inputBusca')?.focus(); 
 }
 
-// --- FUNÇÕES DE BUSCA E DIGITAÇÃO (ADICIONADAS PARA SUPORTAR O MAIN.JS) ---
+// --- BUSCA E SUGESTÕES ---
 export function aoDigitarBusca(e) {
     const termo = e.target.value.trim().toLowerCase();
     const suggestionsBox = document.getElementById('sugestoesBusca');
@@ -185,90 +181,82 @@ export function tratarEnterBuscaCaixa(e) {
         if (!input) return;
         const valor = input.value.trim();
         
-        // Tenta encontrar o produto pelo código de barras exato ou pelo ID
         const encontrado = produtosCache.find(p => p.codigo_barras === valor || p.id === valor);
         if (encontrado) {
-            if (typeof window.adicionarProdutoAoCarrinho === 'function') {
-                window.adicionarProdutoAoCarrinho(encontrado);
-            }
+            window.adicionarProdutoAoCarrinho?.(encontrado);
             input.value = '';
-            const suggestionsBox = document.getElementById('sugestoesBusca');
-            if (suggestionsBox) suggestionsBox.classList.add('hidden');
+            document.getElementById('sugestoesBusca')?.classList.add('hidden');
         } else {
             alert('PDV-VS: Produto não encontrado pelo código digitado.');
         }
     }
 }
 
+// --- MODAL DE CAIXA ---
 export function gerenciarCaixaModal(tipo) {
     setAcaoCaixaAtual(tipo);
     const modal = document.getElementById('modalCaixa');
     const tituloModal = document.getElementById('tituloModalCaixa');
     const secaoAbrir = document.getElementById('secaoAbrirCaixa');
     const resumoFechamento = document.getElementById('resumoFechamentoCaixa');
-    const valFatOp = document.getElementById('valFaturamentoOperador');
-    const valTrocoInicial = document.getElementById('valTrocoInicialCaixa');
-    const valTotalGeral = document.getElementById('valTotalGeralCaixa');
     const inputValorCaixa = document.getElementById('inputValorCaixa');
 
-    if (tituloModal) tituloModal.innerHTML = tipo === 'abrir' ? '<i class="fa-solid fa-cash-register text-emerald-600"></i> Abertura de Caixa (Individual)' : '<i class="fa-solid fa-cash-register text-amber-600"></i> Fechamento de Caixa (Individual)';
-    if (secaoAbrir) secaoAbrir.classList.toggle('hidden', tipo === 'fechar');
-    if (resumoFechamento) resumoFechamento.classList.toggle('hidden', tipo === 'abrir');
+    if (tituloModal) {
+        tituloModal.innerHTML = tipo === 'abrir' 
+            ? '<i class="fa-solid fa-cash-register text-emerald-600"></i> Abertura de Caixa (Individual)' 
+            : '<i class="fa-solid fa-cash-register text-amber-600"></i> Fechamento de Caixa (Individual)';
+    }
+    secaoAbrir?.classList.toggle('hidden', tipo === 'fechar');
+    resumoFechamento?.classList.toggle('hidden', tipo === 'abrir');
     
     if (tipo === 'fechar') {
+        const valFatOp = document.getElementById('valFaturamentoOperador');
+        const valTrocoInicial = document.getElementById('valTrocoInicialCaixa');
+        const valTotalGeral = document.getElementById('valTotalGeralCaixa');
+        
         if (valFatOp) valFatOp.innerText = `R$ ${faturamentoDia.toFixed(2)}`;
         if (valTrocoInicial) valTrocoInicial.innerText = `R$ ${(valorTrocoAbertura || 0).toFixed(2)}`;
-        const totalComTroco = faturamentoDia + (valorTrocoAbertura || 0);
-        if (valTotalGeral) valTotalGeral.innerText = `R$ ${totalComTroco.toFixed(2)}`;
-    } else {
-        if (inputValorCaixa) inputValorCaixa.value = '';
+        if (valTotalGeral) valTotalGeral.innerText = `R$ ${(faturamentoDia + (valorTrocoAbertura || 0)).toFixed(2)}`;
+    } else if (inputValorCaixa) {
+        inputValorCaixa.value = '';
     }
     
-    if (modal) modal.classList.remove('hidden');
+    modal?.classList.remove('hidden');
     setTimeout(() => {
         if (tipo === 'abrir' && inputValorCaixa) {
             inputValorCaixa.focus();
         } else {
-            const btnConfirmar = document.getElementById('btnConfirmarCaixaModal');
-            if (btnConfirmar) btnConfirmar.focus();
+            document.getElementById('btnConfirmarCaixaModal')?.focus();
         }
     }, 100);
 }
 
 export function tratarEnterModalCaixa(e) {
-    if (e.key === 'Enter') {
-        e.preventDefault();
-        confirmarAcaoCaixa();
-    }
+    if (e.key === 'Enter') { e.preventDefault(); confirmarAcaoCaixa(); }
 }
 
 export function fecharModalCaixa() { 
-    const modal = document.getElementById('modalCaixa');
-    if (modal) modal.classList.add('hidden'); 
+    document.getElementById('modalCaixa')?.classList.add('hidden'); 
 }
 
 export async function confirmarAcaoCaixa() {
     let idEmpresaAtual = empresaAtualId || localStorage.getItem('empresa_id') || localStorage.getItem('pdv_empresa_id');
 
     try {
-        const { data: { session } } = await window.supabaseClient.auth.getSession();
-        if (session && session.user) {
-            const { data: vincData } = await window.supabaseClient
+        const { data: { session } } = await getSupabase().auth.getSession();
+        if (session?.user) {
+            const { data: vincData } = await getSupabase()
                 .from('usuarios_empresas')
                 .select('empresa_id')
                 .eq('user_id', session.user.id)
                 .maybeSingle();
             
-            if (vincData && vincData.empresa_id) {
-                idEmpresaAtual = vincData.empresa_id;
-            } else if (!idEmpresaAtual) {
-                idEmpresaAtual = session.user.id;
-            }
+            idEmpresaAtual = vincData?.empresa_id || idEmpresaAtual || session.user.id;
             setEmpresaAtualId(idEmpresaAtual);
             localStorage.setItem('empresa_id', idEmpresaAtual);
         }
     } catch (e) {
-        console.error("Erro ao validar empresa na sessão:", e);
+        console.error("PDV-VS: Erro ao validar empresa na sessão:", e);
     }
 
     if (!idEmpresaAtual || !usuarioAtual) {
@@ -276,40 +264,25 @@ export async function confirmarAcaoCaixa() {
         return;
     }
 
-    const inputValorCaixa = document.getElementById('inputValorCaixa');
-    const valorDigitado = inputValorCaixa ? parseFloat(inputValorCaixa.value) || 0 : 0;
+    const valorDigitado = parseFloat(document.getElementById('inputValorCaixa')?.value) || 0;
 
     if (acaoCaixaAtual === 'abrir') {
         valorTrocoAbertura = valorDigitado;
         horaAberturaCaixa = new Date();
 
-        const { error } = await supabaseClient
-            .from('caixas')
-            .upsert({ 
-                empresa_id: idEmpresaAtual,
-                user_id: usuarioAtual.id,
-                status: 'ABERTO',
-                valor_abertura: valorTrocoAbertura,
-                faturamento_dia: 0,
-                data_abertura: new Date().toISOString(),
-                data_fechamento: null,
-                updated_at: new Date().toISOString()
-            }, { onConflict: 'empresa_id,user_id,status' });
+        const { error } = await getSupabase().from('caixas').upsert({ 
+            empresa_id: idEmpresaAtual, user_id: usuarioAtual.id, status: 'ABERTO',
+            valor_abertura: valorTrocoAbertura, faturamento_dia: 0,
+            data_abertura: new Date().toISOString(), data_fechamento: null, updated_at: new Date().toISOString()
+        }, { onConflict: 'empresa_id,user_id,status' });
 
         if (error) {
-            console.error('Erro ao abrir caixa no banco:', error);
-            const { error: errInsert } = await supabaseClient
-                .from('caixas')
-                .insert({ 
-                    empresa_id: idEmpresaAtual,
-                    user_id: usuarioAtual.id,
-                    status: 'ABERTO',
-                    valor_abertura: valorTrocoAbertura,
-                    faturamento_dia: 0,
-                    data_abertura: new Date().toISOString()
-                });
+            const { error: errInsert } = await getSupabase().from('caixas').insert({ 
+                empresa_id: idEmpresaAtual, user_id: usuarioAtual.id, status: 'ABERTO',
+                valor_abertura: valorTrocoAbertura, faturamento_dia: 0, data_abertura: new Date().toISOString()
+            });
             if (errInsert) {
-                alert('PDV-VS: Erro ao salvar abertura do caixa no banco de dados: ' + errInsert.message);
+                alert('PDV-VS: Erro ao salvar abertura do caixa: ' + errInsert.message);
                 return;
             }
         }
@@ -319,27 +292,14 @@ export async function confirmarAcaoCaixa() {
         alert('PDV-VS: Caixa aberto com sucesso!');
     } else {
         const horaFechamento = new Date();
-        const totalArrecadado = faturamentoDia;
-        const totalGeralGaveta = totalArrecadado + (valorTrocoAbertura || 0);
+        const totalGeralGaveta = faturamentoDia + (valorTrocoAbertura || 0);
         
-        alert(`PDV-VS: Caixa Fechado com Sucesso!\n- Abertura: ${horaAberturaCaixa ? horaAberturaCaixa.toLocaleTimeString() : 'N/A'}\n- Fechamento: ${horaFechamento.toLocaleTimeString()}\n- Troco Inicial: R$ ${(valorTrocoAbertura || 0).toFixed(2)}\n- Vendas (Turno): R$ ${totalArrecadado.toFixed(2)}\n- Total Geral em Gaveta: R$ ${totalGeralGaveta.toFixed(2)}`);
+        alert(`PDV-VS: Caixa Fechado com Sucesso!\n- Abertura: ${horaAberturaCaixa?.toLocaleTimeString() || 'N/A'}\n- Fechamento: ${horaFechamento.toLocaleTimeString()}\n- Troco Inicial: R$ ${(valorTrocoAbertura || 0).toFixed(2)}\n- Vendas: R$ ${faturamentoDia.toFixed(2)}\n- Total em Gaveta: R$ ${totalGeralGaveta.toFixed(2)}`);
         
-        const { error } = await supabaseClient
-            .from('caixas')
-            .update({ 
-                status: 'FECHADO',
-                valor_fechamento: totalGeralGaveta,
-                data_fechamento: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-            })
-            .eq('empresa_id', idEmpresaAtual)
-            .eq('user_id', usuarioAtual.id)
-            .eq('status', 'ABERTO');
-
-        if (error) {
-            console.error('Erro ao fechar caixa no banco:', error);
-            alert('PDV-VS: Erro ao registrar o fechamento do caixa no banco de dados.');
-        }
+        await getSupabase().from('caixas').update({ 
+            status: 'FECHADO', valor_fechamento: totalGeralGaveta,
+            data_fechamento: new Date().toISOString(), updated_at: new Date().toISOString()
+        }).eq('empresa_id', idEmpresaAtual).eq('user_id', usuarioAtual.id).eq('status', 'ABERTO');
 
         setCaixaAberto(false);
         valorTrocoAbertura = 0;
@@ -350,16 +310,15 @@ export async function confirmarAcaoCaixa() {
     
     atualizarBadgesCaixaInterface();
     if (cargoUsuarioAtual === 'admin_mercado') {
-        if (typeof carregarOperadoresLoja === 'function') carregarOperadoresLoja();
-        if (typeof carregarHistoricoAdmin === 'function') carregarHistoricoAdmin();
+        carregarOperadoresLoja?.();
+        carregarHistoricoAdmin?.();
     }
     fecharModalCaixa();
     focarBusca();
 }
 
 export function atualizarBadgesCaixaInterface() {
-    const badges = document.querySelectorAll('.badgeCaixaStatus');
-    badges.forEach(b => {
+    document.querySelectorAll('.badgeCaixaStatus').forEach(b => {
         b.innerText = caixaAberto ? 'ABERTO' : 'FECHADO';
         b.className = caixaAberto 
             ? 'badgeCaixaStatus text-xs bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-3 py-1.5 rounded font-semibold' 
@@ -367,9 +326,9 @@ export function atualizarBadgesCaixaInterface() {
     });
 }
 
+// --- SEGURANÇA E PIN GERENCIAL ---
 export function salvarPinAdmin() {
-    const inputPin = document.getElementById('inputAdminPinConfig');
-    const pin = inputPin ? inputPin.value.trim() : '';
+    const pin = document.getElementById('inputAdminPinConfig')?.value.trim() || '';
     if (!pin || pin.length < 4) { alert('PDV-VS: Informe um PIN válido de pelo menos 4 dígitos.'); return; }
     localStorage.setItem('pdv_admin_pin_' + empresaAtualId, pin); 
     alert('PDV-VS: PIN gerencial atualizado com sucesso!');
@@ -378,44 +337,34 @@ export function salvarPinAdmin() {
 export function solicitarRemocaoItem(i) {
     setIndiceItemParaRemover(i); 
     const inputPinAuth = document.getElementById('inputPinAutorizacion');
-    const modalAuth = document.getElementById('modalAutorizacaoAdmin');
     if (inputPinAuth) inputPinAuth.value = '';
-    if (modalAuth) modalAuth.classList.remove('hidden');
-    setTimeout(() => {
-        if (inputPinAuth) inputPinAuth.focus();
-    }, 100);
+    document.getElementById('modalAutorizacaoAdmin')?.classList.remove('hidden');
+    setTimeout(() => inputPinAuth?.focus(), 100);
 }
 
 export function tratarEnterModalAutorizacao(e) {
-    if (e.key === 'Enter') {
-        e.preventDefault();
-        confirmarAutorizacaoPin();
-    }
+    if (e.key === 'Enter') { e.preventDefault(); confirmarAutorizacaoPin(); }
 }
 
 export function confirmarAutorizacaoPin() {
     const inputPinAuth = document.getElementById('inputPinAutorizacion');
-    const pin = inputPinAuth ? inputPinAuth.value.trim() : '';
+    const pin = inputPinAuth?.value.trim() || '';
     const pinSalvo = localStorage.getItem('pdv_admin_pin_' + empresaAtualId) || '123456';
+    
     if (pin === pinSalvo) {
         if (indiceItemParaRemover !== null) { 
             itensVenda.splice(indiceItemParaRemover, 1); 
             atualizarTabelaVenda(); 
         }
         fecharModalAutorizacao();
-        focarBusca();
     } else { 
         alert('PDV-VS: PIN gerencial incorreto!'); 
-        if (inputPinAuth) {
-            inputPinAuth.value = '';
-            inputPinAuth.focus();
-        }
+        if (inputPinAuth) { inputPinAuth.value = ''; inputPinAuth.focus(); }
     }
 }
 
 export function fecharModalAutorizacao() { 
-    const modal = document.getElementById('modalAutorizacaoAdmin');
-    if (modal) modal.classList.add('hidden'); 
+    document.getElementById('modalAutorizacaoAdmin')?.classList.add('hidden'); 
     focarBusca();
 }
 
@@ -426,14 +375,12 @@ export function abrirModalCancelarItem() {
         html += `<div class="p-3 flex justify-between items-center hover:bg-slate-50 cursor-pointer border-b" onclick="fecharModalCancelarItem(); window.solicitarRemocaoItem(${index});"> <div><span class="font-semibold text-slate-800">${item.nome}</span></div> <button class="text-rose-600 text-xs border border-rose-200 rounded px-2 py-1">Remover</button> </div>`;
     });
     const listaCancelar = document.getElementById('listaItensParaCancelar');
-    const modalCancelar = document.getElementById('modalCancelarItem');
     if (listaCancelar) listaCancelar.innerHTML = html;
-    if (modalCancelar) modalCancelar.classList.remove('hidden');
+    document.getElementById('modalCancelarItem')?.classList.remove('hidden');
 }
 
 export function fecharModalCancelarItem() { 
-    const modal = document.getElementById('modalCancelarItem');
-    if (modal) modal.classList.add('hidden'); 
+    document.getElementById('modalCancelarItem')?.classList.add('hidden'); 
     focarBusca();
 }
 
@@ -444,27 +391,22 @@ export function cancelarVenda() {
     } 
 }
 
+// --- FINALIZAÇÃO DE VENDAS E ESTOQUE ---
 export async function finalizarVenda() {
     if (!caixaAberto) { alert('PDV-VS: O caixa individual precisa estar aberto! Pressione [F1] ou abra o caixa.'); return; }
     if (itensVenda.length === 0) { alert('PDV-VS: Adicione produtos antes de finalizar.'); return; }
     
-    let total = itensVenda.reduce((acc, item) => acc + (item.qtd * item.preco), 0);
+    const total = itensVenda.reduce((acc, item) => acc + (item.qtd * item.preco), 0);
     
-    const { error } = await supabaseClient.from('vendas').insert([{ 
-        empresa_id: empresaAtualId, 
-        operador: usuarioAtual.email, 
-        valor_total: total, 
-        itens: itensVenda 
+    const { error } = await getSupabase().from('vendas').insert([{ 
+        empresa_id: empresaAtualId, operador: usuarioAtual.email, valor_total: total, itens: itensVenda 
     }]);
     
-    if (error) {
-        alert('PDV-VS: Erro ao registrar venda: ' + error.message);
-        return;
-    }
+    if (error) { alert('PDV-VS: Erro ao registrar venda: ' + error.message); return; }
 
     for (const item of itensVenda) {
         const novoEstoque = Math.max(0, (item.estoque || 0) - item.qtd);
-        await supabaseClient.from('produtos').update({ estoque: novoEstoque }).eq('id', item.id);
+        await getSupabase().from('produtos').update({ estoque: novoEstoque }).eq('id', item.id);
     }
 
     const novoFat = faturamentoDia + total;
@@ -473,23 +415,18 @@ export async function finalizarVenda() {
     if (txtFat) txtFat.innerText = `R$ ${novoFat.toFixed(2)}`;
 
     if (empresaAtualId && usuarioAtual) {
-        await supabaseClient
-            .from('caixas')
-            .update({ 
-                faturamento_dia: novoFat,
-                updated_at: new Date().toISOString()
-            })
-            .eq('empresa_id', empresaAtualId)
-            .eq('user_id', usuarioAtual.id)
-            .eq('status', 'ABERTO');
+        await getSupabase().from('caixas').update({ 
+            faturamento_dia: novoFat, updated_at: new Date().toISOString()
+        }).eq('empresa_id', empresaAtualId).eq('user_id', usuarioAtual.id).eq('status', 'ABERTO');
     }
 
     setItensVenda([]); 
     atualizarTabelaVenda(); 
     await carregarProdutosCache();
+    
     if (cargoUsuarioAtual === 'admin_mercado') {
-        if (typeof carregarOperadoresLoja === 'function') carregarOperadoresLoja();
-        if (typeof carregarHistoricoAdmin === 'function') carregarHistoricoAdmin();
+        carregarOperadoresLoja?.();
+        carregarHistoricoAdmin?.();
     }
     alert('PDV-VS: Venda concluída e estoque atualizado com sucesso!');
     focarBusca();
@@ -538,27 +475,15 @@ export function alterarQtd(i, qtd) {
     if (q > 0) { itensVenda[i].qtd = q; atualizarTabelaVenda(); } 
 }
 
-// Expondo funções deste módulo para o escopo global
-window.verificarStatusCaixaServidor = verificarStatusCaixaServidor;
-window.iniciarRealtimeCaixa = iniciarRealtimeCaixa;
-window.atualizarPaginaCompleta = atualizarPaginaCompleta;
-window.realizarLogout = realizarLogout;
-window.focarBusca = focarBusca;
-window.aoDigitarBusca = aoDigitarBusca;
-window.tratarEnterBuscaCaixa = tratarEnterBuscaCaixa;
-window.gerenciarCaixaModal = gerenciarCaixaModal;
-window.tratarEnterModalCaixa = tratarEnterModalCaixa;
-window.fecharModalCaixa = fecharModalCaixa;
-window.confirmarAcaoCaixa = confirmarAcaoCaixa;
-window.atualizarBadgesCaixaInterface = atualizarBadgesCaixaInterface;
-window.salvarPinAdmin = salvarPinAdmin;
-window.solicitarRemocaoItem = solicitarRemocaoItem;
-window.tratarEnterModalAutorizacao = tratarEnterModalAutorizacao;
-window.confirmarAutorizacaoPin = confirmarAutorizacaoPin;
-window.fecharModalAutorizacao = fecharModalAutorizacao;
-window.abrirModalCancelarItem = abrirModalCancelarItem;
-window.fecharModalCancelarItem = fecharModalCancelarItem;
-window.cancelarVenda = cancelarVenda;
-window.finalizarVenda = finalizarVenda;
-window.atualizarTabelaVenda = atualizarTabelaVenda;
-window.alterarQtd = alterarQtd;
+// ==========================================
+// EXPOSIÇÃO GLOBAL UNIFICADA (WINDOW)
+// ==========================================
+Object.assign(window, {
+    verificarStatusCaixaServidor, iniciarRealtimeCaixa, atualizarPaginaCompleta,
+    realizarLogout, focarBusca, aoDigitarBusca, tratarEnterBuscaCaixa,
+    gerenciarCaixaModal, tratarEnterModalCaixa, fecharModalCaixa, confirmarAcaoCaixa,
+    atualizarBadgesCaixaInterface, salvarPinAdmin, solicitarRemocaoItem,
+    tratarEnterModalAutorizacao, confirmarAutorizacaoPin, fecharModalAutorizacao,
+    abrirModalCancelarItem, fecharModalCancelarItem, cancelarVenda, finalizarVenda,
+    atualizarTabelaVenda, alterarQtd
+});
