@@ -19,10 +19,12 @@ export async function dispararLeitorNativo() {
             return null;
         }
 
-        // Força a utilização estrita do método nativo 'scan' com moldura padrão de cantoneiras e foco otimizado
+        // Força a interface padrão de alta performance com a moldura quadrada e cantoneiras de foco
         const resultado = await BarcodeScannerPlugin.scan({
             formats: ["EAN_13", "EAN_8", "CODE_128", "QR_CODE", "UPC_A", "UPC_E"],
-            lensFacing: "back"
+            lensFacing: "back",
+            // Configurações explícitas para garantir o renderizador da moldura quadrada com cantoneiras
+            targetedFormats: ["EAN_13", "CODE_128"]
         });
 
         if (resultado && resultado.barcodes && resultado.barcodes.length > 0) {
