@@ -9,8 +9,39 @@ import {
 import { carregarProdutosCache } from './produtos.js';
 import { focarBusca } from './caixa.js';
 
+// --- UTILITÁRIO INTERNO: RESOLUÇÃO DE EMPRESA ---
+async function resolverEmpresaIdAtual() {
+    let idEmpresa = empresaAtualId || localStorage.getItem('empresa_id') || localStorage.getItem('pdv_empresa_id');
+    try {
+        const { data: { session } } = await window.supabaseClient.auth.getSession();
+        if (session && session.user) {
+            const { data: vincData } = await window.supabaseClient
+                .from('usuarios_empresas')
+                .select('empresa_id')
+                .eq('user_id', session.user.id)
+                .maybeSingle();
+            
+            if (vincData && vincData.empresa_id) {
+                idEmpresa = vincData.empresa_id;
+            } else if (!idEmpresa) {
+                idEmpresa = session.user.id;
+            }
+            setEmpresaAtualId(idEmpresa);
+            localStorage.setItem('empresa_id', idEmpresa);
+        }
+    } catch (e) {
+        console.error("PDV-VS: Erro ao validar empresa na sessão:", e);
+    }
+    return idEmpresa;
+}
+
+// ==========================================
+// NAVEGAÇÃO DE ABAS
+// ==========================================
 export async function mudarAbaAdmin(aba) {
-    ['Produtos', 'Operadores', 'Maquininhas', 'Historico', 'Configuracoes'].forEach(a => {
+    const abasPossiveis = ['Produtos', 'Operadores', 'Maquininhas', 'Historico', 'Configuracoes'];
+    
+    abasPossiveis.forEach(a => {
         const conteudo = document.getElementById(`conteudoAba${a}`);
         const btn = document.getElementById(`btnAba${a}`);
         if (conteudo) conteudo.classList.add('hidden');
@@ -24,24 +55,36 @@ export async function mudarAbaAdmin(aba) {
     if (conteudoAtivo) conteudoAtivo.classList.remove('hidden');
     if (btnAtivo) btnAtivo.className = 'px-3 py-1.5 text-xs font-bold bg-emerald-600 text-white rounded-lg';
     
-    if (aba === 'produtos' || aba === 'Produtos') {
-        await carregarProdutosCache();
-        renderizarTabelaAdmin(produtosCache);
+    switch (activeAba) {
+        case 'Produtos':
+            await carregarProdutosCache();
+            renderizarTabelaAdmin(produtosCache);
+            break;
+        case 'Operadores':
+            await carregarOperadoresLoja();
+            break;
+        case 'Maquininhas':
+            await carregarMaquininhasAdmin();
+            break;
+        case 'Historico':
+            await carregarHistoricoAdmin();
+            break;
+        case 'Configuracoes':
+            preencherDadosConfiguracao();
+            break;
     }
-    if (aba === 'operadores' || aba === 'Operadores') await carregarOperadoresLoja();
-    if (aba === 'maquininhas' || aba === 'Maquininhas') await carregarMaquininhasAdmin();
-    if (aba === 'historico' || aba === 'Historico') await carregarHistoricoAdmin();
-    if (aba === 'configuracoes' || aba === 'Configuracoes') {
-        const inputPinConfig = document.getElementById('inputAdminPinConfig');
-        if (inputPinConfig) {
-            inputPinConfig.value = localStorage.getItem('pdv_admin_pin_' + empresaAtualId) || '123456';
-        }
-        const inputNomeConfig = document.getElementById('inputAdminNomeEmpresaConfig');
-        const inputWapConfig = document.getElementById('inputAdminWhatsappConfig');
-        if (window.dadosEmpresaAtual) {
-            if (inputNomeConfig) inputNomeConfig.value = window.dadosEmpresaAtual.nome_mercado || '';
-            if (inputWapConfig) inputWapConfig.value = window.dadosEmpresaAtual.whatsapp || '';
-        }
+}
+
+function preencherDadosConfiguracao() {
+    const inputPinConfig = document.getElementById('inputAdminPinConfig');
+    if (inputPinConfig) {
+        inputPinConfig.value = localStorage.getItem('pdv_admin_pin_' + empresaAtualId) || '123456';
+    }
+    const inputNomeConfig = document.getElementById('inputAdminNomeEmpresaConfig');
+    const inputWapConfig = document.getElementById('inputAdminWhatsappConfig');
+    if (window.dadosEmpresaAtual) {
+        if (inputNomeConfig) inputNomeConfig.value = window.dadosEmpresaAtual.nome_mercado || '';
+        if (inputWapConfig) inputWapConfig.value = window.dadosEmpresaAtual.whatsapp || '';
     }
 }
 
@@ -49,9 +92,11 @@ export async function recarregarDadosAdmin() {
     await carregarProdutosCache();
     renderizarTabelaAdmin(produtosCache);
     if (cargoUsuarioAtual === 'admin_mercado') {
-        await carregarHistoricoAdmin();
-        await carregarOperadoresLoja();
-        await carregarMaquininhasAdmin();
+        await Promise.all([
+            carregarHistoricoAdmin(),
+            carregarOperadoresLoja(),
+            carregarMaquininhasAdmin()
+        ]);
     }
     alert('PDV-VS: Dados do painel administrativo atualizados com sucesso!');
 }
@@ -63,28 +108,7 @@ export async function abrirPainelAdmin() {
         modalAdmin.classList.remove('hidden'); 
     }
 
-    let idEmpresaAtual = empresaAtualId || localStorage.getItem('empresa_id') || localStorage.getItem('pdv_empresa_id');
-
-    try {
-        const { data: { session } } = await window.supabaseClient.auth.getSession();
-        if (session && session.user) {
-            const { data: vincData } = await window.supabaseClient
-                .from('usuarios_empresas')
-                .select('empresa_id')
-                .eq('user_id', session.user.id)
-                .maybeSingle();
-            
-            if (vincData && vincData.empresa_id) {
-                idEmpresaAtual = vincData.empresa_id;
-            } else if (!idEmpresaAtual) {
-                idEmpresaAtual = session.user.id;
-            }
-            setEmpresaAtualId(idEmpresaAtual);
-            localStorage.setItem('empresa_id', idEmpresaAtual);
-        }
-    } catch (e) {
-        console.error("Erro ao validar empresa na sessão ao abrir painel:", e);
-    }
+    await resolverEmpresaIdAtual();
 
     try {
         await carregarProdutosCache(); 
@@ -98,7 +122,7 @@ export async function abrirPainelAdmin() {
             ]);
         }
     } catch (e) {
-        console.error("Erro ao carregar dados do painel:", e);
+        console.error("PDV-VS: Erro ao carregar dados do painel:", e);
     }
 
     mudarAbaAdmin('produtos'); 
@@ -113,34 +137,9 @@ export function fecharPainelAdmin() {
     focarBusca();
 }
 
-export async function salvarConfiguracoesEmpresaAdmin() {
-    const inputNome = document.getElementById('inputAdminNomeEmpresaConfig');
-    const inputWap = document.getElementById('inputAdminWhatsappConfig');
-    const novoNome = inputNome ? inputNome.value.trim() : '';
-    const novoWap = inputWap ? inputWap.value.trim() : '';
-
-    if (!novoNome) {
-        alert('PDV-VS: O nome do estabelecimento não pode ficar vazio.');
-        return;
-    }
-
-    try {
-        const { error } = await window.supabaseClient
-            .from('empresas')
-            .update({ nome_mercado: novoNome, whatsapp: novoWap })
-            .eq('id', empresaAtualId);
-
-        if (error) throw error;
-
-        const tituloAppEmpresa = document.getElementById('tituloAppEmpresa');
-        if (tituloAppEmpresa) tituloAppEmpresa.innerText = novoNome;
-
-        alert('PDV-VS: Dados do estabelecimento atualizados com sucesso!');
-    } catch (e) {
-        alert('PDV-VS: Erro ao atualizar configurações: ' + e.message);
-    }
-}
-
+// ==========================================
+// GESTÃO DE PRODUTOS (ADMIN)
+// ==========================================
 export function renderizarTabelaAdmin(lista) {
     const tbody = document.getElementById('tabelaAdminProdutos');
     const contadorProdutos = document.getElementById('contadorLimiteProdutosAdmin');
@@ -172,7 +171,8 @@ export function renderizarTabelaAdmin(lista) {
 }
 
 export function filtrarTabelaAdmin(t) { 
-    renderizarTabelaAdmin(produtosCache.filter(p => p.nome.toLowerCase().includes(t.toLowerCase()) || (p.codigo && p.codigo.toLowerCase().includes(t.toLowerCase())))); 
+    const termo = t.toLowerCase();
+    renderizarTabelaAdmin(produtosCache.filter(p => p.nome.toLowerCase().includes(termo) || (p.codigo && p.codigo.toLowerCase().includes(termo)))); 
 }
 
 export function abrirModalNovoProdutoAdmin() {
@@ -181,94 +181,44 @@ export function abrirModalNovoProdutoAdmin() {
         return;
     }
 
-    const prodId = document.getElementById('formProdId');
-    const nome = document.getElementById('formNome');
-    const codigo = document.getElementById('formCodigo');
-    const preco = document.getElementById('formPreco');
-    const estoque = document.getElementById('formEstoque');
-    const selectUnidade = document.getElementById('formUnidade');
-    const modalForm = document.getElementById('modalFormProduto');
-
-    if (prodId) prodId.value = ''; 
-    if (nome) nome.value = '';
-    if (codigo) codigo.value = ''; 
-    if (preco) preco.value = '';
-    if (estoque) estoque.value = '';
-    if (selectUnidade) selectUnidade.value = 'UN';
-
-    if (modalForm) modalForm.classList.remove('hidden');
+    alternarCamposFormProduto({ id: '', nome: '', codigo: '', preco: '', estoque: '', unidade: 'UN' });
+    document.getElementById('modalFormProduto')?.classList.remove('hidden');
 }
 
 export function abrirEditarProdutoAdmin(id, nome, cod, preco, est, unidade = 'UN') {
-    const prodId = document.getElementById('formProdId');
-    const inputNome = document.getElementById('formNome');
-    const inputCodigo = document.getElementById('formCodigo');
-    const inputPreco = document.getElementById('formPreco');
-    const inputEstoque = document.getElementById('formEstoque');
-    const selectUnidade = document.getElementById('formUnidade');
-    const modalForm = document.getElementById('modalFormProduto');
+    alternarCamposFormProduto({ id, nome, codigo: cod, preco, estoque: est, unidade });
+    document.getElementById('modalFormProduto')?.classList.remove('hidden');
+}
 
-    if (prodId) prodId.value = id; 
-    if (inputNome) inputNome.value = nome;
-    if (inputCodigo) inputCodigo.value = cod; 
-    if (inputPreco) inputPreco.value = preco;
-    if (inputEstoque) inputEstoque.value = est; 
-    if (selectUnidade) selectUnidade.value = unidade;
-
-    if (modalForm) modalForm.classList.remove('hidden');
+function alternarCamposFormProduto(dados) {
+    const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+    setVal('formProdId', dados.id);
+    setVal('formNome', dados.nome);
+    setVal('formCodigo', dados.codigo);
+    setVal('formPreco', dados.preco);
+    setVal('formEstoque', dados.estoque);
+    setVal('formUnidade', dados.unidade);
 }
 
 export function fecharFormProduto() { 
-    const modal = document.getElementById('modalFormProduto');
-    if (modal) modal.classList.add('hidden'); 
+    document.getElementById('modalFormProduto')?.classList.add('hidden'); 
 }
 
 export async function salvarProdutoAdmin() {
-    let idEmpresaAtual = empresaAtualId || localStorage.getItem('empresa_id') || localStorage.getItem('pdv_empresa_id');
-
-    try {
-        const { data: { session } } = await window.supabaseClient.auth.getSession();
-        if (session && session.user) {
-            const { data: vincData } = await window.supabaseClient
-                .from('usuarios_empresas')
-                .select('empresa_id')
-                .eq('user_id', session.user.id)
-                .maybeSingle();
-            
-            if (vincData && vincData.empresa_id) {
-                idEmpresaAtual = vincData.empresa_id;
-            } else if (!idEmpresaAtual) {
-                idEmpresaAtual = session.user.id;
-            }
-            setEmpresaAtualId(idEmpresaAtual);
-            localStorage.setItem('empresa_id', idEmpresaAtual);
-        }
-    } catch (e) {
-        console.error("Erro ao validar empresa na sessão:", e);
-    }
-
-    if (!idEmpresaAtual) {
+    const idEmpresa = await resolverEmpresaIdAtual();
+    if (!idEmpresa) {
         alert('PDV-VS Erro Crítico: ID da empresa não encontrado. Faça login novamente.');
         return;
     }
 
-    const prodId = document.getElementById('formProdId');
-    const nome = document.getElementById('formNome');
-    const codigo = document.getElementById('formCodigo');
-    const preco = document.getElementById('formPreco');
-    const estoque = document.getElementById('formEstoque');
-    const selectUnidade = document.getElementById('formUnidade');
-
-    const id = prodId ? prodId.value : '';
-    const unidadeProd = selectUnidade ? selectUnidade.value : 'UN';
-
+    const id = document.getElementById('formProdId')?.value || '';
     const p = { 
-        empresa_id: idEmpresaAtual,
-        nome: nome ? nome.value.trim() : '', 
-        codigo: codigo ? codigo.value.trim() : '', 
-        preco: preco ? parseFloat(preco.value) || 0 : 0, 
-        estoque: estoque ? parseFloat(estoque.value) || 0 : 0,
-        unidade: unidadeProd
+        empresa_id: idEmpresa,
+        nome: document.getElementById('formNome')?.value.trim() || '', 
+        codigo: document.getElementById('formCodigo')?.value.trim() || '', 
+        preco: parseFloat(document.getElementById('formPreco')?.value) || 0, 
+        estoque: parseFloat(document.getElementById('formEstoque')?.value) || 0,
+        unidade: document.getElementById('formUnidade')?.value || 'UN'
     };
 
     if (!p.nome) {
@@ -303,7 +253,7 @@ export async function excluirProdutoAdmin(id) {
 }
 
 // ==========================================
-// GESTÃO DE MAQUININHAS E TAXAS DE CARTÃO
+// GESTÃO DE MAQUININHAS E TAXAS
 // ==========================================
 export async function carregarMaquininhasAdmin() {
     if (!empresaAtualId) return;
@@ -334,41 +284,29 @@ export async function carregarMaquininhasAdmin() {
     tbody.innerHTML = html;
 }
 
-export function abrirModalNovaMaquininha() {
-    const modal = document.getElementById('modalNovaMaquininha');
-    if (modal) modal.classList.remove('hidden');
-}
-
-export function fecharModalNovaMaquininha() {
-    const modal = document.getElementById('modalNovaMaquininha');
-    if (modal) modal.classList.add('hidden');
-}
+export function abrirModalNovaMaquininha() { document.getElementById('modalNovaMaquininha')?.classList.remove('hidden'); }
+export function fecharModalNovaMaquininha() { document.getElementById('modalNovaMaquininha')?.classList.add('hidden'); }
 
 export async function salvarNovaMaquininha() {
     const nome = document.getElementById('maqNome')?.value.trim();
-    const debito = parseFloat(document.getElementById('maqDebito')?.value) || 0;
-    const creditoAvista = parseFloat(document.getElementById('maqCreditoAvista')?.value) || 0;
-    const parcelas2x = parseFloat(document.getElementById('maq2x')?.value) || 0;
-    const parcelas3x = parseFloat(document.getElementById('maq3x')?.value) || 0;
-    const parcelas6x = parseFloat(document.getElementById('maq6x')?.value) || 0;
-    const parcelas12x = parseFloat(document.getElementById('maq12x')?.value) || 0;
-
     if (!nome) { alert('Informe o nome da maquininha (Ex: Ton, Stone)'); return; }
 
-    const taxasObj = { "2": parcelas2x, "3": parcelas3x, "6": parcelas6x, "12": parcelas12x };
+    const taxasObj = {
+        "2": parseFloat(document.getElementById('maq2x')?.value) || 0,
+        "3": parseFloat(document.getElementById('maq3x')?.value) || 0,
+        "6": parseFloat(document.getElementById('maq6x')?.value) || 0,
+        "12": parseFloat(document.getElementById('maq12x')?.value) || 0
+    };
 
     const { error } = await window.supabaseClient.from('maquininhas_taxas').insert([{
         empresa_id: empresaAtualId,
         nome_maquina: nome,
-        taxa_debito: debito,
-        taxa_credito_avista: creditoAvista,
+        taxa_debito: parseFloat(document.getElementById('maqDebito')?.value) || 0,
+        taxa_credito_avista: parseFloat(document.getElementById('maqCreditoAvista')?.value) || 0,
         taxas_parcelamento: taxasObj
     }]);
 
-    if (error) {
-        alert('Erro ao salvar maquininha: ' + error.message);
-        return;
-    }
+    if (error) { alert('Erro ao salvar maquininha: ' + error.message); return; }
 
     fecharModalNovaMaquininha();
     await carregarMaquininhasAdmin();
@@ -382,35 +320,26 @@ export async function excluirMaquininhaAdmin(id) {
     }
 }
 
+// ==========================================
+// GESTÃO DE OPERADORES DA LOJA
+// ==========================================
 export async function carregarOperadoresLoja() {
     if (!empresaAtualId) return;
 
-    const { data: operadores, error } = await window.supabaseClient
-        .from('usuarios_empresas')
-        .select('*')
-        .eq('empresa_id', empresaAtualId);
-
-    if (error) return;
-
-    const { data: caixasAbertos } = await window.supabaseClient
-        .from('caixas')
-        .select('user_id, status, faturamento_dia')
-        .eq('empresa_id', empresaAtualId)
-        .eq('status', 'ABERTO');
+    const [{ data: operadores }, { data: caixasAbertos }] = await Promise.all([
+        window.supabaseClient.from('usuarios_empresas').select('*').eq('empresa_id', empresaAtualId),
+        window.supabaseClient.from('caixas').select('user_id, status, faturamento_dia').eq('empresa_id', empresaAtualId).eq('status', 'ABERTO')
+    ]);
 
     const mapaCaixas = {};
-    if (caixasAbertos) {
-        caixasAbertos.forEach(c => { mapaCaixas[c.user_id] = c; });
-    }
+    (caixasAbertos || []).forEach(c => { mapaCaixas[c.user_id] = c; });
 
     let html = '';
     if (operadores && operadores.length > 0) {
         operadores.forEach(op => {
             const caixaInfo = mapaCaixas[op.user_id];
-            const opCaixaAberto = !!caixaInfo;
             const faturamentoAtual = caixaInfo ? Number(caixaInfo.faturamento_dia || 0) : 0;
-
-            const statusCaixaBadge = opCaixaAberto 
+            const statusCaixaBadge = caixaInfo 
                 ? `<span class="bg-emerald-100 text-emerald-800 text-xs px-2.5 py-1 rounded-full font-bold">ABERTO (Fat: R$ ${faturamentoAtual.toFixed(2)})</span>` 
                 : '<span class="bg-amber-100 text-amber-800 text-xs px-2.5 py-1 rounded-full font-bold">FECHADO</span>';
             
@@ -443,21 +372,15 @@ export function abrirModalNovoOperador() {
             alert('PDV-VS - Regra do Plano: É permitido apenas 1 operador adicional além do Administrador.');
             return;
         }
-        const modal = document.getElementById('modalNovoOperador');
-        if (modal) modal.classList.remove('hidden'); 
+        document.getElementById('modalNovoOperador')?.classList.remove('hidden'); 
     });
 }
 
-export function fecharModalNovoOperador() { 
-    const modal = document.getElementById('modalNovoOperador');
-    if (modal) modal.classList.add('hidden'); 
-}
+export function fecharModalNovoOperador() { document.getElementById('modalNovoOperador')?.classList.add('hidden'); }
 
 export async function salvarNovoOperador() {
-    const inputEmail = document.getElementById('novoOpEmail');
-    const inputSenha = document.getElementById('novoOpSenha');
-    const email = inputEmail ? inputEmail.value.trim() : '';
-    const password = inputSenha ? inputSenha.value.trim() : '';
+    const email = document.getElementById('novoOpEmail')?.value.trim() || '';
+    const password = document.getElementById('novoOpSenha')?.value.trim() || '';
 
     if (!email || !password) { alert('PDV-VS: Preencha os campos de acesso provisório.'); return; }
     
@@ -472,6 +395,9 @@ export async function salvarNovoOperador() {
     }
 }
 
+// ==========================================
+// HISTÓRICO DE VENDAS E CONFIGURAÇÕES
+// ==========================================
 export async function carregarHistoricoAdmin() {
     const dataLimite = new Date();
     dataLimite.setDate(dataLimite.getDate() - 15);
@@ -502,30 +428,20 @@ export function renderizarHistoricoVendasPorJanelasDiarias() {
         return;
     }
 
-    let total15Dias = 0;
-    let totalHoje = 0;
-    let totalSemanal = 0;
+    let total15Dias = 0, totalHoje = 0, totalSemanal = 0;
     const hojeStr = new Date().toDateString();
-
     const gruposPorDia = {};
+
     historicoVendasCache.forEach(v => {
         total15Dias += v.valor_total;
         const dataVenda = new Date(v.created_at);
         const diaKey = dataVenda.toISOString().split('T')[0];
 
-        if (dataVenda.toDateString() === hojeStr) {
-            totalHoje += v.valor_total;
-        }
-        if ((new Date() - dataVenda) / (1000 * 60 * 60 * 24) <= 7) {
-            totalSemanal += v.valor_total;
-        }
+        if (dataVenda.toDateString() === hojeStr) totalHoje += v.valor_total;
+        if ((new Date() - dataVenda) / (1000 * 60 * 60 * 24) <= 7) totalSemanal += v.valor_total;
 
         if (!gruposPorDia[diaKey]) {
-            gruposPorDia[diaKey] = {
-                dataStr: dataVenda.toLocaleDateString('pt-BR'),
-                totalDia: 0,
-                vendas: []
-            };
+            gruposPorDia[diaKey] = { dataStr: dataVenda.toLocaleDateString('pt-BR'), totalDia: 0, vendas: [] };
         }
         gruposPorDia[diaKey].totalDia += v.valor_total;
         gruposPorDia[diaKey].vendas.push(v);
@@ -551,8 +467,7 @@ export function renderizarHistoricoVendasPorJanelasDiarias() {
                         <p class="text-[11px] text-slate-500 mt-0.5">${itensDesc}</p>
                     </div>
                     <span class="font-bold text-emerald-700">R$ ${v.valor_total.toFixed(2)}</span>
-                </div>
-            `;
+                </div>`;
         });
 
         htmlJanelas += `
@@ -572,34 +487,48 @@ export function renderizarHistoricoVendasPorJanelasDiarias() {
                     <div class="py-1 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Detalhamento das Vendas do Dia</div>
                     ${htmlItensVendasDia}
                 </div>
-            </div>
-        `;
+            </div>`;
     });
 
     container.innerHTML = htmlJanelas;
 }
 
-// Expondo todas as funções globalmente para os botões do HTML
-window.mudarAbaAdmin = mudarAbaAdmin;
-window.recarregarDadosAdmin = recarregarDadosAdmin;
-window.abrirPainelAdmin = abrirPainelAdmin;
-window.fecharPainelAdmin = fecharPainelAdmin;
-window.filtrarTabelaAdmin = filtrarTabelaAdmin;
-window.abrirModalNovoProdutoAdmin = abrirModalNovoProdutoAdmin;
-window.abrirEditarProdutoAdmin = abrirEditarProdutoAdmin;
-window.fecharFormProduto = fecharFormProduto;
-window.salvarProdutoAdmin = salvarProdutoAdmin;
-window.excluirProdutoAdmin = excluirProdutoAdmin;
-window.carregarMaquininhasAdmin = carregarMaquininhasAdmin;
-window.abrirModalNovaMaquininha = abrirModalNovaMaquininha;
-window.fecharModalNovaMaquininha = fecharModalNovaMaquininha;
-window.salvarNovaMaquininha = salvarNovaMaquininha;
-window.excluirMaquininhaAdmin = excluirMaquininhaAdmin;
-window.carregarOperadoresLoja = carregarOperadoresLoja;
-window.excluirOperadorLoja = excluirOperadorLoja;
-window.abrirModalNovoOperador = abrirModalNovoOperador;
-window.fecharModalNovoOperador = fecharModalNovoOperador;
-window.salvarNovoOperador = salvarNovoOperador;
-window.carregarHistoricoAdmin = carregarHistoricoAdmin;
-window.renderizarHistoricoVendasPorJanelasDiarias = renderizarHistoricoVendasPorJanelasDiarias;
-window.salvarConfiguracoesEmpresaAdmin = salvarConfiguracoesEmpresaAdmin;
+export async function salvarConfiguracoesEmpresaAdmin() {
+    const novoNome = document.getElementById('inputAdminNomeEmpresaConfig')?.value.trim() || '';
+    const novoWap = document.getElementById('inputAdminWhatsappConfig')?.value.trim() || '';
+
+    if (!novoNome) {
+        alert('PDV-VS: O nome do estabelecimento não pode ficar vazio.');
+        return;
+    }
+
+    try {
+        const { error } = await window.supabaseClient
+            .from('empresas')
+            .update({ nome_mercado: novoNome, whatsapp: novoWap })
+            .eq('id', empresaAtualId);
+
+        if (error) throw error;
+
+        const tituloAppEmpresa = document.getElementById('tituloAppEmpresa');
+        if (tituloAppEmpresa) tituloAppEmpresa.innerText = novoNome;
+
+        alert('PDV-VS: Dados do estabelecimento atualizados com sucesso!');
+    } catch (e) {
+        alert('PDV-VS: Erro ao atualizar configurações: ' + e.message);
+    }
+}
+
+// ==========================================
+// REGISTO GLOBAL DE EXPORTAÇÕES (WINDOW)
+// ==========================================
+Object.assign(window, {
+    mudarAbaAdmin, recarregarDadosAdmin, abrirPainelAdmin, fecharPainelAdmin,
+    filtrarTabelaAdmin, abrirModalNovoProdutoAdmin, abrirEditarProdutoAdmin,
+    fecharFormProduto, salvarProdutoAdmin, excluirProdutoAdmin,
+    carregarMaquininhasAdmin, abrirModalNovaMaquininha, fecharModalNovaMaquininha,
+    salvarNovaMaquininha, excluirMaquininhaAdmin, carregarOperadoresLoja,
+    excluirOperadorLoja, abrirModalNovoOperador, fecharModalNovoOperador,
+    salvarNovoOperador, carregarHistoricoAdmin, renderizarHistoricoVendasPorJanelasDiarias,
+    salvarConfiguracoesEmpresaAdmin
+});
