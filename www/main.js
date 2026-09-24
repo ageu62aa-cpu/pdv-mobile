@@ -116,20 +116,23 @@ window.fecharSuperAdminMaster = function() {
     if (modal) modal.classList.add('hidden');  
 };  
 
-// --- CONTROLE DO PAINEL ADMIN NORMAL (BUSCA ROBUSTA POR ID) ---
+// --- CONTROLE DO PAINEL ADMIN NORMAL (BUSCA INTELIGENTE) ---
 window.abrirPainelAdmin = function() {
     console.log("Painel Admin acionado.");
-    // Tenta múltiplos IDs possíveis para o modal do admin para evitar erros
     const modal = document.getElementById('modalAdmin') || 
                   document.getElementById('painelAdmin') || 
                   document.getElementById('modalConfigAdmin') || 
-                  document.getElementById('adminModal');
+                  document.getElementById('adminModal') ||
+                  document.querySelector('[id*="admin"]') ||
+                  document.querySelector('[id*="Admin"]');
                   
     if (modal) {
         modal.classList.remove('hidden');
+        if (typeof window.carregarHistoricoAdmin === 'function') {
+            window.carregarHistoricoAdmin();
+        }
     } else {
-        console.warn("Aviso: Nenhum modal de painel admin padrão foi encontrado. Verifique o ID no HTML.");
-        alert("Painel Admin acionado, mas o elemento HTML correspondente não foi localizado.");
+        alert("Erro: O modal/painel admin não foi localizado na página.");
     }
 };
 
@@ -137,7 +140,8 @@ window.fecharPainelAdmin = function() {
     const modal = document.getElementById('modalAdmin') || 
                   document.getElementById('painelAdmin') || 
                   document.getElementById('modalConfigAdmin') || 
-                  document.getElementById('adminModal');
+                  document.getElementById('adminModal') ||
+                  document.querySelector('[id*="admin"]');
     if (modal) modal.classList.add('hidden');
 };
 
