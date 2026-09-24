@@ -75,14 +75,16 @@ async function dispararLeitorDispositivo() {
                 if (perm.camera === 'granted' || perm.camera === 'limited') {  
                     document.body.classList.add('barcode-scanner-active');  
                     
+                    // Tratamento específico e rigoroso para iOS não perder a transparência e foco da câmara nativa  
                     if (plataforma === 'ios') {  
                         document.documentElement.style.setProperty('--background', 'transparent');  
+                        document.body.style.background = 'transparent';  
                         try {  
                             await BarcodeScannerPlugin.hideBackground();  
                         } catch (e) {}  
                     }  
 
-                    // Chamada otimizada com formatos explícitos para leitura cirúrgica em iOS e Android  
+                    // Chamada nativa otimizada com os formatos de códigos de barras restritos para máxima performance  
                     const resultado = await BarcodeScannerPlugin.scan({  
                         formats: [  
                             "EAN_13",  
@@ -98,6 +100,7 @@ async function dispararLeitorDispositivo() {
                     document.body.classList.remove('barcode-scanner-active');  
                     if (plataforma === 'ios') {  
                         document.documentElement.style.removeProperty('--background');  
+                        document.body.style.removeProperty('background');  
                         try {  
                             await BarcodeScannerPlugin.showBackground();  
                         } catch (e) {}  
@@ -114,7 +117,7 @@ async function dispararLeitorDispositivo() {
                     }  
                     return;  
                 } else {  
-                    alert("Permissão de câmera negada nas configurações do seu dispositivo.");  
+                    alert("Permissão de câmara negada nas configurações do seu dispositivo.");  
                 }  
             }  
         }  
@@ -127,7 +130,7 @@ async function dispararLeitorDispositivo() {
         document.body.classList.remove('barcode-scanner-active');  
         await fecharLeitorCamera();  
         
-        const codigoManual = prompt("Não foi possível acessar a câmera automaticamente. Digite ou bipe o código:");  
+        const codigoManual = prompt("Não foi possível aceder à câmara automaticamente. Digite ou bipe o código:");  
         if (codigoManual) processarCodigoCapturadoUniversal(codigoManual.trim());  
     }  
 }  
@@ -207,6 +210,7 @@ export async function iniciarCameraComHtml5Qrcode() {
     }  
 }  
 
+// Processamento unificado direcionando corretamente para Vendas ou Admin
 function processarCodigoCapturadoUniversal(termoDigitado) {  
     if (!termoDigitado || termoDigitado.length < 1) return;  
 
@@ -255,6 +259,7 @@ export async function fecharLeitorCamera() {
             await window.Capacitor.Plugins.BarcodeScanner.showBackground().catch(() => {});  
             document.body.classList.remove('barcode-scanner-active');  
             document.documentElement.style.removeProperty('--background');  
+            document.body.style.removeProperty('background');  
         }  
     } catch(e) {}  
 
@@ -274,9 +279,9 @@ export async function fecharLeitorCamera() {
 
 window.mostrarDetalhesCompatibilidade = function(sistema) {  
     if (sistema === 'android') {  
-        alert("Android: Compatibilidade 100%\n\nO Android consegue capturar com muita eficiência todos os códigos de barras através da câmera.");  
+        alert("Android: Compatibilidade 100%\n\nO Android consegue capturar com muita eficiência todos os códigos de barras através da câmara.");  
     } else if (sistema === 'ios') {  
-        alert("iOS (iPhone): Compatibilidade 100%\n\nCom o motor nativo otimizado do ML Kit, o iPhone agora lê códigos de barras com máxima precisão e velocidade.");  
+        alert("iOS (iPhone): Compatibilidade 100%\n\nCom o motor nativo otimizado do ML Kit, o iPhone lê códigos de barras com máxima precisão e velocidade.");  
     }  
 };  
 
