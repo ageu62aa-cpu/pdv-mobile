@@ -88,6 +88,16 @@ window.abrirLeitorCamera = abrirLeitorCamera;
 window.escanearCameraAdmin = escanearCameraAdmin;  
 window.fecharLeitorCamera = fecharLeitorCamera;  
 
+// --- ACIONAMENTO DO SCANNER / CÂMERA NA INTERFACE ---
+window.acionarScanner = function() {
+    console.log("PDV-VS: Acionando leitor de câmera para Vendas");
+    if (typeof abrirLeitorCamera === 'function') {
+        abrirLeitorCamera();
+    } else {
+        alert("Leitor de câmera não carregado.");
+    }
+};
+
 // --- CONTROLE DO SUPER ADMIN MASTER (GATILHO SEGURO) ---  
 window.tentarAcessoSuperAdminMasterSeguro = function() {  
     const modal = document.getElementById('modalSuperAdminMaster');  
@@ -108,18 +118,25 @@ window.fecharSuperAdminMaster = function() {
     if (modal) modal.classList.add('hidden');  
 };  
 
-// --- CONTROLE DO PAINEL ADMIN NORMAL ---
+// --- CONTROLE DO PAINEL ADMIN NORMAL (CORRIGIDO PARA ABRIR O MODAL) ---
 window.abrirPainelAdmin = function() {
+    console.log("Painel Admin acionado.");
     const modal = document.getElementById('modalAdmin');
     if (modal) {
         modal.classList.remove('hidden');
     } else {
-        console.log("Painel Admin acionado.");
+        // Tenta buscar por IDs alternativos comuns caso o ID mude no HTML
+        const modalAlt = document.getElementById('modalConfigAdmin') || document.getElementById('painelAdmin');
+        if (modalAlt) {
+            modalAlt.classList.remove('hidden');
+        } else {
+            alert("Modal do Painel Admin não encontrado no HTML.");
+        }
     }
 };
 
 window.fecharPainelAdmin = function() {
-    const modal = document.getElementById('modalAdmin');
+    const modal = document.getElementById('modalAdmin') || document.getElementById('modalConfigAdmin');
     if (modal) modal.classList.add('hidden');
 };
 
@@ -310,6 +327,9 @@ function inicializarAtalhosTeclado() {
         if (e.key === 'F1') {  
             e.preventDefault();  
             gerenciarCaixaModal('abrir');  
+        } else if (e.key === 'F2') {  
+            e.preventDefault();  
+            gerenciarCaixaModal('fechar');  
         } else if (e.key === 'F5') {  
             e.preventDefault();  
             focarBusca();  
