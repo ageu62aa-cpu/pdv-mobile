@@ -169,7 +169,7 @@
                             <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><i class="fa-solid fa-barcode"></i></span>
                             <input type="text" id="inputBusca" oninput="aoDigitarBusca(this.value)" onkeydown="tratarEnterBuscaCaixa(event)" placeholder="Digite o código ou nome do produto (F5)..." class="w-full pl-10 pr-3 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
                         </div>
-                        <!-- BOTÃO DE SCANNER NA TELA PRINCIPAL COM OS ÍCONES ANDROID/IOS LADO A LADO -->
+                        <!-- BOTÃO DE SCANNER NA TELA PRINCIPAL -->
                         <button onclick="abrirLeitorCamera()" class="bg-slate-800 hover:bg-slate-900 text-white px-3 py-2 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 shadow" title="Escanear Código de Barras">
                             <i class="fa-solid fa-camera"></i>
                             <div class="flex items-center space-x-1 bg-slate-700 px-1.5 py-0.5 rounded">
@@ -404,7 +404,7 @@
                         <label class="block text-xs font-bold text-slate-600 mb-1">Código de Barras</label>
                         <div class="flex space-x-1">
                             <input type="text" id="formCodigo" placeholder="Ex: 789100..." class="w-full p-2.5 border rounded-lg text-sm">
-                            <button type="button" onclick="escanearCameraAdmin()" class="bg-slate-800 hover:bg-slate-900 text-white px-2.5 py-2 rounded-lg text-xs font-bold transition flex items-center justify-center shadow" title="Escanear com a Câmera">
+                            <button type="button" onclick="abrirLeitorCameraParaCampo('formCodigo')" class="bg-slate-800 hover:bg-slate-900 text-white px-2.5 py-2 rounded-lg text-xs font-bold transition flex items-center justify-center shadow" title="Escanear com a Câmera">
                                 <i class="fa-solid fa-camera"></i>
                             </button>
                         </div>
