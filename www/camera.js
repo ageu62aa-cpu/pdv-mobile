@@ -58,6 +58,13 @@ export async function escanearCameraAdmin() {
     await dispararLeitorDispositivo();  
 }  
 
+// Função específica chamada pelo botão de scan no modal de Produtos/Admin
+export async function abrirLeitorCameraParaCampo() {  
+    console.log("PDV-VS: Abrindo leitor para preenchimento de campo específico");  
+    setOrigemLeitor('admin');  
+    await dispararLeitorDispositivo();  
+}  
+
 // Decide se usa o leitor nativo do Capacitor (iOS/Android) ou abre a modal Web (Fallback)  
 async function dispararLeitorDispositivo() {  
     try {  
@@ -75,7 +82,6 @@ async function dispararLeitorDispositivo() {
                 if (perm.camera === 'granted' || perm.camera === 'limited') {  
                     document.body.classList.add('barcode-scanner-active');  
                     
-                    // Tratamento específico e rigoroso para iOS não perder a transparência e foco da câmara nativa  
                     if (plataforma === 'ios') {  
                         document.documentElement.style.setProperty('--background', 'transparent');  
                         document.body.style.background = 'transparent';  
@@ -84,7 +90,6 @@ async function dispararLeitorDispositivo() {
                         } catch (e) {}  
                     }  
 
-                    // Chamada nativa otimizada com os formatos de códigos de barras restritos para máxima performance  
                     const resultado = await BarcodeScannerPlugin.scan({  
                         formats: [  
                             "EAN_13",  
@@ -167,15 +172,16 @@ export async function iniciarCameraComHtml5Qrcode() {
         let ultimoCodigoLido = '';  
         let tempoUltimoDisparo = 0;  
 
+        // Otimização para leitura ágil de códigos pequenos (aumentando FPS e ajustando box)
         await instance.start(  
             { facingMode: "environment" },  
             {   
-                fps: 35,   
-                qrbox: { width: 250, height: 250 },   
+                fps: 40,   
+                qrbox: { width: 300, height: 200 },   
                 aspectRatio: 1.33333,   
                 videoConstraints: {  
-                    width: { ideal: 1280 },  
-                    height: { ideal: 720 },  
+                    width: { ideal: 1920 },  
+                    height: { ideal: 1080 },  
                     facingMode: "environment"  
                 }  
             },  
@@ -184,7 +190,7 @@ export async function iniciarCameraComHtml5Qrcode() {
                 const codigoLimpo = decodedText.trim();  
                 const agora = Date.now();  
 
-                if (codigoLimpo === ultimoCodigoLido && (agora - tempoUltimoDisparo) < 900) {  
+                if (codigoLimpo === ultimoCodigoLido && (agora - tempoUltimoDisparo) < 600) {  
                     return;  
                 }  
                 ultimoCodigoLido = codigoLimpo;  
@@ -210,7 +216,6 @@ export async function iniciarCameraComHtml5Qrcode() {
     }  
 }  
 
-// Processamento unificado direcionando corretamente para Vendas ou Admin
 function processarCodigoCapturadoUniversal(termoDigitado) {  
     if (!termoDigitado || termoDigitado.length < 1) return;  
 
@@ -312,4 +317,5 @@ inicializarLeitorTecladoPistola();
 
 window.abrirLeitorCamera = abrirLeitorCamera;  
 window.escanearCameraAdmin = escanearCameraAdmin;  
+window.abrirLeitorCameraParaCampo = abrirLeitorCameraParaCampo;  
 window.fecharLeitorCamera = fecharLeitorCamera;
