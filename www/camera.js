@@ -1,12 +1,11 @@
 // ==========================================  
-// MÓDULO DE LEITOR DE CÂMERA E PISTOLA (PDV-VS)  
+// ORQUESTRADOR DE CÂMERA E PISTOLA (PDV-VS)  
 // ==========================================  
 
-import {   
-    origemLeitor, html5QrcodeInstance, setOrigemLeitor,   
-    setHtml5QrcodeInstance, produtosCache   
-} from './state.js';  
+import { origemLeitor, setOrigemLeitor, produtosCache } from './state.js';  
 import { tratarAdicaoProduto } from './produtos.js';  
+import { dispararLeitorNativo, fecharLeitorNativo } from './camera-native.js';
+import { iniciarCameraWeb, fecharCameraWeb } from './camera-web.js';
 
 let listenerTecladoGlobal = null;  
 
@@ -44,95 +43,48 @@ export function inicializarLeitorTecladoPistola() {
     window.addEventListener('keydown', listenerTecladoGlobal);  
 }  
 
-// Executado ao abrir leitor para Vendas (Modo Contínuo / Pistola por Vídeo)  
+// Executado ao abrir leitor para Vendas  
 export async function abrirLeitorCamera() {  
     console.log("PDV-VS: Abrindo leitor contínuo para Vendas");  
     setOrigemLeitor('busca');  
-    await dispararLeitorDispositivo();  
+    await gerenciarAberturaLeitor();  
 }  
 
-// Executado ao abrir leitor no Admin (Modo Único / Fechamento Automático)  
+// Executado ao abrir leitor no Admin  
 export async function escanearCameraAdmin() {  
     console.log("PDV-VS: Abrindo leitor único para Admin");  
     setOrigemLeitor('admin');  
-    await dispararLeitorDispositivo();  
+    await gerenciarAberturaLeitor();  
 }  
 
-// Função específica chamada pelo botão de scan no modal de Produtos/Admin
+// Executado pelo botão de scan no modal de produtos  
 export async function abrirLeitorCameraParaCampo() {  
     console.log("PDV-VS: Abrindo leitor para preenchimento de campo específico");  
     setOrigemLeitor('admin');  
-    await dispararLeitorDispositivo();  
+    await gerenciarAberturaLeitor();  
 }  
 
-// Decide se usa o leitor nativo do Capacitor (iOS/Android) ou abre a modal Web (Fallback)  
-async function dispararLeitorDispositivo() {  
+// Roteador inteligente entre Nativo e Web
+async function gerenciarAberturaLeitor() {  
     try {  
         const isNative = window.Capacitor && window.Capacitor.isNativePlatform();  
 
-        if (isNative && window.Capacitor.Plugins && window.Capacitor.Plugins.BarcodeScanner) {  
-            const BarcodeScannerPlugin = window.Capacitor.Plugins.BarcodeScanner;  
-            const plataforma = window.Capacitor.getPlatform();   
-            console.log(`PDV-VS: Plataforma nativa detectada -> ${plataforma}`);  
-
-            const sant = await BarcodeScannerPlugin.isSupported();  
-            if (sant.supported) {  
-                const perm = await BarcodeScannerPlugin.requestPermissions();  
-                
-                if (perm.camera === 'granted' || perm.camera === 'limited') {  
-                    document.body.classList.add('barcode-scanner-active');  
-                    
-                    if (plataforma === 'ios') {  
-                        document.documentElement.style.setProperty('--background', 'transparent');  
-                        document.body.style.background = 'transparent';  
-                        try {  
-                            await BarcodeScannerPlugin.hideBackground();  
-                        } catch (e) {}  
-                    }  
-
-                    const resultado = await BarcodeScannerPlugin.scan({  
-                        formats: [  
-                            "EAN_13",  
-                            "EAN_8",  
-                            "CODE_128",  
-                            "QR_CODE",  
-                            "UPC_A",  
-                            "UPC_E"  
-                        ],  
-                        lensFacing: "back"  
-                    });  
-                    
-                    document.body.classList.remove('barcode-scanner-active');  
-                    if (plataforma === 'ios') {  
-                        document.documentElement.style.removeProperty('--background');  
-                        document.body.style.removeProperty('background');  
-                        try {  
-                            await BarcodeScannerPlugin.showBackground();  
-                        } catch (e) {}  
-                    }  
-
-                    if (resultado && resultado.barcodes && resultado.barcodes.length > 0) {  
-                        const codigoLido = resultado.barcodes[0].displayValue || resultado.barcodes[0].rawValue;  
-                        if (codigoLido) {  
-                            setTimeout(() => {  
-                                processarCodigoCapturadoUniversal(codigoLido.trim());  
-                            }, 50);  
-                            return;  
-                        }  
-                    }  
-                    return;  
-                } else {  
-                    alert("Permissão de câmara negada nas configurações do seu dispositivo.");  
-                }  
-            }  
+        if (isNative) {  
+            const codigoNativo = await dispararLeitorNativo();
+            if (codigoNativo) {
+                processarCodigoCapturadoUniversal(codigoNativo.trim());
+            }
+            return;
         }  
 
-        prepararModalCameraWeb();  
-        await iniciarCameraComHtml5Qrcode();  
+        // Fallback Web
+        await iniciarCameraWeb((codigoLido) => {
+            processarCodigoCapturadoUniversal(codigoLido);
+            fecharLeitorCamera();
+        });  
 
     } catch (err) {  
-        console.error("PDV-VS Erro ao acionar leitor do dispositivo:", err);  
-        document.body.classList.remove('barcode-scanner-active');  
+        console.error("PDV-VS Erro geral ao gerenciar leitor:", err);  
         await fecharLeitorCamera();  
         
         const codigoManual = prompt("Não foi possível aceder à câmara automaticamente. Digite ou bipe o código:");  
@@ -140,82 +92,7 @@ async function dispararLeitorDispositivo() {
     }  
 }  
 
-function prepararModalCameraWeb() {  
-    const modalCam = document.getElementById('modalCamera');  
-    if (modalCam) {  
-        modalCam.style.zIndex = "99999";  
-        modalCam.classList.add('flex');  
-        modalCam.classList.remove('hidden');  
-    }  
-}  
-
-export async function iniciarCameraComHtml5Qrcode() {  
-    try {  
-        if (html5QrcodeInstance) {  
-            try {  
-                if (html5QrcodeInstance.isScanning) await html5QrcodeInstance.stop();  
-            } catch (e) {}  
-            setHtml5QrcodeInstance(null);  
-            await new Promise(resolve => setTimeout(resolve, 80));  
-        }  
-        
-        const elementId = "videoPreviewCamera";  
-        const container = document.getElementById(elementId);  
-        if (!container) return;  
-
-        const QrLib = window.Html5Qrcode;  
-        if (!QrLib) return;  
-
-        const instance = new QrLib(elementId);  
-        setHtml5QrcodeInstance(instance);  
-        
-        let ultimoCodigoLido = '';  
-        let tempoUltimoDisparo = 0;  
-
-        // Otimização para leitura ágil de códigos pequenos (aumentando FPS e ajustando box)
-        await instance.start(  
-            { facingMode: "environment" },  
-            {   
-                fps: 40,   
-                qrbox: { width: 300, height: 200 },   
-                aspectRatio: 1.33333,   
-                videoConstraints: {  
-                    width: { ideal: 1920 },  
-                    height: { ideal: 1080 },  
-                    facingMode: "environment"  
-                }  
-            },  
-            (decodedText) => {  
-                if (!decodedText) return;  
-                const codigoLimpo = decodedText.trim();  
-                const agora = Date.now();  
-
-                if (codigoLimpo === ultimoCodigoLido && (agora - tempoUltimoDisparo) < 600) {  
-                    return;  
-                }  
-                ultimoCodigoLido = codigoLimpo;  
-                tempoUltimoDisparo = agora;  
-
-                processarCodigoCapturadoUniversal(codigoLimpo);  
-            },  
-            () => {}  
-        );  
-
-        setTimeout(() => {  
-            const videoElement = container.querySelector('video');  
-            if (videoElement) {  
-                videoElement.style.objectFit = 'cover';  
-                videoElement.style.width = '100%';  
-                videoElement.style.height = '100%';  
-            }  
-        }, 150);  
-
-    } catch (err) {  
-        console.error("PDV-VS Erro Html5Qrcode:", err);  
-        fecharLeitorCamera();  
-    }  
-}  
-
+// Processamento unificado direcionando para Vendas ou Admin
 function processarCodigoCapturadoUniversal(termoDigitado) {  
     if (!termoDigitado || termoDigitado.length < 1) return;  
 
@@ -257,29 +134,8 @@ function processarCodigoCapturadoUniversal(termoDigitado) {
 }  
 
 export async function fecharLeitorCamera() {  
-    try {  
-        const isNative = window.Capacitor && window.Capacitor.isNativePlatform();  
-        if (isNative && window.Capacitor.Plugins && window.Capacitor.Plugins.BarcodeScanner) {  
-            await window.Capacitor.Plugins.BarcodeScanner.stopScan().catch(() => {});  
-            await window.Capacitor.Plugins.BarcodeScanner.showBackground().catch(() => {});  
-            document.body.classList.remove('barcode-scanner-active');  
-            document.documentElement.style.removeProperty('--background');  
-            document.body.style.removeProperty('background');  
-        }  
-    } catch(e) {}  
-
-    if (html5QrcodeInstance) {  
-        try {  
-            if (html5QrcodeInstance.isScanning) await html5QrcodeInstance.stop();  
-        } catch(e) {}  
-        setHtml5QrcodeInstance(null);  
-    }  
-    
-    const modalCamera = document.getElementById('modalCamera');  
-    if (modalCamera) {  
-        modalCamera.classList.add('hidden');  
-        modalCamera.classList.remove('flex');  
-    }  
+    await fecharLeitorNativo();
+    await fecharCameraWeb();
 }  
 
 window.mostrarDetalhesCompatibilidade = function(sistema) {  
