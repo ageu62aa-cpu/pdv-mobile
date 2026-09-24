@@ -145,7 +145,7 @@ export function renderizarTabelaAdmin(lista) {
     const tbody = document.getElementById('tabelaAdminProdutos');
     const contadorProdutos = document.getElementById('contadorLimiteProdutosAdmin');
     
-    const limiteMaximo = 1000; // Padronizado em 1000 vagas
+    const limiteMaximo = 1000;
     const qtdAtual = produtosCache.length;
     const vagasDisponiveis = Math.max(0, limiteMaximo - qtdAtual);
 
@@ -157,14 +157,14 @@ export function renderizarTabelaAdmin(lista) {
     
     let html = '';
     lista.forEach(p => {
-        html += `<tr class="border-b hover:bg-slate-50 transition">
-            <td class="p-2.5 text-xs text-slate-600 font-mono">${p.codigo || '-'}</td>
-            <td class="p-2.5 font-medium text-slate-800">${p.nome} ${p.unidade === 'KG' ? '<span class="text-amber-600 text-[10px] font-bold">(KG)</span>' : ''}</td>
-            <td class="p-2.5 text-slate-700">R$ ${Number(p.preco).toFixed(2)}${p.unidade === 'KG' ? '/kg' : ''}</td>
-            <td class="p-2.5 text-slate-700">${p.estoque} ${p.unidade || 'UN'}</td>
-            <td class="p-2.5 text-center space-x-2">
-                <button title="Editar Produto" onclick="window.abrirEditarProdutoAdmin(${p.id},'${p.nome}','${p.codigo || ''}',${p.preco},${p.estoque}, '${p.unidade || 'UN'}')" class="p-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg transition"><i class="fa-solid fa-pen-to-square text-xs"></i></button>
-                <button title="Excluir Produto" onclick="window.excluirProdutoAdmin(${p.id})" class="p-1.5 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-lg transition"><i class="fa-solid fa-trash-can text-xs"></i></button>
+        html += `<tr class="border-b">
+            <td class="p-2 text-xs">${p.codigo || '-'}</td>
+            <td class="p-2 font-medium">${p.nome} ${p.unidade === 'KG' ? '<span class="text-amber-600 text-[10px] font-bold">(KG)</span>' : ''}</td>
+            <td class="p-2">R$ ${Number(p.preco).toFixed(2)}${p.unidade === 'KG' ? '/kg' : ''}</td>
+            <td class="p-2">${p.estoque} ${p.unidade || 'UN'}</td>
+            <td class="p-2 text-center">
+                <button onclick="window.abrirEditarProdutoAdmin(${p.id},'${p.nome}','${p.codigo || ''}',${p.preco},${p.estoque}, '${p.unidade || 'UN'}')" class="text-blue-500 hover:text-blue-700 mr-3"><i class="fa-solid fa-pen"></i></button>
+                <button onclick="window.excluirProdutoAdmin(${p.id})" class="text-rose-500 hover:text-rose-700"><i class="fa-solid fa-trash"></i></button>
             </td>
         </tr>`;
     });
@@ -281,7 +281,7 @@ export async function salvarProdutoAdmin() {
         if (error) { alert('Erro ao atualizar produto: ' + error.message); return; }
     } else { 
         if (produtosCache.length >= 1000) {
-            alert('PDV-VS: Limite máximo de 1.000 produtos atingido.');
+            alert('PDV-VS: Limite de 1.000 produtos atingido.');
             return;
         }
         const { error } = await window.supabaseClient.from('produtos').insert([p]); 

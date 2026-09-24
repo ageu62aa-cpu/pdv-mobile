@@ -1,5 +1,5 @@
 // ==========================================
-// MÓDULO DE CAIXA E VENDAS (PDV-VS) - ATUALIZADO (ETAPA 3)
+// MÓDULO DE CAIXA E VENDAS (PDV-VS) - ATUALIZADO
 // ==========================================
 
 import { 
@@ -13,7 +13,6 @@ import { carregarHistoricoAdmin, carregarOperadoresLoja } from './admin.js';
 
 let valorTrocoAbertura = 0;
 let horaAberturaCaixa = null;
-let indiceItemSelecionado = -1;
 
 // Função para checar o status e faturamento real do caixa individual direto no Supabase
 export async function verificarStatusCaixaServidor() {
@@ -143,47 +142,12 @@ export function focarBusca() {
     if (input) input.focus(); 
 }
 
-// --- FUNÇÕES DE BUSCA E DIGITAÇÃO (OTIMIZADAS - ETAPA 3) ---
+// --- FUNÇÕES DE BUSCA E DIGITAÇÃO (ADICIONADAS PARA SUPORTAR O MAIN.JS) ---
 export function aoDigitarBusca(e) {
-    const suggestionsBox = document.getElementById('sugestoesBusca');
-    if (!suggestionsBox) return;
-
-    // Tratamento de Navegação por Teclado (Setas e Enter)
-    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-        e.preventDefault();
-        const itensSugestao = suggestionsBox.querySelectorAll('.sugestao-item');
-        if (itensSugestao.length === 0) return;
-
-        if (e.key === 'ArrowDown') {
-            indiceItemSelecionado = (indiceItemSelecionado + 1) % itensSugestao.length;
-        } else if (e.key === 'ArrowUp') {
-            indiceItemSelecionado = (indiceItemSelecionado - 1 + itensSugestao.length) % itensSugestao.length;
-        }
-
-        itensSugestao.forEach((el, idx) => {
-            if (idx === indiceItemSelecionado) {
-                el.classList.add('bg-slate-200', 'font-semibold');
-                el.scrollIntoView({ block: 'nearest' });
-            } else {
-                el.classList.remove('bg-slate-200', 'font-semibold');
-            }
-        });
-        return;
-    }
-
-    if (e.key === 'Enter') {
-        e.preventDefault();
-        const itensSugestao = suggestionsBox.querySelectorAll('.sugestao-item');
-        if (indiceItemSelecionado >= 0 && itensSugestao[indiceItemSelecionado]) {
-            itensSugestao[indiceItemSelecionado].click();
-        } else {
-            tratarEnterBuscaCaixa(e);
-        }
-        return;
-    }
-
-    indiceItemSelecionado = -1;
     const termo = e.target.value.trim().toLowerCase();
+    const suggestionsBox = document.getElementById('sugestoesBusca');
+    
+    if (!suggestionsBox) return;
 
     if (!termo) {
         suggestionsBox.classList.add('hidden');
@@ -203,8 +167,8 @@ export function aoDigitarBusca(e) {
     }
 
     let html = '';
-    filtrados.slice(0, 10).forEach((prod, index) => {
-        html += `<div class="sugestao-item p-2 hover:bg-slate-100 cursor-pointer border-b flex justify-between items-center transition-colors" data-index="${index}" onclick="window.adicionarProdutoPorId('${prod.id}')">
+    filtrados.slice(0, 10).forEach(prod => {
+        html += `<div class="p-2 hover:bg-slate-100 cursor-pointer border-b flex justify-between items-center" onclick="window.adicionarProdutoPorId('${prod.id}')">
             <span class="font-medium text-slate-700">${prod.nome}</span>
             <span class="text-xs text-emerald-600 font-bold">R$ ${Number(prod.preco_venda || prod.preco || 0).toFixed(2)}</span>
         </div>`;
@@ -221,19 +185,15 @@ export function tratarEnterBuscaCaixa(e) {
         if (!input) return;
         const valor = input.value.trim();
         
-        // Tenta encontrar o produto pelo código de barras exato, ID ou nome correspondente
-        const encontrado = produtosCache.find(p => p.codigo_barras === valor || p.id === valor || (p.nome && p.nome.toLowerCase() === valor.toLowerCase()));
+        // Tenta encontrar o produto pelo código de barras exato ou pelo ID
+        const encontrado = produtosCache.find(p => p.codigo_barras === valor || p.id === valor);
         if (encontrado) {
             if (typeof window.adicionarProdutoAoCarrinho === 'function') {
                 window.adicionarProdutoAoCarrinho(encontrado);
             }
             input.value = '';
             const suggestionsBox = document.getElementById('sugestoesBusca');
-            if (suggestionsBox) {
-                suggestionsBox.classList.add('hidden');
-                suggestionsBox.innerHTML = '';
-            }
-            indiceItemSelecionado = -1;
+            if (suggestionsBox) suggestionsBox.classList.add('hidden');
         } else {
             alert('PDV-VS: Produto não encontrado pelo código digitado.');
         }

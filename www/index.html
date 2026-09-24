@@ -386,7 +386,7 @@
         </div>
     </div>
 
-    <!-- MODAL FORMULÁRIO DE PRODUTO -->
+    <!-- MODAL FORMULÁRIO DE PRODUTO (COM O BOTÃO DE SCANNER NA FRENTE DO CAMPO CÓDIGO) -->
     <div id="modalFormProduto" class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl animate-scaleUp space-y-4">
             <div class="flex justify-between items-center border-b pb-3">
@@ -404,6 +404,7 @@
                         <label class="block text-xs font-bold text-slate-600 mb-1">Código de Barras</label>
                         <div class="flex space-x-1">
                             <input type="text" id="formCodigo" placeholder="Ex: 789100..." class="w-full p-2.5 border rounded-lg text-sm">
+                            <!-- BOTÃO DE SCANNER NO FORMULÁRIO DE PRODUTO -->
                             <button type="button" onclick="abrirLeitorCameraParaCampo('formCodigo')" class="bg-slate-800 hover:bg-slate-900 text-white px-2.5 py-2 rounded-lg text-xs font-bold transition flex items-center justify-center shadow" title="Escanear com a Câmera">
                                 <i class="fa-solid fa-camera"></i>
                             </button>
