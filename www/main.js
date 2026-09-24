@@ -108,6 +108,21 @@ window.fecharSuperAdminMaster = function() {
     if (modal) modal.classList.add('hidden');  
 };  
 
+// --- CONTROLE DO PAINEL ADMIN NORMAL ---
+window.abrirPainelAdmin = function() {
+    const modal = document.getElementById('modalAdmin');
+    if (modal) {
+        modal.classList.remove('hidden');
+    } else {
+        console.log("Painel Admin acionado.");
+    }
+};
+
+window.fecharPainelAdmin = function() {
+    const modal = document.getElementById('modalAdmin');
+    if (modal) modal.classList.add('hidden');
+};
+
 // --- TELA DE AUTH / ALTERNÂNCIA ---  
 window.alternarTelaAuth = function(tipo) {  
     const tituloAuth = document.getElementById('tituloAuth');  
@@ -307,6 +322,7 @@ function inicializarAtalhosTeclado() {
             fecharModalCancelarItem();  
             fecharLeitorCamera();  
             fecharSuperAdminMaster();  
+            fecharPainelAdmin();  
         }  
     });  
 }
