@@ -98,15 +98,13 @@ window.acionarScanner = function() {
     }
 };
 
-// --- CONTROLE DO SUPER ADMIN MASTER (GATILHO SEGURO) ---  
+// --- CONTROLE DO SUPER ADMIN MASTER ---  
 window.tentarAcessoSuperAdminMasterSeguro = function() {  
     const modal = document.getElementById('modalSuperAdminMaster');  
     if (modal) {  
         modal.classList.remove('hidden');  
         if (typeof window.carregarListaClientesSuperAdmin === 'function') {  
             window.carregarListaClientesSuperAdmin();  
-        } else {  
-            console.log("Painel Super Admin Master aberto.");  
         }  
     } else {  
         alert("Painel Super Admin Master não encontrado no HTML.");  
@@ -118,25 +116,28 @@ window.fecharSuperAdminMaster = function() {
     if (modal) modal.classList.add('hidden');  
 };  
 
-// --- CONTROLE DO PAINEL ADMIN NORMAL (CORRIGIDO PARA ABRIR O MODAL) ---
+// --- CONTROLE DO PAINEL ADMIN NORMAL (BUSCA ROBUSTA POR ID) ---
 window.abrirPainelAdmin = function() {
     console.log("Painel Admin acionado.");
-    const modal = document.getElementById('modalAdmin');
+    // Tenta múltiplos IDs possíveis para o modal do admin para evitar erros
+    const modal = document.getElementById('modalAdmin') || 
+                  document.getElementById('painelAdmin') || 
+                  document.getElementById('modalConfigAdmin') || 
+                  document.getElementById('adminModal');
+                  
     if (modal) {
         modal.classList.remove('hidden');
     } else {
-        // Tenta buscar por IDs alternativos comuns caso o ID mude no HTML
-        const modalAlt = document.getElementById('modalConfigAdmin') || document.getElementById('painelAdmin');
-        if (modalAlt) {
-            modalAlt.classList.remove('hidden');
-        } else {
-            alert("Modal do Painel Admin não encontrado no HTML.");
-        }
+        console.warn("Aviso: Nenhum modal de painel admin padrão foi encontrado. Verifique o ID no HTML.");
+        alert("Painel Admin acionado, mas o elemento HTML correspondente não foi localizado.");
     }
 };
 
 window.fecharPainelAdmin = function() {
-    const modal = document.getElementById('modalAdmin') || document.getElementById('modalConfigAdmin');
+    const modal = document.getElementById('modalAdmin') || 
+                  document.getElementById('painelAdmin') || 
+                  document.getElementById('modalConfigAdmin') || 
+                  document.getElementById('adminModal');
     if (modal) modal.classList.add('hidden');
 };
 
@@ -223,7 +224,6 @@ document.addEventListener("DOMContentLoaded", () => {
     verificarSessaoEAlternarTelas();  
     inicializarAtalhosTeclado();  
 
-    // REFRESH COMPLETO AO CLICAR NOS MASCOTES (GLOBAL)
     const ativarRefreshMascote = (idElemento) => {
         const el = document.getElementById(idElemento);
         if (el) {
@@ -238,7 +238,7 @@ document.addEventListener("DOMContentLoaded", () => {
     ativarRefreshMascote('iconeAppPrincipal');
 });  
 
-// --- VERIFICAÇÃO DE SESSÃO E BUSCA DINÂMICA DO NOME_MERCADO ---  
+// --- VERIFICAÇÃO DE SESSÃO ---  
 async function verificarSessaoEAlternarTelas() {  
     try {  
         const { data: { session } } = await window.supabaseClient.auth.getSession();  
@@ -322,8 +322,9 @@ async function verificarSessaoEAlternarTelas() {
     }  
 }  
 
+// --- ATALHOS DE TECLADO BLINDADOS ---
 function inicializarAtalhosTeclado() {  
-    document.addEventListener('keydown', (e) => {  
+    window.addEventListener('keydown', (e) => {  
         if (e.key === 'F1') {  
             e.preventDefault();  
             gerenciarCaixaModal('abrir');  
