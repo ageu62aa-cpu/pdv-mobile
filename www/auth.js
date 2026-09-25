@@ -2,6 +2,7 @@
 // MÓDULO DE GESTÃO ADMINISTRATIVA DA LOJA (PDV-VS)
 // ==========================================
 
+// Importação ajustada com extensão .js explícita para compatibilidade total com ES Modules no Vercel
 import { 
     empresaAtualId, produtosCache, cargoUsuarioAtual, historicoVendasCache, 
     setHistoricoVendasCache, setProdutosCache, setEmpresaAtualId 
@@ -66,7 +67,6 @@ export async function processarAutenticacao() {
             const userId = data.session.user.id;
             const idEmpresa = await resolverEmpresaIdAtual();
 
-            // Consulta o vínculo e cargo do usuário logado
             const { data: vincData } = await window.supabaseClient
                 .from('usuarios_empresas')
                 .select('cargo, empresa_id')
@@ -76,14 +76,12 @@ export async function processarAutenticacao() {
             const rawCargo = vincData?.cargo || 'operador';
             const cargo = (rawCargo === 'admin_mercado' || rawCargo === 'admin') ? 'admin' : 'operador';
 
-            // Armazena no estado global, localStorage e sessionStorage
             localStorage.setItem('empresa_id', idEmpresa);
             localStorage.setItem('id_empresa', idEmpresa);
             localStorage.setItem('pdv_cargo_usuario', cargo);
             sessionStorage.setItem('pdv_cargo_usuario', cargo);
             sessionStorage.setItem('id_empresa', idEmpresa);
 
-            // Controle de acesso visual para Operador vs Admin
             const btnAdmin = document.getElementById('btnAbrirAdmin') || document.getElementById('btnAdmin');
             const modalAdmin = document.getElementById('modalAdmin');
 
@@ -138,7 +136,6 @@ export async function cadastrarEstabelecimento() {
     }
 
     try {
-        // 1. Cria a conta no Supabase Auth
         const { data: authData, error: authError } = await window.supabaseClient.auth.signUp({
             email,
             password
@@ -152,7 +149,6 @@ export async function cadastrarEstabelecimento() {
         if (authData && authData.user) {
             const userId = authData.user.id;
 
-            // 2. Salva o estabelecimento/empresa no Banco de Dados
             const { data: empresaData, error: empresaError } = await window.supabaseClient
                 .from('empresas')
                 .insert([{ id: userId, nome_mercado, whatsapp }])
@@ -166,7 +162,6 @@ export async function cadastrarEstabelecimento() {
 
             const empresaId = empresaData?.id || userId;
 
-            // 3. Cadastra o vínculo do usuário como Admin do estabelecimento
             const { error: vincError } = await window.supabaseClient
                 .from('usuarios_empresas')
                 .insert([{ user_id: userId, empresa_id: empresaId, cargo: 'admin_mercado' }]);
@@ -176,14 +171,12 @@ export async function cadastrarEstabelecimento() {
                 return;
             }
 
-            // 4. Salva no LocalStorage
             localStorage.setItem('empresa_id', empresaId);
             localStorage.setItem('id_empresa', empresaId);
             localStorage.setItem('pdv_empresa_nome', nome_mercado);
 
             alert('PDV-VS: Estabelecimento cadastrado com sucesso! Redirecionando para a tela de login...');
 
-            // Redireciona para a tela de login principal
             const modalCadastro = document.getElementById('modalCadastro') || document.getElementById('telaCadastro');
             const modalLogin = document.getElementById('modalLogin') || document.getElementById('telaLogin');
 
@@ -686,10 +679,6 @@ export async function salvarConfiguracoesEmpresaAdmin() {
 // ==========================================
 // REGISTRO GLOBAL DE EXPORTAÇÕES (WINDOW)
 // ==========================================
-window.processarAutenticacao = processarAutenticacao;
-window.tratarEnterLogin = tratarEnterLogin;
-window.cadastrarEstabelecimento = cadastrarEstabelecimento;
-
 Object.assign(window, {
     processarAutenticacao,
     tratarEnterLogin,
