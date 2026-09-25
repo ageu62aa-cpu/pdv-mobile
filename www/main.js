@@ -73,78 +73,7 @@ window.consultarCep = async function(cep) {
     }  
 };  
 
-// --- EXPOSIÇÃO CONTROLADA AO ESCOPO GLOBAL (COMPATIBILIDADE COM HTML INLINE) ---  
-Object.assign(window, {
-    // Módulos do Caixa & Câmera
-    gerenciarCaixaModal,
-    fecharModalCaixa,
-    confirmarAcaoCaixa,
-    tratarEnterModalCaixa,
-    finalizarVenda,
-    cancelarVenda,
-    abrirModalCancelarItem,
-    fecharModalCancelarItem,
-    solicitarRemocaoItem,
-    tratarEnterModalAutorizacao,
-    confirmarAutorizacaoPin,
-    fecharModalAutorizacao,
-    salvarPinAdmin,
-    realizarLogout,
-    atualizarPaginaCompleta,
-    focarBusca,
-    alterarQtd,
-    aoDigitarBusca,
-    tratarEnterBuscaCaixa,
-    abrirLeitorCamera,
-    escanearCameraAdmin,
-    fecharLeitorCamera,
-
-    // Modais Dinâmicos
-    abrirModalCheckout,
-    fecharModalFinalizarVenda,
-    abrirModalProduto,
-    fecharModalProduto,
-    abrirModalSuperAdmin,
-    fecharModalSuperAdmin
-});
-
-// --- SCANNER / CÂMERA ---
-window.acionarScanner = function() {
-    if (typeof abrirLeitorCamera === 'function') {
-        abrirLeitorCamera();
-    } else {
-        console.error("[Camera Module]: Módulo de leitor de câmera indisponível.");
-        alert("O leitor de câmera não pôde ser iniciado.");
-    }
-};
-
-// --- CONTROLES DE INTERFACE (MODAIS DINÂMICOS E PAINÉIS) ---  
-window.tentarAcessoSuperAdminMasterSeguro = function() {  
-    abrirModalSuperAdmin();
-};  
-
-window.fecharSuperAdminMaster = function() {  
-    fecharModalSuperAdmin(); 
-};  
-
-window.abrirPainelAdmin = function() {
-    const modal = document.getElementById('modalAdmin');
-    if (modal) {
-        modal.classList.remove('hidden');
-        if (typeof window.carregarHistoricoAdmin === 'function') {
-            window.carregarHistoricoAdmin();
-        }
-    } else {
-        console.error("[UI Error]: O elemento 'modalAdmin' não foi encontrado no HTML.");
-        alert("Erro: O Painel Administrativo não foi encontrado na página.");
-    }
-};
-
-window.fecharPainelAdmin = function() {
-    document.getElementById('modalAdmin')?.classList.add('hidden');
-};
-
-// --- AUTENTICAÇÃO E TROCA DE TELAS ---  
+// --- AUTENTICAÇÃO E TROCA DE TELAS (DECLARADAS ANTES DO OBJECT.ASSIGN) ---  
 window.alternarTelaAuth = function(tipo) {  
     const elementos = {
         tituloAuth: document.getElementById('tituloAuth'),
@@ -204,6 +133,84 @@ window.processarAutenticacao = async function() {
 window.solicitarRecuperacaoSenha = function() {  
     alert("Para recuperar a senha, entre em contato com o suporte técnico.");  
 };  
+
+// --- EXPOSIÇÃO CONTROLADA AO ESCOPO GLOBAL (COMPATIBILIDADE COM HTML INLINE) ---  
+Object.assign(window, {
+    // Módulos do Caixa & Câmera
+    gerenciarCaixaModal,
+    fecharModalCaixa,
+    confirmarAcaoCaixa,
+    tratarEnterModalCaixa,
+    finalizarVenda,
+    cancelarVenda,
+    abrirModalCancelarItem,
+    fecharModalCancelarItem,
+    solicitarRemocaoItem,
+    tratarEnterModalAutorizacao,
+    confirmarAutorizacaoPin,
+    fecharModalAutorizacao,
+    salvarPinAdmin,
+    realizarLogout,
+    atualizarPaginaCompleta,
+    focarBusca,
+    alterarQtd,
+    aoDigitarBusca,
+    tratarEnterBuscaCaixa,
+    abrirLeitorCamera,
+    escanearCameraAdmin,
+    fecharLeitorCamera,
+
+    // Modais Dinâmicos
+    abrirModalCheckout,
+    fecharModalFinalizarVenda,
+    abrirModalProduto,
+    fecharModalProduto,
+    abrirModalSuperAdmin,
+    fecharModalSuperAdmin,
+
+    // Funções de Autenticação e Utilitários globais
+    alternarTelaAuth,
+    instalarAppPwa,
+    tratarEnterLogin,
+    processarAutenticacao,
+    solicitarRecuperacaoSenha
+});
+
+// --- SCANNER / CÂMERA ---
+window.acionarScanner = function() {
+    if (typeof abrirLeitorCamera === 'function') {
+        abrirLeitorCamera();
+    } else {
+        console.error("[Camera Module]: Módulo de leitor de câmera indisponível.");
+        alert("O leitor de câmera não pôde ser iniciado.");
+    }
+};
+
+// --- CONTROLES DE INTERFACE (MODAIS DINÂMICOS E PAINÉIS) ---  
+window.tentarAcessoSuperAdminMasterSeguro = function() {  
+    abrirModalSuperAdmin();
+};  
+
+window.fecharSuperAdminMaster = function() {  
+    fecharModalSuperAdmin(); 
+};  
+
+window.abrirPainelAdmin = function() {
+    const modal = document.getElementById('modalAdmin');
+    if (modal) {
+        modal.classList.remove('hidden');
+        if (typeof window.carregarHistoricoAdmin === 'function') {
+            window.carregarHistoricoAdmin();
+        }
+    } else {
+        console.error("[UI Error]: O elemento 'modalAdmin' não foi encontrado no HTML.");
+        alert("Erro: O Painel Administrativo não foi encontrado na página.");
+    }
+};
+
+window.fecharPainelAdmin = function() {
+    document.getElementById('modalAdmin')?.classList.add('hidden');
+};
 
 // --- INICIALIZAÇÃO DA APLICAÇÃO ---
 document.addEventListener("DOMContentLoaded", () => {  
@@ -346,12 +353,10 @@ function inicializarAtalhosTeclado() {
         } 
         // ESC - Fechar Modais Dinâmicos e Estáticos
         else if (event.key === 'Escape') {  
-            // Trata modais módulos dinâmicos sem estourar Uncaught ReferenceError
             if (typeof window.fecharModalFinalizarVenda === 'function') window.fecharModalFinalizarVenda();
             if (typeof window.fecharModalProduto === 'function') window.fecharModalProduto();
             if (typeof window.fecharModalSuperAdmin === 'function') window.fecharModalSuperAdmin();
 
-            // Modais estáticos do caixa
             if (typeof window.fecharModalCaixa === 'function') window.fecharModalCaixa();  
             if (typeof window.fecharModalAutorizacao === 'function') window.fecharModalAutorizacao();  
             if (typeof window.fecharModalCancelarItem === 'function') window.fecharModalCancelarItem();  

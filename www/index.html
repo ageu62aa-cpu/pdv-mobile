@@ -501,8 +501,7 @@
     <!-- CONTAINER SECUNDÁRIO PARA OUTROS MODAIS DINÂMICOS DA APLICAÇÃO -->
     <div id="containerModaisDinamicos"></div>
 
-    <!-- SCRIPTS DE CARREGAMENTO PADRÃO (SEM CONFLITO DE MÓDULO) -->
-    <script src="./state.js"></script>
-    <script src="./main.js"></script>
+    <!-- SCRIPT PRINCIPAL COMO MÓDULO (state.js é importado diretamente de dentro do main.js) -->
+    <script type="module" src="./main.js"></script>
 </body>
 </html>
