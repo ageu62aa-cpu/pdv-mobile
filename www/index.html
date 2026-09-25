@@ -250,7 +250,7 @@
                 </button>
             </div>
 
-            <!-- Navegação de Abas Exigida pelo admin.js -->
+            <!-- Navegação de Abas -->
             <div class="flex border-b bg-slate-100 p-2 gap-2 overflow-x-auto">
                 <button id="btnAbaProdutos" onclick="window.mudarAbaAdmin('produtos')" class="px-3 py-1.5 text-xs font-bold bg-emerald-600 text-white rounded-lg">
                     <i class="fa-solid fa-box mr-1"></i> Produtos
@@ -395,7 +395,7 @@
         </div>
     </div>
 
-    <!-- MODAIS SECUNDÁRIOS DO ADMIN (PRODUTO, OPERADOR, MAQUININHA) -->
+    <!-- MODAIS SECUNDÁRIOS DO ADMIN -->
     <div id="modalFormProduto" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-2xl">
             <h3 class="text-sm font-bold text-slate-800 mb-3 border-b pb-2">Cadastrar / Editar Produto</h3>
@@ -498,10 +498,10 @@
         </div>
     </div>
 
-    <!-- CONTAINER SECUNDÁRIO PARA OUTROS MODAIS DINÂMICOS DA APLICAÇÃO -->
+    <!-- CONTAINER SECUNDÁRIO PARA OUTROS MODAIS DINÂMICOS -->
     <div id="containerModaisDinamicos"></div>
 
-    <!-- SCRIPT PRINCIPAL EXCLUSIVO COMO MÓDULO (state.js e demais dependências são importados internamente) -->
+    <!-- SCRIPT PRINCIPAL EXCLUSIVO COMO MÓDULO -->
     <script type="module" src="./main.js"></script>
 </body>
 </html>
