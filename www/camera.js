@@ -197,4 +197,4 @@ inicializarLeitorTecladoPistola();
 window.abrirLeitorCamera = abrirLeitorCamera;  
 window.escanearCameraAdmin = escanearCameraAdmin;  
 window.abrirLeitorCameraParaCampo = abrirLeitorCameraParaCampo;  
-window.fecharLeitorCamera = fecharLeitorCamera;
+window.fecharLeitorCamera = fecharLeitorCamera;s

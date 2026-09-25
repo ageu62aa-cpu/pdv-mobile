@@ -7,27 +7,32 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 import { setUsuarioAtual, setEmpresaAtualId, setCargoUsuarioAtual } from './state.js';  
 import { abrirLeitorCamera, escanearCameraAdmin, fecharLeitorCamera } from './camera.js';  
 
-import {   
-    verificarStatusCaixaServidor,   
-    gerenciarCaixaModal,   
-    fecharModalCaixa,   
-    confirmarAcaoCaixa,   
-    tratarEnterModalCaixa,   
-    finalizarVenda,   
-    cancelarVenda,   
-    abrirModalCancelarItem,   
-    fecharModalCancelarItem,   
-    solicitarRemocaoItem,   
-    tratarEnterModalAutorizacao,   
-    confirmarAutorizacaoPin,   
-    fecharModalAutorizacao,   
-    salvarPinAdmin,   
-    realizarLogout,   
-    atualizarPaginaCompleta,   
-    focarBusca,  
-    alterarQtd,  
-    aoDigitarBusca,  
-    tratarEnterBuscaCaixa  
+// --- IMPORTAÇÃO DOS MODAIS DINÂMICOS ---
+import { abrirModalCheckout, fecharModalFinalizarVenda } from './components/modalCheckout.js';
+import { abrirModalProduto, fecharModalProduto } from './components/modalProduto.js';
+import { abrirModalSuperAdmin, fecharModalSuperAdmin } from './components/modalSuperAdmin.js';
+
+import {    
+    verificarStatusCaixaServidor,    
+    gerenciarCaixaModal,    
+    fecharModalCaixa,    
+    confirmarAcaoCaixa,    
+    tratarEnterModalCaixa,    
+    finalizarVenda,    
+    cancelarVenda,    
+    abrirModalCancelarItem,    
+    fecharModalCancelarItem,    
+    solicitarRemocaoItem,    
+    tratarEnterModalAutorizacao,    
+    confirmarAutorizacaoPin,    
+    fecharModalAutorizacao,    
+    salvarPinAdmin,    
+    realizarLogout,    
+    atualizarPaginaCompleta,    
+    focarBusca,   
+    alterarQtd,   
+    aoDigitarBusca,   
+    tratarEnterBuscaCaixa   
 } from './caixa.js';  
 
 // CONFIGURAÇÃO DO CLIENTE SUPABASE (Centralizada)
@@ -70,6 +75,7 @@ window.consultarCep = async function(cep) {
 
 // --- EXPOSIÇÃO CONTROLADA AO ESCOPO GLOBAL (COMPATIBILIDADE COM HTML INLINE) ---  
 Object.assign(window, {
+    // Módulos do Caixa & Câmera
     gerenciarCaixaModal,
     fecharModalCaixa,
     confirmarAcaoCaixa,
@@ -91,7 +97,15 @@ Object.assign(window, {
     tratarEnterBuscaCaixa,
     abrirLeitorCamera,
     escanearCameraAdmin,
-    fecharLeitorCamera
+    fecharLeitorCamera,
+
+    // Modais Dinâmicos
+    abrirModalCheckout,
+    fecharModalFinalizarVenda,
+    abrirModalProduto,
+    fecharModalProduto,
+    abrirModalSuperAdmin,
+    fecharModalSuperAdmin
 });
 
 // --- SCANNER / CÂMERA ---
@@ -104,25 +118,16 @@ window.acionarScanner = function() {
     }
 };
 
-// --- MODAIS E CONTROLES DE INTERFACE (PADRONIZADOS) ---  
+// --- CONTROLES DE INTERFACE (MODAIS DINÂMICOS E PAINÉIS) ---  
 window.tentarAcessoSuperAdminMasterSeguro = function() {  
-    const modal = document.getElementById('modalSuperAdminMaster');  
-    if (modal) {  
-        modal.classList.remove('hidden');  
-        if (typeof window.carregarListaClientesSuperAdmin === 'function') {  
-            window.carregarListaClientesSuperAdmin();  
-        }  
-    } else {  
-        console.warn("[UI Warning]: Elemento 'modalSuperAdminMaster' não existe no DOM.");  
-    }  
+    abrirModalSuperAdmin();
 };  
 
 window.fecharSuperAdminMaster = function() {  
-    document.getElementById('modalSuperAdminMaster')?.classList.add('hidden');  
+    fecharModalSuperAdmin(); 
 };  
 
 window.abrirPainelAdmin = function() {
-    // Busca estrita para evitar capturar botões ou containers errados
     const modal = document.getElementById('modalAdmin');
     if (modal) {
         modal.classList.remove('hidden');
@@ -292,31 +297,67 @@ async function verificarSessaoEAlternarTelas() {
     }  
 }  
 
-// --- HANDLER DE ATALHOS DE TECLADO ---
+// --- HANDLER DE ATALHOS DE TECLADO COMPLETO E SEGURO ---
 function inicializarAtalhosTeclado() {  
-    window.addEventListener('keydown', (e) => {  
-        // Evita disparar atalhos globais se o operador estiver digitando em inputs
-        const emCampoDeTexto = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName);
-        
-        if (e.key === 'F1') {  
-            e.preventDefault();  
-            gerenciarCaixaModal('abrir');  
-        } else if (e.key === 'F2') {  
-            e.preventDefault();  
-            gerenciarCaixaModal('fechar');  
-        } else if (e.key === 'F5' && !emCampoDeTexto) {  
-            e.preventDefault();  
-            focarBusca();  
-        } else if (e.key === 'F9') {  
-            e.preventDefault();  
-            finalizarVenda();  
-        } else if (e.key === 'Escape') {  
-            fecharModalCaixa();  
-            fecharModalAutorizacao();  
-            fecharModalCancelarItem();  
-            fecharLeitorCamera();  
-            fecharSuperAdminMaster();  
-            fecharPainelAdmin();  
+    window.addEventListener('keydown', (event) => {  
+        // F1 - Abrir Caixa
+        if (event.key === 'F1') {  
+            event.preventDefault();  
+            if (typeof window.gerenciarCaixaModal === 'function') {
+                window.gerenciarCaixaModal('abrir');  
+            }
+        } 
+        // F2 - Fechar Caixa
+        else if (event.key === 'F2') {  
+            event.preventDefault();  
+            if (typeof window.gerenciarCaixaModal === 'function') {
+                window.gerenciarCaixaModal('fechar');  
+            }
+        } 
+        // F5 - Focar na Busca de Produtos
+        else if (event.key === 'F5') {  
+            event.preventDefault();  
+            if (typeof window.focarBusca === 'function') {
+                window.focarBusca();  
+            }
+        } 
+        // F6 - Cancelar Item
+        else if (event.key === 'F6') {  
+            event.preventDefault();  
+            if (typeof window.abrirModalCancelarItem === 'function') {
+                window.abrirModalCancelarItem();  
+            }
+        } 
+        // F7 - Cancelar Venda
+        else if (event.key === 'F7') {  
+            event.preventDefault();  
+            if (typeof window.cancelarVenda === 'function') {
+                window.cancelarVenda();  
+            }
+        } 
+        // F9 - Finalizar Venda / Checkout
+        else if (event.key === 'F9') {  
+            event.preventDefault();  
+            if (typeof window.abrirModalCheckout === 'function') {
+                window.abrirModalCheckout(0.00);  
+            } else if (typeof window.finalizarVenda === 'function') {
+                window.finalizarVenda();
+            }
+        } 
+        // ESC - Fechar Modais Dinâmicos e Estáticos
+        else if (event.key === 'Escape') {  
+            // Trata modais módulos dinâmicos sem estourar Uncaught ReferenceError
+            if (typeof window.fecharModalFinalizarVenda === 'function') window.fecharModalFinalizarVenda();
+            if (typeof window.fecharModalProduto === 'function') window.fecharModalProduto();
+            if (typeof window.fecharModalSuperAdmin === 'function') window.fecharModalSuperAdmin();
+
+            // Modais estáticos do caixa
+            if (typeof window.fecharModalCaixa === 'function') window.fecharModalCaixa();  
+            if (typeof window.fecharModalAutorizacao === 'function') window.fecharModalAutorizacao();  
+            if (typeof window.fecharModalCancelarItem === 'function') window.fecharModalCancelarItem();  
+            if (typeof window.fecharLeitorCamera === 'function') window.fecharLeitorCamera();  
+            if (typeof window.fecharPainelAdmin === 'function') window.fecharPainelAdmin();  
+            if (typeof window.fecharSuperAdminMaster === 'function') window.fecharSuperAdminMaster();  
         }  
     });  
 }
