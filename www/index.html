@@ -225,7 +225,272 @@
         </footer>
     </div>
 
-    <!-- CONTAINER ONDE OS MODAIS SERÃO CARREGADOS/INJETADOS VIA JAVASCRIPT OU SEUS RESPECTIVOS MÓDULOS -->
+    <!-- MODAL PAINEL ADMINISTRATIVO E SEUS CONTAINERS DEDICADOS -->
+    <div id="modalAdmin" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-2 sm:p-4">
+        <div class="bg-white rounded-2xl max-w-5xl w-full max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
+            
+            <!-- Cabeçalho do Modal -->
+            <div class="p-4 bg-slate-800 text-white flex justify-between items-center">
+                <div>
+                    <h2 class="text-base font-bold flex items-center gap-2">
+                        <i class="fa-solid fa-chart-line text-emerald-400"></i> Painel Administrativo
+                    </h2>
+                    <p class="text-xs text-slate-400">Gerencie o estabelecimento, histórico de vendas e configurações gerais.</p>
+                </div>
+                <button onclick="window.fecharPainelAdmin()" class="text-slate-400 hover:text-white text-lg font-bold p-1">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Navegação de Abas Exigida pelo admin.js -->
+            <div class="flex border-b bg-slate-100 p-2 gap-2 overflow-x-auto">
+                <button id="btnAbaProdutos" onclick="window.mudarAbaAdmin('produtos')" class="px-3 py-1.5 text-xs font-bold bg-emerald-600 text-white rounded-lg">
+                    <i class="fa-solid fa-box mr-1"></i> Produtos
+                </button>
+                <button id="btnAbaOperadores" onclick="window.mudarAbaAdmin('operadores')" class="px-3 py-1.5 text-xs font-bold bg-slate-200 text-slate-700 rounded-lg">
+                    <i class="fa-solid fa-users mr-1"></i> Operadores
+                </button>
+                <button id="btnAbaMaquininhas" onclick="window.mudarAbaAdmin('maquininhas')" class="px-3 py-1.5 text-xs font-bold bg-slate-200 text-slate-700 rounded-lg">
+                    <i class="fa-solid fa-credit-card mr-1"></i> Maquininhas
+                </button>
+                <button id="btnAbaHistorico" onclick="window.mudarAbaAdmin('historico')" class="px-3 py-1.5 text-xs font-bold bg-slate-200 text-slate-700 rounded-lg">
+                    <i class="fa-solid fa-clock-rotate-left mr-1"></i> Histórico
+                </button>
+                <button id="btnAbaConfiguracoes" onclick="window.mudarAbaAdmin('configuracoes')" class="px-3 py-1.5 text-xs font-bold bg-slate-200 text-slate-700 rounded-lg">
+                    <i class="fa-solid fa-gear mr-1"></i> Configurações
+                </button>
+            </div>
+
+            <!-- Conteúdo das Abas -->
+            <div class="p-4 flex-1 overflow-y-auto">
+                
+                <!-- ABA PRODUTOS -->
+                <div id="conteudoAbaProdutos">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3">
+                        <div class="flex-1 w-full sm:w-auto">
+                            <input type="text" oninput="window.filtrarTabelaAdmin(this.value)" placeholder="Filtrar produtos por nome ou código..." class="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500">
+                        </div>
+                        <div class="flex items-center justify-between sm:justify-end w-full sm:w-auto gap-3">
+                            <span id="contadorLimiteProdutosAdmin" class="text-xs font-semibold text-slate-600">0 cadastrados</span>
+                            <button onclick="window.abrirModalNovoProdutoAdmin()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 shadow">
+                                <i class="fa-solid fa-plus"></i> Novo Produto
+                            </button>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto border rounded-lg max-h-[50vh]">
+                        <table class="w-full text-left border-collapse text-xs">
+                            <thead class="bg-slate-100 font-bold text-slate-700 border-b sticky top-0">
+                                <tr>
+                                    <th class="p-2">Cód.</th>
+                                    <th class="p-2">Produto</th>
+                                    <th class="p-2">Preço</th>
+                                    <th class="p-2">Estoque</th>
+                                    <th class="p-2 text-center">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabelaAdminProdutos">
+                                <tr><td colspan="5" class="p-4 text-center text-slate-400">Carregando produtos...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- ABA OPERADORES -->
+                <div id="conteudoAbaOperadores" class="hidden">
+                    <div class="flex justify-end mb-3">
+                        <button onclick="window.abrirModalNovoOperador()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 shadow">
+                            <i class="fa-solid fa-user-plus"></i> Novo Operador
+                        </button>
+                    </div>
+                    <div class="overflow-x-auto border rounded-lg">
+                        <table class="w-full text-left border-collapse text-xs">
+                            <thead class="bg-slate-100 font-bold text-slate-700 border-b">
+                                <tr>
+                                    <th class="p-3">ID / UUID</th>
+                                    <th class="p-3">Cargo</th>
+                                    <th class="p-3 text-center">Status Caixa</th>
+                                    <th class="p-3 text-center">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabelaOperadoresLoja">
+                                <tr><td colspan="4" class="p-4 text-center text-slate-400">Carregando operadores...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- ABA MAQUININHAS -->
+                <div id="conteudoAbaMaquininhas" class="hidden">
+                    <div class="flex justify-end mb-3">
+                        <button onclick="window.abrirModalNovaMaquininha()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 shadow">
+                            <i class="fa-solid fa-plus"></i> Nova Maquininha
+                        </button>
+                    </div>
+                    <div class="overflow-x-auto border rounded-lg">
+                        <table class="w-full text-left border-collapse text-xs">
+                            <thead class="bg-slate-100 font-bold text-slate-700 border-b">
+                                <tr>
+                                    <th class="p-3">Maquininha</th>
+                                    <th class="p-3">Taxas Base</th>
+                                    <th class="p-3">Parcelado</th>
+                                    <th class="p-3 text-center">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabelaMaquininhasAdmin">
+                                <tr><td colspan="4" class="p-4 text-center text-slate-400">Carregando maquininhas...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- ABA HISTÓRICO -->
+                <div id="conteudoAbaHistorico" class="hidden space-y-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div class="bg-slate-100 p-3 rounded-xl border">
+                            <span class="text-[11px] text-slate-500 font-bold uppercase">Hoje</span>
+                            <p id="adminFatHoje" class="text-base font-black text-emerald-600">R$ 0,00</p>
+                        </div>
+                        <div class="bg-slate-100 p-3 rounded-xl border">
+                            <span class="text-[11px] text-slate-500 font-bold uppercase">Últimos 7 Dias</span>
+                            <p id="adminFatSemanal" class="text-base font-black text-slate-800">R$ 0,00</p>
+                        </div>
+                        <div class="bg-slate-100 p-3 rounded-xl border">
+                            <span class="text-[11px] text-slate-500 font-bold uppercase">Total (15 Dias)</span>
+                            <p id="adminFatTotal15Dias" class="text-base font-black text-slate-800">R$ 0,00</p>
+                        </div>
+                    </div>
+                    <div id="containerJanelasFaturamentoDiario" class="border rounded-xl overflow-hidden divide-y">
+                        <div class="p-4 text-center text-slate-400 text-xs">Carregando histórico de vendas...</div>
+                    </div>
+                </div>
+
+                <!-- ABA CONFIGURAÇÕES -->
+                <div id="conteudoAbaConfiguracoes" class="hidden space-y-4 max-w-md">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Nome do Estabelecimento</label>
+                        <input id="inputAdminNomeEmpresaConfig" type="text" class="w-full border border-slate-300 p-2 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500" />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">WhatsApp de Contato</label>
+                        <input id="inputAdminWhatsappConfig" type="text" class="w-full border border-slate-300 p-2 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500" />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">PIN do Admin</label>
+                        <input id="inputAdminPinConfig" type="password" class="w-full border border-slate-300 p-2 rounded-lg text-xs bg-slate-50" readonly />
+                    </div>
+                    <button onclick="window.salvarConfiguracoesEmpresaAdmin()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-xs font-bold shadow">
+                        Salvar Alterações
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAIS SECUNDÁRIOS DO ADMIN (PRODUTO, OPERADOR, MAQUININHA) -->
+    <div id="modalFormProduto" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-2xl">
+            <h3 class="text-sm font-bold text-slate-800 mb-3 border-b pb-2">Cadastrar / Editar Produto</h3>
+            <input type="hidden" id="formProdId">
+            <div class="space-y-3 text-xs">
+                <div>
+                    <label class="block font-bold mb-1">Nome do Produto *</label>
+                    <input id="formNome" type="text" class="w-full border p-2 rounded-lg">
+                </div>
+                <div>
+                    <label class="block font-bold mb-1">Código de Barras / SKU</label>
+                    <input id="formCodigo" type="text" class="w-full border p-2 rounded-lg">
+                </div>
+                <div class="grid grid-cols-3 gap-2">
+                    <div>
+                        <label class="block font-bold mb-1">Preço (R$)</label>
+                        <input id="formPreco" type="number" step="0.01" class="w-full border p-2 rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block font-bold mb-1">Estoque</label>
+                        <input id="formEstoque" type="number" step="0.001" class="w-full border p-2 rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block font-bold mb-1">Unidade</label>
+                        <select id="formUnidade" class="w-full border p-2 rounded-lg bg-white">
+                            <option value="UN">UN</option>
+                            <option value="KG">KG</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="flex justify-end gap-2 mt-4 pt-2 border-t">
+                <button onclick="window.fecharFormProduto()" class="px-3 py-1.5 bg-slate-200 text-slate-700 rounded-lg text-xs font-bold">Cancelar</button>
+                <button onclick="window.salvarProdutoAdmin()" class="px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-bold">Salvar Produto</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modalNovoOperador" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-2xl">
+            <h3 class="text-sm font-bold text-slate-800 mb-3 border-b pb-2">Cadastrar Novo Operador</h3>
+            <div class="space-y-3 text-xs">
+                <div>
+                    <label class="block font-bold mb-1">E-mail do Operador *</label>
+                    <input id="novoOpEmail" type="email" class="w-full border p-2 rounded-lg">
+                </div>
+                <div>
+                    <label class="block font-bold mb-1">Senha Provisória *</label>
+                    <input id="novoOpSenha" type="password" class="w-full border p-2 rounded-lg">
+                </div>
+            </div>
+            <div class="flex justify-end gap-2 mt-4 pt-2 border-t">
+                <button onclick="window.fecharModalNovoOperador()" class="px-3 py-1.5 bg-slate-200 text-slate-700 rounded-lg text-xs font-bold">Cancelar</button>
+                <button onclick="window.salvarNovoOperador()" class="px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-bold">Cadastrar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modalNovaMaquininha" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-2xl">
+            <h3 class="text-sm font-bold text-slate-800 mb-3 border-b pb-2">Cadastrar Maquininha e Taxas</h3>
+            <div class="space-y-3 text-xs">
+                <div>
+                    <label class="block font-bold mb-1">Nome da Maquininha *</label>
+                    <input id="maqNome" type="text" placeholder="Ex: Stone, Ton, PagSeguro" class="w-full border p-2 rounded-lg">
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block font-bold mb-1">Taxa Débito (%)</label>
+                        <input id="maqDebito" type="number" step="0.01" class="w-full border p-2 rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block font-bold mb-1">Crédito à Vista (%)</label>
+                        <input id="maqCreditoAvista" type="number" step="0.01" class="w-full border p-2 rounded-lg">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block font-bold mb-1">Taxa 2x (%)</label>
+                        <input id="maq2x" type="number" step="0.01" class="w-full border p-2 rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block font-bold mb-1">Taxa 3x (%)</label>
+                        <input id="maq3x" type="number" step="0.01" class="w-full border p-2 rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block font-bold mb-1">Taxa 6x (%)</label>
+                        <input id="maq6x" type="number" step="0.01" class="w-full border p-2 rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block font-bold mb-1">Taxa 12x (%)</label>
+                        <input id="maq12x" type="number" step="0.01" class="w-full border p-2 rounded-lg">
+                    </div>
+                </div>
+            </div>
+            <div class="flex justify-end gap-2 mt-4 pt-2 border-t">
+                <button onclick="window.fecharModalNovaMaquininha()" class="px-3 py-1.5 bg-slate-200 text-slate-700 rounded-lg text-xs font-bold">Cancelar</button>
+                <button onclick="window.salvarNovaMaquininha()" class="px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-bold">Salvar Maquininha</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CONTAINER SECUNDÁRIO PARA OUTROS MODAIS DINÂMICOS DA APLICAÇÃO -->
     <div id="containerModaisDinamicos"></div>
 
     <!-- SCRIPT PRINCIPAL DA APLICAÇÃO -->
