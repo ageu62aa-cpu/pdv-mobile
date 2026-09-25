@@ -19,7 +19,7 @@
     <!-- Supabase Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-    <!-- Declaração Antecipada de Funções Globais (Elimina ReferenceErrors imediatos) -->
+    <!-- Declaração Antecipada de Funções Globais (Evita ReferenceErrors e avisos no console antes do main.js) -->
     <script>
         window.processarAutenticacao = window.processarAutenticacao || function() { console.warn("processarAutenticacao ainda não foi carregado."); };
         window.tratarEnterLogin = window.tratarEnterLogin || function(event) { if (event.key === 'Enter') { window.processarAutenticacao(); } };
@@ -501,7 +501,7 @@
     <!-- CONTAINER SECUNDÁRIO PARA OUTROS MODAIS DINÂMICOS DA APLICAÇÃO -->
     <div id="containerModaisDinamicos"></div>
 
-    <!-- SCRIPT PRINCIPAL COMO MÓDULO (state.js é importado diretamente de dentro do main.js) -->
+    <!-- SCRIPT PRINCIPAL EXCLUSIVO COMO MÓDULO (state.js e demais dependências são importados internamente) -->
     <script type="module" src="./main.js"></script>
 </body>
 </html>
