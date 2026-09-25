@@ -23,9 +23,8 @@ export let html5QrcodeInstance = null;
 export let listaEmpresasCache = [];
 export let tokenSessaoAtual = null; // Novo: Armazena o token único da sessão ativa
 
-// Adicionar dentro do seu objeto de estado principal
+// Objeto de estado principal
 export const state = {
-  // ... seus dados atuais mantidos
   plano: {
     nome: "Básico",
     limiteProdutos: 1000,
@@ -57,4 +56,4 @@ export function setHistoricoVendasCache(val) { historicoVendasCache = val; }
 export function setOrigemLeitor(val) { origemLeitor = val; }
 export function setHtml5QrcodeInstance(val) { html5QrcodeInstance = val; }
 export function setListaEmpresasCache(val) { listaEmpresasCache = val; }
-export function setTokenSessaoAtual(val) { tokenSessaoAtual = val; } // Novo: Modificador do token de sessão
+export function setTokenSessaoAtual(val) { tokenSessaoAtual = val; }
