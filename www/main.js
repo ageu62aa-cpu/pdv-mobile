@@ -4,7 +4,7 @@
 // ==========================================  
 
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';  
-import { setUsuarioAtual, setEmpresaAtualId, setCargoUsuarioAtual } from './state.js';  
+import { state, setUsuarioAtual, setEmpresaAtualId, setCargoUsuarioAtual } from './state.js';  
 import { abrirLeitorCamera, escanearCameraAdmin, fecharLeitorCamera } from './camera.js';  
 
 // --- IMPORTAÇÃO DOS MODAIS DINÂMICOS ---
