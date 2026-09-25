@@ -259,6 +259,13 @@ export async function recarregarDadosAdmin() {
 }
 
 export async function abrirPainelAdmin() { 
+    // Segregação: bloquear operador de acessar o painel admin
+    const restricaoAdmin = sessionStorage.getItem('restricao_admin') === 'true' || localStorage.getItem('pdv_cargo_usuario') === 'operador';
+    if (restricaoAdmin) {
+        alert('PDV-VS: Acesso restrito. Operadores não possuem permissão para acessar o painel administrativo.');
+        return;
+    }
+
     const modalAdmin = document.getElementById('modalAdmin');
     if (modalAdmin) {
         modalAdmin.classList.add('flex');
