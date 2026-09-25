@@ -18,6 +18,14 @@
     
     <!-- Supabase Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <!-- Declaração Antecipada de Funções Globais (Evita ReferenceErrors imediatos) -->
+    <script>
+        window.processarAutenticacao = window.processarAutenticacao || function() { console.warn("processarAutenticacao ainda não foi carregado."); };
+        window.tratarEnterLogin = window.tratarEnterLogin || function(event) { if (event.key === 'Enter') { window.processarAutenticacao(); } };
+        window.alternarTelaAuth = window.alternarTelaAuth || function(tipo) { console.warn("alternarTelaAuth ainda não foi carregado:", tipo); };
+        window.solicitarRecuperacaoSenha = window.solicitarRecuperacaoSenha || function() { console.warn("solicitarRecuperacaoSenha ainda não foi carregado."); };
+    </script>
 </head>
 <body class="bg-emerald-50/60 min-h-screen text-slate-800 flex flex-col justify-between">
 
@@ -493,8 +501,8 @@
     <!-- CONTAINER SECUNDÁRIO PARA OUTROS MODAIS DINÂMICOS DA APLICAÇÃO -->
     <div id="containerModaisDinamicos"></div>
 
-    <!-- IMPORTAÇÃO DE MÓDULOS ESSENCIAIS (CAMINHOS RELATIVOS CORRETOS) -->
-    <script type="module" src="./state.js"></script>
-    <script type="module" src="./main.js"></script>
+    <!-- SCRIPTS DE CARREGAMENTO PADRÃO (SEM CONFLITO DE MÓDULO) -->
+    <script src="./state.js"></script>
+    <script src="./main.js"></script>
 </body>
 </html>
