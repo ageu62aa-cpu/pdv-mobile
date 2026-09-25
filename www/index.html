@@ -34,7 +34,7 @@
 
             <div class="text-center mb-6 mt-2">
                 <div class="inline-flex items-center justify-center space-x-2 mb-2">
-                    <img id="iconeAuth" src="assets/mascote.jpeg" onclick="window.location.reload()" class="w-16 h-16 object-cover bg-emerald-700 rounded-2xl cursor-pointer hover:scale-105 transition-transform shadow-sm p-1 border border-emerald-600" title="Clique para recarregar o sistema" alt="Mascote Vancely Software">
+                    <img id="iconeAuth" src="assets/mascote.jpeg" class="w-16 h-16 object-cover bg-emerald-700 rounded-2xl cursor-pointer hover:scale-105 transition-transform shadow-sm p-1 border border-emerald-600" title="Clique para recarregar o sistema" alt="Mascote Vancely Software">
                 </div>
                 <h2 id="tituloAuth" class="text-xl sm:text-2xl font-bold text-slate-900">PDV-VS Enterprise</h2>
                 <p id="subtituloAuth" class="text-xs text-slate-500">Sistema de Gestão Comercial e PDV</p>
@@ -128,7 +128,7 @@
     <div id="appPrincipal" class="hidden flex-1 flex flex-col justify-between">
         <header id="headerTopoApp" class="bg-emerald-700 text-white px-4 py-3 grid grid-cols-3 items-center shadow-md">
             <div class="flex items-center space-x-3 select-none justify-start">
-                <img id="iconeAppPrincipal" src="assets/mascote.jpeg" onclick="window.location.reload()" alt="Mascote" class="w-9 h-9 rounded-lg object-cover bg-emerald-800 p-0.5 border border-emerald-500 shadow-sm cursor-pointer hover:scale-105 transition-transform" title="Clique para atualizar a página">
+                <img id="iconeAppPrincipal" src="assets/mascote.jpeg" alt="Mascote" class="w-9 h-9 rounded-lg object-cover bg-emerald-800 p-0.5 border border-emerald-500 shadow-sm cursor-pointer hover:scale-105 transition-transform" title="Clique para atualizar a página">
                 <div>
                     <span class="text-[10px] text-emerald-200 font-bold uppercase tracking-wider block">PDV-VS Enterprise</span>
                     <span id="badgeNumeroLoja" class="text-[11px] text-emerald-100 font-medium">Versão 1.0.3</span>
@@ -146,7 +146,7 @@
                 </button>
                 <span class="badgeCaixaStatus text-xs bg-amber-500/20 text-amber-300 border border-amber-500/30 px-3 py-1.5 rounded font-semibold">FECHADO</span>
                 <span id="infoUsuarioLogado" class="text-xs text-emerald-100 hidden xl:inline"></span>
-                <button id="btnAdminMenu" onclick="abrirPainelAdmin()" class="hidden bg-emerald-800 hover:bg-emerald-900 text-white px-3 py-1.5 rounded text-xs font-bold transition flex items-center space-x-1.5"><i class="fa-solid fa-user-shield text-emerald-300"></i><span>Admin</span></button>
+                <button id="btnAdminMenu" onclick="window.abrirPainelAdmin()" class="hidden bg-emerald-800 hover:bg-emerald-900 text-white px-3 py-1.5 rounded text-xs font-bold transition flex items-center space-x-1.5"><i class="fa-solid fa-user-shield text-emerald-300"></i><span>Admin</span></button>
                 <button onclick="realizarLogout()" class="bg-rose-900/60 hover:bg-rose-900 text-rose-100 px-2.5 py-1.5 rounded text-xs font-bold transition" title="Sair"><i class="fa-solid fa-power-off"></i></button>
             </div>
         </header>
@@ -159,7 +159,7 @@
                             <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><i class="fa-solid fa-barcode"></i></span>
                             <input type="text" id="inputBusca" oninput="aoDigitarBusca(this.value)" onkeydown="tratarEnterBuscaCaixa(event)" placeholder="Digite o código ou nome do produto (F5)..." class="w-full pl-10 pr-3 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
                         </div>
-                        <button onclick="abrirLeitorCamera()" class="bg-slate-800 hover:bg-slate-900 text-white px-3 py-2 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 shadow" title="Escanear Código de Barras">
+                        <button onclick="acionarScanner()" class="bg-slate-800 hover:bg-slate-900 text-white px-3 py-2 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 shadow" title="Escanear Código de Barras">
                             <i class="fa-solid fa-camera"></i>
                         </button>
                     </div>
@@ -225,77 +225,10 @@
         </footer>
     </div>
 
-    <!-- ========================================== -->
-    <!-- MODAIS NECESSÁRIOS (GARANTINDO F1, F2, ADMIN E CÂMERA) -->
-    <!-- ========================================== -->
+    <!-- CONTAINER ONDE OS MODAIS SERÃO CARREGADOS/INJETADOS VIA JAVASCRIPT OU SEUS RESPECTIVOS MÓDULOS -->
+    <div id="containerModaisDinamicos"></div>
 
-    <!-- Modal Painel Admin -->
-    <div id="modalAdmin" class="hidden fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-xl max-w-2xl w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
-            <div class="flex justify-between items-center border-b pb-3">
-                <h3 class="font-bold text-lg text-slate-900"><i class="fa-solid fa-user-shield text-emerald-600 mr-2"></i>Painel Administrativo</h3>
-                <button onclick="fecharPainelAdmin()" class="text-slate-400 hover:text-slate-700 text-lg font-bold px-2">✕</button>
-            </div>
-            <div class="space-y-3">
-                <p class="text-xs text-slate-600">Gerencie o estabelecimento, histórico de vendas e configurações gerais.</p>
-                <div id="conteudoHistoricoAdmin" class="border rounded-lg p-3 bg-slate-50 text-xs text-slate-600 min-h-[150px]">
-                    Carregando dados administrativos...
-                </div>
-            </div>
-            <div class="flex justify-end pt-2 border-t">
-                <button onclick="fecharPainelAdmin()" class="bg-slate-200 hover:bg-slate-300 text-slate-800 px-4 py-2 rounded-lg text-xs font-bold transition">Fechar</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal Gerenciamento de Caixa (F1 / F2) -->
-    <div id="modalCaixa" class="hidden fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            <div class="flex justify-between items-center border-b pb-3">
-                <h3 id="tituloModalCaixa" class="font-bold text-lg text-slate-900">Operação de Caixa</h3>
-                <button onclick="fecharModalCaixa()" class="text-slate-400 hover:text-slate-700 text-lg font-bold px-2">✕</button>
-            </div>
-            <div class="space-y-3">
-                <label id="labelInputCaixa" class="block text-xs font-semibold text-slate-600">Valor Inicial (Fundo de Troco):</label>
-                <input type="number" id="inputValorCaixa" step="0.01" placeholder="0,00" onkeydown="tratarEnterModalCaixa(event)" class="w-full border border-slate-300 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:border-emerald-500">
-            </div>
-            <div class="flex space-x-2 pt-2 border-t">
-                <button onclick="confirmarAcaoCaixa()" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-lg text-xs transition">Confirmar</button>
-                <button onclick="fecharModalCaixa()" class="bg-slate-200 hover:bg-slate-300 text-slate-800 px-4 py-2.5 rounded-lg text-xs font-bold transition">Cancelar</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal Leitor de Câmera / QR Code -->
-    <div id="modalLeitorCamera" class="hidden fixed inset-0 bg-slate-900/80 z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl space-y-4 text-center">
-            <div class="flex justify-between items-center border-b pb-3">
-                <h3 class="font-bold text-base text-slate-900"><i class="fa-solid fa-camera text-emerald-600 mr-2"></i>Escanear Código de Barras</h3>
-                <button onclick="fecharLeitorCamera()" class="text-slate-400 hover:text-slate-700 text-lg font-bold px-2">✕</button>
-            </div>
-            <div id="reader" class="w-full rounded-lg overflow-hidden border bg-black min-h-[250px] flex items-center justify-center"></div>
-            <p class="text-xs text-slate-500">Aponte a câmera para o código de barras do produto.</p>
-            <button onclick="fecharLeitorCamera()" class="w-full bg-slate-200 hover:bg-slate-300 text-slate-800 py-2.5 rounded-lg text-xs font-bold transition">Fechar Câmera</button>
-        </div>
-    </div>
-
-    <!-- Modal Super Admin Master -->
-    <div id="modalSuperAdminMaster" class="hidden fixed inset-0 bg-slate-900/70 z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-xl max-w-3xl w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
-            <div class="flex justify-between items-center border-b pb-3">
-                <h3 class="font-bold text-lg text-slate-900"><i class="fa-solid fa-crown text-amber-500 mr-2"></i>Painel Super Admin Master</h3>
-                <button onclick="fecharSuperAdminMaster()" class="text-slate-400 hover:text-slate-700 text-lg font-bold px-2">✕</button>
-            </div>
-            <div id="listaClientesSuperAdmin" class="space-y-2 text-xs text-slate-600">
-                Carregando lista de estabelecimentos...
-            </div>
-            <div class="flex justify-end pt-2 border-t">
-                <button onclick="fecharSuperAdminMaster()" class="bg-slate-200 hover:bg-slate-300 text-slate-800 px-4 py-2 rounded-lg text-xs font-bold transition">Fechar</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- SCRIPT PRINCIPAL -->
+    <!-- SCRIPT PRINCIPAL DA APLICAÇÃO -->
     <script type="module" src="main.js"></script>
 </body>
 </html>
