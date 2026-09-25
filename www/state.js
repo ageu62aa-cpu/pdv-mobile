@@ -23,6 +23,22 @@ export let html5QrcodeInstance = null;
 export let listaEmpresasCache = [];
 export let tokenSessaoAtual = null; // Novo: Armazena o token único da sessão ativa
 
+// Adicionar dentro do seu objeto de estado principal
+export const state = {
+  // ... seus dados atuais mantidos
+  plano: {
+    nome: "Básico",
+    limiteProdutos: 1000,
+    limiteOperadores: 1,
+    diasHistorico: 30
+  }
+};
+
+// Função para aplicar upgrade manualmente
+export function atualizarPlano(novoPlano) {
+  state.plano = { ...state.plano, ...novoPlano };
+}
+
 // Funções para alterar o estado quando necessário
 export function setDeferredPrompt(val) { deferredPrompt = val; }
 export function setModoTelaAuth(val) { modoTelaAuth = val; }

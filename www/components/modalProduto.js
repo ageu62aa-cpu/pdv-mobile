@@ -1,3 +1,5 @@
+import { state, produtosCache } from './state.js';
+
 // Renderiza o HTML do Modal de Gerenciamento de Produto
 export function renderModalProduto(produto = null) {
     const isEdicao = Boolean(produto && produto.id);
@@ -28,7 +30,7 @@ export function renderModalProduto(produto = null) {
 
                     <div>
                         <label for="codigoProduto" class="block text-xs font-bold text-slate-700 mb-1">Código de Barras / SKU</label>
-                        <input type="text" id="codigoProduto" value="${produto?.codigo_barras || ''}" placeholder="Ex: 7891234567890" class="w-full border border-slate-300 rounded-lg p-2.5 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                        <input type="text" id="codigoProduto" value="${produto?.codigo_barras || produto?.codigo || ''}" placeholder="Ex: 7891234567890" class="w-full border border-slate-300 rounded-lg p-2.5 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500">
                     </div>
 
                     <div class="grid grid-cols-3 gap-2">
@@ -88,24 +90,43 @@ export function fecharModalProduto() {
 export async function salvarProdutoFormulario(event) {
     event.preventDefault();
 
+    const id = document.getElementById('produtoId').value || null;
+    const codigoBarras = document.getElementById('codigoProduto').value.trim();
+
     const produtoData = {
-        id: document.getElementById('produtoId').value || null,
+        id: id,
         nome: document.getElementById('nomeProduto').value.trim(),
-        codigo_barras: document.getElementById('codigoProduto').value.trim(),
+        codigo_barras: codigoBarras,
         preco: parseFloat(document.getElementById('precoProduto').value) || 0,
         estoque: parseFloat(document.getElementById('estoqueProduto').value) || 0,
         unidade: document.getElementById('unidadeProduto').value
     };
 
+    // 1. Se for NOVO CADASTRO, verifica o limite do plano
+    if (!id && produtosCache.length >= state.plano.limiteProdutos) {
+        alert(`Você atingiu o limite de ${state.plano.limiteProdutos} produtos do seu plano atual. Faça o upgrade para cadastrar mais itens!`);
+        return; // Interrompe o cadastro
+    }
+
+    // 2. Verifica se o código de barras já pertence a outro produto cadastrado
+    if (codigoBarras) {
+        const codigoExistente = produtosCache.find(p => 
+            (p.codigo_barras === codigoBarras || p.codigo === codigoBarras) && p.id !== id
+        );
+
+        if (codigoExistente) {
+            alert(`O código de barras "${codigoBarras}" já está cadastrado no produto "${codigoExistente.nome}". Utilize um código único.`);
+            return; // Interrompe o cadastro/edição
+        }
+    }
+
     try {
-        // Exemplo: Salvar no Supabase ou Estado Local
         if (window.salvarProdutoNoBanco) {
             await window.salvarProdutoNoBanco(produtoData);
         }
 
         fecharModalProduto();
         
-        // Recarrega a tabela de produtos do Admin, se a função existir
         if (window.carregarProdutosAdmin) {
             window.carregarProdutosAdmin();
         }
