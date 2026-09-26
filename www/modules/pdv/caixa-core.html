@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vancely Software - Frente de Caixa (PDV)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        emeraldPrimary: '#047857',
+                        emeraldHover: '#065f46',
+                        emeraldLight: '#10b981',
+                        emeraldBg: '#ecfdf5'
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen flex flex-col">
+
+    <!-- Cabeçalho do PDV -->
+    <header class="bg-gray-800 border-b border-gray-700 px-6 py-4 flex justify-between items-center shadow-md">
+        <div class="flex items-center gap-3">
+            <img src="../../assets/mascote.jpeg" alt="Mascote Vancely" class="w-10 h-10 rounded-full object-cover border border-emerald-500 shadow">
+            <div>
+                <h1 class="text-base font-extrabold text-white">Vancely Software - Caixa Aberto</h1>
+                <p class="text-xs text-emerald-400">Operador: Ativo | Empresa: Configurada</p>
+            </div>
+        </div>
+        <div>
+            <button id="btn-sair" class="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-4 py-2 rounded-lg transition-colors shadow">
+                Sair / Fechar Caixa
+            </button>
+        </div>
+    </header>
+
+    <!-- Corpo Principal do PDV -->
+    <main class="flex-1 p-4 grid grid-cols-1 lg:grid-cols-3 gap-4 max-w-7xl mx-auto w-full">
+        
+        <!-- Coluna Esquerda/Centro: Produtos e Busca -->
+        <div class="lg:col-span-2 bg-gray-800 border border-gray-700 rounded-2xl p-4 flex flex-col shadow-xl">
+            <div class="mb-4">
+                <label class="text-xs font-bold text-gray-300 uppercase">Pesquisar Produto por Nome ou Código de Barras</label>
+                <input type="text" id="busca-produto" class="w-full mt-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:border-emerald-500 focus:outline-none" placeholder="Digite para buscar...">
+            </div>
+
+            <div class="flex-1 bg-gray-900 border border-gray-700 rounded-xl p-4 overflow-y-auto max-h-[50vh]">
+                <p class="text-xs text-gray-500 text-center mt-10">Nenhum produto adicionado na venda atual.</p>
+            </div>
+        </div>
+
+        <!-- Coluna Direita: Resumo e Pagamento -->
+        <div class="bg-gray-800 border border-gray-700 rounded-2xl p-4 flex flex-col justify-between shadow-xl">
+            <div>
+                <h2 class="text-sm font-bold text-white uppercase border-b border-gray-700 pb-2 mb-4">Resumo da Venda</h2>
+                <div class="space-y-3 text-sm">
+                    <div class="flex justify-between text-gray-400">
+                        <span>Subtotal:</span>
+                        <span id="txt-subtotal" class="text-white font-bold">R$ 0,00</span>
+                    </div>
+                    <div class="flex justify-between text-gray-400">
+                        <span>Descontos:</span>
+                        <span id="txt-desconto" class="text-white font-bold">R$ 0,00</span>
+                    </div>
+                    <div class="flex justify-between text-lg font-extrabold text-emerald-400 pt-3 border-t border-gray-700">
+                        <span>Total a Pagar:</span>
+                        <span id="txt-total">R$ 0,00</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="space-y-2 mt-6">
+                <button class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl text-sm transition-colors shadow-lg">
+                    Finalizar Pagamento
+                </button>
+                <button class="w-full bg-gray-700 hover:bg-gray-600 text-gray-300 font-bold py-2.5 rounded-xl text-xs transition-colors">
+                    Cancelar Venda
+                </button>
+            </div>
+        </div>
+
+    </main>
+
+    <script type="module" src="caixa-core.js"></script>
+</body>
+</html>
