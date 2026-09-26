@@ -117,3 +117,4 @@ window.addEventListener('keydown', (e) => {
     if (e.key === 'F7') { e.preventDefault(); if (typeof cancelarVenda === 'function') cancelarVenda(); }
     if (e.key === 'F9') { e.preventDefault(); if (typeof finalizarVenda === 'function') finalizarVenda(); }
 });
+export { supabaseClient as supabase };
