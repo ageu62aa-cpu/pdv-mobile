@@ -115,7 +115,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 plano: 'comum_enterprise',
                 limite_produtos: 1000,
                 limite_operadores: 1,
-                dias_restantes: 15
+                dias_restantes: 30
             }]);
 
             if (dbError) {
@@ -130,17 +130,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Recuperação de Senha
     if (btnEsqueceuSenha) {
-        btnEsqueceuSenha.addEventListener('click', async () => {
-            const email = prompt('Digite o seu e-mail cadastrado para redefinir a senha:');
-            if (!email) return;
+        btnEsqueceu_senha: if (btnEsqueceuSenha) {
+            btnEsqueceuSenha.addEventListener('click', async () => {
+                const email = prompt('Digite o seu e-mail cadastrado para redefinir a senha:');
+                if (!email) return;
 
-            const { error } = await supabase.auth.resetPasswordForEmail(email);
-            if (error) {
-                alert('Erro ao enviar e-mail: ' + error.message);
-            } else {
-                alert('Instruções enviadas para o seu e-mail!');
-            }
-        });
+                const { error } = await supabase.auth.resetPasswordForEmail(email);
+                if (error) {
+                    alert('Erro ao enviar e-mail: ' + error.message);
+                } else {
+                    alert('Instruções enviadas para o seu e-mail!');
+                }
+            });
+        }
     }
 
     // Login Real

@@ -65,62 +65,90 @@
 
     </div>
 
-    <!-- Modal de Cadastro de Nova Empresa (ViaCEP integrado) -->
+    <!-- Modal de Cadastro de Nova Empresa -->
     <div id="modal-cadastro" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
-        <div class="bg-gray-800 border border-gray-700 rounded-2xl shadow-2xl w-full max-w-lg p-6 text-gray-100 max-h-[90vh] overflow-y-auto">
-            <div class="flex justify-between items-center mb-4 border-b border-gray-700 pb-3">
-                <h3 class="text-lg font-bold text-white">Cadastrar Nova Empresa (Plano Comum)</h3>
+        <div class="bg-gray-800 border border-gray-700 rounded-2xl shadow-2xl w-full max-w-lg p-6 text-gray-100 max-h-[95vh] overflow-y-auto">
+            
+            <!-- Cabeçalho do Modal com o Mascote Decorativo -->
+            <div class="flex items-center justify-between mb-4 border-b border-gray-700 pb-3">
+                <div class="flex items-center gap-3">
+                    <img src="../../assets/mascote.jpeg" alt="Mascote Vancely" class="w-10 h-10 rounded-full object-cover border border-emerald-500 shadow">
+                    <h3 class="text-lg font-bold text-white">Cadastrar Nova Empresa</h3>
+                </div>
                 <button id="modal-close-btn" class="text-gray-400 hover:text-white font-bold text-xl">&times;</button>
             </div>
             
             <form id="form-cadastro-empresa" class="space-y-3">
                 <div>
                     <label class="text-xs font-bold text-gray-300 uppercase">Razão Social / Nome da Empresa</label>
-                    <input type="text" id="cad-nome-empresa" required class="w-full mt-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm">
+                    <input type="text" id="cad-nome-empresa" required class="w-full mt-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none">
                 </div>
+
                 <div class="grid grid-cols-2 gap-2">
                     <div>
-                        <label class="text-xs font-bold text-gray-300 uppercase">CNPJ</label>
-                        <input type="text" id="cad-cnpj" required class="w-full mt-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm" placeholder="00.000.000/0001-00">
+                        <label class="text-xs font-bold text-gray-300 uppercase">CPF/CNPJ</label>
+                        <input type="text" id="cad-cnpj" required class="w-full mt-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none" placeholder="000.000.000-00 / 00.000...">
                     </div>
+                    <div>
+                        <!-- WhatsApp com Ícone Oficial -->
+                        <label class="text-xs font-bold text-gray-300 uppercase flex items-center gap-1">
+                            <svg class="w-3.5 h-3.5 text-emerald-500" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.124-.669-1.612-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
+                            WhatsApp
+                        </label>
+                        <input type="text" id="cad-whatsapp" required class="w-full mt-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none" placeholder="(92) 99999-9999">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-2">
                     <div>
                         <label class="text-xs font-bold text-gray-300 uppercase">CEP</label>
-                        <input type="text" id="cad-cep" required maxlength="9" class="w-full mt-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm" placeholder="69000-000">
+                        <input type="text" id="cad-cep" required maxlength="9" class="w-full mt-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none" placeholder="69000-000">
+                    </div>
+                    <div class="col-span-2">
+                        <label class="text-xs font-bold text-gray-300 uppercase">Endereço</label>
+                        <input type="text" id="cad-endereco" required class="w-full mt-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none bg-gray-800" placeholder="Automático via CEP">
                     </div>
                 </div>
-                <div class="grid grid-cols-2 gap-2">
+
+                <div class="grid grid-cols-3 gap-2">
+                    <div>
+                        <label class="text-xs font-bold text-gray-300 uppercase">Número</label>
+                        <input type="text" id="cad-numero" required class="w-full mt-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none" placeholder="Nº">
+                    </div>
                     <div>
                         <label class="text-xs font-bold text-gray-300 uppercase">Cidade</label>
                         <input type="text" id="cad-cidade" required class="w-full mt-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm bg-gray-800" readonly>
                     </div>
                     <div>
-                        <label class="text-xs font-bold text-gray-300 uppercase">Estado (UF)</label>
+                        <label class="text-xs font-bold text-gray-300 uppercase">UF</label>
                         <input type="text" id="cad-estado" required class="w-full mt-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm bg-gray-800" readonly>
                     </div>
                 </div>
+
                 <div>
                     <label class="text-xs font-bold text-gray-300 uppercase">Nome do Responsável</label>
-                    <input type="text" id="cad-responsavel" required class="w-full mt-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm">
+                    <input type="text" id="cad-responsavel" required class="w-full mt-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none">
                 </div>
+
                 <div>
-                    <label class="text-xs font-bold text-gray-300 uppercase">E-mail de Acesso (Real)</label>
-                    <input type="email" id="cad-email" required class="w-full mt-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm" placeholder="admin@suaempresa.com">
+                    <label class="text-xs font-bold text-gray-300 uppercase">E-mail de Acesso</label>
+                    <input type="email" id="cad-email" required class="w-full mt-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none" placeholder="admin@suaempresa.com">
                 </div>
+
                 <div>
-                    <label class="text-xs font-bold text-gray-300 uppercase">Senha Provisória</label>
-                    <input type="password" id="cad-senha" required class="w-full mt-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm" placeholder="Mínimo 6 caracteres">
+                    <label class="text-xs font-bold text-gray-300 uppercase">Senha</label>
+                    <input type="password" id="cad-senha" required class="w-full mt-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none" placeholder="Mínimo 6 caracteres">
                 </div>
 
                 <div class="pt-3">
-                    <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-lg text-sm transition-colors">
-                        Concluir Cadastro (15 dias de teste)
+                    <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-lg text-sm transition-colors shadow-lg">
+                        Concluir Cadastro (30 dias Teste Grátis)
                     </button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Script de Autenticação e Gatilhos -->
     <script type="module" src="auth.js"></script>
 </body>
 </html>
