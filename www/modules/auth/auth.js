@@ -1,9 +1,9 @@
 import { supabase } from '../../core/config.js';
 
 document.addEventListener('DOMContentLoaded', () => {
-    const formLogin = document.getElementById('form-login') || document.getElementById('formLogin');
-    const mascote = document.getElementById('mascote-container') || document.querySelector('img[src*="mascote"]');
-    const gatilhoSuperAdmin = document.getElementById('gatilhoSuperAdmin');
+    const formLogin = document.getElementById('form-login');
+    const mascote = document.getElementById('mascote-container');
+    const gatilhoSuperAdmin = document.getElementById('gatilho-super-admin');
     const btnAbrirCadastro = document.getElementById('btn-abrir-cadastro');
     const modalCadastro = document.getElementById('modal-cadastro');
     const btnFecharModal = document.getElementById('modal-close-btn');
@@ -11,9 +11,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const inputCep = document.getElementById('cad-cep');
     const btnEsqueceuSenha = document.getElementById('btn-esqueceu-senha');
 
-    let cliquesSecretos = 0;
+    let cliquesSuperAdmin = sessionStorage.getItem('cliques_admin') ? parseInt(sessionStorage.getItem('cliques_admin')) : 0;
 
-    // Hard Refresh no Mascote
+    // Mascote Hard Refresh
     if (mascote) {
         mascote.addEventListener('click', () => {
             localStorage.clear();
@@ -22,26 +22,22 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Gatilho Secreto Super Admin (já integrado ao ID do seu HTML/Config)
+    // Gatilho Super Admin
     if (gatilhoSuperAdmin) {
         gatilhoSuperAdmin.addEventListener('click', () => {
-            cliquesSecretos++;
-            if (cliquesSecretos >= 5) {
-                cliquesSecretos = 0;
+            cliquesSuperAdmin++;
+            sessionStorage.setItem('cliques_admin', cliquesSuperAdmin);
+            if (cliquesSuperAdmin >= 5) {
                 window.location.href = '../super-admin/super-admin.html';
             }
         });
     }
 
-    // Modal de Cadastro
-    if (btnAbrirCadastro && modalCadastro) {
-        btnAbrirCadastro.addEventListener('click', () => modalCadastro.classList.remove('hidden'));
-    }
-    if (btnFecharModal && modalCadastro) {
-        btnFecharModal.addEventListener('click', () => modalCadastro.classList.add('hidden'));
-    }
+    // Modais
+    if (btnAbrirCadastro) btnAbrirCadastro.addEventListener('click', () => modalCadastro.classList.remove('hidden'));
+    if (btnFecharModal) btnFecharModal.addEventListener('click', () => modalCadastro.classList.add('hidden'));
 
-    // Busca ViaCEP
+    // ViaCEP com preenchimento automático de Endereço, Cidade e UF
     if (inputCep) {
         inputCep.addEventListener('blur', async (e) => {
             const cep = e.target.value.replace(/\D/g, '');
@@ -50,9 +46,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
                     const data = await res.json();
                     if (!data.erro) {
-                        document.getElementById('cad-cidade').value = data.localidade;
-                        document.getElementById('cad-estado').value = data.uf;
+                        document.getElementById('cad-endereco').value = data.logradouro || '';
+                        document.getElementById('cad-cidade').value = data.localidade || '';
+                        document.getElementById('cad-estado').value = data.uf || '';
+                        inputCep.classList.remove('border-red-500');
                     } else {
+                        inputCep.classList.add('border-red-500');
                         alert('CEP não encontrado.');
                     }
                 } catch (err) {
@@ -62,13 +61,33 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Submeter Novo Cadastro de Empresa (Tenant)
+    // Validação com destaque vermelho em caso de erro nos campos obrigatórios
     if (formCadastro) {
         formCadastro.addEventListener('submit', async (e) => {
             e.preventDefault();
+            const inputs = formCadastro.querySelectorAll('input');
+            let formValido = true;
+
+            inputs.forEach(input => {
+                if (!input.value.trim()) {
+                    input.classList.add('border-red-500');
+                    formValido = false;
+                } else {
+                    input.classList.remove('border-red-500');
+                }
+            });
+
+            if (!formValido) {
+                alert('Por favor, preencha todos os campos destacados em vermelho.');
+                return;
+            }
+
             const nomeEmpresa = document.getElementById('cad-nome-empresa').value;
             const cnpj = document.getElementById('cad-cnpj').value;
+            const whatsapp = document.getElementById('cad-whatsapp').value;
             const cep = document.getElementById('cad-cep').value;
+            const endereco = document.getElementById('cad-endereco').value;
+            const numero = document.getElementById('cad-numero').value;
             const cidade = document.getElementById('cad-cidade').value;
             const estado = document.getElementById('cad-estado').value;
             const responsavel = document.getElementById('cad-responsavel').value;
@@ -84,8 +103,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const { error: dbError } = await supabase.from('empresas').insert([{
                 id: authData.user?.id,
                 nome_empresa: nomeEmpresa,
-                cnpj,
+                cnpj_cpf: cnpj,
+                whatsapp,
                 cep,
+                endereco,
+                numero,
                 cidade,
                 estado,
                 nome_responsavel: responsavel,
@@ -121,7 +143,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Login Real Supabase
+    // Login Real
     if (formLogin) {
         formLogin.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -135,7 +157,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             alert('Login efetuado com sucesso!');
-            window.location.href = '../pdv/caixa-core.html'; // Ajuste para a rota principal do PDV
+            window.location.href = '../pdv/caixa-core.html';
         });
     }
 });
