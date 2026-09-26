@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel Administrativo - PDV-VS</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-800 flex flex-col">
+
+    <header class="bg-slate-900 text-white p-4 flex justify-between items-center shadow">
+        <div class="flex items-center space-x-2">
+            <i class="fa-solid fa-chart-line text-emerald-400 text-lg"></i>
+            <h1 class="font-bold text-base">Painel Administrativo e Gestão</h1>
+        </div>
+        <button onclick="window.location.href='index.html'" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold">
+            <i class="fa-solid fa-cash-register mr-1"></i> Voltar ao PDV
+        </button>
+    </header>
+
+    <main class="max-w-7xl mx-auto w-full p-4 flex-1 flex flex-col space-y-4">
+        <!-- Abas de Navegação -->
+        <div class="flex bg-white rounded-xl shadow-sm border p-2 gap-2 overflow-x-auto">
+            <button id="btnAbaProdutos" onclick="window.mudarAbaAdmin('produtos')" class="px-3 py-1.5 text-xs font-bold bg-emerald-600 text-white rounded-lg">Produtos</button>
+            <button id="btnAbaOperadores" onclick="window.mudarAbaAdmin('operadores')" class="px-3 py-1.5 text-xs font-bold bg-slate-100 text-slate-700 rounded-lg">Operadores</button>
+            <button id="btnAbaMaquininhas" onclick="window.mudarAbaAdmin('maquininhas')" class="px-3 py-1.5 text-xs font-bold bg-slate-100 text-slate-700 rounded-lg">Maquininhas</button>
+            <button id="btnAbaHistorico" onclick="window.mudarAbaAdmin('historico')" class="px-3 py-1.5 text-xs font-bold bg-slate-100 text-slate-700 rounded-lg">Histórico</button>
+        </div>
+
+        <!-- Conteúdo do Painel -->
+        <div class="bg-white rounded-xl shadow-sm border p-4 flex-1">
+            <div id="conteudoAbaProdutos">
+                <div class="flex justify-between items-center mb-3">
+                    <input type="text" oninput="window.filtrarTabelaAdmin(this.value)" placeholder="Filtrar produtos..." class="border p-2 rounded-lg text-xs w-72">
+                    <button onclick="window.abrirModalNovoProdutoAdmin()" class="bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold">Novo Produto</button>
+                </div>
+                <div class="overflow-x-auto border rounded-lg">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-slate-100 border-b">
+                            <tr><th class="p-2">Cód.</th><th class="p-2">Produto</th><th class="p-2">Preço</th><th class="p-2">Estoque</th><th class="p-2 text-center">Ações</th></tr>
+                        </thead>
+                        <tbody id="tabelaAdminProdutos"><tr><td colspan="5" class="p-4 text-center text-slate-400">Carregando...</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+            <!-- Demais containers de abas continuam aqui -->
+        </div>
+    </main>
+
+    <!-- SCRIPT DE ENTRADA DO ADMIN -->
+    <script type="module">
+        import './modules/admin/admin-core.js';
+    </script>
+</body>
+</html>

@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDV-VS - Login e Acesso</title>
+    <!-- Tailwind CSS para estilização moderna -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome para ícones -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-slate-900 flex items-center justify-center min-h-screen">
+
+    <!-- Container Principal de Autenticação -->
+    <div class="w-full max-w-md p-8 bg-slate-800 rounded-2xl shadow-2xl border border-slate-700">
+        
+        <!-- Cabeçalho / Logotipo -->
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-black text-emerald-400 tracking-wider">PDV-VS</h1>
+            <p class="text-xs text-slate-400 mt-1">Sistema de Gestão e Frente de Caixa</p>
+        </div>
+
+        <!-- TELA DE LOGIN -->
+        <div id="modalLogin" class="space-y-4">
+            <h2 class="text-lg font-bold text-white mb-2"><i class="fa-solid fa-right-to-bracket text-emerald-400 mr-2"></i>Entrar no Sistema</h2>
+            
+            <div>
+                <label class="block text-xs font-semibold text-slate-300 mb-1">E-mail</label>
+                <input type="email" id="inputLoginEmail" placeholder="seu@email.com" onkeydown="window.tratarEnterLogin(event)"
+                    class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:border-emerald-500">
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-300 mb-1">Senha</label>
+                <input type="password" id="inputLoginSenha" placeholder="••••••••" onkeydown="window.tratarEnterLogin(event)"
+                    class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:border-emerald-500">
+            </div>
+
+            <button onclick="window.processarAutenticacao()" 
+                class="w-full mt-2 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-sm transition duration-200 shadow-lg shadow-emerald-900/40">
+                Acessar Caixa
+            </button>
+
+            <div class="text-center mt-4">
+                <button onclick="alternarTelaCadastro(true)" class="text-xs text-emerald-400 hover:underline">
+                    Não tem uma conta? Cadastre seu estabelecimento
+                </button>
+            </div>
+        </div>
+
+        <!-- TELA DE CADASTRO DE ESTABELECIMENTO (Oculta por padrão) -->
+        <div id="modalCadastro" class="space-y-4 hidden">
+            <h2 class="text-lg font-bold text-white mb-2"><i class="fa-solid fa-store text-emerald-400 mr-2"></i>Novo Estabelecimento</h2>
+            
+            <div>
+                <label class="block text-xs font-semibold text-slate-300 mb-1">Nome do Mercado / Loja</label>
+                <input type="text" id="inputCadNomeEmpresa" placeholder="Ex: Mercado do João"
+                    class="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:border-emerald-500">
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-300 mb-1">E-mail do Administrador</label>
+                <input type="email" id="inputCadEmail" placeholder="admin@email.com"
+                    class="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:border-emerald-500">
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-300 mb-1">Senha de Acesso</label>
+                <input type="password" id="inputCadSenha" placeholder="Mínimo 6 caracteres"
+                    class="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:border-emerald-500">
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-300 mb-1">WhatsApp (Opcional)</label>
+                <input type="text" id="inputCadWhatsapp" placeholder="(92) 99999-9999"
+                    class="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:border-emerald-500">
+            </div>
+
+            <button onclick="window.cadastrarEstabelecimento()" 
+                class="w-full mt-2 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg text-sm transition duration-200 shadow-lg shadow-blue-900/40">
+                Concluir Cadastro
+            </button>
+
+            <div class="text-center mt-4">
+                <button onclick="alternarTelaCadastro(false)" class="text-xs text-slate-400 hover:text-white">
+                    Já tem uma conta? Voltar para o login
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Script auxiliar inline para alternar entre as views de Login e Cadastro -->
+    <script>
+        function alternarTelaCadastro(mostrarCadastro) {
+            const login = document.getElementById('modalLogin');
+            const cadastro = document.getElementById('modalCadastro');
+            if (mostrarCadastro) {
+                login.classList.add('hidden');
+                cadastro.classList.remove('hidden');
+            } else {
+                cadastro.classList.add('hidden');
+                login.classList.remove('hidden');
+            }
+        }
+    </script>
+
+    <!-- Carregamento do Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- Inicialização do Core e Script de Autenticação como Módulo -->
+    <script type="module">
+        import '../../core/supabase-init.js'; // Inicializa a variável global window.supabaseClient
+        import './modules/auth/auth.js';     // Importa as funções de login e cadastro globalmente
+    </script>
+</body>
+</html>

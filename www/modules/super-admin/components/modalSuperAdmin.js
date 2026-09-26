@@ -1,3 +1,7 @@
+Apply
+// Antes: import { state, produtosCache } from './state.js';
+// Depois:
+import { state, produtosCache } from '../state.js';
 // Renderiza o HTML do Modal de Super Administrador
 export function renderModalSuperAdmin() {
     return `

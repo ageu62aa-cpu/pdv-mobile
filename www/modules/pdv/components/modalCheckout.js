@@ -1,3 +1,7 @@
+Apply
+// Antes: import { state, produtosCache } from './state.js';
+// Depois:
+import { state, produtosCache } from '../state.js';
 // Renderiza o HTML do Modal de Checkout
 export function renderModalCheckout() {
     return `

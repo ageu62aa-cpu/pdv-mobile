@@ -42,6 +42,13 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 window.supabaseClient = supabase; // Fallback para módulos legados
 
+// --- DECLARAÇÃO GLOBAL IMEDIATA ANTES DO DOMContentLoaded ---
+window.processarAutenticacao = processarAutenticacao;
+window.tratarEnterLogin = tratarEnterLogin;
+window.alternarTelaAuth = alternarTelaAuth;
+window.solicitarRecuperacaoSenha = solicitarRecuperacaoSenha;
+window.instalarAppPwa = instalarAppPwa;
+
 // --- SERVIÇO DE CEP (INTEGRAÇÃO VIACEP ENCAPSULADA) ---  
 window.consultarCep = async function(cep) {  
     if (!cep) return;
@@ -73,8 +80,8 @@ window.consultarCep = async function(cep) {
     }  
 };  
 
-// --- AUTENTICAÇÃO E TROCA DE TELAS (DECLARADAS ANTES DO OBJECT.ASSIGN) ---  
-window.alternarTelaAuth = function(tipo) {  
+// --- AUTENTICAÇÃO E TROCA DE TELAS ---  
+function alternarTelaAuth(tipo) {  
     const elementos = {
         tituloAuth: document.getElementById('tituloAuth'),
         subtituloAuth: document.getElementById('subtituloAuth'),
@@ -102,17 +109,17 @@ window.alternarTelaAuth = function(tipo) {
     elementos.divNomeMercadoCadastro?.classList.toggle('hidden', !exibirCamposExtra);
     elementos.divDocumentoCadastro?.classList.toggle('hidden', !exibirCamposExtra);
     elementos.divCamposEnderecoCadastro?.classList.toggle('hidden', !exibirCamposExtra);
-};  
+}  
 
-window.instalarAppPwa = function() {  
+function instalarAppPwa() {  
     console.log("[PWA Event]: Solicitação de instalação capturada.");  
-};  
+}  
 
-window.tratarEnterLogin = function(e) {   
+function tratarEnterLogin(e) {   
     if (e.key === 'Enter') window.processarAutenticacao();   
-};  
+}  
 
-window.processarAutenticacao = async function() {  
+async function processarAutenticacao() {  
     const email = document.getElementById('authEmail')?.value.trim();  
     const senha = document.getElementById('authSenha')?.value.trim();  
 
@@ -128,15 +135,14 @@ window.processarAutenticacao = async function() {
     } catch (e) {  
         alert("Erro ao autenticar: " + (e.message || e));  
     }  
-};  
+}  
 
-window.solicitarRecuperacaoSenha = function() {  
+function solicitarRecuperacaoSenha() {  
     alert("Para recuperar a senha, entre em contato com o suporte técnico.");  
-};  
+}  
 
 // --- EXPOSIÇÃO CONTROLADA AO ESCOPO GLOBAL (COMPATIBILIDADE COM HTML INLINE) ---  
 Object.assign(window, {
-    // Módulos do Caixa & Câmera
     gerenciarCaixaModal,
     fecharModalCaixa,
     confirmarAcaoCaixa,
@@ -159,16 +165,12 @@ Object.assign(window, {
     abrirLeitorCamera,
     escanearCameraAdmin,
     fecharLeitorCamera,
-
-    // Modais Dinâmicos
     abrirModalCheckout,
     fecharModalFinalizarVenda,
     abrirModalProduto,
     fecharModalProduto,
     abrirModalSuperAdmin,
     fecharModalSuperAdmin,
-
-    // Funções de Autenticação e Utilitários globais
     alternarTelaAuth,
     instalarAppPwa,
     tratarEnterLogin,
@@ -186,7 +188,7 @@ window.acionarScanner = function() {
     }
 };
 
-// --- CONTROLES DE INTERFACE (MODAIS DINÂMICOS E PAINÉIS) ---  
+// --- CONTROLES DE INTERFACE ---  
 window.tentarAcessoSuperAdminMasterSeguro = function() {  
     abrirModalSuperAdmin();
 };  
@@ -241,7 +243,6 @@ async function verificarSessaoEAlternarTelas() {
         if (session?.user) {  
             setUsuarioAtual(session.user);  
 
-            // Busca empresa e cargo vinculados
             const { data: opData } = await supabase  
                 .from('usuarios_empresas')  
                 .select('empresa_id, cargo')  
@@ -254,7 +255,6 @@ async function verificarSessaoEAlternarTelas() {
             setEmpresaAtualId(empresaIdFinal);  
             setCargoUsuarioAtual(cargoFinal);  
 
-            // Busca metadados da empresa
             let nomeLojaExibicao = "Nome do Estabelecimento";  
             let cnpjLojaExibicao = "";  
 
@@ -271,7 +271,6 @@ async function verificarSessaoEAlternarTelas() {
                 }  
             }  
 
-            // Atualização da UI Topo
             const elTituloApp = document.getElementById('tituloAppEmpresa');  
             const elBadgeCnpj = document.getElementById('badgeEmpresaLogada');  
 
@@ -285,7 +284,6 @@ async function verificarSessaoEAlternarTelas() {
             appPrincipal?.classList.remove('hidden');  
             if (infoUsuario) infoUsuario.innerText = session.user.email;  
               
-            // Controle de visibilidade de menus administrativos
             const btnAdmin = document.getElementById('btnAdminMenu');  
             if (btnAdmin) {  
                 const eAdmin = cargoFinal === 'admin_mercado';
@@ -304,59 +302,35 @@ async function verificarSessaoEAlternarTelas() {
     }  
 }  
 
-// --- HANDLER DE ATALHOS DE TECLADO COMPLETO E SEGURO ---
+// --- HANDLER DE ATALHOS DE TECLADO ---
 function inicializarAtalhosTeclado() {  
     window.addEventListener('keydown', (event) => {  
-        // F1 - Abrir Caixa
         if (event.key === 'F1') {  
             event.preventDefault();  
-            if (typeof window.gerenciarCaixaModal === 'function') {
-                window.gerenciarCaixaModal('abrir');  
-            }
-        } 
-        // F2 - Fechar Caixa
-        else if (event.key === 'F2') {  
+            if (typeof window.gerenciarCaixaModal === 'function') window.gerenciarCaixaModal('abrir');  
+        } else if (event.key === 'F2') {  
             event.preventDefault();  
-            if (typeof window.gerenciarCaixaModal === 'function') {
-                window.gerenciarCaixaModal('fechar');  
-            }
-        } 
-        // F5 - Focar na Busca de Produtos
-        else if (event.key === 'F5') {  
+            if (typeof window.gerenciarCaixaModal === 'function') window.gerenciarCaixaModal('fechar');  
+        } else if (event.key === 'F5') {  
             event.preventDefault();  
-            if (typeof window.focarBusca === 'function') {
-                window.focarBusca();  
-            }
-        } 
-        // F6 - Cancelar Item
-        else if (event.key === 'F6') {  
+            if (typeof window.focarBusca === 'function') window.focarBusca();  
+        } else if (event.key === 'F6') {  
             event.preventDefault();  
-            if (typeof window.abrirModalCancelarItem === 'function') {
-                window.abrirModalCancelarItem();  
-            }
-        } 
-        // F7 - Cancelar Venda
-        else if (event.key === 'F7') {  
+            if (typeof window.abrirModalCancelarItem === 'function') window.abrirModalCancelarItem();  
+        } else if (event.key === 'F7') {  
             event.preventDefault();  
-            if (typeof window.cancelarVenda === 'function') {
-                window.cancelarVenda();  
-            }
-        } 
-        // F9 - Finalizar Venda / Checkout
-        else if (event.key === 'F9') {  
+            if (typeof window.cancelarVenda === 'function') window.cancelarVenda();  
+        } else if (event.key === 'F9') {  
             event.preventDefault();  
             if (typeof window.abrirModalCheckout === 'function') {
                 window.abrirModalCheckout(0.00);  
             } else if (typeof window.finalizarVenda === 'function') {
                 window.finalizarVenda();
             }
-        } 
-        // ESC - Fechar Modais Dinâmicos e Estáticos
-        else if (event.key === 'Escape') {  
+        } else if (event.key === 'Escape') {  
             if (typeof window.fecharModalFinalizarVenda === 'function') window.fecharModalFinalizarVenda();
             if (typeof window.fecharModalProduto === 'function') window.fecharModalProduto();
             if (typeof window.fecharModalSuperAdmin === 'function') window.fecharModalSuperAdmin();
-
             if (typeof window.fecharModalCaixa === 'function') window.fecharModalCaixa();  
             if (typeof window.fecharModalAutorizacao === 'function') window.fecharModalAutorizacao();  
             if (typeof window.fecharModalCancelarItem === 'function') window.fecharModalCancelarItem();  

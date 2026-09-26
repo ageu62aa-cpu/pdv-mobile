@@ -2,7 +2,6 @@
 // MÓDULO DE GESTÃO ADMINISTRATIVA DA LOJA (PDV-VS)
 // ==========================================
 
-// Importação ajustada com extensão .js explícita para compatibilidade total com ES Modules no Vercel
 import { 
     empresaAtualId, produtosCache, cargoUsuarioAtual, historicoVendasCache, 
     setHistoricoVendasCache, setProdutosCache, setEmpresaAtualId 
@@ -29,167 +28,11 @@ async function resolverEmpresaIdAtual() {
             }
             setEmpresaAtualId(idEmpresa);
             localStorage.setItem('empresa_id', idEmpresa);
-            localStorage.setItem('id_empresa', idEmpresa);
         }
     } catch (e) {
         console.error("PDV-VS: Erro ao validar empresa na sessão:", e);
     }
     return idEmpresa;
-}
-
-// ==========================================
-// FUNÇÕES DE AUTENTICAÇÃO (LOGIN / ENTER)
-// ==========================================
-export async function processarAutenticacao() {
-    const emailInput = document.getElementById('inputLoginEmail') || document.getElementById('emailLogin') || document.querySelector('input[type="email"]');
-    const senhaInput = document.getElementById('inputLoginSenha') || document.getElementById('senhaLogin') || document.querySelector('input[type="password"]');
-
-    const email = emailInput?.value.trim() || '';
-    const password = senhaInput?.value.trim() || '';
-
-    if (!email || !password) {
-        alert('PDV-VS: Por favor, informe o e-mail e a senha.');
-        return;
-    }
-
-    try {
-        const { data, error } = await window.supabaseClient.auth.signInWithPassword({
-            email,
-            password
-        });
-
-        if (error) {
-            alert('PDV-VS: Erro ao realizar login: ' + error.message);
-            return;
-        }
-
-        if (data && data.session) {
-            const userId = data.session.user.id;
-            const idEmpresa = await resolverEmpresaIdAtual();
-
-            const { data: vincData } = await window.supabaseClient
-                .from('usuarios_empresas')
-                .select('cargo, empresa_id')
-                .eq('user_id', userId)
-                .maybeSingle();
-
-            const rawCargo = vincData?.cargo || 'operador';
-            const cargo = (rawCargo === 'admin_mercado' || rawCargo === 'admin') ? 'admin' : 'operador';
-
-            localStorage.setItem('empresa_id', idEmpresa);
-            localStorage.setItem('id_empresa', idEmpresa);
-            localStorage.setItem('pdv_cargo_usuario', cargo);
-            sessionStorage.setItem('pdv_cargo_usuario', cargo);
-            sessionStorage.setItem('id_empresa', idEmpresa);
-
-            const btnAdmin = document.getElementById('btnAbrirAdmin') || document.getElementById('btnAdmin');
-            const modalAdmin = document.getElementById('modalAdmin');
-
-            if (cargo === 'operador') {
-                sessionStorage.setItem('restricao_admin', 'true');
-                if (btnAdmin) {
-                    btnAdmin.style.display = 'none';
-                    btnAdmin.setAttribute('disabled', 'true');
-                }
-                if (modalAdmin) {
-                    modalAdmin.classList.add('hidden');
-                }
-            } else {
-                sessionStorage.setItem('restricao_admin', 'false');
-                if (btnAdmin) {
-                    btnAdmin.style.display = '';
-                    btnAdmin.removeAttribute('disabled');
-                }
-            }
-
-            location.reload();
-        }
-    } catch (e) {
-        alert('PDV-VS: Erro de autenticação: ' + e.message);
-    }
-}
-
-export function tratarEnterLogin(event) {
-    if (event.key === 'Enter' || event.keyCode === 13) {
-        event.preventDefault();
-        processarAutenticacao();
-    }
-}
-
-// ==========================================
-// FLUXO DE CADASTRO DE ESTABELECIMENTO
-// ==========================================
-export async function cadastrarEstabelecimento() {
-    const nomeInput = document.getElementById('inputCadNomeEmpresa') || document.getElementById('nomeEmpresa');
-    const emailInput = document.getElementById('inputCadEmail') || document.getElementById('emailCadastro');
-    const senhaInput = document.getElementById('inputCadSenha') || document.getElementById('senhaCadastro');
-    const whatsappInput = document.getElementById('inputCadWhatsapp') || document.getElementById('whatsappCadastro');
-
-    const nome_mercado = nomeInput?.value.trim() || '';
-    const email = emailInput?.value.trim() || '';
-    const password = senhaInput?.value.trim() || '';
-    const whatsapp = whatsappInput?.value.trim() || '';
-
-    if (!nome_mercado || !email || !password) {
-        alert('PDV-VS: Preencha todos os campos obrigatórios (Nome, E-mail e Senha).');
-        return;
-    }
-
-    try {
-        const { data: authData, error: authError } = await window.supabaseClient.auth.signUp({
-            email,
-            password
-        });
-
-        if (authError) {
-            alert('PDV-VS: Erro ao cadastrar usuário: ' + authError.message);
-            return;
-        }
-
-        if (authData && authData.user) {
-            const userId = authData.user.id;
-
-            const { data: empresaData, error: empresaError } = await window.supabaseClient
-                .from('empresas')
-                .insert([{ id: userId, nome_mercado, whatsapp }])
-                .select()
-                .single();
-
-            if (empresaError) {
-                alert('PDV-VS: Erro ao cadastrar empresa no banco de dados: ' + empresaError.message);
-                return;
-            }
-
-            const empresaId = empresaData?.id || userId;
-
-            const { error: vincError } = await window.supabaseClient
-                .from('usuarios_empresas')
-                .insert([{ user_id: userId, empresa_id: empresaId, cargo: 'admin_mercado' }]);
-
-            if (vincError) {
-                alert('PDV-VS: Erro ao vincular administrador: ' + vincError.message);
-                return;
-            }
-
-            localStorage.setItem('empresa_id', empresaId);
-            localStorage.setItem('id_empresa', empresaId);
-            localStorage.setItem('pdv_empresa_nome', nome_mercado);
-
-            alert('PDV-VS: Estabelecimento cadastrado com sucesso! Redirecionando para a tela de login...');
-
-            const modalCadastro = document.getElementById('modalCadastro') || document.getElementById('telaCadastro');
-            const modalLogin = document.getElementById('modalLogin') || document.getElementById('telaLogin');
-
-            if (modalCadastro && modalLogin) {
-                modalCadastro.classList.add('hidden');
-                modalLogin.classList.remove('hidden');
-            } else {
-                location.reload();
-            }
-        }
-    } catch (e) {
-        alert('PDV-VS: Erro ao processar o cadastro do estabelecimento: ' + e.message);
-    }
 }
 
 // ==========================================
@@ -259,13 +102,6 @@ export async function recarregarDadosAdmin() {
 }
 
 export async function abrirPainelAdmin() { 
-    // Segregação: bloquear operador de acessar o painel admin
-    const restricaoAdmin = sessionStorage.getItem('restricao_admin') === 'true' || localStorage.getItem('pdv_cargo_usuario') === 'operador';
-    if (restricaoAdmin) {
-        alert('PDV-VS: Acesso restrito. Operadores não possuem permissão para acessar o painel administrativo.');
-        return;
-    }
-
     const modalAdmin = document.getElementById('modalAdmin');
     if (modalAdmin) {
         modalAdmin.classList.add('flex');
@@ -684,12 +520,9 @@ export async function salvarConfiguracoesEmpresaAdmin() {
 }
 
 // ==========================================
-// REGISTRO GLOBAL DE EXPORTAÇÕES (WINDOW)
+// REGISTO GLOBAL DE EXPORTAÇÕES (WINDOW)
 // ==========================================
 Object.assign(window, {
-    processarAutenticacao,
-    tratarEnterLogin,
-    cadastrarEstabelecimento,
     mudarAbaAdmin, recarregarDadosAdmin, abrirPainelAdmin, fecharPainelAdmin,
     filtrarTabelaAdmin, abrirModalNovoProdutoAdmin, abrirEditarProdutoAdmin,
     fecharFormProduto, salvarProdutoAdmin, excluirProdutoAdmin,
@@ -697,5 +530,153 @@ Object.assign(window, {
     salvarNovaMaquininha, excluirMaquininhaAdmin, carregarOperadoresLoja,
     excluirOperadorLoja, abrirModalNovoOperador, fecharModalNovoOperador,
     salvarNovoOperador, carregarHistoricoAdmin, renderizarHistoricoVendasPorJanelasDiarias,
+    salvarConfiguracoesEmpresaAdmin
+});
+// ==========================================
+// MÓDULO DE PAINEL ADMINISTRATIVO (PDV-VS)
+// ==========================================
+
+import { empresaAtualId, produtosCache, cargoUsuarioAtual } from '../../core/state.js';
+import { carregarProdutosCache } from '../../services/produtos.js';
+import { focarBusca } from '../pdv/caixa.js';
+import { renderizarTabelaAdmin } from './admin-produtos.js';
+import { carregarOperadoresLoja } from './admin-operadores.js';
+import { carregarMaquininhasAdmin } from './admin-maquininhas.js';
+import { carregarHistoricoAdmin } from './admin-historico.js';
+
+export async function mudarAbaAdmin(aba) {
+    const abasPossiveis = ['Produtos', 'Operadores', 'Maquininhas', 'Historico', 'Configuracoes'];
+    
+    abasPossiveis.forEach(a => {
+        const conteudo = document.getElementById(`conteudoAba${a}`);
+        const btn = document.getElementById(`btnAba${a}`);
+        if (conteudo) conteudo.classList.add('hidden');
+        if (btn) btn.className = 'px-3 py-1.5 text-xs font-bold bg-slate-200 text-slate-700 rounded-lg';
+    });
+    
+    const activeAba = aba.charAt(0).toUpperCase() + aba.slice(1);
+    const conteudoAtivo = document.getElementById(`conteudoAba${activeAba}`);
+    const btnAtivo = document.getElementById(`btnAba${activeAba}`);
+    
+    if (conteudoAtivo) conteudoAtivo.classList.remove('hidden');
+    if (btnAtivo) btnAtivo.className = 'px-3 py-1.5 text-xs font-bold bg-emerald-600 text-white rounded-lg';
+    
+    switch (activeAba) {
+        case 'Produtos':
+            await carregarProdutosCache();
+            renderizarTabelaAdmin(produtosCache);
+            break;
+        case 'Operadores':
+            await carregarOperadoresLoja();
+            break;
+        case 'Maquininhas':
+            await carregarMaquininhasAdmin();
+            break;
+        case 'Historico':
+            await carregarHistoricoAdmin();
+            break;
+        case 'Configuracoes':
+            preencherDadosConfiguracao();
+            break;
+    }
+}
+
+function preencherDadosConfiguracao() {
+    const inputPinConfig = document.getElementById('inputAdminPinConfig');
+    if (inputPinConfig) {
+        inputPinConfig.value = localStorage.getItem('pdv_admin_pin_' + empresaAtualId) || '123456';
+    }
+    const inputNomeConfig = document.getElementById('inputAdminNomeEmpresaConfig');
+    const inputWapConfig = document.getElementById('inputAdminWhatsappConfig');
+    if (window.dadosEmpresaAtual) {
+        if (inputNomeConfig) inputNomeConfig.value = window.dadosEmpresaAtual.nome_mercado || '';
+        if (inputWapConfig) inputWapConfig.value = window.dadosEmpresaAtual.whatsapp || '';
+    }
+}
+
+export async function recarregarDadosAdmin() {
+    await carregarProdutosCache();
+    renderizarTabelaAdmin(produtosCache);
+    if (cargoUsuarioAtual === 'admin_mercado') {
+        await Promise.all([
+            carregarHistoricoAdmin(),
+            carregarOperadoresLoja(),
+            carregarMaquininhasAdmin()
+        ]);
+    }
+    alert('PDV-VS: Dados do painel administrativo atualizados com sucesso!');
+}
+
+export async function abrirPainelAdmin() { 
+    const restricaoAdmin = sessionStorage.getItem('restricao_admin') === 'true' || localStorage.getItem('pdv_cargo_usuario') === 'operador';
+    if (restricaoAdmin) {
+        alert('PDV-VS: Acesso restrito. Operadores não possuem permissão para acessar o painel administrativo.');
+        return;
+    }
+
+    const modalAdmin = document.getElementById('modalAdmin');
+    if (modalAdmin) {
+        modalAdmin.classList.add('flex');
+        modalAdmin.classList.remove('hidden'); 
+    }
+
+    try {
+        await carregarProdutosCache(); 
+        renderizarTabelaAdmin(produtosCache); 
+        
+        if (cargoUsuarioAtual === 'admin_mercado') {
+            await Promise.all([
+                carregarOperadoresLoja(),
+                carregarHistoricoAdmin(),
+                carregarMaquininhasAdmin()
+            ]);
+        }
+    } catch (e) {
+        console.error("PDV-VS: Erro ao carregar dados do painel:", e);
+    }
+
+    mudarAbaAdmin('produtos'); 
+}
+
+export function fecharPainelAdmin() { 
+    const modalAdmin = document.getElementById('modalAdmin');
+    if (modalAdmin) {
+        modalAdmin.classList.add('hidden'); 
+        modalAdmin.classList.remove('flex');
+    }
+    focarBusca();
+}
+
+export async function salvarConfiguracoesEmpresaAdmin() {
+    const novoNome = document.getElementById('inputAdminNomeEmpresaConfig')?.value.trim() || '';
+    const novoWap = document.getElementById('inputAdminWhatsappConfig')?.value.trim() || '';
+
+    if (!novoNome) {
+        alert('PDV-VS: O nome do estabelecimento não pode ficar vazio.');
+        return;
+    }
+
+    try {
+        const { error } = await window.supabaseClient
+            .from('empresas')
+            .update({ nome_mercado: novoNome, whatsapp: novoWap })
+            .eq('id', empresaAtualId);
+
+        if (error) throw error;
+
+        const tituloAppEmpresa = document.getElementById('tituloAppEmpresa');
+        if (tituloAppEmpresa) tituloAppEmpresa.innerText = novoNome;
+
+        alert('PDV-VS: Dados do estabelecimento atualizados com sucesso!');
+    } catch (e) {
+        alert('PDV-VS: Erro ao atualizar configurações: ' + e.message);
+    }
+}
+
+Object.assign(window, {
+    mudarAbaAdmin,
+    recarregarDadosAdmin,
+    abrirPainelAdmin,
+    fecharPainelAdmin,
     salvarConfiguracoesEmpresaAdmin
 });
