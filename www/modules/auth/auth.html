@@ -110,8 +110,8 @@
     
     <!-- Inicialização do Core e Script de Autenticação como Módulo -->
     <script type="module">
-        import '../../core/supabase-init.js'; // Inicializa a variável global window.supabaseClient
-        import './modules/auth/auth.js';     // Importa as funções de login e cadastro globalmente
+        import '../../core/config.js'; // Inicializa configurações/Supabase Client
+        import './auth.js';            // Importa a lógica de login e cadastro desta mesma pasta
     </script>
 </body>
 </html>
