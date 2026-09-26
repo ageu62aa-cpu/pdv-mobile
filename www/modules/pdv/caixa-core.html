@@ -3,88 +3,217 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vancely Software - Frente de Caixa (PDV)</title>
+    <title>Vancely Software - Frente de Caixa</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        emeraldPrimary: '#047857',
-                        emeraldHover: '#065f46',
-                        emeraldLight: '#10b981',
-                        emeraldBg: '#ecfdf5'
-                    }
-                }
-            }
-        }
-    </script>
+    <!-- FontAwesome para Ícones -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-<body class="bg-gray-900 text-gray-100 min-h-screen flex flex-col">
+<body class="bg-gray-900 text-gray-100 font-sans h-screen flex flex-col overflow-hidden">
 
-    <!-- Cabeçalho do PDV -->
-    <header class="bg-gray-800 border-b border-gray-700 px-6 py-4 flex justify-between items-center shadow-md">
+    <!-- Topo / Header do PDV -->
+    <header class="bg-gray-800 border-b border-gray-700 px-6 py-3 flex justify-between items-center shadow-md">
         <div class="flex items-center gap-3">
-            <img src="../../assets/mascote.jpeg" alt="Mascote Vancely" class="w-10 h-10 rounded-full object-cover border border-emerald-500 shadow">
+            <div class="bg-emerald-600 p-2 rounded-lg text-white">
+                <i class="fa-solid fa-cash-register text-xl"></i>
+            </div>
             <div>
-                <h1 class="text-base font-extrabold text-white">Vancely Software - Caixa Aberto</h1>
-                <p class="text-xs text-emerald-400">Operador: Ativo | Empresa: Configurada</p>
+                <h1 class="font-bold text-sm text-white tracking-wide">Vancely Software - Frente de Caixa</h1>
+                <p id="txtStatusCaixaHeader" class="text-xs text-amber-400 font-semibold flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span> Caixa Fechado (Necessário Abertura)
+                </p>
             </div>
         </div>
-        <div>
-            <button id="btn-sair" class="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-4 py-2 rounded-lg transition-colors shadow">
-                Sair / Fechar Caixa
+
+        <!-- Botões de Gestão de Caixa (Abertura / Fechamento) -->
+        <div class="flex items-center gap-2">
+            <button onclick="window.acionarAbrirCaixa()" id="btnAbrirCaixaHeader" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-lg text-xs font-bold transition shadow flex items-center gap-2">
+                <i class="fa-solid fa-unlock"></i> Abrir Caixa
             </button>
+            <button onclick="window.acionarFecharCaixa()" id="btnFecharCaixaHeader" class="bg-red-600/80 hover:bg-red-600 text-white px-3.5 py-2 rounded-lg text-xs font-bold transition shadow flex items-center gap-2">
+                <i class="fa-solid fa-lock"></i> Fechar Caixa
+            </button>
+            <div class="h-6 w-px bg-gray-700 mx-1"></div>
+            <span id="txtInfoOperador" class="text-xs text-gray-400">Operador: <strong class="text-gray-200">Ativo</strong> | Caixa: <strong class="text-gray-200">#01</strong></span>
+            <button onclick="window.location.href='../admin/dashboard.html'" class="bg-gray-700 hover:bg-gray-600 text-white px-3 py-2 rounded-lg text-xs font-bold transition">Admin</button>
+            <button onclick="window.location.href='../login.html'" class="bg-red-900/50 hover:bg-red-900 text-red-200 px-3 py-2 rounded-lg text-xs font-bold transition border border-red-800">Sair</button>
         </div>
     </header>
 
-    <!-- Corpo Principal do PDV -->
-    <main class="flex-1 p-4 grid grid-cols-1 lg:grid-cols-3 gap-4 max-w-7xl mx-auto w-full">
+    <!-- Corpo Principal -->
+    <main class="flex-1 p-6 grid grid-cols-1 lg:grid-cols-3 gap-6 overflow-hidden">
         
-        <!-- Coluna Esquerda/Centro: Produtos e Busca -->
-        <div class="lg:col-span-2 bg-gray-800 border border-gray-700 rounded-2xl p-4 flex flex-col shadow-xl">
-            <div class="mb-4">
-                <label class="text-xs font-bold text-gray-300 uppercase">Pesquisar Produto por Nome ou Código de Barras</label>
-                <input type="text" id="busca-produto" class="w-full mt-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:border-emerald-500 focus:outline-none" placeholder="Digite para buscar...">
-            </div>
+        <!-- Coluna Esquerda & Centro: Busca e Lista de Produtos -->
+        <section class="lg:col-span-2 flex flex-col gap-4 overflow-hidden">
+            <!-- Container de Busca injetado via caixa-busca.js -->
+            <div id="containerCaixaBusca"></div>
 
-            <div class="flex-1 bg-gray-900 border border-gray-700 rounded-xl p-4 overflow-y-auto max-h-[50vh]">
-                <p class="text-xs text-gray-500 text-center mt-10">Nenhum produto adicionado na venda atual.</p>
-            </div>
-        </div>
-
-        <!-- Coluna Direita: Resumo e Pagamento -->
-        <div class="bg-gray-800 border border-gray-700 rounded-2xl p-4 flex flex-col justify-between shadow-xl">
-            <div>
-                <h2 class="text-sm font-bold text-white uppercase border-b border-gray-700 pb-2 mb-4">Resumo da Venda</h2>
-                <div class="space-y-3 text-sm">
-                    <div class="flex justify-between text-gray-400">
-                        <span>Subtotal:</span>
-                        <span id="txt-subtotal" class="text-white font-bold">R$ 0,00</span>
-                    </div>
-                    <div class="flex justify-between text-gray-400">
-                        <span>Descontos:</span>
-                        <span id="txt-desconto" class="text-white font-bold">R$ 0,00</span>
-                    </div>
-                    <div class="flex justify-between text-lg font-extrabold text-emerald-400 pt-3 border-t border-gray-700">
-                        <span>Total a Pagar:</span>
-                        <span id="txt-total">R$ 0,00</span>
-                    </div>
+            <!-- Tabela de Produtos no Carrinho -->
+            <div class="flex-1 bg-gray-800 border border-gray-700 rounded-xl flex flex-col overflow-hidden shadow-sm">
+                <div class="bg-gray-850 px-4 py-3 border-b border-gray-700 grid grid-cols-12 text-xs font-bold text-gray-400 uppercase tracking-wider">
+                    <div class="col-span-6">Item / Produto</div>
+                    <div class="col-span-3 text-center">Qtd / Preço</div>
+                    <div class="col-span-3 text-right">Subtotal</div>
+                </div>
+                <div id="listaCarrinhoVazio" class="flex-1 flex flex-col items-center justify-center p-8 text-center text-gray-500">
+                    <i class="fa-solid fa-cart-shopping text-4xl mb-2 text-gray-600"></i>
+                    <p class="text-sm font-medium">Nenhum item adicionado ao carrinho.</p>
+                    <span class="text-xs text-gray-600 mt-1">Utilize o leitor ou digite o produto (Atalhos: F1 a F12)</span>
+                </div>
+                <div id="listaCarrinhoItens" class="flex-1 overflow-y-auto divide-y divide-gray-750 hidden">
+                    <!-- Itens inseridos dinamicamente aqui -->
                 </div>
             </div>
+        </section>
 
-            <div class="space-y-2 mt-6">
-                <button class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl text-sm transition-colors shadow-lg">
-                    Finalizar Pagamento
-                </button>
-                <button class="w-full bg-gray-700 hover:bg-gray-600 text-gray-300 font-bold py-2.5 rounded-xl text-xs transition-colors">
-                    Cancelar Venda
+        <!-- Coluna Direita: Resumo, Total e Guia Completa de Atalhos F1 a F12 -->
+        <section class="flex flex-col gap-4 overflow-y-auto">
+            <!-- Bloco de Resumo Financeiro -->
+            <div class="bg-gray-800 border border-gray-700 rounded-xl p-4 shadow-sm flex flex-col justify-between gap-3">
+                <h2 class="text-xs font-bold text-gray-400 uppercase tracking-wider border-b border-gray-700 pb-2">Resumo da Venda</h2>
+                <div class="space-y-1.5 text-sm">
+                    <div class="flex justify-between text-gray-300">
+                        <span>Subtotal:</span>
+                        <span id="txtResumoSubtotal" class="font-mono font-bold">R$ 0,00</span>
+                    </div>
+                    <div class="flex justify-between text-gray-300">
+                        <span>Descontos / Taxas:</span>
+                        <span id="txtResumoDescontos" class="font-mono font-bold text-emerald-400">R$ 0,00</span>
+                    </div>
+                </div>
+                <div class="bg-gray-900 p-3 rounded-xl border border-gray-700 flex flex-col">
+                    <span class="text-xs font-bold text-gray-400 uppercase">Total a Pagar:</span>
+                    <span id="txtResumoTotalGeral" class="text-2xl font-black text-emerald-400 font-mono mt-0.5">R$ 0,00</span>
+                </div>
+
+                <!-- Botão de Finalização Principal -->
+                <button onclick="window.acionarFinalizarVenda()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-bold text-xs shadow-lg transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-check-to-slot"></i> Finalizar Pagamento <span class="bg-emerald-800 text-emerald-200 text-[10px] px-1.5 py-0.5 rounded font-mono">F7</span>
                 </button>
             </div>
-        </div>
+
+            <!-- Bloco de Atalhos Visuais: Todas as Funções F1 a F12 Visíveis -->
+            <div class="bg-gray-800 border border-gray-700 rounded-xl p-3.5 shadow-sm flex flex-col gap-2">
+                <span class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Guia de Atalhos (F1 a F12)</span>
+                
+                <div class="grid grid-cols-2 gap-1.5 text-left">
+                    <!-- F1 -->
+                    <button onclick="window.acaoAtalhoF1 && window.acaoAtalhoF1()" class="bg-gray-900/60 hover:bg-gray-700 border border-gray-700/80 p-2 rounded-lg transition flex items-center justify-between group">
+                        <div class="flex flex-col overflow-hidden">
+                            <span class="text-[11px] font-bold text-gray-200 group-hover:text-emerald-400 truncate">CPF na Nota</span>
+                            <span class="text-[9px] text-gray-400 truncate">Identificar cliente</span>
+                        </div>
+                        <span class="bg-emerald-950 text-emerald-400 text-[10px] font-bold px-1.5 py-0.5 rounded border border-emerald-800/50 font-mono ml-1">F1</span>
+                    </button>
+
+                    <!-- F2 -->
+                    <button onclick="window.acaoAtalhoF2 && window.acaoAtalhoF2()" class="bg-gray-900/60 hover:bg-gray-700 border border-gray-700/80 p-2 rounded-lg transition flex items-center justify-between group">
+                        <div class="flex flex-col overflow-hidden">
+                            <span class="text-[11px] font-bold text-gray-200 group-hover:text-emerald-400 truncate">Vendedor</span>
+                            <span class="text-[9px] text-gray-400 truncate">Vincular comissão</span>
+                        </div>
+                        <span class="bg-gray-850 text-gray-300 text-[10px] font-bold px-1.5 py-0.5 rounded border border-gray-700 font-mono ml-1">F2</span>
+                    </button>
+
+                    <!-- F3 -->
+                    <button onclick="window.acaoAtalhoF3 && window.acaoAtalhoF3()" class="bg-gray-900/60 hover:bg-gray-700 border border-gray-700/80 p-2 rounded-lg transition flex items-center justify-between group">
+                        <div class="flex flex-col overflow-hidden">
+                            <span class="text-[11px] font-bold text-gray-200 group-hover:text-emerald-400 truncate">Dinheiro Rápido</span>
+                            <span class="text-[9px] text-gray-400 truncate">Pagamento à vista</span>
+                        </div>
+                        <span class="bg-gray-850 text-gray-300 text-[10px] font-bold px-1.5 py-0.5 rounded border border-gray-700 font-mono ml-1">F3</span>
+                    </button>
+
+                    <!-- F4 -->
+                    <button onclick="window.acaoAtalhoF4 && window.acaoAtalhoF4()" class="bg-gray-900/60 hover:bg-gray-700 border border-gray-700/80 p-2 rounded-lg transition flex items-center justify-between group">
+                        <div class="flex flex-col overflow-hidden">
+                            <span class="text-[11px] font-bold text-gray-200 group-hover:text-emerald-400 truncate">Multiplicador</span>
+                            <span class="text-[9px] text-gray-400 truncate">Qtd x Código</span>
+                        </div>
+                        <span class="bg-gray-850 text-gray-300 text-[10px] font-bold px-1.5 py-0.5 rounded border border-gray-700 font-mono ml-1">F4</span>
+                    </button>
+
+                    <!-- F5 -->
+                    <button onclick="window.acaoAtalhoF5 && window.acaoAtalhoF5()" class="bg-gray-900/60 hover:bg-gray-700 border border-gray-700/80 p-2 rounded-lg transition flex items-center justify-between group">
+                        <div class="flex flex-col overflow-hidden">
+                            <span class="text-[11px] font-bold text-gray-200 group-hover:text-emerald-400 truncate">Pesquisar</span>
+                            <span class="text-[9px] text-gray-400 truncate">Focar no leitor/busca</span>
+                        </div>
+                        <span class="bg-gray-850 text-gray-300 text-[10px] font-bold px-1.5 py-0.5 rounded border border-gray-700 font-mono ml-1">F5</span>
+                    </button>
+
+                    <!-- F6 -->
+                    <button onclick="window.acaoAtalhoF6 && window.acaoAtalhoF6()" class="bg-gray-900/60 hover:bg-gray-700 border border-gray-700/80 p-2 rounded-lg transition flex items-center justify-between group">
+                        <div class="flex flex-col overflow-hidden">
+                            <span class="text-[11px] font-bold text-gray-200 group-hover:text-amber-400 truncate">Pausar Venda</span>
+                            <span class="text-[9px] text-gray-400 truncate">Salvar em espera</span>
+                        </div>
+                        <span class="bg-amber-950/60 text-amber-400 text-[10px] font-bold px-1.5 py-0.5 rounded border border-amber-800/50 font-mono ml-1">F6</span>
+                    </button>
+
+                    <!-- F7 -->
+                    <button onclick="window.acionarFinalizarVenda && window.acionarFinalizarVenda()" class="bg-gray-900/60 hover:bg-gray-700 border border-gray-700/80 p-2 rounded-lg transition flex items-center justify-between group">
+                        <div class="flex flex-col overflow-hidden">
+                            <span class="text-[11px] font-bold text-gray-200 group-hover:text-emerald-400 truncate">Finalizar Venda</span>
+                            <span class="text-[9px] text-gray-400 truncate">Abrir checkout</span>
+                        </div>
+                        <span class="bg-emerald-950 text-emerald-400 text-[10px] font-bold px-1.5 py-0.5 rounded border border-emerald-800/50 font-mono ml-1">F7</span>
+                    </button>
+
+                    <!-- F8 -->
+                    <button onclick="window.acaoAtalhoF8 && window.acaoAtalhoF8()" class="bg-gray-900/60 hover:bg-gray-700 border border-gray-700/80 p-2 rounded-lg transition flex items-center justify-between group">
+                        <div class="flex flex-col overflow-hidden">
+                            <span class="text-[11px] font-bold text-gray-200 group-hover:text-emerald-400 truncate">Desconto</span>
+                            <span class="text-[9px] text-gray-400 truncate">Aplicar abatimento</span>
+                        </div>
+                        <span class="bg-gray-850 text-gray-300 text-[10px] font-bold px-1.5 py-0.5 rounded border border-gray-700 font-mono ml-1">F8</span>
+                    </button>
+
+                    <!-- F9 -->
+                    <button onclick="window.acaoAtalhoF9 && window.acaoAtalhoF9()" class="bg-gray-900/60 hover:bg-gray-700 border border-gray-700/80 p-2 rounded-lg transition flex items-center justify-between group">
+                        <div class="flex flex-col overflow-hidden">
+                            <span class="text-[11px] font-bold text-gray-200 group-hover:text-emerald-400 truncate">Caixa (Mov.)</span>
+                            <span class="text-[9px] text-gray-400 truncate">Sangria / Suprimento</span>
+                        </div>
+                        <span class="bg-gray-850 text-gray-300 text-[10px] font-bold px-1.5 py-0.5 rounded border border-gray-700 font-mono ml-1">F9</span>
+                    </button>
+
+                    <!-- F10 -->
+                    <button onclick="window.acaoAtalhoF10 && window.acaoAtalhoF10()" class="bg-gray-900/60 hover:bg-gray-700 border border-gray-700/80 p-2 rounded-lg transition flex items-center justify-between group">
+                        <div class="flex flex-col overflow-hidden">
+                            <span class="text-[11px] font-bold text-gray-200 group-hover:text-emerald-400 truncate">Cons. Preço</span>
+                            <span class="text-[9px] text-gray-400 truncate">Verificar valor rapido</span>
+                        </div>
+                        <span class="bg-gray-850 text-gray-300 text-[10px] font-bold px-1.5 py-0.5 rounded border border-gray-700 font-mono ml-1">F10</span>
+                    </button>
+
+                    <!-- F11 -->
+                    <button onclick="window.acaoAtalhoF11 && window.acaoAtalhoF11()" class="bg-gray-900/60 hover:bg-gray-700 border border-gray-700/80 p-2 rounded-lg transition flex items-center justify-between group">
+                        <div class="flex flex-col overflow-hidden">
+                            <span class="text-[11px] font-bold text-gray-200 group-hover:text-red-400 truncate">Cancelar Item</span>
+                            <span class="text-[9px] text-gray-400 truncate">Exige PIN Admin</span>
+                        </div>
+                        <span class="bg-red-950/60 text-red-400 text-[10px] font-bold px-1.5 py-0.5 rounded border border-red-800/50 font-mono ml-1">F11</span>
+                    </button>
+
+                    <!-- F12 -->
+                    <button onclick="window.acaoAtalhoF12 && window.acaoAtalhoF12()" class="bg-gray-900/60 hover:bg-gray-700 border border-gray-700/80 p-2 rounded-lg transition flex items-center justify-between group">
+                        <div class="flex flex-col overflow-hidden">
+                            <span class="text-[11px] font-bold text-gray-200 group-hover:text-red-400 truncate">Canc. Venda</span>
+                            <span class="text-[9px] text-gray-400 truncate">Exige PIN Admin</span>
+                        </div>
+                        <span class="bg-red-950/60 text-red-400 text-[10px] font-bold px-1.5 py-0.5 rounded border border-red-800/50 font-mono ml-1">F12</span>
+                    </button>
+                </div>
+            </div>
+        </section>
 
     </main>
 
+    <!-- Container Dinâmico para Modais de Checkout e Outros -->
+    <div id="containerModaisDinamicos"></div>
+
+    <!-- Script principal de inicialização do PDV -->
     <script type="module" src="caixa-core.js"></script>
 </body>
 </html>

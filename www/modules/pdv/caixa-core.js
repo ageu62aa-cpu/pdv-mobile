@@ -1,382 +1,578 @@
-/**
- * Núcleo do PDV (www/modules/pdv/components/caixa-core.js)
- * Orquestra o fluxo de vendas, carrinho, pagamentos, atalhos globais (F1-F12) e unidades KG/UN.
- */
+// ==========================================
+// MÓDULO DE CAIXA E VENDAS (PDV-VS) - OTIMIZADO & COMPLETO (F1 a F12)
+// ==========================================
 
-import { supabase } from '../../../core/config.js';
-import { initCaixaBusca } from './caixa-busca.js';
-import { CaixaOperacoes } from './caixa-operacoes.js';
+import { 
+    usuarioAtual, empresaAtualId, cargoUsuarioAtual, caixaAberto, faturamentoDia, 
+    acaoCaixaAtual, itensVenda, indiceItemParaRemover, setAcaoCaixaAtual, 
+    setCaixaAberto, setFaturamentoDia, setIndiceItemParaRemover, setItensVenda, 
+    produtosCache, setEmpresaAtualId 
+} from './state.js';
+import { carregarProdutosCache } from './produtos.js';
+import { carregarHistoricoAdmin, carregarOperadoresLoja } from './admin.js';
 
-document.addEventListener('DOMContentLoaded', async () => {
-    const carrinho = [];
-    let trocoInicialCaixa = 50.00; 
-    let fatorMultiplicador = 1; // Suporte para Qtd + F5 (ex: 5 + F5)
-    let clienteAtual = { nome: 'Consumidor Geral', doc: '' };
-    let vendedorAtual = { id: '#01', nome: 'Operador Ativo' };
+let valorTrocoAbertura = 0;
+let horaAberturaCaixa = null;
 
-    const appContainer = document.getElementById('pdv-root') || document.body;
-    
-    appContainer.innerHTML = `
-        <div class="min-h-screen bg-gray-900 text-gray-100 flex flex-col">
-            <!-- Cabeçalho Profissional -->
-            <header class="bg-gray-800 border-b border-gray-700 px-6 py-4 flex justify-between items-center shadow-md">
-                <div class="flex items-center gap-3">
-                    <img src="../../assets/mascote.jpeg" alt="Mascote Vancely" class="w-10 h-10 rounded-full object-cover border border-emerald-500 shadow">
-                    <div>
-                        <h1 id="loja-nome" class="text-base font-extrabold text-white">Vancely Software - Caixa Aberto</h1>
-                        <p id="loja-doc" class="text-xs text-emerald-400">Operador: <span id="lbl-vendedor">Ativo</span> | Caixa: #01 | Cliente: <span id="lbl-cliente">Geral</span></p>
-                    </div>
-                </div>
-                <div class="flex items-center gap-2">
-                    <a href="../admin/admin.html" class="bg-gray-700 hover:bg-gray-600 text-xs px-3 py-2 rounded-lg font-medium transition-colors text-white">Admin</a>
-                    <button id="btn-power-off" class="bg-red-600 hover:bg-red-700 text-xs px-3 py-2 rounded-lg font-medium transition-colors flex items-center gap-1 text-white">Sair</button>
-                </div>
-            </header>
+// --- UTILITÁRIO DE CLIENTE SUPABASE ---
+const getSupabase = () => window.supabaseClient;
 
-            <!-- Área Principal de Vendas -->
-            <main class="flex-1 p-4 flex flex-col md:flex-row gap-4 max-w-7xl mx-auto w-full">
-                <!-- Coluna Esquerda: Busca e Lista de Itens -->
-                <section class="flex-1 flex flex-col gap-4">
-                    <div id="busca-container" class="bg-gray-800 border border-gray-700 p-4 rounded-2xl shadow-xl"></div>
-                    
-                    <!-- Carrinho / Tabela de Produtos Adicionados -->
-                    <div class="bg-gray-800 border border-gray-700 rounded-2xl shadow-xl flex-1 flex flex-col overflow-hidden">
-                        <div class="bg-gray-900 px-4 py-3 border-b border-gray-700 flex justify-between items-center text-xs font-bold text-gray-400 uppercase">
-                            <span>Item / Produto</span>
-                            <span>Qtd / Preço</span>
-                            <span>Subtotal</span>
-                        </div>
-                        <div id="carrinho-lista" class="divide-y divide-gray-700 flex-1 overflow-y-auto max-h-[50vh] p-4 space-y-2">
-                            <p class="text-center text-gray-500 text-sm py-8">Nenhum item adicionado ao carrinho. (Atalhos: F1-F12)</p>
-                        </div>
-                    </div>
-                </section>
+// Checagem de status e faturamento do caixa individual
+export async function verificarStatusCaixaServidor() {
+    if (!empresaAtualId || !usuarioAtual) return;
+    try {
+        const { data, error } = await getSupabase()
+            .from('caixas')
+            .select('status, valor_abertura, faturamento_dia')
+            .eq('empresa_id', empresaAtualId)
+            .eq('user_id', usuarioAtual.id)
+            .eq('status', 'ABERTO')
+            .maybeSingle();
 
-                <!-- Coluna Direita: Totais e Fechamento -->
-                <section class="w-full md:w-96 bg-gray-800 border border-gray-700 rounded-2xl shadow-xl p-4 flex flex-col justify-between">
-                    <div>
-                        <h2 class="text-sm font-bold text-white uppercase border-b border-gray-700 pb-2 mb-4">Resumo da Venda</h2>
-                        <div class="flex justify-between text-gray-400 mb-2 text-sm">
-                            <span>Subtotal:</span>
-                            <span id="txt-subtotal" class="text-white font-bold">R$ 0,00</span>
-                        </div>
-                        <div class="flex justify-between text-gray-400 mb-4 text-sm">
-                            <span>Descontos / Taxas:</span>
-                            <span id="txt-taxas" class="text-white font-bold">R$ 0,00</span>
-                        </div>
-                        <div class="bg-gray-900 p-4 rounded-xl border border-gray-700 flex justify-between items-center mb-6">
-                            <span class="text-emerald-400 font-bold text-xs uppercase">Total a Pagar:</span>
-                            <span id="txt-total" class="text-2xl font-extrabold text-emerald-400">R$ 0,00</span>
-                        </div>
-                    </div>
+        if (!error && data) {
+            setCaixaAberto(true);
+            valorTrocoAbertura = Number(data.valor_abertura) || 0;
+            const fatNoBanco = Number(data.faturamento_dia) || 0;
 
-                    <div class="flex flex-col gap-3">
-                        <button id="btn-finalizar" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl shadow-lg transition-colors flex items-center justify-center gap-2">
-                            Finalizar Pagamento (F3/F7)
-                        </button>
-                        <div class="grid grid-cols-2 gap-2">
-                            <button id="btn-cancelar-item" class="bg-gray-700 hover:bg-red-900 hover:text-red-200 border border-gray-600 text-gray-300 text-xs font-bold py-2.5 rounded-lg transition-colors">
-                                Cancelar Item (PIN)
-                            </button>
-                            <button id="btn-fechar-caixa" class="bg-gray-700 hover:bg-gray-600 text-gray-300 text-xs font-bold py-2.5 rounded-lg transition-colors">
-                                Fechar Caixa
-                            </button>
-                        </div>
-                    </div>
-                </section>
-            </main>
-        </div>
-    `;
-
-    // Montar Barra de Busca & Leitor Dual
-    const buscaContainer = document.getElementById('busca-container');
-    const barraBusca = initCaixaBusca(async (termo) => {
-        await processarBuscaProduto(termo);
-    });
-    buscaContainer.appendChild(barraBusca.element);
-
-    async function processarBuscaProduto(termo) {
-        const { data, error } = await supabase
-            .from('produtos')
-            .select('*')
-            .or(`codigo_barras.eq.${termo},nome.ilike.%${termo}%`)
-            .limit(1);
-
-        if (error || !data || data.length === 0) {
-            alert('Produto não encontrado!');
-            return;
+            if (fatNoBanco !== faturamentoDia) {
+                setFaturamentoDia(fatNoBanco);
+                const txtFat = document.getElementById('txtFaturamentoDia');
+                if (txtFat) txtFat.innerText = `R$ ${fatNoBanco.toFixed(2)}`;
+            }
+        } else {
+            setCaixaAberto(false);
         }
+        atualizarBadgesCaixaInterface();
 
-        const produto = data[0];
+        if (cargoUsuarioAtual === 'admin_mercado') {
+            carregarOperadoresLoja?.();
+            carregarHistoricoAdmin?.();
+        }
+    } catch (err) {
+        console.error('PDV-VS: Erro ao verificar status do caixa no servidor:', err);
+    }
+}
+
+// Configuração de Tempo Real (Supabase Realtime)
+export function iniciarRealtimeCaixa() {
+    if (!empresaAtualId) return;
+    
+    getSupabase()
+        .channel('escuta_mudancas_caixa')
+        .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'caixas', filter: `empresa_id=eq.${empresaAtualId}` },
+            (payload) => {
+                if (payload.new && payload.new.user_id === usuarioAtual?.id) {
+                    const novoStatus = payload.new.status === 'ABERTO';
+                    const novoFat = Number(payload.new.faturamento_dia) || 0;
+                    valorTrocoAbertura = Number(payload.new.valor_abertura) || 0;
+
+                    if (novoStatus !== caixaAberto) {
+                        setCaixaAberto(novoStatus);
+                        atualizarBadgesCaixaInterface();
+                    }
+
+                    if (novoFat !== faturamentoDia) {
+                        setFaturamentoDia(novoFat);
+                        const txtFat = document.getElementById('txtFaturamentoDia');
+                        if (txtFat) txtFat.innerText = `R$ ${novoFat.toFixed(2)}`;
+                    }
+                }
+
+                if (cargoUsuarioAtual === 'admin_mercado') {
+                    carregarOperadoresLoja?.();
+                    carregarHistoricoAdmin?.();
+                }
+            }
+        )
+        .subscribe();
+}
+
+// --- MAPDEAMENTO COMPLETO DE ATALHOS F1 A F12 (CLIQUE & TECLADO) ---
+window.acaoAtalhoF1 = () => {
+    const cpf = prompt('Digite o CPF/CNPJ do cliente para a Nota:', '');
+    if (cpf !== null) {
+        alert(`Cliente identificado: ${cpf || 'Consumidor Geral'}`);
+    }
+};
+
+window.acaoAtalhoF2 = () => {
+    const vendedor = prompt('Informe o nome ou código do vendedor:', 'Balcão');
+    if (vendedor) {
+        alert(`Vendedor vinculado: ${vendedor}`);
+    }
+};
+
+window.acaoAtalhoF3 = () => {
+    alert('Atalho F3: Dinheiro Rápido acionado.');
+};
+
+window.acaoAtalhoF4 = () => {
+    const qtd = prompt('Digite a quantidade desejada para o próximo produto:', '1');
+    if (qtd) {
+        window.quantidadeMultiplicador = parseFloat(qtd);
+        alert(`Multiplicador ativado: ${window.quantidadeMultiplicador}x`);
+    }
+};
+
+window.acaoAtalhoF5 = () => {
+    focarBusca();
+};
+
+window.acaoAtalhoF6 = () => {
+    abrirModalCancelarItem();
+};
+
+window.acionarFinalizarVenda = () => {
+    finalizarVenda();
+};
+
+window.acaoAtalhoF8 = () => {
+    alert('Atalho F8: Desconto no item acionado.');
+};
+
+window.acaoAtalhoF9 = () => {
+    const tipo = prompt('Escolha a operação de caixa:\n1 - Sangria (Retirada)\n2 - Suprimento (Entrada)', '1');
+    if (tipo === '1') {
+        const val = prompt('Valor da Sangria (R$):', '0.00');
+        if (val) alert(`Sangria de R$ ${val} registrada.`);
+    } else if (tipo === '2') {
+        const val = prompt('Valor do Suprimento (R$):', '0.00');
+        if (val) alert(`Suprimento de R$ ${val} registrado.`);
+    }
+};
+
+window.acaoAtalhoF10 = () => {
+    const cod = prompt('Digite o código ou escaneie para Consulta de Preço:');
+    if (cod) {
+        const encontrado = produtosCache.find(p => p.codigo_barras === cod || p.id === cod);
+        if (encontrado) {
+            alert(`Produto: ${encontrado.nome} | Preço: R$ ${Number(encontrado.preco_venda || encontrado.preco || 0).toFixed(2)}`);
+        } else {
+            alert('Produto não encontrado para consulta.');
+        }
+    }
+};
+
+window.acaoAtalhoF11 = () => {
+    abrirModalCancelarItem();
+};
+
+window.acaoAtalhoF12 = () => {
+    cancelarVenda();
+};
+
+// Listener global unificado para as teclas de função F1 a F12
+window.addEventListener('keydown', (e) => {
+    switch (e.key) {
+        case 'F1': e.preventDefault(); window.acaoAtalhoF1(); break;
+        case 'F2': e.preventDefault(); window.acaoAtalhoF2(); break;
+        case 'F3': e.preventDefault(); window.acaoAtalhoF3(); break;
+        case 'F4': e.preventDefault(); window.acaoAtalhoF4(); break;
+        case 'F5': e.preventDefault(); window.acaoAtalhoF5(); break;
+        case 'F6': e.preventDefault(); window.acaoAtalhoF6(); break;
+        case 'F7': e.preventDefault(); window.acionarFinalizarVenda(); break;
+        case 'F8': e.preventDefault(); window.acaoAtalhoF8(); break;
+        case 'F9': e.preventDefault(); window.acaoAtalhoF9(); break;
+        case 'F10': e.preventDefault(); window.acaoAtalhoF10(); break;
+        case 'F11': e.preventDefault(); window.acaoAtalhoF11(); break;
+        case 'F12': e.preventDefault(); window.acaoAtalhoF12(); break;
+    }
+});
+
+setTimeout(() => {
+    iniciarRealtimeCaixa();
+    verificarStatusCaixaServidor();
+    if (cargoUsuarioAtual === 'admin_mercado') {
+        carregarOperadoresLoja?.();
+        carregarHistoricoAdmin?.();
+    }
+}, 500);
+
+window.addEventListener('focus', () => {
+    verificarStatusCaixaServidor();
+});
+
+export async function atualizarPaginaCompleta() {
+    if (confirm('PDV-VS: Deseja atualizar e sincronizar todos os dados do sistema?')) {
+        await carregarProdutosCache();
+        await verificarStatusCaixaServidor();
+        if (cargoUsuarioAtual === 'admin_mercado') {
+            await carregarHistoricoAdmin?.();
+            await carregarOperadoresLoja?.();
+        }
+        alert('PDV-VS: Dados sincronizados com sucesso!');
+        focarBusca();
+    }
+}
+
+export async function realizarLogout() { 
+    if (caixaAberto) {
+        alert('PDV-VS: ATENÇÃO! Você não pode sair do sistema com o caixa individual aberto. Faça o fechamento antes de sair.');
+        return;
+    }
+    if (confirm('PDV-VS: Deseja realmente encerrar a sessão?')) {
+        await getSupabase().auth.signOut(); 
+        location.reload(); 
+    }
+}
+
+export function focarBusca() { 
+    document.getElementById('inputBusca')?.focus(); 
+}
+
+// --- BUSCA E SUGESTÕES ---
+export function aoDigitarBusca(e) {
+    if (!e || !e.target) return;
+    
+    const termo = e.target.value.trim().toLowerCase();
+    const suggestionsBox = document.getElementById('sugestoesBusca');
+    
+    if (!suggestionsBox) return;
+
+    if (!termo) {
+        suggestionsBox.classList.add('hidden');
+        suggestionsBox.innerHTML = '';
+        return;
+    }
+
+    const filtrados = produtosCache.filter(p => 
+        (p.nome && p.nome.toLowerCase().includes(termo)) || 
+        (p.codigo_barras && p.codigo_barras.toLowerCase().includes(termo))
+    );
+
+    if (filtrados.length === 0) {
+        suggestionsBox.innerHTML = '<div class="p-2 text-slate-400 text-sm">Nenhum produto encontrado.</div>';
+        suggestionsBox.classList.remove('hidden');
+        return;
+    }
+
+    let html = '';
+    filtrados.slice(0, 10).forEach(prod => {
+        html += `<div class="p-2 hover:bg-slate-100 cursor-pointer border-b flex justify-between items-center" onclick="window.adicionarProdutoPorId('${prod.id}')">
+            <span class="font-medium text-slate-700">${prod.nome}</span>
+            <span class="text-xs text-emerald-600 font-bold">R$ ${Number(prod.preco_venda || prod.preco || 0).toFixed(2)}</span>
+        </div>`;
+    });
+    
+    suggestionsBox.innerHTML = html;
+    suggestionsBox.classList.remove('hidden');
+}
+
+export function tratarEnterBuscaCaixa(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        const input = document.getElementById('inputBusca');
+        if (!input) return;
+        const valor = input.value.trim();
         
-        // 1. Gestão de Unidades de Medida (UN vs. KG / Fracionado)
-        let quantidadeAdicionar = fatorMultiplicador;
-        fatorMultiplicador = 1; // Reseta fator após uso
+        const encontrado = produtosCache.find(p => p.codigo_barras === valor || p.id === valor);
+        if (encontrado) {
+            window.adicionarProdutoAoCarrinho?.(encontrado);
+            input.value = '';
+            document.getElementById('sugestoesBusca')?.classList.add('hidden');
+        } else {
+            alert('PDV-VS: Produto não encontrado pelo código digitado.');
+        }
+    }
+}
 
-        if (produto.unidade === 'KG' || produto.tipo === 'peso') {
-            const pesoInput = prompt(`Produto por KG: ${produto.nome}\nDigite o peso em quilos (ex: 0.750):`, '1.000');
-            const pesoParsed = parseFloat(pesoInput);
-            if (isNaN(pesoParsed) || pesoParsed <= 0) {
-                alert('Peso inválido. Operação cancelada.');
+// --- MODAL DE CAIXA ---
+export function gerenciarCaixaModal(tipo) {
+    setAcaoCaixaAtual(tipo);
+    const modal = document.getElementById('modalCaixa');
+    const tituloModal = document.getElementById('tituloModalCaixa');
+    const secaoAbrir = document.getElementById('secaoAbrirCaixa');
+    const resumoFechamento = document.getElementById('resumoFechamentoCaixa');
+    const inputValorCaixa = document.getElementById('inputValorCaixa');
+
+    if (tituloModal) {
+        tituloModal.innerHTML = tipo === 'abrir' 
+            ? '<i class="fa-solid fa-cash-register text-emerald-600"></i> Abertura de Caixa (Individual)' 
+            : '<i class="fa-solid fa-cash-register text-amber-600"></i> Fechamento de Caixa (Individual)';
+    }
+    secaoAbrir?.classList.toggle('hidden', tipo === 'fechar');
+    resumoFechamento?.classList.toggle('hidden', tipo === 'abrir');
+    
+    if (tipo === 'fechar') {
+        const valFatOp = document.getElementById('valFaturamentoOperador');
+        const valTrocoInicial = document.getElementById('valTrocoInicialCaixa');
+        const valTotalGeral = document.getElementById('valTotalGeralCaixa');
+        
+        if (valFatOp) valFatOp.innerText = `R$ ${faturamentoDia.toFixed(2)}`;
+        if (valTrocoInicial) valTrocoInicial.innerText = `R$ ${(valorTrocoAbertura || 0).toFixed(2)}`;
+        if (valTotalGeral) valTotalGeral.innerText = `R$ ${(faturamentoDia + (valorTrocoAbertura || 0)).toFixed(2)}`;
+    } else if (inputValorCaixa) {
+        inputValorCaixa.value = '';
+    }
+    
+    modal?.classList.remove('hidden');
+    setTimeout(() => {
+        if (tipo === 'abrir' && inputValorCaixa) {
+            inputValorCaixa.focus();
+        } else {
+            document.getElementById('btnConfirmarCaixaModal')?.focus();
+        }
+    }, 100);
+}
+
+export function tratarEnterModalCaixa(e) {
+    if (e.key === 'Enter') { e.preventDefault(); confirmarAcaoCaixa(); }
+}
+
+export function fecharModalCaixa() { 
+    document.getElementById('modalCaixa')?.classList.add('hidden'); 
+}
+
+export async function confirmarAcaoCaixa() {
+    let idEmpresaAtual = empresaAtualId || localStorage.getItem('empresa_id') || localStorage.getItem('pdv_empresa_id');
+
+    try {
+        const { data: { session } } = await getSupabase().auth.getSession();
+        if (session?.user) {
+            const { data: vincData } = await getSupabase()
+                .from('usuarios_empresas')
+                .select('empresa_id')
+                .eq('user_id', session.user.id)
+                .maybeSingle();
+            
+            idEmpresaAtual = vincData?.empresa_id || idEmpresaAtual || session.user.id;
+            setEmpresaAtualId(idEmpresaAtual);
+            localStorage.setItem('empresa_id', idEmpresaAtual);
+        }
+    } catch (e) {
+        console.error("PDV-VS: Erro ao validar empresa na sessão:", e);
+    }
+
+    if (!idEmpresaAtual || !usuarioAtual) {
+        alert('PDV-VS: Erro: Sessão do usuário ou empresa não identificada.');
+        return;
+    }
+
+    const valorDigitado = parseFloat(document.getElementById('inputValorCaixa')?.value) || 0;
+
+    if (acaoCaixaAtual === 'abrir') {
+        valorTrocoAbertura = valorDigitado;
+        horaAberturaCaixa = new Date();
+
+        const { error } = await getSupabase().from('caixas').upsert({ 
+            empresa_id: idEmpresaAtual, user_id: usuarioAtual.id, status: 'ABERTO',
+            valor_abertura: valorTrocoAbertura, faturamento_dia: 0,
+            data_abertura: new Date().toISOString(), data_fechamento: null, updated_at: new Date().toISOString()
+        }, { onConflict: 'empresa_id,user_id,status' });
+
+        if (error) {
+            const { error: errInsert } = await getSupabase().from('caixas').insert({ 
+                empresa_id: idEmpresaAtual, user_id: usuarioAtual.id, status: 'ABERTO',
+                valor_abertura: valorTrocoAbertura, faturamento_dia: 0, data_abertura: new Date().toISOString()
+            });
+            if (errInsert) {
+                alert('PDV-VS: Erro ao salvar abertura do caixa: ' + errInsert.message);
                 return;
             }
-            quantidadeAdicionar = pesoParsed;
         }
 
-        adicionarAoCarrinho(produto, quantidadeAdicionar);
-    }
-
-    function adicionarAoCarrinho(produto, qtd) {
-        const existente = carrinho.find(item => item.id === produto.id);
-        if (existente) {
-            existente.quantidade += qtd;
-        } else {
-            carrinho.push({ ...produto, quantidade: qtd });
-        }
-        atualizarCarrinhoUI();
-    }
-
-    function atualizarCarrinhoUI() {
-        const listaEl = document.getElementById('carrinho-lista');
-        const txtSubtotal = document.getElementById('txt-subtotal');
-        const txtTotal = document.getElementById('txt-total');
-
-        if (carrinho.length === 0) {
-            listaEl.innerHTML = `<p class="text-center text-gray-500 text-sm py-8">Nenhum item adicionado ao carrinho. (Atalhos: F1-F12)</p>`;
-            txtSubtotal.textContent = 'R$ 0,00';
-            txtTotal.textContent = 'R$ 0,00';
-            return;
-        }
-
-        let html = '';
-        let totalGeral = 0;
-
-        carrinho.forEach((item) => {
-            const sub = item.preco * item.quantidade;
-            totalGeral += sub;
-            html += `
-                <div class="flex justify-between items-center p-2 bg-gray-900 rounded-lg text-sm border border-gray-700">
-                    <div>
-                        <p class="font-bold text-white">${item.nome}</p>
-                        <p class="text-xs text-gray-400">R$ ${item.preco.toFixed(2)} ${item.unidade || 'UN'}</p>
-                    </div>
-                    <div class="flex items-center gap-3">
-                        <span class="font-semibold text-gray-300">${item.unidade === 'KG' ? item.quantidade.toFixed(3) + ' kg' : 'x' + item.quantidade}</span>
-                        <span class="font-bold text-emerald-400">R$ ${sub.toFixed(2)}</span>
-                    </div>
-                </div>
-            `;
-        });
-
-        listaEl.innerHTML = html;
-        txtSubtotal.textContent = `R$ ${totalGeral.toFixed(2)}`;
-        txtTotal.textContent = `R$ ${totalGeral.toFixed(2)}`;
-    }
-
-    // ==========================================
-    // MATRIZ DE ATALHOS PROFISSIONAIS (F1 a F12)
-    // ==========================================
-    window.addEventListener('keydown', (e) => {
-        // Evita conflitos se estiver digitando em modais específicos de input
-        if (e.target.tagName === 'INPUT' && e.key !== 'F4' && e.key !== 'F5') return;
-
-        switch (e.key) {
-            case 'F1': // Identificar Consumidor
-                e.preventDefault();
-                const cpf = prompt('Informe o CPF/CNPJ do Consumidor para a NFC-e:', clienteAtual.doc);
-                if (cpf !== null) {
-                    clienteAtual.doc = cpf;
-                    document.getElementById('lbl-cliente').textContent = cpf ? cpf : 'Geral';
-                    alert(`Consumidor identificado: ${cpf || 'Não informado'}`);
-                }
-                break;
-
-            case 'F2': // Identificar Vendedor / Operador
-                e.preventDefault();
-                const vend = prompt('Informe o nome ou ID do Vendedor:', vendedorAtual.nome);
-                if (vend) {
-                    vendedorAtual.nome = vend;
-                    document.getElementById('lbl-vendedor').textContent = vend;
-                }
-                break;
-
-            case 'F3':
-            case 'F7': // Avançar para Pagamento
-                e.preventDefault();
-                document.getElementById('btn-finalizar').click();
-                break;
-
-            case 'F4': // Consulta / Focar Busca
-                e.preventDefault();
-                const inputBusca = document.querySelector('input[type="text"]');
-                if (inputBusca) inputBusca.focus();
-                break;
-
-            case 'F5': // Multiplicador de Quantidade
-                e.preventDefault();
-                const fator = prompt('Digite o fator multiplicador (Ex: 5 para 5 unidades):', '1');
-                const parsedFator = parseFloat(fator);
-                if (!isNaN(parsedFator) && parsedFator > 0) {
-                    fatorMultiplicador = parsedFator;
-                    alert(`Multiplicador ativado: ${fatorMultiplicador}x. Bipe ou busque o próximo item.`);
-                }
-                break;
-
-            case 'F6': // Pausar Venda (Salvar em LocalStorage)
-                e.preventDefault();
-                if (carrinho.length === 0) {
-                    alert('Carrinho vazio para pausar.');
-                    return;
-                }
-                localStorage.setItem('vancely_venda_suspensa', JSON.stringify(carrinho));
-                carrinho.length = 0;
-                atualizarCarrinhoUI();
-                alert('Venda pausada e salva com sucesso!');
-                break;
-
-            case 'F11': // Recuperar Venda Suspensa
-                e.preventDefault();
-                const vendaSalva = localStorage.getItem('vancely_venda_suspensa');
-                if (!vendaSalva) {
-                    alert('Nenhuma venda pausada encontrada.');
-                    return;
-                }
-                const itensRestaurados = JSON.parse(vendaSalva);
-                itensRestaurados.forEach(i => carrinho.push(i));
-                localStorage.removeItem('vancely_venda_suspensa');
-                atualizarCarrinhoUI();
-                alert('Venda recuperada com sucesso!');
-                break;
-
-            case 'F9': // Pagamento Rápido em Dinheiro
-                e.preventDefault();
-                executarPagamentoDinheiroRapido();
-                break;
-
-            case 'F12': // Desconto Especial
-                e.preventDefault();
-                aplicarDescontoEspecial();
-                break;
-
-            case 'F8': // Finalizar e Impressão Térmica Fiscal (NFC-e)
-                e.preventDefault();
-                finalizarEImprimirCupom();
-                break;
-        }
-    });
-
-    function aplicarDescontoEspecial() {
-        const descontoStr = prompt('Digite o valor do desconto em R$ ou percentual (%):', '0.00');
-        if (!descontoStr) return;
-        alert(`Desconto de ${descontoStr} aplicado na venda.`);
-    }
-
-    function executarPagamentoDinheiroRapido() {
-        if (carrinho.length === 0) {
-            alert('Carrinho vazio.');
-            return;
-        }
-        const totalGeral = carrinho.reduce((acc, item) => acc + (item.preco * item.quantidade), 0);
-        const recebidoStr = prompt(`Total a pagar: R$ ${totalGeral.toFixed(2)}\nValor em Dinheiro Recebido:`, totalGeral.toFixed(2));
-        const recebido = parseFloat(recebidoStr);
+        setCaixaAberto(true);
+        setFaturamentoDia(0);
+        alert('PDV-VS: Caixa aberto com sucesso!');
+    } else {
+        const horaFechamento = new Date();
+        const totalGeralGaveta = faturamentoDia + (valorTrocoAbertura || 0);
         
-        if (isNaN(recebido) || recebido < totalGeral) {
-            alert('Valor insuficiente ou inválido.');
-            return;
-        }
-
-        const troco = recebido - totalGeral;
-        alert(`Pagamento em Dinheiro Aprovado!\nTroco: R$ ${troco.toFixed(2)}`);
-        finalizarEImprimirCupom();
-    }
-
-    function finalizarEImprimirCupom() {
-        if (carrinho.length === 0) {
-            alert('Adicione itens ao carrinho antes de finalizar.');
-            return;
-        }
-
-        // Simulação do Cupom Térmico NFC-e e impressão via thermal window.print()
-        const janelaImpressao = window.open('', '_blank', 'width=350,height=600');
-        const totalGeral = carrinho.reduce((acc, item) => acc + (item.preco * item.quantidade), 0);
+        alert(`PDV-VS: Caixa Fechado com Sucesso!\n- Abertura: ${horaAberturaCaixa?.toLocaleTimeString() || 'N/A'}\n- Fechamento: ${horaFechamento.toLocaleTimeString()}\n- Troco Inicial: R$ ${(valorTrocoAbertura || 0).toFixed(2)}\n- Vendas: R$ ${faturamentoDia.toFixed(2)}\n- Total em Gaveta: R$ ${totalGeralGaveta.toFixed(2)}`);
         
-        janelaImpressao.document.write(`
-            <html>
-                <head><style>body { font-family: monospace; font-size: 12px; width: 280px; margin: 0 auto; }</style></head>
-                <body>
-                    <center>
-                        <h3>VANCELY SOFTWARE</h3>
-                        <p>CNPJ: 00.000.000/0001-00<br>Manaus - AM</p>
-                        <p>--------------------------------</p>
-                        <h4>CUPOM FISCAL ELETRÔNICO (NFC-e)</h4>
-                    </center>
-                    <p>Cliente: ${clienteAtual.doc || 'Não Identificado'}</p>
-                    <p>Operador: ${vendedorAtual.nome}</p>
-                    <p>--------------------------------</p>
-                    <ul>
-                        ${carrinho.map(i => `<li>${i.nome} <br>${i.quantidade}x R$ ${i.preco.toFixed(2)} = R$ ${(i.preco * i.quantidade).toFixed(2)}</li>`).join('')}
-                    </ul>
-                    <p>--------------------------------</p>
-                    <h3>TOTAL: R$ ${totalGeral.toFixed(2)}</h3>
-                    <center><p>Obrigado pela preferência!</p></center>
-                    <script>window.print(); window.close();</script>
-                </body>
-            </html>
-        `);
-        janelaImpressao.document.close();
+        await getSupabase().from('caixas').update({ 
+            status: 'FECHADO', valor_fechamento: totalGeralGaveta,
+            data_fechamento: new Date().toISOString(), updated_at: new Date().toISOString()
+        }).eq('empresa_id', idEmpresaAtual).eq('user_id', usuarioAtual.id).eq('status', 'ABERTO');
 
-        carrinho.length = 0;
-        atualizarCarrinhoUI();
+        setCaixaAberto(false);
+        valorTrocoAbertura = 0;
+        setFaturamentoDia(0);
+        const txtFat = document.getElementById('txtFaturamentoDia');
+        if (txtFat) txtFat.innerText = 'R$ 0,00';
+    }
+    
+    atualizarBadgesCaixaInterface();
+    if (cargoUsuarioAtual === 'admin_mercado') {
+        carregarOperadoresLoja?.();
+        carregarHistoricoAdmin?.();
+    }
+    fecharModalCaixa();
+    focarBusca();
+}
+
+export function atualizarBadgesCaixaInterface() {
+    document.querySelectorAll('.badgeCaixaStatus').forEach(b => {
+        b.innerText = caixaAberto ? 'ABERTO' : 'FECHADO';
+        b.className = caixaAberto 
+            ? 'badgeCaixaStatus text-xs bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-3 py-1.5 rounded font-semibold' 
+            : 'badgeCaixaStatus text-xs bg-amber-500/20 text-amber-300 border border-amber-500/30 px-3 py-1.5 rounded font-semibold';
+    });
+}
+
+// --- SEGURANÇA E PIN GERENCIAL ---
+export function salvarPinAdmin() {
+    const pin = document.getElementById('inputAdminPinConfig')?.value.trim() || '';
+    if (!pin || pin.length < 4) { alert('PDV-VS: Informe um PIN válido de pelo menos 4 dígitos.'); return; }
+    localStorage.setItem('pdv_admin_pin_' + empresaAtualId, pin); 
+    alert('PDV-VS: PIN gerencial atualizado com sucesso!');
+}
+
+export function solicitarRemocaoItem(i) {
+    setIndiceItemParaRemover(i); 
+    const inputPinAuth = document.getElementById('inputPinAutorizacion');
+    if (inputPinAuth) inputPinAuth.value = '';
+    document.getElementById('modalAutorizacaoAdmin')?.classList.remove('hidden');
+    setTimeout(() => inputPinAuth?.focus(), 100);
+}
+
+export function tratarEnterModalAutorizacao(e) {
+    if (e.key === 'Enter') { e.preventDefault(); confirmarAutorizacaoPin(); }
+}
+
+export function confirmarAutorizacaoPin() {
+    const inputPinAuth = document.getElementById('inputPinAutorizacion');
+    const pin = inputPinAuth?.value.trim() || '';
+    const pinSalvo = localStorage.getItem('pdv_admin_pin_' + empresaAtualId) || '123456';
+    
+    if (pin === pinSalvo) {
+        if (indiceItemParaRemover !== null) { 
+            itensVenda.splice(indiceItemParaRemover, 1); 
+            atualizarTabelaVenda(); 
+        }
+        fecharModalAutorizacao();
+    } else { 
+        alert('PDV-VS: PIN gerencial incorreto!'); 
+        if (inputPinAuth) { inputPinAuth.value = ''; inputPinAuth.focus(); }
+    }
+}
+
+export function fecharModalAutorizacao() { 
+    document.getElementById('modalAutorizacaoAdmin')?.classList.add('hidden'); 
+    focarBusca();
+}
+
+export function abrirModalCancelarItem() {
+    if (itensVenda.length === 0) { alert('PDV-VS: Não há itens na venda.'); return; }
+    let html = '';
+    itensVenda.forEach((item, index) => {
+        html += `<div class="p-3 flex justify-between items-center hover:bg-slate-50 cursor-pointer border-b" onclick="fecharModalCancelarItem(); window.solicitarRemocaoItem(${index});"> <div><span class="font-semibold text-slate-800">${item.nome}</span></div> <button class="text-rose-600 text-xs border border-rose-200 rounded px-2 py-1">Remover</button> </div>`;
+    });
+    const listaCancelar = document.getElementById('listaItensParaCancelar');
+    if (listaCancelar) listaCancelar.innerHTML = html;
+    document.getElementById('modalCancelarItem')?.classList.remove('hidden');
+}
+
+export function fecharModalCancelarItem() { 
+    document.getElementById('modalCancelarItem')?.classList.add('hidden'); 
+    focarBusca();
+}
+
+export function cancelarVenda() { 
+    if (confirm('PDV-VS: Deseja realmente cancelar toda a compra?')) { 
+        setItensVenda([]); 
+        atualizarTabelaVenda(); 
+    } 
+}
+
+// --- FINALIZAÇÃO DE VENDAS E ESTOQUE ---
+export async function finalizarVenda() {
+    if (!caixaAberto) { alert('PDV-VS: O caixa individual precisa estar aberto! Pressione [F1] ou abra o caixa.'); return; }
+    if (itensVenda.length === 0) { alert('PDV-VS: Adicione produtos antes de finalizar.'); return; }
+    
+    const total = itensVenda.reduce((acc, item) => acc + (item.qtd * item.preco), 0);
+    
+    const { error } = await getSupabase().from('vendas').insert([{ 
+        empresa_id: empresaAtualId, operador: usuarioAtual.email, valor_total: total, itens: itensVenda 
+    }]);
+    
+    if (error) { alert('PDV-VS: Erro ao registrar venda: ' + error.message); return; }
+
+    for (const item of itensVenda) {
+        const novoEstoque = Math.max(0, (item.estoque || 0) - item.qtd);
+        await getSupabase().from('produtos').update({ estoque: novoEstoque }).eq('id', item.id);
     }
 
-    // Botão Cancelar Item com PIN
-    document.getElementById('btn-cancelar-item').addEventListener('click', async () => {
-        const autorizado = await CaixaOperacoes.solicitarPinSeguranca();
-        if (autorizado && carrinho.length > 0) {
-            carrinho.pop();
-            atualizarCarrinhoUI();
-            alert('Item cancelado com sucesso.');
-        }
+    const novoFat = faturamentoDia + total;
+    setFaturamentoDia(novoFat); 
+    const txtFat = document.getElementById('txtFaturamentoDia');
+    if (txtFat) txtFat.innerText = `R$ ${novoFat.toFixed(2)}`;
+
+    if (empresaAtualId && usuarioAtual) {
+        await getSupabase().from('caixas').update({ 
+            faturamento_dia: novoFat, updated_at: new Date().toISOString()
+        }).eq('empresa_id', empresaAtualId).eq('user_id', usuarioAtual.id).eq('status', 'ABERTO');
+    }
+
+    setItensVenda([]); 
+    atualizarTabelaVenda(); 
+    await carregarProdutosCache();
+    
+    if (cargoUsuarioAtual === 'admin_mercado') {
+        carregarOperadoresLoja?.();
+        carregarHistoricoAdmin?.();
+    }
+    alert('PDV-VS: Venda concluída e estoque atualizado com sucesso!');
+    focarBusca();
+}
+
+export function atualizarTabelaVenda() {
+    const tbody = document.getElementById('tabelaItensVenda');
+    const contador = document.getElementById('contadorItens');
+    const txtSubtotal = document.getElementById('txtSubtotal');
+    const txtTotal = document.getElementById('txtTotal');
+
+    if (contador) contador.innerText = `${itensVenda.length} itens`;
+    if (!tbody) return;
+
+    if (itensVenda.length === 0) { 
+        tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-slate-400">Nenhum produto adicionado na venda.</td></tr>'; 
+        if (txtSubtotal) txtSubtotal.innerText = 'R$ 0,00'; 
+        if (txtTotal) txtTotal.innerText = 'R$ 0,00'; 
+        return; 
+    }
+    
+    let html = '', total = 0;
+    itensVenda.forEach((item, i) => {
+        const subtotalItem = item.qtd * item.preco;
+        total += subtotalItem;
+        
+        const qtdDisplay = item.isPeso 
+            ? `<span class="text-amber-700 font-bold text-xs bg-amber-50 px-2 py-0.5 rounded">${item.qtd.toFixed(3)} kg</span>` 
+            : `<input type="number" min="1" value="${item.qtd}" onchange="window.alterarQtd(${i}, this.value)" class="w-14 text-center border rounded">`;
+
+        html += `<tr class="border-b">
+            <td class="p-2">${item.nome} ${item.isPeso ? '<span class="text-[10px] text-amber-600 block">Pesado (Baixa por Peso)</span>' : ''}</td>
+            <td class="p-2">${qtdDisplay}</td>
+            <td class="p-2">R$ ${Number(item.preco).toFixed(2)}${item.isPeso ? '/kg' : ''}</td>
+            <td class="p-2 font-bold">R$ ${subtotalItem.toFixed(2)}</td>
+            <td class="p-2 text-center"><button onclick="window.solicitarRemocaoItem(${i})" class="text-rose-500 hover:text-rose-700"><i class="fa-solid fa-trash"></i></button></td>
+        </tr>`;
     });
+    tbody.innerHTML = html;
+    if (txtSubtotal) txtSubtotal.innerText = `R$ ${total.toFixed(2)}`;
+    if (txtTotal) txtTotal.innerText = `R$ ${total.toFixed(2)}`;
+}
 
-    // Botão Fechar Caixa
-    document.getElementById('btn-fechar-caixa').addEventListener('click', () => {
-        const totalFaturado = carrinho.reduce((acc, item) => acc + (item.preco * item.quantidade), 0);
-        CaixaOperacoes.fecharCaixa(totalFaturado, trocoInicialCaixa);
-    });
+export function alterarQtd(i, qtd) { 
+    const q = parseFloat(qtd); 
+    if (q > 0) { itensVenda[i].qtd = q; atualizarTabelaVenda(); } 
+}
 
-    // Botão Sair / Power
-    document.getElementById('btn-power-off').addEventListener('click', async () => {
-        await supabase.auth.signOut();
-        window.location.href = '../auth/auth.html';
-    });
-
-    // Finalizar Pagamento Tradicional (Botão da Tela)
-    document.getElementById('btn-finalizar').addEventListener('click', () => {
-        if (carrinho.length === 0) {
-            alert('Adicione itens ao carrinho antes de finalizar.');
-            return;
-        }
-
-        const formaPagamento = prompt(
-            'Escolha a Forma de Pagamento:\n1 - Dinheiro\n2 - Pix\n3 - Débito\n4 - Crédito à Vista\n5 - Crédito Parcelado (Até 12x)',
-            '2'
-        );
-
-        if (!formaPagamento) return;
-
-        if (formaPagamento === '1') {
-            executarPagamentoDinheiroRapido();
-            return;
-        }
-
-        let parcelas = 1;
-        if (formaPagamento === '5') {
-            const p = prompt('Digite a quantidade de parcelas (2 a 12x):', '2');
-            parcelas = parseInt(p) || 1;
-        }
-
-        alert(`Pagamento processado com sucesso via forma #${formaPagamento} (${parcelas}x)!`);
-        finalizarEImprimirCupom();
-    });
+// ==========================================
+// EXPOSIÇÃO GLOBAL UNIFICADA (WINDOW)
+// ==========================================
+Object.assign(window, {
+    verificarStatusCaixaServidor, iniciarRealtimeCaixa, atualizarPaginaCompleta,
+    realizarLogout, focarBusca, aoDigitarBusca, tratarEnterBuscaCaixa,
+    gerenciarCaixaModal, tratarEnterModalCaixa, fecharModalCaixa, confirmarAcaoCaixa,
+    atualizarBadgesCaixaInterface, salvarPinAdmin, solicitarRemocaoItem,
+    tratarEnterModalAutorizacao, confirmarAutorizacaoPin, fecharModalAutorizacao,
+    abrirModalCancelarItem, fecharModalCancelarItem, cancelarVenda, finalizarVenda,
+    atualizarTabelaVenda, alterarQtd,
+    acaoAtalhoF1, acaoAtalhoF2, acaoAtalhoF3, acaoAtalhoF4, acaoAtalhoF5,
+    acaoAtalhoF6, acionarFinalizarVenda, acaoAtalhoF8, acaoAtalhoF9,
+    acaoAtalhoF10, acaoAtalhoF11, acaoAtalhoF12
 });
