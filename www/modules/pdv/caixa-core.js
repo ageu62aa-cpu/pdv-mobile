@@ -17,68 +17,68 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // Injetar estrutura base se estiver vazia
     appContainer.innerHTML = `
-        <div class="min-h-screen bg-emerald-50 flex flex-col">
+        <div class="min-h-screen bg-gray-900 text-gray-100 flex flex-col">
             <!-- Cabeçalho Profissional -->
-            <header class="bg-emerald-800 text-white shadow-md p-3 flex justify-between items-center">
+            <header class="bg-gray-800 border-b border-gray-700 px-6 py-4 flex justify-between items-center shadow-md">
                 <div class="flex items-center gap-3">
-                    <div class="bg-white p-1 rounded-lg text-emerald-800 font-bold text-xs px-2 shadow">PDV</div>
+                    <img src="../../assets/mascote.jpeg" alt="Mascote Vancely" class="w-10 h-10 rounded-full object-cover border border-emerald-500 shadow">
                     <div>
-                        <h1 id="loja-nome" class="text-sm font-bold leading-tight">Supermercado Exemplo</h1>
-                        <p id="loja-doc" class="text-[10px] text-emerald-200">CNPJ: 00.000.000/0001-00 | Caixa: #01</p>
+                        <h1 id="loja-nome" class="text-base font-extrabold text-white">Vancely Software - Caixa Aberto</h1>
+                        <p id="loja-doc" class="text-xs text-emerald-400">Operador: Ativo | Caixa: #01</p>
                     </div>
                 </div>
                 <div class="flex items-center gap-2">
-                    <a href="../admin/admin.html" class="bg-emerald-700 hover:bg-emerald-600 text-xs px-3 py-1.5 rounded-lg font-medium transition-colors">Admin</a>
-                    <button id="btn-power-off" class="bg-red-600 hover:bg-red-700 text-xs px-3 py-1.5 rounded-lg font-medium transition-colors flex items-center gap-1">Sair</button>
+                    <a href="../admin/admin.html" class="bg-gray-700 hover:bg-gray-600 text-xs px-3 py-2 rounded-lg font-medium transition-colors text-white">Admin</a>
+                    <button id="btn-power-off" class="bg-red-600 hover:bg-red-700 text-xs px-3 py-2 rounded-lg font-medium transition-colors flex items-center gap-1 text-white">Sair</button>
                 </div>
             </header>
 
             <!-- Área Principal de Vendas -->
-            <main class="flex-1 p-3 flex flex-col md:flex-row gap-3 max-w-7xl mx-auto w-full">
+            <main class="flex-1 p-4 flex flex-col md:flex-row gap-4 max-w-7xl mx-auto w-full">
                 <!-- Coluna Esquerda: Busca e Lista de Itens -->
-                <section class="flex-1 flex flex-col">
-                    <div id="busca-container"></div>
+                <section class="flex-1 flex flex-col gap-4">
+                    <div id="busca-container" class="bg-gray-800 border border-gray-700 p-4 rounded-2xl shadow-xl"></div>
                     
                     <!-- Carrinho / Tabela de Produtos Adicionados -->
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 flex-1 flex flex-col overflow-hidden">
-                        <div class="bg-gray-50 px-4 py-2 border-b border-gray-100 flex justify-between items-center text-xs font-bold text-gray-500 uppercase">
+                    <div class="bg-gray-800 border border-gray-700 rounded-2xl shadow-xl flex-1 flex flex-col overflow-hidden">
+                        <div class="bg-gray-900 px-4 py-3 border-b border-gray-700 flex justify-between items-center text-xs font-bold text-gray-400 uppercase">
                             <span>Item / Produto</span>
                             <span>Qtd / Preço</span>
                             <span>Subtotal</span>
                         </div>
-                        <div id="carrinho-lista" class="divide-y divide-gray-100 flex-1 overflow-y-auto max-h-[50vh] p-2 space-y-2">
-                            <p class="text-center text-gray-400 text-sm py-8">Nenhum item adicionado ao carrinho.</p>
+                        <div id="carrinho-lista" class="divide-y divide-gray-700 flex-1 overflow-y-auto max-h-[50vh] p-4 space-y-2">
+                            <p class="text-center text-gray-500 text-sm py-8">Nenhum item adicionado ao carrinho.</p>
                         </div>
                     </div>
                 </section>
 
                 <!-- Coluna Direita: Totais e Fechamento -->
-                <section class="w-full md:w-96 bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex flex-col justify-between">
+                <section class="w-full md:w-96 bg-gray-800 border border-gray-700 rounded-2xl shadow-xl p-4 flex flex-col justify-between">
                     <div>
-                        <h2 class="text-sm font-bold text-gray-700 uppercase border-b pb-2 mb-3">Resumo da Venda</h2>
-                        <div class="flex justify-between text-gray-600 mb-1 text-sm">
+                        <h2 class="text-sm font-bold text-white uppercase border-b border-gray-700 pb-2 mb-4">Resumo da Venda</h2>
+                        <div class="flex justify-between text-gray-400 mb-2 text-sm">
                             <span>Subtotal:</span>
-                            <span id="txt-subtotal">R$ 0,00</span>
+                            <span id="txt-subtotal" class="text-white font-bold">R$ 0,00</span>
                         </div>
-                        <div class="flex justify-between text-gray-600 mb-3 text-sm">
+                        <div class="flex justify-between text-gray-400 mb-4 text-sm">
                             <span>Descontos / Taxas:</span>
-                            <span id="txt-taxas">R$ 0,00</span>
+                            <span id="txt-taxas" class="text-white font-bold">R$ 0,00</span>
                         </div>
-                        <div class="bg-emerald-50 p-4 rounded-xl border border-emerald-100 flex justify-between items-center mb-4">
-                            <span class="text-emerald-800 font-bold">TOTAL A PAGAR:</span>
-                            <span id="txt-total" class="text-2xl font-extrabold text-emerald-800">R$ 0,00</span>
+                        <div class="bg-gray-900 p-4 rounded-xl border border-gray-700 flex justify-between items-center mb-6">
+                            <span class="text-emerald-400 font-bold text-xs uppercase">Total a Pagar:</span>
+                            <span id="txt-total" class="text-2xl font-extrabold text-emerald-400">R$ 0,00</span>
                         </div>
                     </div>
 
-                    <div class="flex flex-col gap-2">
+                    <div class="flex flex-col gap-3">
                         <button id="btn-finalizar" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl shadow-lg transition-colors flex items-center justify-center gap-2">
                             Finalizar Pagamento
                         </button>
                         <div class="grid grid-cols-2 gap-2">
-                            <button id="btn-cancelar-item" class="bg-gray-100 hover:bg-red-50 hover:text-red-600 hover:border-red-200 border border-gray-200 text-gray-700 text-xs font-bold py-2.5 rounded-lg transition-colors">
+                            <button id="btn-cancelar-item" class="bg-gray-700 hover:bg-red-900 hover:text-red-200 border border-gray-600 text-gray-300 text-xs font-bold py-2.5 rounded-lg transition-colors">
                                 Cancelar Item (PIN)
                             </button>
-                            <button id="btn-fechar-caixa" class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold py-2.5 rounded-lg transition-colors">
+                            <button id="btn-fechar-caixa" class="bg-gray-700 hover:bg-gray-600 text-gray-300 text-xs font-bold py-2.5 rounded-lg transition-colors">
                                 Fechar Caixa
                             </button>
                         </div>
@@ -124,7 +124,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const txtTotal = document.getElementById('txt-total');
 
         if (carrinho.length === 0) {
-            listaEl.innerHTML = `<p class="text-center text-gray-400 text-sm py-8">Nenhum item adicionado ao carrinho.</p>`;
+            listaEl.innerHTML = `<p class="text-center text-gray-500 text-sm py-8">Nenhum item adicionado ao carrinho.</p>`;
             txtSubtotal.textContent = 'R$ 0,00';
             txtTotal.textContent = 'R$ 0,00';
             return;
@@ -133,18 +133,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         let html = '';
         let totalGeral = 0;
 
-        carrinho.forEach((item, index) => {
+        carrinho.forEach((item) => {
             const sub = item.preco * item.quantidade;
             totalGeral += sub;
             html += `
-                <div class="flex justify-between items-center p-2 bg-gray-50 rounded-lg text-sm">
+                <div class="flex justify-between items-center p-2 bg-gray-900 rounded-lg text-sm border border-gray-700">
                     <div>
-                        <p class="font-bold text-gray-800">${item.nome}</p>
-                        <p class="text-xs text-gray-500">R$ ${item.preco.toFixed(2)} un</p>
+                        <p class="font-bold text-white">${item.nome}</p>
+                        <p class="text-xs text-gray-400">R$ ${item.preco.toFixed(2)} un</p>
                     </div>
                     <div class="flex items-center gap-3">
-                        <span class="font-semibold text-gray-700">x${item.quantidade}</span>
-                        <span class="font-bold text-emerald-700">R$ ${sub.toFixed(2)}</span>
+                        <span class="font-semibold text-gray-300">x${item.quantidade}</span>
+                        <span class="font-bold text-emerald-400">R$ ${sub.toFixed(2)}</span>
                     </div>
                 </div>
             `;
@@ -156,7 +156,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Botão Cancelar Item com PIN
-    document.getElementById('autorizacao-item')?.addEventListener('click', async () => {}); // placeholder
     document.getElementById('btn-cancelar-item').addEventListener('click', async () => {
         const autorizado = await CaixaOperacoes.solicitarPinSeguranca();
         if (autorizado && carrinho.length > 0) {
@@ -178,7 +177,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.location.href = '../auth/auth.html';
     });
 
-    // Finalizar Pagamento (Dinheiro, Pix, Débito, Crédito parcelado até 12x com taxas)
+    // Finalizar Pagamento
     document.getElementById('btn-finalizar').addEventListener('click', () => {
         if (carrinho.length === 0) {
             alert('Adicione itens ao carrinho antes de finalizar.');
