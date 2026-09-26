@@ -1,105 +1,78 @@
-// ==========================================
-// HISTÓRICO DE VENDAS E FATURAMENTO (PDV-VS)
-// ==========================================
+/**
+ * Módulo: Admin Histórico (www/modules/admin/admin-historico.js)
+ * Acompanhamento detalhado de vendas e caixas anteriores (respeitando o plano).
+ */
 
-import { empresaAtualId, historicoVendasCache, setHistoricoVendasCache } from '../../core/state.js';
+import { supabase } from '../../core/config.js';
 
-export async function carregarHistoricoAdmin() {
-    const dataLimite = new Date();
-    dataLimite.setDate(dataLimite.getDate() - 15);
+export async function initAdminHistorico(containerEl) {
+    containerEl.innerHTML = `
+        <div class="space-y-4">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h2 class="text-lg font-bold text-gray-800">Histórico de Vendas e Fechamentos</h2>
+                    <p class="text-xs text-gray-500">Acompanhe o faturamento diário, semanal e quinzenal da sua loja.</p>
+                </div>
+                <button id="btn-atualizar-historico" class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold px-3 py-2 rounded-lg transition-colors">
+                    Atualizar Dados
+                </button>
+            </div>
 
-    const { data } = await window.supabaseClient.from('vendas')
-        .select('*')
-        .eq('empresa_id', empresaAtualId)
-        .gte('created_at', dataLimite.toISOString())
-        .order('created_at', { ascending: false });
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <table class="w-full text-left border-collapse text-sm">
+                    <thead>
+                        <tr class="bg-gray-50 border-b border-gray-100 text-xs text-gray-500 uppercase">
+                            <th class="p-3">Data / Hora</th>
+                            <th class="p-3">Tipo de Operação</th>
+                            <th class="p-3">Troco Inicial</th>
+                            <th class="p-3">Total Faturado</th>
+                            <th class="p-3">Balanço Final</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabela-historico-corpo" class="divide-y divide-gray-100">
+                        <tr><td colspan="5" class="text-center p-4 text-gray-400">Carregando histórico...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `;
 
-    setHistoricoVendasCache(data || []); 
-    renderizarHistoricoVendasPorJanelasDiarias();
+    await carregarHistorico();
+
+    containerEl.querySelector('#btn-atualizar-historico').addEventListener('click', carregarHistorico);
 }
 
-export function renderizarHistoricoVendasPorJanelasDiarias() {
-    const container = document.getElementById('containerJanelasFaturamentoDiario');
-    const lblFatHoje = document.getElementById('adminFatHoje');
-    const lblFatSemanal = document.getElementById('adminFatSemanal');
-    const lblFatTotal = document.getElementById('adminFatTotal15Dias');
+async function carregarHistorico() {
+    const tbody = document.getElementById('tabela-historico-corpo');
 
-    if (!container) return;
+    const { data: sessoes, error } = await supabase
+        .from('caixa_sessoes')
+        .select('*')
+        .order('data_hora', { ascending: false })
+        .limit(50);
 
-    if (!historicoVendasCache || historicoVendasCache.length === 0) {
-        container.innerHTML = '<div class="p-6 text-center text-slate-400">Nenhuma venda registrada nos últimos 15 dias.</div>';
-        if (lblFatHoje) lblFatHoje.innerText = 'R$ 0,00';
-        if (lblFatSemanal) lblFatSemanal.innerText = 'R$ 0,00';
-        if (lblFatTotal) lblFatTotal.innerText = 'R$ 0,00';
+    if (error) {
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center p-4 text-red-500">Erro ao carregar histórico: ${error.message}</td></tr>`;
         return;
     }
 
-    let total15Dias = 0, totalHoje = 0, totalSemanal = 0;
-    const hojeStr = new Date().toDateString();
-    const gruposPorDia = {};
+    if (!sessoes || sessoes.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center p-4 text-gray-400">Nenhum registro de fechamento ou abertura encontrado.</td></tr>`;
+        return;
+    }
 
-    historicoVendasCache.forEach(v => {
-        total15Dias += v.valor_total;
-        const dataVenda = new Date(v.created_at);
-        const diaKey = dataVenda.toISOString().split('T')[0];
+    tbody.innerHTML = sessoes.map(s => {
+        const dataFormatada = new Date(s.data_hora).toLocaleString('pt-BR');
+        const badgeColor = s.tipo === 'FECHAMENTO' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800';
 
-        if (dataVenda.toDateString() === hojeStr) totalHoje += v.valor_total;
-        if ((new Date() - dataVenda) / (1000 * 60 * 60 * 24) <= 7) totalSemanal += v.valor_total;
-
-        if (!gruposPorDia[diaKey]) {
-            gruposPorDia[diaKey] = { dataStr: dataVenda.toLocaleDateString('pt-BR'), totalDia: 0, vendas: [] };
-        }
-        gruposPorDia[diaKey].totalDia += v.valor_total;
-        gruposPorDia[diaKey].vendas.push(v);
-    });
-
-    if (lblFatHoje) lblFatHoje.innerText = `R$ ${totalHoje.toFixed(2)}`;
-    if (lblFatSemanal) lblFatSemanal.innerText = `R$ ${totalSemanal.toFixed(2)}`;
-    if (lblFatTotal) lblFatTotal.innerText = `R$ ${total15Dias.toFixed(2)}`;
-
-    let htmlJanelas = '';
-    Object.keys(gruposPorDia).sort().reverse().forEach((diaKey, idx) => {
-        const grupo = gruposPorDia[diaKey];
-        const collapseId = `detalheDia_${idx}`;
-
-        let htmlItensVendasDia = '';
-        grupo.vendas.forEach(v => {
-            const horaVenda = new Date(v.created_at).toLocaleTimeString();
-            const itensDesc = v.itens ? v.itens.map(i => i.isPeso ? `${i.nome} (${i.qtd.toFixed(3)}kg)` : `${i.nome} (x${i.qtd})`).join(', ') : 'Itens diversos';
-            htmlItensVendasDia += `
-                <div class="py-2 px-3 bg-white border-b flex justify-between items-center text-xs">
-                    <div>
-                        <span class="font-bold text-slate-700">${horaVenda}</span> - <span class="text-slate-600">Op: ${v.operador}</span>
-                        <p class="text-[11px] text-slate-500 mt-0.5">${itensDesc}</p>
-                    </div>
-                    <span class="font-bold text-emerald-700">R$ ${v.valor_total.toFixed(2)}</span>
-                </div>`;
-        });
-
-        htmlJanelas += `
-            <div class="bg-slate-50 border-b">
-                <div onclick="const el = document.getElementById('${collapseId}'); el.classList.toggle('hidden');" class="p-3.5 flex justify-between items-center cursor-pointer hover:bg-slate-100 transition">
-                    <div class="flex items-center space-x-2">
-                        <i class="fa-solid fa-calendar-day text-emerald-600"></i>
-                        <span class="font-bold text-slate-800 text-sm">Data: ${grupo.dataStr}</span>
-                        <span class="text-xs bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full font-semibold">${grupo.vendas.length} venda(s)</span>
-                    </div>
-                    <div class="flex items-center space-x-3">
-                        <span class="font-black text-emerald-700 text-sm">R$ ${grupo.totalDia.toFixed(2)}</span>
-                        <i class="fa-solid fa-chevron-down text-xs text-slate-400"></i>
-                    </div>
-                </div>
-                <div id="${collapseId}" class="hidden pl-6 pr-3 pb-3 space-y-1 border-t bg-slate-100/60">
-                    <div class="py-1 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Detalhamento das Vendas do Dia</div>
-                    ${htmlItensVendasDia}
-                </div>
-            </div>`;
-    });
-
-    container.innerHTML = htmlJanelas;
+        return `
+            <tr class="hover:bg-gray-50">
+                <td class="p-3 text-xs text-gray-600">${dataFormatada}</td>
+                <td class="p-3"><span class="px-2 py-1 rounded text-xs font-bold ${badgeColor}">${s.tipo}</span></td>
+                <td class="p-3 text-gray-700">R$ ${(s.troco_inicial || 0).toFixed(2)}</td>
+                <td class="p-3 font-bold text-emerald-700">R$ ${(s.total_faturado || 0).toFixed(2)}</td>
+                <td class="p-3 font-semibold text-gray-800">R$ ${(s.balanco_final || 0).toFixed(2)}</td>
+            </tr>
+        `;
+    }).join('');
 }
-
-Object.assign(window, {
-    carregarHistoricoAdmin,
-    renderizarHistoricoVendasPorJanelasDiarias
-});

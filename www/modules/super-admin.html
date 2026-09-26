@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vancely Software - Painel Super Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        emeraldPrimary: '#047857',
+                        emeraldHover: '#065f46',
+                        emeraldLight: '#10b981',
+                        emeraldBg: '#ecfdf5'
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen flex flex-col">
+
+    <!-- Cabeçalho Master -->
+    <header class="bg-gray-800 border-b border-gray-700 px-6 py-4 flex justify-between items-center shadow-lg">
+        <div class="flex items-center gap-3">
+            <div class="bg-emerald-600 text-white font-black px-3 py-1 rounded-lg text-xs">SUPER ADMIN</div>
+            <h1 class="font-bold text-lg text-white">Vancely Software Enterprise - Central Mestre</h1>
+        </div>
+        <div class="flex items-center gap-3">
+            <span id="super-admin-user" class="text-xs text-gray-400">Mestre da Plataforma</span>
+            <a href="../auth/auth.html" class="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition-colors">Encerrar Sessão</a>
+        </div>
+    </header>
+
+    <!-- Conteúdo Principal: Gestão de Tenants / Empresas -->
+    <main class="flex-1 max-w-7xl mx-auto w-full p-6 flex flex-col gap-6">
+        
+        <!-- Métricas Rápidas globais -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="bg-gray-800 p-4 rounded-xl border border-gray-700 shadow flex flex-col">
+                <span class="text-xs text-gray-400 font-bold uppercase">Total de Empresas Clientes</span>
+                <span id="stat-total-empresas" class="text-3xl font-extrabold text-emerald-400 mt-1">--</span>
+            </div>
+            <div class="bg-gray-800 p-4 rounded-xl border border-gray-700 shadow flex flex-col">
+                <span class="text-xs text-gray-400 font-bold uppercase">Planos Ativos (Comum)</span>
+                <span id="stat-planos-ativos" class="text-3xl font-extrabold text-blue-400 mt-1">--</span>
+            </div>
+            <div class="bg-gray-800 p-4 rounded-xl border border-gray-700 shadow flex flex-col">
+                <span class="text-xs text-gray-400 font-bold uppercase">Status do Sistema</span>
+                <span class="text-3xl font-extrabold text-green-400 mt-1">Online (Vercel)</span>
+            </div>
+        </div>
+
+        <!-- Tabela de Controle de Clientes (Tenants) -->
+        <div class="bg-gray-800 rounded-2xl border border-gray-700 shadow-xl overflow-hidden flex flex-col">
+            <div class="p-4 border-b border-gray-700 flex justify-between items-center bg-gray-800/50">
+                <h2 class="font-bold text-sm text-gray-200 uppercase tracking-wider">Empresas Cadastradas no Sistema</h2>
+                <button id="btn-atualizar-tenants" class="bg-gray-700 hover:bg-gray-600 text-xs font-bold px-3 py-1.5 rounded-lg text-gray-200 transition-colors">
+                    Atualizar Lista
+                </button>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse text-sm">
+                    <thead>
+                        <tr class="bg-gray-900/50 text-xs text-gray-400 uppercase border-b border-gray-700">
+                            <th class="p-4">Empresa / Razão Social</th>
+                            <th class="p-4">Responsável</th>
+                            <th class="p-4">CNPJ</th>
+                            <th class="p-4">Plano / Limites</th>
+                            <th class="p-4">Dias Restantes</th>
+                            <th class="p-4 text-right">Ações Master</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabela-tenants-corpo" class="divide-y divide-gray-700">
+                        <tr><td colspan="6" class="text-center p-6 text-gray-500">Carregando dados das empresas...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- Script de Gestão Global -->
+    <script type="module" src="super-admin.js"></script>
+</body>
+</html>

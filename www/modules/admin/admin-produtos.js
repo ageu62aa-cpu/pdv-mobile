@@ -1,128 +1,118 @@
-// ==========================================
-// GESTÃO DE PRODUTOS DO ADMIN (PDV-VS)
-// ==========================================
+/**
+ * Módulo: Admin Produtos (www/modules/admin/admin-produtos.js)
+ * Cadastro, controle de estoque e verificação do limite do plano (1.000 produtos).
+ */
 
-import { produtosCache } from '../../core/state.js';
-import { carregarProdutosCache } from '../../services/produtos.js';
-import { resolverEmpresaIdAtual } from './admin-core.js';
+import { supabase } from '../../core/config.js';
 
-export function renderizarTabelaAdmin(lista) {
-    const tbody = document.getElementById('tabelaAdminProdutos');
-    const contadorProdutos = document.getElementById('contadorLimiteProdutosAdmin');
-    
-    const limiteMaximo = 1000;
-    const qtdAtual = produtosCache.length;
-    const vagasDisponiveis = Math.max(0, limiteMaximo - qtdAtual);
+export async function initAdminProdutos(containerEl) {
+    containerEl.innerHTML = `
+        <div class="space-y-4">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h2 class="text-lg font-bold text-gray-800">Gerenciamento de Produtos e Estoque</h2>
+                    <p id="txt-limite-produtos" class="text-xs text-gray-500">Verificando limite do plano...</p>
+                </div>
+                <button id="btn-novo-produto" class="bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold px-3 py-2 rounded-lg transition-colors">
+                    + Novo Produto
+                </button>
+            </div>
 
-    if (contadorProdutos) {
-        contadorProdutos.innerText = `${qtdAtual} cadastrados | Restam ${vagasDisponiveis} vagas (Máx: ${limiteMaximo})`;
-    }
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <table class="w-full text-left border-collapse text-sm">
+                    <thead>
+                        <tr class="bg-gray-50 border-b border-gray-100 text-xs text-gray-500 uppercase">
+                            <th class="p-3">Código</th>
+                            <th class="p-3">Nome</th>
+                            <th class="p-3">Categoria</th>
+                            <th class="p-3">Preço (R$)</th>
+                            <th class="p-3">Estoque</th>
+                            <th class="p-3 text-right">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabela-produtos-corpo" class="divide-y divide-gray-100">
+                        <tr><td colspan="6" class="text-center p-4 text-gray-400">Carregando produtos...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `;
 
-    if (!tbody) return;
-    
-    let html = '';
-    lista.forEach(p => {
-        html += `<tr class="border-b">
-            <td class="p-2 text-xs">${p.codigo || '-'}</td>
-            <td class="p-2 font-medium">${p.nome} ${p.unidade === 'KG' ? '<span class="text-amber-600 text-[10px] font-bold">(KG)</span>' : ''}</td>
-            <td class="p-2">R$ ${Number(p.preco).toFixed(2)}${p.unidade === 'KG' ? '/kg' : ''}</td>
-            <td class="p-2">${p.estoque} ${p.unidade || 'UN'}</td>
-            <td class="p-2 text-center">
-                <button onclick="window.abrirEditarProdutoAdmin(${p.id},'${p.nome}','${p.codigo || ''}',${p.preco},${p.estoque}, '${p.unidade || 'UN'}')" class="text-blue-500 hover:text-blue-700 mr-3"><i class="fa-solid fa-pen"></i></button>
-                <button onclick="window.excluirProdutoAdmin(${p.id})" class="text-rose-500 hover:text-rose-700"><i class="fa-solid fa-trash"></i></button>
-            </td>
-        </tr>`;
-    });
-    tbody.innerHTML = html || '<tr><td colspan="5" class="p-4 text-center text-slate-400">Nenhum produto cadastrado.</td></tr>';
-}
+    await carregarProdutos();
 
-export function filtrarTabelaAdmin(t) { 
-    const termo = t.toLowerCase();
-    renderizarTabelaAdmin(produtosCache.filter(p => p.nome.toLowerCase().includes(termo) || (p.codigo && p.codigo.toLowerCase().includes(termo)))); 
-}
+    document.getElementById('btn-novo-produto').addEventListener('click', async () => {
+        // Verificar limite de 1.000 produtos para o plano comum
+        const { count, error: countError } = await supabase
+            .from('produtos')
+            .select('*', { count: 'exact', head: true });
 
-export function abrirModalNovoProdutoAdmin() {
-    if (produtosCache.length >= 1000) {
-        alert('PDV-VS - Aviso do Plano: Você atingiu o limite máximo de 1.000 produtos cadastrados.');
-        return;
-    }
-    alternarCamposFormProduto({ id: '', nome: '', codigo: '', preco: '', estoque: '', unidade: 'UN' });
-    document.getElementById('modalFormProduto')?.classList.remove('hidden');
-}
-
-export function abrirEditarProdutoAdmin(id, nome, cod, preco, est, unidade = 'UN') {
-    alternarCamposFormProduto({ id, nome, codigo: cod, preco, estoque: est, unidade });
-    document.getElementById('modalFormProduto')?.classList.remove('hidden');
-}
-
-function alternarCamposFormProduto(dados) {
-    const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
-    setVal('formProdId', dados.id);
-    setVal('formNome', dados.nome);
-    setVal('formCodigo', dados.codigo);
-    setVal('formPreco', dados.preco);
-    setVal('formEstoque', dados.estoque);
-    setVal('formUnidade', dados.unidade);
-}
-
-export function fecharFormProduto() { 
-    document.getElementById('modalFormProduto')?.classList.add('hidden'); 
-}
-
-export async function salvarProdutoAdmin() {
-    const idEmpresa = await resolverEmpresaIdAtual();
-    if (!idEmpresa) {
-        alert('PDV-VS Erro Crítico: ID da empresa não encontrado. Faça login novamente.');
-        return;
-    }
-
-    const id = document.getElementById('formProdId')?.value || '';
-    const p = { 
-        empresa_id: idEmpresa,
-        nome: document.getElementById('formNome')?.value.trim() || '', 
-        codigo: document.getElementById('formCodigo')?.value.trim() || '', 
-        preco: parseFloat(document.getElementById('formPreco')?.value) || 0, 
-        estoque: parseFloat(document.getElementById('formEstoque')?.value) || 0,
-        unidade: document.getElementById('formUnidade')?.value || 'UN'
-    };
-
-    if (!p.nome) {
-        alert('PDV-VS: Informe o nome do produto.');
-        return;
-    }
-    
-    if (id) { 
-        const { error } = await window.supabaseClient.from('produtos').update(p).eq('id', id); 
-        if (error) { alert('Erro ao atualizar produto: ' + error.message); return; }
-    } else { 
-        if (produtosCache.length >= 1000) {
-            alert('PDV-VS: Limite de 1.000 produtos atingido.');
+        if (!countError && count >= 1000) {
+            alert('Limite máximo de 1.000 produtos atingido para o plano Comum Enterprise. Faça upgrade para cadastrar mais itens.');
             return;
         }
-        const { error } = await window.supabaseClient.from('produtos').insert([p]); 
-        if (error) { alert('Erro ao inserir produto: ' + error.message); return; }
+
+        const codigo = prompt('Código de Barras do Produto:');
+        if (!codigo) return;
+        const nome = prompt('Nome do Produto:');
+        if (!nome) return;
+        const categoria = prompt('Categoria (ex: Hortifrúti, Laticínios, Bebidas):', 'Geral');
+        const preco = parseFloat(prompt('Preço de Venda (R$):', '0.00').replace(',', '.'));
+        const estoque = parseInt(prompt('Quantidade em Estoque:', '10'), 10);
+
+        const { error } = await supabase.from('produtos').insert([{
+            codigo_barras: codigo,
+            nome,
+            categoria,
+            preco,
+            estoque
+        }]);
+
+        if (error) {
+            alert('Erro ao cadastrar produto: ' + error.message);
+        } else {
+            alert('Produto cadastrado com sucesso!');
+            carregarProdutos();
+        }
+    });
+}
+
+async function carregarProdutos() {
+    const tbody = document.getElementById('tabela-produtos-corpo');
+    const txtLimite = document.getElementById('txt-limite-produtos');
+
+    const { data: produtos, count, error } = await supabase
+        .from('produtos')
+        .select('*', { count: 'exact' });
+
+    if (error) {
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center p-4 text-red-500">Erro ao carregar produtos.</td></tr>`;
+        return;
     }
-    
-    fecharFormProduto(); 
-    await carregarProdutosCache(); 
-    renderizarTabelaAdmin(produtosCache);
-    alert('PDV-VS: Produto salvo com sucesso!');
+
+    txtLimite.textContent = `Utilizando ${count || 0} de 1.000 produtos permitidos no plano Comum.`;
+
+    if (!produtos || produtos.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center p-4 text-gray-400">Nenhum produto cadastrado.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = produtos.map(p => `
+        <tr class="hover:bg-gray-50">
+            <td class="p-3 font-mono text-xs text-gray-600">${p.codigo_barras}</td>
+            <td class="p-3 font-medium text-gray-800">${p.nome}</td>
+            <td class="p-3 text-gray-600 text-xs">${p.categoria || 'Geral'}</td>
+            <td class="p-3 font-bold text-emerald-700">R$ ${p.preco.toFixed(2)}</td>
+            <td class="p-3 text-gray-700">${p.estoque} un</td>
+            <td class="p-3 text-right">
+                <button onclick="window.excluirProduto('${p.id}')" class="text-red-500 hover:text-red-700 text-xs font-bold">Excluir</button>
+            </td>
+        </tr>
+    `).join('');
 }
 
-export async function excluirProdutoAdmin(id) { 
-    if (confirm('PDV-VS: Deseja excluir este item permanentemente?')) { 
-        await window.supabaseClient.from('produtos').delete().eq('id', id); 
-        await carregarProdutosCache(); 
-        renderizarTabelaAdmin(produtosCache); 
-    } 
-}
-
-Object.assign(window, {
-    renderizarTabelaAdmin,
-    filtrarTabelaAdmin,
-    abrirModalNovoProdutoAdmin,
-    abrirEditarProdutoAdmin,
-    fecharFormProduto,
-    salvarProdutoAdmin,
-    excluirProdutoAdmin
-});
+window.excluirProduto = async function(id) {
+    if (!confirm('Deseja realmente excluir este produto?')) return;
+    const { error } = await supabase.from('produtos').delete().eq('id', id);
+    if (error) alert('Erro ao excluir: ' + error.message);
+    else carregarProdutos();
+};

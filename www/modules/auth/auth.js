@@ -1,180 +1,195 @@
-// ==========================================
-// MÓDULO DE AUTENTICAÇÃO E CADASTRO (PDV-VS)
-// ==========================================
+// Importação do Supabase configurado globalmente no projeto
+// Se precisar ajustar o cliente global, certifique-se que o config.js exporta o supabase.
+import { supabase } from '../../core/config.js';
 
-import { empresaAtualId, setEmpresaAtualId } from '../../core/state.js';
-
-// --- UTILITÁRIO INTERNO: RESOLUÇÃO DE EMPRESA ---
-async function resolverEmpresaIdAtual() {
-    let idEmpresa = empresaAtualId || localStorage.getItem('empresa_id') || localStorage.getItem('pdv_empresa_id');
-    try {
-        const { data: { session } } = await window.supabaseClient.auth.getSession();
-        if (session && session.user) {
-            const { data: vincData } = await window.supabaseClient
-                .from('usuarios_empresas')
-                .select('empresa_id')
-                .eq('user_id', session.user.id)
-                .maybeSingle();
-            
-            if (vincData && vincData.empresa_id) {
-                idEmpresa = vincData.empresa_id;
-            } else if (!idEmpresa) {
-                idEmpresa = session.user.id;
+document.addEventListener('DOMContentLoaded', () => {
+    // 1. Mascote - Hard Refresh / Cache Update
+    const mascote = document.getElementById('mascote-container');
+    if (mascote) {
+        mascote.addEventListener('click', () => {
+            if (window.caches) {
+                caches.keys().then((names) => {
+                    names.forEach((name) => { caches.delete(name); });
+                });
             }
-            setEmpresaAtualId(idEmpresa);
-            localStorage.setItem('empresa_id', idEmpresa);
-            localStorage.setItem('id_empresa', idEmpresa);
-        }
-    } catch (e) {
-        console.error("PDV-VS: Erro ao validar empresa na sessão:", e);
-    }
-    return idEmpresa;
-}
-
-export async function processarAutenticacao() {
-    const emailInput = document.getElementById('inputLoginEmail') || document.getElementById('emailLogin') || document.querySelector('input[type="email"]');
-    const senhaInput = document.getElementById('inputLoginSenha') || document.getElementById('senhaLogin') || document.querySelector('input[type="password"]');
-
-    const email = emailInput?.value.trim() || '';
-    const password = senhaInput?.value.trim() || '';
-
-    if (!email || !password) {
-        alert('PDV-VS: Por favor, informe o e-mail e a senha.');
-        return;
+            window.location.reload(true);
+        });
     }
 
-    try {
-        const { data, error } = await window.supabaseClient.auth.signInWithPassword({ email, password });
+    // 2. Gatilho Super Admin Oculto (5 a 10 cliques rápidos)
+    const triggerAdmin = document.getElementById('trigger-super-admin');
+    let clickCount = 0;
+    let clickTimer = null;
+
+    if (triggerAdmin) {
+        triggerAdmin.addEventListener('click', () => {
+            clickCount++;
+            clearTimeout(clickTimer);
+            
+            clickTimer = setTimeout(() => {
+                clickCount = 0;
+            }, 1000); // Reseta se demorar mais de 1s entre cliques
+
+            if (clickCount >= 5 && clickCount <= 10) {
+                // Redireciona para a tela/módulo do Super Admin (Etapa 4)
+                window.location.href = '../super-admin/super-admin.html'; // ou rota correspondente
+            }
+        });
+    }
+
+    // 3. Validação Visual de Erros no Login
+    const loginForm = document.getElementById('login-form');
+    const inputEmail = document.getElementById('login-email');
+    const inputPassword = document.getElementById('login-password');
+    const errorEmail = document.getElementById('error-email');
+    const errorPassword = document.getElementById('error-password');
+
+    function setFieldError(input, errorElement, message) {
+        input.classList.add('border-red-500', 'ring-2', 'ring-red-200');
+        input.classList.remove('border-gray-300');
+        errorElement.textContent = message;
+        errorElement.classList.remove('hidden');
+    }
+
+    function clearFieldError(input, errorElement) {
+        input.classList.remove('border-red-500', 'ring-2', 'ring-red-200');
+        input.classList.add('border-gray-300');
+        errorElement.textContent = '';
+        errorElement.classList.add('hidden');
+    }
+
+    loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        clearFieldError(inputEmail, errorEmail);
+        clearFieldError(inputPassword, errorPassword);
+
+        const email = inputEmail.value.trim();
+        const password = inputPassword.value;
+
+        // Autenticação via Supabase Auth
+        const { data, error } = await supabase.auth.signInWithPassword({
+            email: email,
+            password: password,
+        });
 
         if (error) {
-            alert('PDV-VS: Erro ao realizar login: ' + error.message);
+            setFieldError(inputEmail, errorEmail, 'E-mail ou senha incorretos.');
+            setFieldError(inputPassword, errorPassword, 'E-mail ou senha incorretos.');
             return;
         }
 
-        if (data && data.session) {
-            const userId = data.session.user.id;
-            const idEmpresa = await resolverEmpresaIdAtual();
+        // Sucesso no login - Redirecionar para o PDV principal
+        window.location.href = '../pdv/caixa-core.js'; // Ajuste conforme rota de entrada do PDV
+    });
 
-            const { data: vincData } = await window.supabaseClient
-                .from('usuarios_empresas')
-                .select('cargo, empresa_id')
-                .eq('user_id', userId)
-                .maybeSingle();
+    // 4. Esqueci Minha Senha
+    const btnForgotPassword = document.getElementById('btn-forgot-password');
+    btnForgotPassword.addEventListener('click', async () => {
+        const email = prompt('Digite seu e-mail cadastrado para redefinir a senha:');
+        if (!email) return;
 
-            const rawCargo = vincData?.cargo || 'operador';
-            const cargo = (rawCargo === 'admin_mercado' || rawCargo === 'admin') ? 'admin' : 'operador';
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+            redirectTo: window.location.href,
+        });
 
-            localStorage.setItem('empresa_id', idEmpresa);
-            localStorage.setItem('id_empresa', idEmpresa);
-            localStorage.setItem('pdv_cargo_usuario', cargo);
-            sessionStorage.setItem('pdv_cargo_usuario', cargo);
-            sessionStorage.setItem('id_empresa', idEmpresa);
+        if (error) {
+            alert('Erro ao enviar e-mail de recuperação: ' + error.message);
+        } else {
+            alert('E-mail de redefinição de senha enviado com sucesso! Verifique sua caixa de entrada.');
+        }
+    });
 
-            const btnAdmin = document.getElementById('btnAbrirAdmin') || document.getElementById('btnAdmin');
-            const modalAdmin = document.getElementById('modalAdmin');
+    // 5. Modal de Cadastro de Nova Empresa
+    const modalRegister = document.getElementById('modal-register');
+    const btnOpenRegister = document.getElementById('btn-open-register');
+    const btnCloseRegister = document.getElementById('btn-close-register');
+    const btnCancelRegister = document.getElementById('btn-cancel-register');
 
-            if (cargo === 'operador') {
-                sessionStorage.setItem('restricao_admin', 'true');
-                if (btnAdmin) {
-                    btnAdmin.style.display = 'none';
-                    btnAdmin.setAttribute('disabled', 'true');
+    function toggleModal(show) {
+        if (show) modalRegister.classList.remove('hidden');
+        else modalRegister.classList.add('hidden');
+    }
+
+    btnOpenRegister.addEventListener('click', () => toggleModal(true));
+    btnCloseRegister.addEventListener('click', () => toggleModal(false));
+    btnCancelRegister.addEventListener('click', () => toggleModal(false));
+
+    // 6. Integração ViaCEP para preenchimento automático
+    const inputCep = document.getElementById('reg-cep');
+    const inputCidadeEstado = document.getElementById('reg-cidade-estado');
+
+    inputCep.addEventListener('blur', async () => {
+        const cep = inputCep.value.replace(/\D/g, '');
+        if (cep.length === 8) {
+            try {
+                const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+                const data = await response.json();
+                if (!data.erro) {
+                    inputCidadeEstado.value = `${data.localidade} - ${data.uf}`;
+                } else {
+                    inputCidadeEstado.value = 'CEP não encontrado';
                 }
-                if (modalAdmin) modalAdmin.classList.add('hidden');
-            } else {
-                sessionStorage.setItem('restricao_admin', 'false');
-                if (btnAdmin) {
-                    btnAdmin.style.display = '';
-                    btnAdmin.removeAttribute('disabled');
+            } catch (err) {
+                inputCidadeEstado.value = 'Erro ao buscar CEP';
+            }
+        }
+    });
+
+    // 7. Submissão do Cadastro de Nova Empresa
+    const registerForm = document.getElementById('register-form');
+    registerForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const nome = document.getElementById('reg-nome').value;
+        const empresa = document.getElementById('reg-empresa').value;
+        const cnpj = document.getElementById('reg-cnpj').value;
+        const email = document.getElementById('reg-email').value;
+        const password = document.getElementById('reg-password').value;
+        const cep = document.getElementById('reg-cep').value;
+        const cidadeEstado = inputCidadeEstado.value;
+
+        // Criar usuário no Supabase Auth
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+            email: email,
+            password: password,
+            options: {
+                data: {
+                    full_name: nome,
+                    company_name: empresa,
+                    cnpj: cnpj
                 }
             }
-
-            location.reload();
-        }
-    } catch (e) {
-        alert('PDV-VS: Erro de autenticação: ' + e.message);
-    }
-}
-
-export function tratarEnterLogin(event) {
-    if (event.key === 'Enter' || event.keyCode === 13) {
-        event.preventDefault();
-        processarAutenticacao();
-    }
-}
-
-export async function cadastrarEstabelecimento() {
-    const nomeInput = document.getElementById('inputCadNomeEmpresa') || document.getElementById('nomeEmpresa');
-    const emailInput = document.getElementById('inputCadEmail') || document.getElementById('emailCadastro');
-    const senhaInput = document.getElementById('inputCadSenha') || document.getElementById('senhaCadastro');
-    const whatsappInput = document.getElementById('inputCadWhatsapp') || document.getElementById('whatsappCadastro');
-
-    const nome_mercado = nomeInput?.value.trim() || '';
-    const email = emailInput?.value.trim() || '';
-    const password = senhaInput?.value.trim() || '';
-    const whatsapp = whatsappInput?.value.trim() || '';
-
-    if (!nome_mercado || !email || !password) {
-        alert('PDV-VS: Preencha todos os campos obrigatórios (Nome, E-mail e Senha).');
-        return;
-    }
-
-    try {
-        const { data: authData, error: authError } = await window.supabaseClient.auth.signUp({ email, password });
+        });
 
         if (authError) {
-            alert('PDV-VS: Erro ao cadastrar usuário: ' + authError.message);
+            alert('Erro ao cadastrar empresa: ' + authError.message);
             return;
         }
 
-        if (authData && authData.user) {
-            const userId = authData.user.id;
-
-            const { data: empresaData, error: empresaError } = await window.supabaseClient
-                .from('empresas')
-                .insert([{ id: userId, nome_mercado, whatsapp }])
-                .select()
-                .single();
-
-            if (empresaError) {
-                alert('PDV-VS: Erro ao cadastrar empresa no banco de dados: ' + empresaError.message);
-                return;
+        // Inserir dados adicionais na tabela de controle de empresas/planos (ex: plano 15 dias, limite 1000 produtos, 1 operador)
+        const { error: dbError } = await supabase.from('empresas').insert([
+            {
+                user_id: authData.user?.id,
+                nome_responsavel: nome,
+                nome_empresa: empresa,
+                cnpj: cnpj,
+                email: email,
+                cep: cep,
+                cidade_estado: cidadeEstado,
+                plano: 'comum_enterprise',
+                limite_produtos: 1000,
+                limite_operadores: 1, // 1 operador e 1 admin
+                dias_restantes: 15,
+                criado_em: new Date()
             }
+        ]);
 
-            const empresaId = empresaData?.id || userId;
-
-            const { error: vincError } = await window.supabaseClient
-                .from('usuarios_empresas')
-                .insert([{ user_id: userId, empresa_id: empresaId, cargo: 'admin_mercado' }]);
-
-            if (vincError) {
-                alert('PDV-VS: Erro ao vincular administrador: ' + vincError.message);
-                return;
-            }
-
-            localStorage.setItem('empresa_id', empresaId);
-            localStorage.setItem('id_empresa', empresaId);
-            localStorage.setItem('pdv_empresa_nome', nome_mercado);
-
-            alert('PDV-VS: Estabelecimento cadastrado com sucesso! Redirecionando...');
-
-            const modalCadastro = document.getElementById('modalCadastro') || document.getElementById('telaCadastro');
-            const modalLogin = document.getElementById('modalLogin') || document.getElementById('telaLogin');
-
-            if (modalCadastro && modalLogin) {
-                modalCadastro.classList.add('hidden');
-                modalLogin.classList.remove('hidden');
-            } else {
-                location.reload();
-            }
+        if (dbError) {
+            console.error('Aviso ao registrar metadados da empresa:', dbError.message);
         }
-    } catch (e) {
-        alert('PDV-VS: Erro ao processar o cadastro do estabelecimento: ' + e.message);
-    }
-}
 
-// Registro global para compatibilidade com eventos HTML onclick
-Object.assign(window, {
-    processarAutenticacao,
-    tratarEnterLogin,
-    cadastrarEstabelecimento
+        alert('Empresa cadastrada com sucesso! Plano inicial de 15 dias ativado.');
+        toggleModal(false);
+        registerForm.reset();
+    });
 });

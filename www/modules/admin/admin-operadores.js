@@ -1,85 +1,98 @@
-// ==========================================
-// GESTÃO DE OPERADORES DA LOJA (PDV-VS)
-// ==========================================
+/**
+ * Módulo: Admin Operadores (www/modules/admin/admin-operadores.js)
+ * Cadastro e controle do operador único permitido no plano comum.
+ */
 
-import { empresaAtualId } from '../../core/state.js';
+import { supabase } from '../../core/config.js';
 
-export async function carregarOperadoresLoja() {
-    if (!empresaAtualId) return;
+export async function initAdminOperadores(containerEl) {
+    containerEl.innerHTML = `
+        <div class="space-y-4">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h2 class="text-lg font-bold text-gray-800">Gerenciamento de Operadores (Caixa)</h2>
+                    <p class="text-xs text-gray-500">O plano Comum permite cadastrar exatamente 1 operador vinculado.</p>
+                </div>
+                <button id="btn-novo-operador" class="bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold px-3 py-2 rounded-lg transition-colors">
+                    + Cadastrar Operador
+                </button>
+            </div>
 
-    const [{ data: operadores }, { data: caixasAbertos }] = await Promise.all([
-        window.supabaseClient.from('usuarios_empresas').select('*').eq('empresa_id', empresaAtualId),
-        window.supabaseClient.from('caixas').select('user_id, status, faturamento_dia').eq('empresa_id', empresaAtualId).eq('status', 'ABERTO')
-    ]);
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <table class="w-full text-left border-collapse text-sm">
+                    <thead>
+                        <tr class="bg-gray-50 border-b border-gray-100 text-xs text-gray-500 uppercase">
+                            <th class="p-3">Nome do Operador</th>
+                            <th class="p-3">E-mail</th>
+                            <th class="p-3">PIN Atribuído</th>
+                            <th class="p-3 text-right">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabela-operadores-corpo" class="divide-y divide-gray-100">
+                        <tr><td colspan="4" class="text-center p-4 text-gray-400">Carregando operadores...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `;
 
-    const mapaCaixas = {};
-    (caixasAbertos || []).forEach(c => { mapaCaixas[c.user_id] = c; });
+    await carregarOperadores();
 
-    let html = '';
-    if (operadores && operadores.length > 0) {
-        operadores.forEach(op => {
-            const caixaInfo = mapaCaixas[op.user_id];
-            const faturamentoAtual = caixaInfo ? Number(caixaInfo.faturamento_dia || 0) : 0;
-            const statusCaixaBadge = caixaInfo 
-                ? `<span class="bg-emerald-100 text-emerald-800 text-xs px-2.5 py-1 rounded-full font-bold">ABERTO (Fat: R$ ${faturamentoAtual.toFixed(2)})</span>` 
-                : '<span class="bg-amber-100 text-amber-800 text-xs px-2.5 py-1 rounded-full font-bold">FECHADO</span>';
-            
-            const cargoNome = op.cargo === 'admin_mercado' ? 'Administrador' : 'Operador de Caixa';
+    document.getElementById('btn-novo-operador').addEventListener('click', async () => {
+        // Verificar limite de 1 operador
+        const { count, error: countErr } = await supabase
+            .from('operadores')
+            .select('*', { count: 'exact', head: true });
 
-            html += `<tr class="border-b">
-                <td class="p-3 text-xs font-mono">${op.user_id}</td>
-                <td class="p-3 font-semibold text-slate-800">${cargoNome}</td>
-                <td class="p-3 text-center">${statusCaixaBadge}</td>
-                <td class="p-3 text-center">
-                    ${op.cargo !== 'admin_mercado' ? `<button onclick="window.excluirOperadorLoja('${op.user_id}')" class="text-rose-600 hover:text-rose-800 text-xs font-bold"><i class="fa-solid fa-trash mr-1"></i> Remover</button>` : '<span class="text-xs text-slate-400">Principal</span>'}
-                </td>
-            </tr>`;
-        });
-    }
-    const tabelaOps = document.getElementById('tabelaOperadoresLoja');
-    if (tabelaOps) tabelaOps.innerHTML = html || '<tr><td colspan="4" class="p-4 text-center text-slate-400">Nenhum operador cadastrado.</td></tr>';
-}
-
-export async function excluirOperadorLoja(id) { 
-    if (confirm('PDV-VS: Deseja remover este operador da equipe?')) { 
-        await window.supabaseClient.from('usuarios_empresas').delete().eq('user_id', id); 
-        await carregarOperadoresLoja(); 
-    } 
-}
-
-export function abrirModalNovoOperador() { 
-    window.supabaseClient.from('usuarios_empresas').select('*', { count: 'exact', head: true }).eq('empresa_id', empresaAtualId).eq('cargo', 'operador').then(({ count }) => {
-        if (count >= 1) {
-            alert('PDV-VS - Regra do Plano: É permitido apenas 1 operador adicional além do Administrador.');
+        if (!countErr && count >= 1) {
+            alert('O plano atual permite apenas 1 operador cadastrado.');
             return;
         }
-        document.getElementById('modalNovoOperador')?.classList.remove('hidden'); 
+
+        const nome = prompt('Nome Completo do Operador:');
+        if (!nome) return;
+        const email = prompt('E-mail de acesso do Operador:');
+        if (!email) return;
+        const pin = prompt('Defina um PIN numérico (4 dígitos) para autorizações:', '1234');
+
+        const { error } = await supabase.from('operadores').insert([{
+            nome,
+            email,
+            pin
+        }]);
+
+        if (error) {
+            alert('Erro ao registrar operador: ' + error.message);
+        } else {
+            alert('Operador cadastrado com sucesso!');
+            carregarOperadores();
+        }
     });
 }
 
-export function fecharModalNovoOperador() { document.getElementById('modalNovoOperador')?.classList.add('hidden'); }
+async function carregarOperadores() {
+    const tbody = document.getElementById('tabela-operadores-corpo');
+    const { data: operadores, error } = await supabase.from('operadores').select('*');
 
-export async function salvarNovoOperador() {
-    const email = document.getElementById('novoOpEmail')?.value.trim() || '';
-    const password = document.getElementById('novoOpSenha')?.value.trim() || '';
-
-    if (!email || !password) { alert('PDV-VS: Preencha os campos de acesso provisório.'); return; }
-    
-    const { data, error } = await window.supabaseClient.auth.signUp({ email, password });
-    if (error) { alert('PDV-VS: Erro ao criar usuário: ' + error.message); return; }
-    
-    if (data && data.user) {
-        await window.supabaseClient.from('usuarios_empresas').insert([{ user_id: data.user.id, empresa_id: empresaAtualId, cargo: 'operador' }]);
-        fecharModalNovoOperador(); 
-        await carregarOperadoresLoja();
-        alert('PDV-VS: Operador cadastrado com sucesso!');
+    if (error || !operadores || operadores.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="text-center p-4 text-gray-400">Nenhum operador cadastrado.</td></tr>`;
+        return;
     }
+
+    tbody.innerHTML = operadores.map(op => `
+        <tr class="hover:bg-gray-50">
+            <td class="p-3 font-medium text-gray-800">${op.nome}</td>
+            <td class="p-3 text-gray-600 text-xs">${op.email}</td>
+            <td class="p-3 font-mono font-bold text-emerald-700">****</td>
+            <td class="p-3 text-right">
+                <button onclick="window.excluirOperador('${op.id}')" class="text-red-500 hover:text-red-700 text-xs font-bold">Remover</button>
+            </td>
+        </tr>
+    `).join('');
 }
 
-Object.assign(window, {
-    carregarOperadoresLoja,
-    excluirOperadorLoja,
-    abrirModalNovoOperador,
-    fecharModalNovoOperador,
-    salvarNovoOperador
-});
+window.excluirOperador = async function(id) {
+    if (!confirm('Deseja remover este operador?')) return;
+    await supabase.from('operadores').delete().eq('id', id);
+    carregarOperadores();
+};

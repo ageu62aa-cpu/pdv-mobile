@@ -1,78 +1,51 @@
-// ==========================================
-// GESTÃO DE MAQUININHAS E TAXAS (PDV-VS)
-// ==========================================
+/**
+ * Módulo: Admin Maquininhas (www/modules/admin/admin-maquininhas.js)
+ * Configuração de taxas para cálculo correto no PDV.
+ */
 
-import { empresaAtualId } from '../../core/state.js';
+import { supabase } from '../../core/config.js';
 
-export async function carregarMaquininhasAdmin() {
-    if (!empresaAtualId) return;
-    const { data, error } = await window.supabaseClient
-        .from('maquininhas_taxas')
-        .select('*')
-        .eq('empresa_id', empresaAtualId);
+export async function initAdminMaquininhas(containerEl) {
+    containerEl.innerHTML = `
+        <div class="space-y-4 max-w-xl">
+            <h2 class="text-lg font-bold text-gray-800">Taxas das Maquininhas de Cartão</h2>
+            <p class="text-xs text-gray-500">Defina os percentuais cobrados para que o PDV calcule os repasses e juros reais.</p>
+            
+            <form id="form-taxas" class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 space-y-3">
+                <div>
+                    <label class="text-xs font-bold text-gray-600">Taxa Débito (%)</label>
+                    <input type="number" step="0.01" id="taxa-debito" class="w-full mt-1 px-3 py-2 border rounded-lg text-sm" value="1.99">
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-gray-600">Taxa Crédito à Vista (%)</label>
+                    <input type="number" step="0.01" id="taxa-credito-vista" class="w-full mt-1 px-3 py-2 border rounded-lg text-sm" value="3.49">
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-gray-600">Taxa Crédito Parcelado (Média ao mês / até 12x) (%)</label>
+                    <input type="number" step="0.01" id="taxa-credito-parcelado" class="w-full mt-1 px-3 py-2 border rounded-lg text-sm" value="4.99">
+                </div>
+                <button type="submit" class="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-2.5 rounded-lg text-sm transition-colors">
+                    Salvar Taxas
+                </button>
+            </form>
+        </div>
+    `;
 
-    const tbody = document.getElementById('tabelaMaquininhasAdmin');
-    if (!tbody) return;
+    const form = containerEl.querySelector('#form-taxas');
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const debito = document.getElementById('taxa-debito').value;
+        const creditoVista = document.getElementById('taxa-credito-vista').value;
+        const creditoParcelado = document.getElementById('taxa-credito-parcelado').value;
 
-    if (error || !data || data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-slate-400">Nenhuma maquininha cadastrada.</td></tr>';
-        return;
-    }
+        const { error } = await supabase.from('empresas_config').upsert([{
+            id: 1,
+            taxa_debito: parseFloat(debito),
+            taxa_credito_vista: parseFloat(creditoVista),
+            taxa_credito_parcelado: parseFloat(creditoParcelado)
+        }]);
 
-    let html = '';
-    data.forEach(m => {
-        html += `<tr class="border-b">
-            <td class="p-3 font-bold text-slate-800">${m.nome_maquina}</td>
-            <td class="p-3">Débito: ${m.taxa_debito}% | Créd. À Vista: ${m.taxa_credito_avista}%</td>
-            <td class="p-3 text-xs text-slate-600">Parcelado configurado</td>
-            <td class="p-3 text-center">
-                <button onclick="window.excluirMaquininhaAdmin(${m.id})" class="text-rose-600 hover:text-rose-800 text-xs font-bold"><i class="fa-solid fa-trash"></i> Excluir</button>
-            </td>
-        </tr>`;
+        if (error) alert('Erro ao salvar taxas: ' + error.message);
+        else alert('Taxas de maquininha atualizadas com sucesso!');
     });
-    tbody.innerHTML = html;
 }
-
-export function abrirModalNovaMaquininha() { document.getElementById('modalNovaMaquininha')?.classList.remove('hidden'); }
-export function fecharModalNovaMaquininha() { document.getElementById('modalNovaMaquininha')?.classList.add('hidden'); }
-
-export async function salvarNovaMaquininha() {
-    const nome = document.getElementById('maqNome')?.value.trim();
-    if (!nome) { alert('Informe o nome da maquininha (Ex: Ton, Stone)'); return; }
-
-    const taxasObj = {
-        "2": parseFloat(document.getElementById('maq2x')?.value) || 0,
-        "3": parseFloat(document.getElementById('maq3x')?.value) || 0,
-        "6": parseFloat(document.getElementById('maq6x')?.value) || 0,
-        "12": parseFloat(document.getElementById('maq12x')?.value) || 0
-    };
-
-    const { error } = await window.supabaseClient.from('maquininhas_taxas').insert([{
-        empresa_id: empresaAtualId,
-        nome_maquina: nome,
-        taxa_debito: parseFloat(document.getElementById('maqDebito')?.value) || 0,
-        taxa_credito_avista: parseFloat(document.getElementById('maqCreditoAvista')?.value) || 0,
-        taxas_parcelamento: taxasObj
-    }]);
-
-    if (error) { alert('Erro ao salvar maquininha: ' + error.message); return; }
-
-    fecharModalNovaMaquininha();
-    await carregarMaquininhasAdmin();
-    alert('Maquininha cadastrada com sucesso!');
-}
-
-export async function excluirMaquininhaAdmin(id) {
-    if (confirm('Deseja realmente excluir esta maquininha?')) {
-        await window.supabaseClient.from('maquininhas_taxas').delete().eq('id', id);
-        await carregarMaquininhasAdmin();
-    }
-}
-
-Object.assign(window, {
-    carregarMaquininhasAdmin,
-    abrirModalNovaMaquininha,
-    fecharModalNovaMaquininha,
-    salvarNovaMaquininha,
-    excluirMaquininhaAdmin
-});
