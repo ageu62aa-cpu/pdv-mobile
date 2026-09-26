@@ -2,118 +2,13 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PDV-VS Enterprise - Vancely Software</title>
-    <meta name="theme-color" content="#047857">
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script>
-        window.processarAutenticacao = window.processarAutenticacao || function() {};
-        window.tratarEnterLogin = window.tratarEnterLogin || function(e) { if (e.key === 'Enter') window.processarAutenticacao(); };
-        window.alternarTelaAuth = window.alternarTelaAuth || function() {};
-    </script>
+    <meta http-equiv="refresh" content="0; url=modules/auth/auth.html">
+    <title>Redirecionando...</title>
 </head>
-<body class="bg-emerald-50/60 min-h-screen text-slate-800 flex flex-col justify-between">
-
-    <!-- TELA DE LOGIN -->
-    <div id="telaLogin" class="fixed inset-0 bg-emerald-950 z-50 flex items-center justify-center p-4 overflow-y-auto">
-        <div class="bg-white rounded-2xl max-w-md w-full p-6 sm:p-8 shadow-2xl relative my-auto">
-            <div class="text-center mb-6 mt-2">
-                <img id="iconeAuth" src="assets/mascote.jpeg" class="w-16 h-16 object-cover bg-emerald-700 rounded-2xl mx-auto mb-2 shadow-sm p-1 border border-emerald-600" alt="Mascote">
-                <h2 class="text-xl sm:text-2xl font-bold text-slate-900">PDV-VS Enterprise</h2>
-                <p class="text-xs text-slate-500">Sistema de Gestão Comercial e PDV</p>
-            </div>
-            <div class="space-y-3.5">
-                <div>
-                    <label class="block text-xs font-semibold text-slate-600 mb-1">E-mail de Acesso</label>
-                    <input type="email" id="authEmail" placeholder="seu.email@empresa.com" class="w-full border border-slate-300 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:border-emerald-500">
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-slate-600 mb-1">Senha</label>
-                    <input type="password" id="authSenha" placeholder="••••••••" class="w-full border border-slate-300 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:border-emerald-500">
-                </div>
-                <button onclick="processarAutenticacao()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-lg shadow transition text-sm">Acessar Sistema</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- TELA DO CAIXA / PDV -->
-    <div id="appPrincipal" class="hidden flex-1 flex flex-col justify-between">
-        <header class="bg-emerald-700 text-white px-4 py-3 grid grid-cols-3 items-center shadow-md">
-            <div class="flex items-center space-x-3">
-                <img src="assets/mascote.jpeg" alt="Mascote" class="w-9 h-9 rounded-lg object-cover bg-emerald-800 p-0.5 border border-emerald-500">
-                <div>
-                    <span class="text-[10px] text-emerald-200 font-bold uppercase block">PDV-VS Enterprise</span>
-                </div>
-            </div>
-            <div class="text-center px-2">
-                <h1 id="tituloAppEmpresa" class="font-extrabold text-lg text-white truncate">Estabelecimento</h1>
-            </div>
-            <div class="flex items-center space-x-2 justify-end">
-                <span class="badgeCaixaStatus text-xs bg-amber-500/20 text-amber-300 border border-amber-500/30 px-3 py-1.5 rounded font-semibold">FECHADO</span>
-                <button onclick="window.location.href='admin.html'" class="bg-emerald-800 hover:bg-emerald-900 text-white px-3 py-1.5 rounded text-xs font-bold transition flex items-center space-x-1.5"><i class="fa-solid fa-user-shield"></i><span>Admin</span></button>
-                <button onclick="realizarLogout()" class="bg-rose-900/60 hover:bg-rose-900 text-rose-100 px-2.5 py-1.5 rounded text-xs font-bold transition"><i class="fa-solid fa-power-off"></i></button>
-            </div>
-        </header>
-
-        <main class="flex-1 p-3 sm:p-4 max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <div class="lg:col-span-2 flex flex-col space-y-3">
-                <div class="bg-white p-3 rounded-xl shadow-sm border relative">
-                    <div class="relative flex-1">
-                        <input type="text" id="inputBusca" oninput="aoDigitarBusca(event)" onkeydown="tratarEnterBuscaCaixa(event)" placeholder="Digite o código ou nome do produto..." class="w-full pl-10 pr-3 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none">
-                    </div>
-                    <div id="sugestoesBusca" class="hidden absolute left-3 right-3 top-16 bg-white border border-slate-200 rounded-lg shadow-xl z-30 max-h-60 overflow-y-auto"></div>
-                </div>
-                <div class="bg-white rounded-xl shadow-sm border flex-1 flex flex-col overflow-hidden">
-                    <div class="p-3 bg-slate-50 border-b flex justify-between items-center">
-                        <h2 class="font-bold text-xs uppercase text-slate-600">Itens da Compra Atual</h2>
-                        <span id="contadorItens" class="text-xs font-bold bg-slate-200 text-slate-700 px-2 py-0.5 rounded">0 itens</span>
-                    </div>
-                    <div class="overflow-x-auto flex-1 max-h-[420px]">
-                        <table class="w-full text-left border-collapse text-sm">
-                            <thead class="bg-slate-50 text-slate-600 sticky top-0 border-b text-xs">
-                                <tr>
-                                    <th class="p-2">Produto</th>
-                                    <th class="p-2 w-24">Qtd</th>
-                                    <th class="p-2">Preço Unit.</th>
-                                    <th class="p-2">Subtotal</th>
-                                    <th class="p-2 text-center w-12"><i class="fa-solid fa-trash"></i></th>
-                                </tr>
-                            </thead>
-                            <tbody id="tabelaItensVenda">
-                                <tr><td colspan="5" class="p-4 text-center text-slate-400">Nenhum produto adicionado.</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <div class="bg-white p-4 rounded-xl shadow-sm border flex flex-col justify-between space-y-4">
-                <div>
-                    <h2 class="font-bold text-xs uppercase text-slate-600 mb-3 border-b pb-2">Resumo da Venda</h2>
-                    <div class="space-y-2 mb-4">
-                        <div class="flex justify-between text-sm text-slate-600"><span>Subtotal:</span><span id="txtSubtotal">R$ 0,00</span></div>
-                        <div class="flex justify-between text-lg font-bold text-slate-900 border-t pt-2"><span>Total:</span><span id="txtTotal" class="text-emerald-600">R$ 0,00</span></div>
-                    </div>
-                    <div class="bg-slate-50 p-2.5 rounded-lg border text-[11px] flex justify-between items-center text-slate-500">
-                        <span>Faturamento Diário:</span>
-                        <strong id="txtFaturamentoDia" class="text-slate-700 font-mono">R$ 0,00</strong>
-                    </div>
-                </div>
-                <div class="space-y-2">
-                    <button onclick="finalizarVenda()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-xl shadow-lg transition text-base"><i class="fa-solid fa-check mr-2"></i>FINALIZAR VENDA</button>
-                    <div class="grid grid-cols-2 gap-2 pt-2 border-t">
-                        <button onclick="gerenciarCaixaModal('abrir')" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 py-2 rounded-lg text-xs font-bold">Abrir Caixa</button>
-                        <button onclick="gerenciarCaixaModal('fechar')" class="bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 py-2 rounded-lg text-xs font-bold">Fechar Caixa</button>
-                    </div>
-                </div>
-            </div>
-        </main>
-    </div>
-
-    <!-- SCRIPT DE ENTRADA DO PDV -->
-    <script type="module" src="./main.js"></script>
+<body>
+    <p>Redirecionando para o sistema...</p>
+    <script>
+        window.location.href = "modules/auth/auth.html";
+    </script>
 </body>
 </html>
