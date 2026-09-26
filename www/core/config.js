@@ -1,17 +1,22 @@
 // ==========================================
 // CONFIGURAÇÃO SUPABASE E VARIÁVEIS GLOBAIS (PDV-VS)
 // ==========================================
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+
 const SUPABASE_URL = 'https://vbdglgmxaywntmjriccf.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiZGdsZ214YXl3bnRtanJpY2NmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk1ODgzOTEsImV4cCI6MjEwNTE2NDM5MX0.S_IUvajnn7Qk7yNtkfBru9xsOjUkKhkJ0J0doikrWSs';
 
 // Configurando o cliente Supabase com persistência otimizada
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+export const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY, {
     auth: {
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: true
     }
 });
+
+// Alias para compatibilidade com os módulos de auth
+export const supabase = supabaseClient;
 
 let usuarioAtual = null, empresaAtualId = null, dadosEmpresaAtual = null, cargoUsuarioAtual = null;
 let modoTelaAuth = 'login', caixaAberto = false, faturamentoDia = 0, itensVenda = [], produtosCache = [];
@@ -25,7 +30,6 @@ let canalRealtimeSupabase = null;
 // INICIALIZAÇÃO E PWA (CONSOLIDADO)
 // ==========================================
 window.addEventListener('DOMContentLoaded', async () => {
-    // 1. Restaurar Sessão do Supabase
     try {
         const lembrarConectado = localStorage.getItem('pdv_lembrar_conectado') === 'true';
         const { data: { session } } = await supabaseClient.auth.getSession();
@@ -40,26 +44,18 @@ window.addEventListener('DOMContentLoaded', async () => {
         console.error("PDV-VS Erro ao restaurar sessão:", e); 
     }
 
-    // 2. Configurar Gatilho Secreto Super Admin
-    const gatilho = document.getElementById('gatilhoSuperAdmin');
+    // Gatilho Secreto Super Admin
+    const gatilho = document.getElementById('gatilho-super-admin') || document.getElementById('gatilhoSuperAdmin');
     if (gatilho) {
         gatilho.addEventListener('click', () => {
             cliquesSecretos++;
             if (cliquesSecretos >= 5) {
                 cliquesSecretos = 0;
-                const telaLoginAdmin = document.getElementById('telaLoginSuperAdmin');
-                if (telaLoginAdmin) {
-                    telaLoginAdmin.classList.remove('hidden');
-                    setTimeout(() => {
-                        const inputAdminEmail = document.getElementById('superAdminEmail');
-                        if (inputAdminEmail) inputAdminEmail.focus();
-                    }, 100);
-                }
+                window.location.href = '../super-admin/super-admin.html';
             }
         });
     }
 
-    // 3. Atualizar Rodapé Padrão do Sistema
     const rodape = document.getElementById('rodapeSistema');
     if (rodape) {
         rodape.innerHTML = 'PDV-Vancely Software Enterprise | Versão 1.0.0 | Suporte Técnico Ativo';
@@ -67,17 +63,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 });
 
 // ==========================================
-// INSTALAÇÃO PWA (CAPTURA GLOBAL)
-// ==========================================
-window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault(); 
-    deferredPrompt = e;
-    const btnInstalar = document.getElementById('btnInstalarPwa');
-    if (btnInstalar) btnInstalar.classList.remove('hidden');
-});
-
-// ==========================================
-// SINCRONIZAÇÃO EM TEMPO REAL (PC E SMARTPHONE)
+// SINCRONIZAÇÃO EM TEMPO REAL
 // ==========================================
 function iniciarSincronizacaoRealtime() {
     if (!empresaAtualId) return;
@@ -88,24 +74,16 @@ function iniciarSincronizacaoRealtime() {
 
     canalRealtimeSupabase = supabaseClient
         .channel('public:produtos_e_vendas')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'produtos', filter: `empresa_id=eq.${empresaAtualId}` }, (payload) => {
-            console.log('Atualização de produto detectada via Realtime:', payload);
-            if (typeof carregarProdutosDaLoja === 'function') {
-                carregarProdutosDaLoja();
-            }
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'produtos', filter: `empresa_id=eq.${empresaAtualId}` }, () => {
+            if (typeof carregarProdutosDaLoja === 'function') carregarProdutosDaLoja();
         })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'caixas', filter: `empresa_id=eq.${empresaAtualId}` }, (payload) => {
-            console.log('Atualização de caixa detectada via Realtime:', payload);
-            if (typeof verificarStatusCaixaIndividual === 'function') {
-                verificarStatusCaixaIndividual();
-            }
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'caixas', filter: `empresa_id=eq.${empresaAtualId}` }, () => {
+            if (typeof verificarStatusCaixaIndividual === 'function') verificarStatusCaixaIndividual();
         })
         .subscribe();
 }
 
-// ==========================================
-// ATALHOS GLOBAIS DE TECLADO DO PDV
-// ==========================================
+// Atalhos Globais de Teclado
 window.addEventListener('keydown', (e) => {
     const appPrincipal = document.getElementById('appPrincipal');
     if (!appPrincipal || appPrincipal.classList.contains('hidden')) return;
@@ -117,4 +95,3 @@ window.addEventListener('keydown', (e) => {
     if (e.key === 'F7') { e.preventDefault(); if (typeof cancelarVenda === 'function') cancelarVenda(); }
     if (e.key === 'F9') { e.preventDefault(); if (typeof finalizarVenda === 'function') finalizarVenda(); }
 });
-export { supabaseClient as supabase };
