@@ -9,7 +9,6 @@ import {
     produtosCache, setEmpresaAtualId 
 } from '../../core/state.js';
 import { carregarProdutosCache } from '../../services/produtos.js';
-import { carregarHistoricoAdmin, carregarOperadoresLoja } from '../admin/admin-core.js';
 
 let valorTrocoAbertura = 0;
 let horaAberturaCaixa = null;
