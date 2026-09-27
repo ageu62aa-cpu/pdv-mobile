@@ -1,5 +1,5 @@
 // ==========================================  
-// MÓDULO DE CAIXA E VENDAS (PDV-VS) - CAMINHOS CORRIGIDOS PELA ESTRUTURA
+// MÓDULO DE CAIXA E VENDAS (PDV-VS) 
 // ==========================================  
 
 import { initCaixaBusca } from './caixa-busca.js';  
@@ -9,8 +9,7 @@ import {
     setCaixaAberto, setFaturamentoDia, setIndiceItemParaRemover, setItensVenda,   
     produtosCache, setEmpresaAtualId   
 } from '../../core/state.js';  
-import { carregarProdutosCache } from '../../services/produtos.js';  
-import { carregarHistoricoAdmin, carregarOperadoresLoja } from '../admin/admin-core.js';
+import { carregarProdutosCache } from '../../services/produtos.js';
 
 let valorTrocoAbertura = 0;
 let horaAberturaCaixa = null;
