@@ -239,8 +239,6 @@ window.tratarEnterBuscaCaixa = tratarEnterBuscaCaixa;
 // GESTÃO DE PRODUTOS DO ADMIN (PDV-VS)
 // ==========================================
 
-import { carregarProdutosCache } from '../../services/produtos.js';
-
 export function renderizarTabelaAdmin(lista) {
     const tbody = document.getElementById('tabelaAdminProdutos');
     const contadorProdutos = document.getElementById('contadorLimiteProdutosAdmin');
