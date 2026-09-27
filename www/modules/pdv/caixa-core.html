@@ -57,8 +57,13 @@
                     <label for="inputBusca" class="text-xs font-bold text-gray-400 uppercase tracking-wider">
                         Pesquisa / Código de Barras <span class="text-emerald-400">(Atalho: F5)</span>
                     </label>
-                    <button id="btn-ativar-camera" class="text-xs text-emerald-400 font-medium flex items-center gap-1 hover:text-emerald-300 transition-colors focus:outline-none" title="Clique para ativar o leitor de câmera">
-                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span> Leitor Ativo
+                    
+                    <!-- BOTÃO DE SCANNER DE CÂMERA COM A IMAGEM PERSONALIZADA EM MOLDURA CIRCULAR -->
+                    <button onclick="window.abrirCameraScanner ? window.abrirCameraScanner() : alert('Leitor contínuo de câmera ativado.')" id="btnAtivarCameraScanner" class="flex items-center gap-1.5 bg-gray-900 hover:bg-gray-750 border border-emerald-600/70 hover:border-emerald-400 px-2.5 py-1 rounded-full shadow-md transition transform hover:scale-105 focus:outline-none" title="Ativar leitor contínuo de câmera">
+                        <div class="w-5 h-5 rounded-full overflow-hidden border border-emerald-500 flex items-center justify-center bg-white">
+                            <img src="../../assets/botao-camera.jpg" alt="Scanner Câmera" class="w-7 h-7 object-cover scale-125">
+                        </div>
+                        <span class="text-[11px] font-bold text-emerald-400">Scanner Câmera</span>
                     </button>
                 </div>
                 <div class="relative flex items-center">
