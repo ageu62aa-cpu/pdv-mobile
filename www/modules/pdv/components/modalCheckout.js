@@ -3,7 +3,10 @@
  * Gerencia a esteira de pagamentos, cálculo de troco, taxas de maquininha e parcelamento.
  */
 
-import { state, produtosCache } from '../state.js';
+import { state, produtosCache, itensVenda, setItensVenda, faturamentoDia, setFaturamentoDia, empresaAtualId, usuarioAtual } from '../state.js';
+
+let formaPagamentoAtual = 'dinheiro';
+let valorTotalVendaAtual = 0;
 
 // Renderiza o HTML do Modal de Checkout com tema escuro consistente
 export function renderModalCheckout() {
@@ -14,7 +17,7 @@ export function renderModalCheckout() {
                     <h3 class="font-bold text-lg text-white flex items-center gap-2">
                         <i class="fa-solid fa-cash-register text-emerald-400"></i> Finalizar Venda
                     </h3>
-                    <button onclick="window.fecharModalFinalizarVenda()" class="text-gray-400 hover:text-white transition-colors">
+                    <button type="button" onclick="window.fecharModalFinalizarVenda()" class="text-gray-400 hover:text-white transition-colors">
                         <i class="fa-solid fa-xmark text-lg"></i>
                     </button>
                 </div>
@@ -72,8 +75,8 @@ export function renderModalCheckout() {
                 </div>
 
                 <div class="flex space-x-2 pt-2">
-                    <button onclick="window.fecharModalFinalizarVenda()" class="w-1/2 bg-gray-700 hover:bg-gray-600 text-gray-200 py-3 rounded-xl font-bold text-xs transition">Cancelar</button>
-                    <button onclick="window.confirmarConclusaoVenda()" class="w-1/2 bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-bold text-xs shadow-lg transition">Concluir Venda</button>
+                    <button type="button" onclick="window.fecharModalFinalizarVenda()" class="w-1/2 bg-gray-700 hover:bg-gray-600 text-gray-200 py-3 rounded-xl font-bold text-xs transition">Cancelar</button>
+                    <button type="button" onclick="window.confirmarConclusaoVenda()" class="w-1/2 bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-bold text-xs shadow-lg transition">Concluir Venda</button>
                 </div>
             </div>
         </div>
@@ -81,11 +84,10 @@ export function renderModalCheckout() {
 }
 
 // Função para abrir e injetar no container dinâmico
-export function abrirModalCheckout(totalVenda) {
-    const container = document.getElementById('containerModaisDinamicos') || document.body;
-    if (!container) return;
+export async function abrirModalCheckout(totalVenda) {
+    valorTotalVendaAtual = totalVenda;
+    formaPagamentoAtual = 'dinheiro';
 
-    // Se o container não existir no DOM principal, cria um temporário
     let modalWrapper = document.getElementById('containerModaisDinamicos');
     if (!modalWrapper) {
         modalWrapper = document.createElement('div');
@@ -100,16 +102,48 @@ export function abrirModalCheckout(totalVenda) {
     
     if (txtTotalOrig) txtTotalOrig.innerText = `R$ ${totalVenda.toFixed(2)}`;
     if (txtTotalFinal) txtTotalFinal.innerText = `R$ ${totalVenda.toFixed(2)}`;
+
+    // Carrega as maquininhas cadastradas no banco se houver tabela/função correspondente
+    await carregarMaquininhasNoSelect();
+
+    setTimeout(() => {
+        document.getElementById('inputValorRecebido')?.focus();
+    }, 100);
+}
+
+// Função para buscar maquininhas no Supabase e preencher o select
+async function carregarMaquininhasNoSelect() {
+    const select = document.getElementById('selectMaquininhaVenda');
+    if (!select || !window.supabaseClient || !empresaAtualId) return;
+
+    try {
+        const { data, error } = await window.supabaseClient
+            .from('maquininhas')
+            .select('id, nome, taxa_debito, taxa_credito')
+            .eq('empresa_id', empresaAtualId);
+
+        if (!error && data && data.length > 0) {
+            let options = '<option value="">Selecione uma maquininha cadastrada...</option>';
+            data.forEach(m => {
+                options += `<option value="${m.id}" data-debito="${m.taxa_debito || 0}" data-credito="${m.taxa_credito || 0}">${m.nome}</option>`;
+            });
+            select.innerHTML = options;
+        }
+    } catch (e) {
+        console.error('PDV-VS: Erro ao carregar maquininhas:', e);
+    }
 }
 
 // Função para fechar e limpar a memória do DOM
 export function fecharModalFinalizarVenda() {
     const container = document.getElementById('containerModaisDinamicos');
     if (container) container.innerHTML = '';
+    window.focarBusca?.();
 }
 
 // Lógica de seleção de forma de pagamento com adaptação para tema escuro
 export function selecionarFormaPagamento(forma) {
+    formaPagamentoAtual = forma;
     const secaoDinheiro = document.getElementById('secaoDinheiroTroco');
     const secaoCartao = document.getElementById('secaoOpcoesCartao');
     const divParcelas = document.getElementById('divSeletorParcelas');
@@ -129,6 +163,7 @@ export function selecionarFormaPagamento(forma) {
     if (forma === 'dinheiro') {
         secaoDinheiro?.classList.remove('hidden');
         secaoCartao?.classList.add('hidden');
+        setTimeout(() => document.getElementById('inputValorRecebido')?.focus(), 50);
     } else if (forma === 'debito' || forma === 'credito') {
         secaoDinheiro?.classList.add('hidden');
         secaoCartao?.classList.remove('hidden');
@@ -142,11 +177,110 @@ export function selecionarFormaPagamento(forma) {
         secaoDinheiro?.classList.add('hidden');
         secaoCartao?.classList.add('hidden');
     }
+
+    recalcularTotalComTaxasMaquininha();
 }
 
-// Exposição global das funções chamadas nos atributos onclick e oninput
+// Cálculo dinâmico do troco em dinheiro
+export function calcularTrocoCaixa() {
+    const recebido = parseFloat(document.getElementById('inputValorRecebido')?.value) || 0;
+    const txtTroco = document.getElementById('txtTrocoDevolver');
+    const troco = recebido - valorTotalVendaAtual;
+
+    if (txtTroco) {
+        txtTroco.innerText = troco >= 0 ? `R$ ${troco.toFixed(2)}` : 'R$ 0,00';
+    }
+}
+
+// Cálculo integrado de taxas de maquininha / parcelamento
+export function recalcularTotalComTaxasMaquininha() {
+    const txtTotalFinal = document.getElementById('modalValFinalComJuros');
+    const txtTaxaInfo = document.getElementById('txtTaxaAplicadaInfo');
+    const selectParcelas = document.getElementById('selectParcelasVenda');
+    const selectMaquininha = document.getElementById('selectMaquininhaVenda');
+
+    let taxaPercentual = 0;
+
+    if (selectMaquininha && selectMaquininha.selectedOptions.length > 0) {
+        const option = selectMaquininha.selectedOptions[0];
+        if (formaPagamentoAtual === 'debito') {
+            taxaPercentual = parseFloat(option.getAttribute('data-debito')) || 0;
+        } else if (formaPagamentoAtual === 'credito') {
+            const baseCredito = parseFloat(option.getAttribute('data-credito')) || 2.0;
+            const parcelas = parseInt(selectParcelas?.value || '1');
+            taxaPercentual = baseCredito + (parcelas > 1 ? (parcelas - 1) * 0.8 : 0);
+        }
+    } else {
+        if (formaPagamentoAtual === 'debito') taxaPercentual = 1.5;
+        if (formaPagamentoAtual === 'credito') {
+            const parcelas = parseInt(selectParcelas?.value || '1');
+            taxaPercentual = parcelas > 1 ? 2.5 + (parcelas * 0.8) : 2.0;
+        }
+    }
+
+    const valorTaxa = (valorTotalVendaAtual * taxaPercentual) / 100;
+    const valorFinalComTaxas = valorTotalVendaAtual + valorTaxa;
+
+    if (txtTotalFinal) txtTotalFinal.innerText = `R$ ${valorFinalComTaxas.toFixed(2)}`;
+    if (txtTaxaInfo) txtTaxaInfo.innerText = `${taxaPercentual.toFixed(2)}% (R$ ${valorTaxa.toFixed(2)})`;
+}
+
+// Conclusão e salvamento da venda integrada com o Supabase
+export async function confirmarConclusaoVenda() {
+    if (itensVenda.length === 0) {
+        alert('PDV-VS: Nenhum item na venda.');
+        return;
+    }
+
+    const supabase = window.supabaseClient;
+    if (!supabase) {
+        alert('PDV-VS: Erro de conexão com o banco de dados.');
+        return;
+    }
+
+    const valorFinal = itensVenda.reduce((acc, item) => acc + (item.qtd * item.preco), 0);
+
+    const { error: erroVenda } = await supabase.from('vendas').insert([{
+        empresa_id: empresaAtualId,
+        operador: usuarioAtual?.email || 'Operador',
+        valor_total: valorFinal,
+        forma_pagamento: formaPagamentoAtual,
+        itens: itensVenda
+    }]);
+
+    if (erroVenda) {
+        alert('PDV-VS: Erro ao concluir venda no servidor: ' + erroVenda.message);
+        return;
+    }
+
+    for (const item of itensVenda) {
+        const novoEstoque = Math.max(0, (item.estoque || 0) - item.qtd);
+        await supabase.from('produtos').update({ estoque: novoEstoque }).eq('id', item.id);
+    }
+
+    const novoFat = faturamentoDia + valorFinal;
+    setFaturamentoDia(novoFat);
+    const txtFat = document.getElementById('txtFaturamentoDia');
+    if (txtFat) txtFat.innerText = `R$ ${novoFat.toFixed(2)}`;
+
+    if (empresaAtualId && usuarioAtual) {
+        await supabase.from('caixas').update({ 
+            faturamento_dia: novoFat, 
+            updated_at: new Date().toISOString()
+        }).eq('empresa_id', empresaAtualId).eq('user_id', usuarioAtual.id).eq('status', 'ABERTO');
+    }
+
+    setItensVenda([]);
+    window.atualizarTabelaVenda?.();
+    fecharModalFinalizarVenda();
+    
+    alert('PDV-VS: Venda finalizada com sucesso!');
+    window.focarBusca?.();
+}
+
+// Exposição global unificada para garantir funcionamento de todos os botões/eventos
 window.fecharModalFinalizarVenda = fecharModalFinalizarVenda;
 window.selecionarFormaPagamento = selecionarFormaPagamento;
-window.calcularTrocoCaixa = function() { /* Lógica de cálculo de troco */ };
-window.recalcularTotalComTaxasMaquininha = function() { /* Lógica de cálculo de taxas */ };
-window.confirmarConclusaoVenda = function() { /* Lógica para salvar a venda */ };
+window.calcularTrocoCaixa = calcularTrocoCaixa;
+window.recalcularTotalComTaxasMaquininha = recalcularTotalComTaxasMaquininha;
+window.confirmarConclusaoVenda = confirmarConclusaoVenda;

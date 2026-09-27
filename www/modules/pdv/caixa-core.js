@@ -89,7 +89,7 @@ export function iniciarRealtimeCaixa() {
         .subscribe();
 }
 
-// --- MAPDEAMENTO COMPLETO DE ATALHOS F1 A F12 (CLIQUE & TECLADO) ---
+// --- MAPEAMENTO COMPLETO DE ATALHOS F1 A F12 (CLIQUE & TECLADO) ---
 window.acaoAtalhoF1 = () => {
     const cpf = prompt('Digite o CPF/CNPJ do cliente para a Nota:', '');
     if (cpf !== null) {
@@ -106,6 +106,16 @@ window.acaoAtalhoF2 = () => {
 
 window.acaoAtalhoF3 = () => {
     alert('Atalho F3: Dinheiro Rápido acionado.');
+};
+
+window.acaoAtalhoPix = () => {
+    alert('Pagamento via Pix selecionado. Gerando QR Code...');
+    window.acionarFinalizarVenda();
+};
+
+window.acaoAtalhoParcelamento = () => {
+    alert('Opções de Parcelamento no Cartão abertas.');
+    window.acionarFinalizarVenda();
 };
 
 window.acaoAtalhoF4 = () => {
@@ -161,6 +171,23 @@ window.acaoAtalhoF11 = () => {
 
 window.acaoAtalhoF12 = () => {
     cancelarVenda();
+};
+
+// Função para abrir a janela modal flutuante com todos os atalhos F1 a F12
+window.abrirModalTodosAtalhos = () => {
+    alert(`GUIA COMPLETO DE ATALHOS (F1 a F12):
+- F1: CPF na Nota (Identificar cliente)
+- F2: Vendedor (Vincular comissão)
+- F3: Dinheiro Rápido (Pagamento à vista)
+- F4: Multiplicador (Qtd x Código)
+- F5: Pesquisar (Focar no leitor/busca)
+- F6: Pausar Venda (Salvar em espera)
+- F7: Finalizar Venda (Abrir checkout)
+- F8: Desconto (Aplicar abatimento)
+- F9: Caixa (Sangria / Suprimento)
+- F10: Cons. Preço (Verificar valor rápido)
+- F11: Cancelar Item (Exige PIN Admin)
+- F12: Canc. Venda (Exige PIN Admin)`);
 };
 
 // Listener global unificado para as teclas de função F1 a F12
@@ -572,7 +599,7 @@ Object.assign(window, {
     tratarEnterModalAutorizacao, confirmarAutorizacaoPin, fecharModalAutorizacao,
     abrirModalCancelarItem, fecharModalCancelarItem, cancelarVenda, finalizarVenda,
     atualizarTabelaVenda, alterarQtd,
-    acaoAtalhoF1, acaoAtalhoF2, acaoAtalhoF3, acaoAtalhoF4, acaoAtalhoF5,
-    acaoAtalhoF6, acionarFinalizarVenda, acaoAtalhoF8, acaoAtalhoF9,
-    acaoAtalhoF10, acaoAtalhoF11, acaoAtalhoF12
+    acaoAtalhoF1, acaoAtalhoF2, acaoAtalhoF3, acaoAtalhoPix, acaoAtalhoParcelamento,
+    acaoAtalhoF4, acaoAtalhoF5, acaoAtalhoF6, acionarFinalizarVenda, acaoAtalhoF8,
+    acaoAtalhoF9, acaoAtalhoF10, acaoAtalhoF11, acaoAtalhoF12, abrirModalTodosAtalhos
 });
