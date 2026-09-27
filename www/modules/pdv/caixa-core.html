@@ -14,7 +14,6 @@
     <!-- Topo / Header do PDV -->
     <header class="bg-gray-800 border-b border-gray-700 px-6 py-3 flex justify-between items-center shadow-md">
         <div class="flex items-center gap-3">
-            <!-- Container circular com overflow hidden para cortar as bordas brancas e ampliar a imagem de dentro -->
             <div class="w-10 h-10 rounded-full overflow-hidden border-2 border-emerald-600 shadow-md flex items-center justify-center bg-white">
                 <img src="../../assets/caixa.registradora.jpeg" alt="Caixa Registradora" class="w-14 h-14 object-cover scale-125">
             </div>
@@ -37,7 +36,6 @@
             <div class="h-6 w-px bg-gray-700 mx-1"></div>
             <span id="txtInfoOperador" class="text-xs text-gray-400">Operador: <strong class="text-gray-200">Ativo</strong> | Caixa: <strong class="text-gray-200">#01</strong></span>
             
-            <!-- Botão Admin substituído pela imagem clicável -->
             <button onclick="window.location.href='../admin/dashboard.html'" class="w-9 h-9 rounded-full overflow-hidden border-2 border-emerald-600 hover:border-emerald-400 shadow-md transition transform hover:scale-105 flex items-center justify-center bg-white ml-1 focus:outline-none" title="Admin">
                 <img src="../../assets/botao-admin.jpeg" alt="Admin" class="w-12 h-12 object-cover scale-125">
             </button>
@@ -50,7 +48,7 @@
         
         <!-- Coluna Esquerda & Centro: Busca e Lista de Produtos -->
         <section class="lg:col-span-2 flex flex-col gap-4 overflow-hidden">
-            <!-- Container de Busca estruturado diretamente para garantir exibição imediata -->
+            <!-- Única Barra de Busca limpa e estruturada corretamente -->
             <div id="containerCaixaBusca" class="w-full bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-700 flex flex-col gap-2 relative">
                 <div class="flex items-center justify-between">
                     <label for="inputBusca" class="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
@@ -61,7 +59,7 @@
                         <span class="text-xs text-emerald-400 font-semibold flex items-center gap-1.5">
                             <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Leitor Ativo
                         </span>
-                        <!-- BOTÃO DE SCANNER FORMATADO COMO A CÂMERA (COMPACTO MOBILE) -->
+                        <!-- BOTÃO DE SCANNER DE CÂMERA -->
                         <button onclick="window.abrirCameraScanner ? window.abrirCameraScanner() : alert('Leitor contínuo de câmera ativado.')" id="btn-ativar-camera" class="w-12 h-8 rounded-xl overflow-hidden border-2 border-emerald-600 hover:border-emerald-400 shadow-md transition transform hover:scale-105 flex items-center justify-center bg-gray-900 focus:outline-none" title="Ativar leitor contínuo de câmera">
                             <img src="../../assets/botao-camera.jpg" alt="Scanner Câmera" class="w-full h-full object-cover">
                         </button>
@@ -85,7 +83,7 @@
                 <div id="sugestoesBusca" class="hidden absolute left-0 right-0 top-full mt-1 bg-gray-850 border border-gray-700 rounded-xl shadow-2xl max-h-60 overflow-y-auto z-50 divide-y divide-gray-750"></div>
             </div>
 
-            <!-- Tabela de Produtos no Carrinho (Com a imagem posicionada ao centro em marca d'água) -->
+            <!-- Tabela de Produtos no Carrinho -->
             <div class="flex-1 bg-gray-800 border border-gray-700 rounded-xl flex flex-col overflow-hidden shadow-sm relative">
                 
                 <!-- MARCA D'ÁGUA CENTRALIZADA -->
@@ -130,12 +128,10 @@
                     <span id="txtResumoTotalGeral" class="text-2xl font-black text-emerald-400 font-mono mt-0.5">R$ 0,00</span>
                 </div>
 
-                <!-- Botão de Finalização Principal -->
                 <button onclick="window.acionarFinalizarVenda()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-bold text-xs shadow-lg transition flex items-center justify-center gap-2">
                     <i class="fa-solid fa-check-to-slot"></i> Finalizar Pagamento <span class="bg-emerald-800 text-emerald-200 text-[10px] px-1.5 py-0.5 rounded font-mono">F7</span>
                 </button>
 
-                <!-- Formas de Pagamento Rápidas (Dinheiro, Pix e Parcelamento) -->
                 <div class="grid grid-cols-3 gap-2 pt-1 border-t border-gray-700">
                     <button onclick="window.acaoAtalhoF3 && window.acaoAtalhoF3()" class="bg-gray-900 hover:bg-gray-750 border border-gray-700 py-2 px-1 rounded-lg text-center transition flex flex-col items-center justify-center">
                         <i class="fa-solid fa-money-bill-wave text-emerald-400 text-xs mb-1"></i>
@@ -165,7 +161,6 @@
                 </div>
                 
                 <div class="grid grid-cols-2 gap-1.5 text-left">
-                    <!-- F1 -->
                     <button onclick="window.acaoAtalhoF1 && window.acaoAtalhoF1()" class="bg-gray-900/60 hover:bg-gray-700 border border-gray-700/80 p-2 rounded-lg transition flex items-center justify-between group">
                         <div class="flex flex-col overflow-hidden">
                             <span class="text-[11px] font-bold text-gray-200 group-hover:text-emerald-400 truncate">CPF na Nota</span>
@@ -174,7 +169,6 @@
                         <span class="bg-emerald-950 text-emerald-400 text-[10px] font-bold px-1.5 py-0.5 rounded border border-emerald-800/50 font-mono ml-1">F1</span>
                     </button>
 
-                    <!-- F3 -->
                     <button onclick="window.acaoAtalhoF3 && window.acaoAtalhoF3()" class="bg-gray-900/60 hover:bg-gray-700 border border-gray-700/80 p-2 rounded-lg transition flex items-center justify-between group">
                         <div class="flex flex-col overflow-hidden">
                             <span class="text-[11px] font-bold text-gray-200 group-hover:text-emerald-400 truncate">Dinheiro Rápido</span>
@@ -183,7 +177,6 @@
                         <span class="bg-gray-850 text-gray-300 text-[10px] font-bold px-1.5 py-0.5 rounded border border-gray-700 font-mono ml-1">F3</span>
                     </button>
 
-                    <!-- F5 -->
                     <button onclick="window.acaoAtalhoF5 && window.acaoAtalhoF5()" class="bg-gray-900/60 hover:bg-gray-700 border border-gray-700/80 p-2 rounded-lg transition flex items-center justify-between group">
                         <div class="flex flex-col overflow-hidden">
                             <span class="text-[11px] font-bold text-gray-200 group-hover:text-emerald-400 truncate">Pesquisar</span>
@@ -192,7 +185,6 @@
                         <span class="bg-gray-850 text-gray-300 text-[10px] font-bold px-1.5 py-0.5 rounded border border-gray-700 font-mono ml-1">F5</span>
                     </button>
 
-                    <!-- F6 -->
                     <button onclick="window.acaoAtalhoF6 && window.acaoAtalhoF6()" class="bg-gray-900/60 hover:bg-gray-700 border border-gray-700/80 p-2 rounded-lg transition flex items-center justify-between group">
                         <div class="flex flex-col overflow-hidden">
                             <span class="text-[11px] font-bold text-gray-200 group-hover:text-amber-400 truncate">Pausar Venda</span>
@@ -201,7 +193,6 @@
                         <span class="bg-amber-950/60 text-amber-400 text-[10px] font-bold px-1.5 py-0.5 rounded border border-amber-800/50 font-mono ml-1">F6</span>
                     </button>
 
-                    <!-- F7 -->
                     <button onclick="window.acionarFinalizarVenda && window.acionarFinalizarVenda()" class="bg-gray-900/60 hover:bg-gray-700 border border-gray-700/80 p-2 rounded-lg transition flex items-center justify-between group">
                         <div class="flex flex-col overflow-hidden">
                             <span class="text-[11px] font-bold text-gray-200 group-hover:text-emerald-400 truncate">Finalizar Venda</span>
@@ -210,7 +201,6 @@
                         <span class="bg-emerald-950 text-emerald-400 text-[10px] font-bold px-1.5 py-0.5 rounded border border-emerald-800/50 font-mono ml-1">F7</span>
                     </button>
 
-                    <!-- F11 -->
                     <button onclick="window.acaoAtalhoF11 && window.acaoAtalhoF11()" class="bg-gray-900/60 hover:bg-gray-700 border border-gray-700/80 p-2 rounded-lg transition flex items-center justify-between group">
                         <div class="flex flex-col overflow-hidden">
                             <span class="text-[11px] font-bold text-gray-200 group-hover:text-red-400 truncate">Cancelar Item</span>
