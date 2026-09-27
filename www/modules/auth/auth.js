@@ -2,6 +2,8 @@ import { supabase } from '../../core/config.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     const formLogin = document.getElementById('form-login');
+    const inputEmail = document.getElementById('login-email');
+    const inputSenha = document.getElementById('login-senha');
     const mascote = document.getElementById('mascote-container');
     const gatilhoSuperAdmin = document.getElementById('gatilho-super-admin');
     const btnAbrirCadastro = document.getElementById('btn-abrir-cadastro');
@@ -32,14 +34,34 @@ document.addEventListener('DOMContentLoaded', () => {
             // Verde esmeralda delicado e moderno para Login Sucesso
             authFeedback.classList.add('text-emerald-400', 'bg-emerald-950/40', 'border', 'border-emerald-500/30');
             authFeedback.innerText = "Login Sucesso";
+            
+            // Remove bordas de erro se houver
+            if (inputEmail) inputEmail.classList.remove('border-red-500');
+            if (inputSenha) inputSenha.classList.remove('border-red-500');
         } else if (type === 'error') {
-            // Vermelho elegante para Login Inválido / Erro de senha ou login
+            // Vermelho elegante para Login Inválido
             authFeedback.classList.add('text-rose-400', 'bg-rose-950/40', 'border', 'border-rose-500/30');
-            authFeedback.innerText = message || "Login Inválido";
+            authFeedback.innerText = message || "Login Invalido";
+            
+            // Aplica bordas vermelhas nos inputs de login para indicar o erro visualmente
+            if (inputEmail) inputEmail.classList.add('border-red-500');
+            if (inputSenha) inputSenha.classList.add('border-red-500');
         }
         
         authFeedback.classList.remove('hidden');
     }
+
+    // Limpa o destaque vermelho e o aviso assim que o usuário começa a redigitar
+    [inputEmail, inputSenha].forEach(input => {
+        if (input) {
+            input.addEventListener('input', () => {
+                input.classList.remove('border-red-500');
+                if (authFeedback && !authFeedback.classList.contains('text-emerald-400')) {
+                    authFeedback.classList.add('hidden');
+                }
+            });
+        }
+    });
 
     // Mascote Hard Refresh
     if (mascote) {
@@ -171,12 +193,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Login Real com Feedback Visual Discreto (Sucesso em Esmeralda / Inválido em Vermelho)
+    // Login Real com Feedback Visual Discreto e Destaque nas Bordas dos Campos
     if (formLogin) {
         formLogin.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const email = document.getElementById('login-email').value;
-            const senha = document.getElementById('login-senha').value;
+            const email = inputEmail.value;
+            const senha = inputSenha.value;
 
             // Oculta avisos anteriores ao submeter novamente
             if (authFeedback) authFeedback.classList.add('hidden');
@@ -184,12 +206,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const { data, error } = await supabase.auth.signInWithPassword({ email, password: senha });
             
             if (error) {
-                // Exibe "Login Invalido" em vermelho delicado no rodapé do form
+                // Exibe "Login Invalido" em vermelho e pinta as bordas dos campos de login
                 showFeedback('Login Invalido', 'error');
                 return;
             }
 
-            // Exibe "Login Sucesso" em verde esmeralda e redireciona com elegância
+            // Exibe "Login Sucesso" em verde esmeralda, limpa as bordas e redireciona com elegância
             showFeedback('Login Sucesso', 'success');
             
             setTimeout(() => {
