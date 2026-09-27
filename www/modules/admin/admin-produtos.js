@@ -21,7 +21,7 @@ export async function initAdminProdutos(containerEl) {
                 </button>
             </div>
 
-            <!-- Barra de Pesquisa e Scanner -->
+            <!-- Barra de Pesquisa e Scanner (Otimizado para Mobile e Pistola Física) -->
             <div class="bg-gray-800 p-4 rounded-xl border border-gray-700 shadow-sm flex flex-col md:flex-row gap-3 items-center">
                 <div class="relative flex-1 w-full">
                     <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
@@ -29,8 +29,9 @@ export async function initAdminProdutos(containerEl) {
                     </span>
                     <input type="text" id="inputBuscaAdminProdutos" oninput="window.filtrarProdutosAdmin(this.value)" placeholder="Pesquise pelo nome ou código de barras..." class="w-full pl-10 pr-4 py-2.5 bg-gray-900 border border-gray-700 rounded-lg text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500">
                 </div>
-                <button onclick="window.ativarScannerAdmin()" class="w-full md:w-auto bg-gray-700 hover:bg-gray-600 text-gray-200 px-4 py-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition border border-gray-600">
-                    <i class="fa-solid fa-barcode text-emerald-400"></i> Leitor Ativo
+                <!-- Botão Compacto para Mobile / Compatível com Foco para Pistola -->
+                <button onclick="window.ativarScannerAdmin()" title="Ativar Leitor / Foco para Pistola" class="w-full md:w-auto bg-gray-700 hover:bg-gray-600 text-gray-200 px-3 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition border border-gray-600">
+                    <i class="fa-solid fa-barcode text-emerald-400"></i> <span class="md:hidden">Leitor</span>
                 </button>
             </div>
 
@@ -75,8 +76,10 @@ export async function initAdminProdutos(containerEl) {
                         <div>
                             <label class="block text-xs font-bold text-gray-300 mb-1">CÓDIGO DE BARRAS / SKU</label>
                             <div class="flex gap-2">
+                                <!-- Compatível com digitação, pistola USB/Bluetooth (foco direto) -->
                                 <input type="text" id="formProdCodigo" placeholder="Ex: 7891000..." class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg text-sm text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none">
-                                <button type="button" onclick="window.ativarScannerModal()" title="Escanear com Câmera" class="bg-gray-700 hover:bg-gray-600 px-3 py-3 rounded-lg text-emerald-400 border border-gray-600 transition flex items-center justify-center">
+                                <!-- Botão dedicado exclusivo para abrir a câmera no Smartphone -->
+                                <button type="button" onclick="window.ativarScannerModal()" title="Escanear com Câmera do Celular" class="bg-gray-700 hover:bg-gray-600 px-3 py-3 rounded-lg text-emerald-400 border border-gray-600 transition flex items-center justify-center shrink-0">
                                     <i class="fa-solid fa-camera"></i>
                                 </button>
                             </div>
@@ -187,6 +190,9 @@ window.abrirModalNovoProduto = async function() {
     document.getElementById('formProdUnidade').value = 'UN';
 
     document.getElementById('modalFormProdutoAdmin').classList.remove('hidden');
+    
+    // Deixa o foco pronto caso o operador use pistola física logo ao abrir o modal
+    setTimeout(() => document.getElementById('formProdCodigo').focus(), 100);
 };
 
 window.abrirModalEditarProduto = function(p) {
@@ -210,7 +216,6 @@ window.salvarProdutoAdmin = async function(e) {
     e.preventDefault();
     const id = document.getElementById('formProdId').value;
     
-    // Todos os campos criados são enviados para a base de dados
     const dados = {
         nome: document.getElementById('formProdNome').value.trim(),
         codigo: document.getElementById('formProdCodigo').value.trim(),
@@ -255,7 +260,11 @@ window.excluirProdutoAdmin = async function(id) {
 };
 
 window.ativarScannerAdmin = function() {
-    alert('Leitor da barra de busca ativado.');
+    const input = document.getElementById('inputBuscaAdminProdutos');
+    if (input) {
+        input.focus();
+        input.select();
+    }
 };
 
 window.ativarScannerModal = function() {
