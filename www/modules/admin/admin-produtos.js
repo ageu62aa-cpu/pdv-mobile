@@ -149,10 +149,10 @@ function renderizarTabelaAdmin(lista) {
     tbody.innerHTML = lista.map(p => `
         <tr class="hover:bg-gray-750 transition-colors">
             <td class="p-3 font-mono text-xs text-gray-300">${p.codigo_barras || p.codigo || '-'}</td>
-            <td class="p-3 font-medium text-white">${p.nome} ${p.unidade === 'KG' ? '<span class="text-amber-400 text-[10px] font-bold">(KG)</span>' : ''}</td>
+            <td class="p-3 font-medium text-white">${p.nome}</td>
             <td class="p-3 text-gray-300 text-xs">${p.categoria || 'Geral'}</td>
-            <td class="p-3 font-bold text-emerald-400">R$ ${Number(p.preco || 0).toFixed(2)}${p.unidade === 'KG' ? '/kg' : ''}</td>
-            <td class="p-3 text-gray-300">${p.estoque} ${p.unidade || 'UN'}</td>
+            <td class="p-3 font-bold text-emerald-400">R$ ${Number(p.preco || 0).toFixed(2)}</td>
+            <td class="p-3 text-gray-300">${p.estoque} un</td>
             <td class="p-3 text-right space-x-2">
                 <button onclick='window.abrirModalEditarProduto(${JSON.stringify(p).replace(/'/g, "&#39;")})' class="text-blue-400 hover:text-blue-300 transition" title="Editar"><i class="fa-solid fa-pen"></i></button>
                 <button onclick="window.excluirProdutoAdmin('${p.id}')" class="text-red-400 hover:text-red-300 transition" title="Excluir"><i class="fa-solid fa-trash"></i></button>
@@ -209,13 +209,13 @@ window.fecharModalProdutoAdmin = function() {
 window.salvarProdutoAdmin = async function(e) {
     e.preventDefault();
     const id = document.getElementById('formProdId').value;
+    
+    // Enviamos apenas os campos compatíveis com a tabela do Supabase para evitar erros
     const dados = {
         nome: document.getElementById('formProdNome').value.trim(),
         codigo_barras: document.getElementById('formProdCodigo').value.trim(),
-        categoria: document.getElementById('formProdCategoria').value.trim(),
         preco: parseFloat(document.getElementById('formProdPreco').value) || 0,
-        estoque: parseFloat(document.getElementById('formProdEstoque').value) || 0,
-        unidade: document.getElementById('formProdUnidade').value
+        estoque: parseFloat(document.getElementById('formProdEstoque').value) || 0
     };
 
     if (id) {
