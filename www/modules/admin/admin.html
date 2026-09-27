@@ -3,34 +3,57 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDV Mobile - Painel Administrativo</title>
+    <title>Vancely Software - Painel Administrativo</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome para Ícones -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-<body class="bg-gray-50 min-h-screen flex flex-col">
+<body class="bg-gray-900 text-gray-100 font-sans min-h-screen flex flex-col overflow-x-hidden">
 
     <!-- Cabeçalho do Admin -->
-    <header class="bg-emerald-800 text-white shadow-md p-4 flex justify-between items-center">
+    <header class="bg-gray-800 border-b border-gray-700 px-6 py-3 flex justify-between items-center shadow-md">
         <div class="flex items-center gap-3">
-            <h1 class="font-bold text-base">Painel Administrativo</h1>
+            <div class="w-10 h-10 rounded-full overflow-hidden border-2 border-emerald-600 shadow-md flex items-center justify-center bg-white">
+                <img src="../../assets/botao-admin.jpeg" alt="Admin" class="w-14 h-14 object-cover scale-125">
+            </div>
+            <div>
+                <h1 class="font-bold text-sm text-white tracking-wide">Vancely Software - Painel Administrativo</h1>
+                <p class="text-xs text-emerald-400 font-semibold flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Sistema Operacional Online
+                </p>
+            </div>
         </div>
         <div class="flex items-center gap-3">
-            <a href="../pdv/caixa-core.html" class="bg-emerald-700 hover:bg-emerald-600 text-xs px-3 py-1.5 rounded-lg font-medium transition-colors">Voltar ao Caixa</a>
-            <a href="../auth/auth.html" class="bg-red-600 hover:bg-red-700 text-xs px-3 py-1.5 rounded-lg font-medium transition-colors">Sair</a>
+            <a href="../pdv/caixa-core.html" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3.5 py-2 rounded-lg font-bold transition-colors shadow flex items-center gap-2">
+                <i class="fa-solid fa-cash-register"></i> Voltar ao Caixa
+            </a>
+            <a href="../auth/auth.html" class="bg-red-900/50 hover:bg-red-900 text-red-200 text-xs px-3.5 py-2 rounded-lg font-bold transition-colors border border-red-800">
+                Sair
+            </a>
         </div>
     </header>
 
     <!-- Conteúdo Principal com Abas -->
-    <main class="flex-1 max-w-7xl mx-auto w-full p-4 flex flex-col md:flex-row gap-4">
+    <main class="flex-1 max-w-7xl mx-auto w-full p-6 flex flex-col md:flex-row gap-6">
         <!-- Menu Lateral de Abas -->
-        <aside class="w-full md:w-64 bg-white rounded-2xl shadow-sm border border-gray-100 p-3 h-fit flex flex-row md:flex-col gap-1 overflow-x-auto">
-            <button data-tab="produtos" class="tab-btn text-left px-4 py-2.5 rounded-xl text-sm font-bold bg-emerald-50 text-emerald-800 transition-colors">Produtos e Estoque</button>
-            <button data-tab="operadores" class="tab-btn text-left px-4 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">Operadores (Caixa)</button>
-            <button data-tab="maquininhas" class="tab-btn text-left px-4 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">Maquininhas de Cartão</button>
-            <button data-tab="historico" class="tab-btn text-left px-4 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">Histórico de Vendas</button>
+        <aside class="w-full md:w-64 bg-gray-800 border border-gray-700 rounded-xl p-3 h-fit flex flex-row md:flex-col gap-1.5 overflow-x-auto shadow-sm">
+            <button data-tab="produtos" class="tab-btn text-left px-4 py-3 rounded-lg text-xs font-bold bg-emerald-600 text-white transition-colors flex items-center gap-2 shadow">
+                <i class="fa-solid fa-boxes-stacked w-4"></i> Produtos e Estoque
+            </button>
+            <button data-tab="operadores" class="tab-btn text-left px-4 py-3 rounded-lg text-xs font-medium text-gray-300 hover:bg-gray-750 hover:text-white transition-colors flex items-center gap-2">
+                <i class="fa-solid fa-users w-4"></i> Operadores (Caixa)
+            </button>
+            <button data-tab="maquininhas" class="tab-btn text-left px-4 py-3 rounded-lg text-xs font-medium text-gray-300 hover:bg-gray-750 hover:text-white transition-colors flex items-center gap-2">
+                <i class="fa-solid fa-credit-card w-4"></i> Maquininhas de Cartão
+            </button>
+            <button data-tab="historico" class="tab-btn text-left px-4 py-3 rounded-lg text-xs font-medium text-gray-300 hover:bg-gray-750 hover:text-white transition-colors flex items-center gap-2">
+                <i class="fa-solid fa-clock-rotate-left w-4"></i> Histórico de Vendas
+            </button>
         </aside>
 
         <!-- Área Dinâmica de Exibição -->
-        <section id="admin-conteudo-dinamico" class="flex-1 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+        <section id="admin-conteudo-dinamico" class="flex-1 bg-gray-800 border border-gray-700 rounded-xl p-6 shadow-sm">
             <!-- Os módulos serão injetados aqui via admin-core.js -->
         </section>
     </main>
