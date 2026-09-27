@@ -31,19 +31,15 @@ document.addEventListener('DOMContentLoaded', () => {
         authFeedback.className = "mt-3 text-center text-xs font-medium transition-all duration-300 py-2 px-3 rounded-lg";
         
         if (type === 'success') {
-            // Verde esmeralda delicado e moderno para Login Sucesso
             authFeedback.classList.add('text-emerald-400', 'bg-emerald-950/40', 'border', 'border-emerald-500/30');
             authFeedback.innerText = "Login Sucesso";
             
-            // Remove bordas de erro se houver
             if (inputEmail) inputEmail.classList.remove('border-red-500');
             if (inputSenha) inputSenha.classList.remove('border-red-500');
         } else if (type === 'error') {
-            // Vermelho elegante para Login Inválido
             authFeedback.classList.add('text-rose-400', 'bg-rose-950/40', 'border', 'border-rose-500/30');
             authFeedback.innerText = message || "Login Invalido";
             
-            // Aplica bordas vermelhas nos inputs de login para indicar o erro visualmente
             if (inputEmail) inputEmail.classList.add('border-red-500');
             if (inputSenha) inputSenha.classList.add('border-red-500');
         }
@@ -51,7 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
         authFeedback.classList.remove('hidden');
     }
 
-    // Limpa o destaque vermelho e o aviso assim que o usuário começa a redigitar
+    // Limpa o destaque vermelho e o aviso do login ao redigitar
     [inputEmail, inputSenha].forEach(input => {
         if (input) {
             input.addEventListener('input', () => {
@@ -111,14 +107,23 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Validação com destaque vermelho em caso de erro nos campos obrigatórios do cadastro
+    // Limpa a borda vermelha dos campos do cadastro conforme o usuário digita
     if (formCadastro) {
+        const inputsCadastro = formCadastro.querySelectorAll('input');
+        inputsCadastro.forEach(input => {
+            input.addEventListener('input', () => {
+                if (input.value.trim()) {
+                    input.classList.remove('border-red-500');
+                }
+            });
+        });
+
+        // Validação com destaque vermelho nos campos obrigatórios do cadastro
         formCadastro.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const inputs = formCadastro.querySelectorAll('input');
             let formValido = true;
 
-            inputs.forEach(input => {
+            inputsCadastro.forEach(input => {
                 if (!input.value.trim()) {
                     input.classList.add('border-red-500');
                     formValido = false;
@@ -200,18 +205,15 @@ document.addEventListener('DOMContentLoaded', () => {
             const email = inputEmail.value;
             const senha = inputSenha.value;
 
-            // Oculta avisos anteriores ao submeter novamente
             if (authFeedback) authFeedback.classList.add('hidden');
 
             const { data, error } = await supabase.auth.signInWithPassword({ email, password: senha });
             
             if (error) {
-                // Exibe "Login Invalido" em vermelho e pinta as bordas dos campos de login
                 showFeedback('Login Invalido', 'error');
                 return;
             }
 
-            // Exibe "Login Sucesso" em verde esmeralda, limpa as bordas e redireciona com elegância
             showFeedback('Login Sucesso', 'success');
             
             setTimeout(() => {
