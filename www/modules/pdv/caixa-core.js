@@ -2,7 +2,7 @@
 // MÓDULO DE CAIXA E VENDAS (PDV-VS) - IMPORTS CORRIGIDOS  
 // ==========================================  
 
-import { initCaixaBusca } from './components/caixa-busca.js';  
+import { initCaixaBusca } from './components/caixa-busca.js';
 import {   
     usuarioAtual, empresaAtualId, cargoUsuarioAtual, caixaAberto, faturamentoDia,   
     acaoCaixaAtual, itensVenda, indiceItemParaRemover, setAcaoCaixaAtual,   
