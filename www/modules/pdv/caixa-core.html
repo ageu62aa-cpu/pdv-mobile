@@ -25,7 +25,7 @@
             </div>
         </div>
 
-        <!-- Botões de Gestão de Caixa (Abertura / Fechamento) -->
+        <!-- Botões de Gestão de Caixa -->
         <div class="flex items-center gap-2">
             <button onclick="window.acionarAbrirCaixa()" id="btnAbrirCaixaHeader" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-lg text-xs font-bold transition shadow flex items-center gap-2">
                 <i class="fa-solid fa-unlock"></i> Abrir Caixa
@@ -48,7 +48,7 @@
         
         <!-- Coluna Esquerda & Centro: Busca e Lista de Produtos -->
         <section class="lg:col-span-2 flex flex-col gap-4 overflow-hidden">
-            <!-- Única Barra de Busca limpa e estruturada corretamente -->
+            <!-- Única Barra de Busca -->
             <div id="containerCaixaBusca" class="w-full bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-700 flex flex-col gap-2 relative">
                 <div class="flex items-center justify-between">
                     <label for="inputBusca" class="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
@@ -59,7 +59,7 @@
                         <span class="text-xs text-emerald-400 font-semibold flex items-center gap-1.5">
                             <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Leitor Ativo
                         </span>
-                        <!-- BOTÃO DE SCANNER DE CÂMERA -->
+                        <!-- Botão de Câmera -->
                         <button onclick="window.abrirCameraScanner ? window.abrirCameraScanner() : alert('Leitor contínuo de câmera ativado.')" id="btn-ativar-camera" class="w-12 h-8 rounded-xl overflow-hidden border-2 border-emerald-600 hover:border-emerald-400 shadow-md transition transform hover:scale-105 flex items-center justify-center bg-gray-900 focus:outline-none" title="Ativar leitor contínuo de câmera">
                             <img src="../../assets/botao-camera.jpg" alt="Scanner Câmera" class="w-full h-full object-cover">
                         </button>
@@ -86,7 +86,6 @@
             <!-- Tabela de Produtos no Carrinho -->
             <div class="flex-1 bg-gray-800 border border-gray-700 rounded-xl flex flex-col overflow-hidden shadow-sm relative">
                 
-                <!-- MARCA D'ÁGUA CENTRALIZADA -->
                 <div class="absolute inset-0 flex items-center justify-center pointer-events-none opacity-10 z-0">
                     <img src="../../assets/mascote.jpeg" alt="Mascote Marca d'água" class="w-48 h-48 rounded-full object-cover">
                 </div>
@@ -102,15 +101,12 @@
                     <span class="text-xs text-gray-500 mt-1">Utilize o leitor ou digite o produto (Atalhos: F1 a F12)</span>
                 </div>
                 
-                <div id="listaCarrinhoItens" class="flex-1 overflow-y-auto divide-y divide-gray-750 hidden relative z-10">
-                    <!-- Itens inseridos dinamicamente aqui -->
-                </div>
+                <div id="listaCarrinhoItens" class="flex-1 overflow-y-auto divide-y divide-gray-750 hidden relative z-10"></div>
             </div>
         </section>
 
         <!-- Coluna Direita: Resumo, Total, Atalhos Principais e Pagamento Rápido -->
         <section class="flex flex-col gap-4 overflow-y-auto">
-            <!-- Bloco de Resumo Financeiro -->
             <div class="bg-gray-800 border border-gray-700 rounded-xl p-4 shadow-sm flex flex-col justify-between gap-3">
                 <h2 class="text-xs font-bold text-gray-400 uppercase tracking-wider border-b border-gray-700 pb-2">Resumo da Venda</h2>
                 <div class="space-y-1.5 text-sm">
@@ -151,7 +147,7 @@
                 </div>
             </div>
 
-            <!-- Bloco de Atalhos Principais -->
+            <!-- Atalhos Principais -->
             <div class="bg-gray-800 border border-gray-700 rounded-xl p-3.5 shadow-sm flex flex-col gap-2">
                 <div class="flex justify-between items-center mb-0.5">
                     <span class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Atalhos Principais</span>
@@ -214,10 +210,7 @@
 
     </main>
 
-    <!-- Container Dinâmico para Modais de Checkout e Outros -->
     <div id="containerModaisDinamicos"></div>
-
-    <!-- Script principal de inicialização do PDV -->
     <script type="module" src="caixa-core.js"></script>
 </body>
 </html>
