@@ -2,6 +2,7 @@
 // MÓDULO DE CAIXA E VENDAS (PDV-VS) - OTIMIZADO & COMPLETO (F1 a F12)
 // ==========================================
 
+import { initCaixaBusca } from './components/caixa-busca.js';
 import { 
     usuarioAtual, empresaAtualId, cargoUsuarioAtual, caixaAberto, faturamentoDia, 
     acaoCaixaAtual, itensVenda, indiceItemParaRemover, setAcaoCaixaAtual, 
@@ -209,6 +210,26 @@ window.addEventListener('keydown', (e) => {
 });
 
 setTimeout(() => {
+    const containerBusca = document.getElementById('containerCaixaBusca');
+    if (containerBusca) {
+        const componente = initCaixaBusca((termo) => {
+            const encontrado = produtosCache.find(p => p.codigo_barras === termo || p.id === termo || (p.nome && p.nome.toLowerCase().includes(termo.toLowerCase())));
+            if (encontrado) {
+                window.adicionarProdutoAoCarrinho?.(encontrado);
+            } else {
+                alert('PDV-VS: Produto não encontrado.');
+            }
+        });
+        containerBusca.appendChild(componente.element);
+        
+        // Ajusta o ID para o input ser reconhecido pela sua busca inteligente
+        const inputGerado = containerBusca.querySelector('input');
+        if (inputGerado) {
+            inputGerado.id = 'inputBusca';
+            inputGerado.setAttribute('oninput', 'window.aoDigitarBusca && window.aoDigitarBusca(event)');
+        }
+    }
+    
     iniciarRealtimeCaixa();
     verificarStatusCaixaServidor();
     if (cargoUsuarioAtual === 'admin_mercado') {
