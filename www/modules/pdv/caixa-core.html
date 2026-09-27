@@ -58,12 +58,9 @@
                         Pesquisa / Código de Barras <span class="text-emerald-400">(Atalho: F5)</span>
                     </label>
                     
-                    <!-- BOTÃO DE SCANNER DE CÂMERA COM A IMAGEM PERSONALIZADA EM MOLDURA CIRCULAR -->
-                    <button onclick="window.abrirCameraScanner ? window.abrirCameraScanner() : alert('Leitor contínuo de câmera ativado.')" id="btnAtivarCameraScanner" class="flex items-center gap-1.5 bg-gray-900 hover:bg-gray-750 border border-emerald-600/70 hover:border-emerald-400 px-2.5 py-1 rounded-full shadow-md transition transform hover:scale-105 focus:outline-none" title="Ativar leitor contínuo de câmera">
-                        <div class="w-5 h-5 rounded-full overflow-hidden border border-emerald-500 flex items-center justify-center bg-white">
-                            <img src="../../assets/botao-camera.jpg" alt="Scanner Câmera" class="w-7 h-7 object-cover scale-125">
-                        </div>
-                        <span class="text-[11px] font-bold text-emerald-400">Scanner Câmera</span>
+                    <!-- BOTÃO DE SCANNER FORMATADO COMO A CÂMERA (COMPACTO MOBILE) -->
+                    <button onclick="window.abrirCameraScanner ? window.abrirCameraScanner() : alert('Leitor contínuo de câmera ativado.')" id="btn-ativar-camera" class="w-12 h-8 rounded-xl overflow-hidden border-2 border-emerald-600 hover:border-emerald-400 shadow-md transition transform hover:scale-105 flex items-center justify-center bg-gray-900 focus:outline-none" title="Ativar leitor contínuo de câmera">
+                        <img src="../../assets/botao-camera.jpg" alt="Scanner Câmera" class="w-full h-full object-cover">
                     </button>
                 </div>
                 <div class="relative flex items-center">
