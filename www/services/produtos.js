@@ -38,9 +38,9 @@ export function aoDigitarBusca(termo) {
     let html = '';
     filtrados.forEach((p, idx) => {
         const prodString = JSON.stringify(p).replace(/"/g, '&quot;');
-        html += `<div id="sugestao-item-${idx}" onclick="window.adicionarItemVendaPorObjeto('${prodString}')" class="p-3 hover:bg-slate-100 cursor-pointer border-b flex justify-between text-sm item-sugestao-busca"> <div><span class="font-semibold text-slate-800">${p.nome}</span><span class="text-xs text-slate-400 block">Cód: ${p.codigo || 'N/A'} | Estoque: ${p.estoque} ${p.unidade === 'KG' ? '<span class="text-amber-600 font-bold">(Por Peso)</span>' : ''}</span></div> <b>R$ ${Number(p.preco).toFixed(2)} ${p.unidade === 'KG' ? '/kg' : ''}</b> </div>`;
+        html += `<div id="sugestao-item-${idx}" onclick="window.adicionarItemVendaPorObjeto('${prodString}')" class="p-3 hover:bg-gray-700 cursor-pointer border-b border-gray-700 flex justify-between text-sm item-sugestao-busca text-gray-200"> <div><span class="font-semibold text-white">${p.nome}</span><span class="text-xs text-gray-400 block">Cód: ${p.codigo || 'N/A'} | Estoque: ${p.estoque} ${p.unidade === 'KG' ? '<span class="text-amber-400 font-bold">(Por Peso)</span>' : ''}</span></div> <b class="text-emerald-400">R$ ${Number(p.preco).toFixed(2)} ${p.unidade === 'KG' ? '/kg' : ''}</b> </div>`;
     });
-    painel.innerHTML = html || '<div class="p-3 text-xs text-slate-400">Nenhum produto encontrado.</div>';
+    painel.innerHTML = html || '<div class="p-3 text-xs text-gray-400">Nenhum produto encontrado.</div>';
     painel.classList.remove('hidden');
 }
 
@@ -77,27 +77,27 @@ export function abrirModalPesagemManual(produto) {
     if (!modal) {
         const divModal = document.createElement('div');
         divModal.id = 'modalPesagemManual';
-        divModal.className = 'fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4';
+        divModal.className = 'fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4';
         divModal.innerHTML = `
-            <div class="bg-white w-full max-w-sm rounded-xl shadow-2xl p-6 text-slate-800 animate-scaleUp">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="font-bold text-lg text-slate-900"><i class="fa-solid fa-scale-balanced text-emerald-600 mr-2"></i> Produto por Peso</h3>
-                    <button onclick="window.fecharModalPesagemManual()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            <div class="bg-gray-800 border border-gray-700 w-full max-w-sm rounded-xl shadow-2xl p-6 text-gray-100 animate-scaleUp">
+                <div class="flex justify-between items-center mb-4 border-b border-gray-700 pb-2">
+                    <h3 class="font-bold text-lg text-white"><i class="fa-solid fa-scale-balanced text-emerald-500 mr-2"></i> Produto por Peso</h3>
+                    <button onclick="window.fecharModalPesagemManual()" class="text-gray-400 hover:text-gray-200"><i class="fa-solid fa-xmark text-lg"></i></button>
                 </div>
-                <div class="mb-4 bg-slate-50 p-3 rounded-lg border">
-                    <p id="lblNomeProdutoPeso" class="font-bold text-slate-800 text-base"></p>
-                    <p id="lblPrecoKgProduto" class="text-xs text-slate-500 mt-1"></p>
+                <div class="mb-4 bg-gray-900 p-3 rounded-lg border border-gray-700">
+                    <p id="lblNomeProdutoPeso" class="font-bold text-white text-base"></p>
+                    <p id="lblPrecoKgProduto" class="text-xs text-gray-400 mt-1"></p>
                 </div>
                 <div class="mb-4">
-                    <label class="block text-xs font-bold text-slate-600 mb-1">PESO NA BALANÇA (KG)</label>
-                    <input type="number" step="0.001" id="inputPesoKg" placeholder="Ex: 0.750" oninput="window.calcularValorParcialPeso(this.value)" onkeydown="window.tratarEnterModalPesagem(event)" class="w-full p-3 border rounded-lg text-lg font-bold text-emerald-700 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                    <label class="block text-xs font-bold text-gray-300 mb-1">PESO NA BALANÇA (KG)</label>
+                    <input type="number" step="0.001" id="inputPesoKg" placeholder="Ex: 0.750" oninput="window.calcularValorParcialPeso(this.value)" onkeydown="window.tratarEnterModalPesagem(event)" class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg text-lg font-bold text-emerald-400 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
                 </div>
-                <div class="mb-5 bg-emerald-50 border border-emerald-200 p-3 rounded-lg flex justify-between items-center">
-                    <span class="text-xs font-bold text-emerald-800">VALOR TOTAL:</span>
-                    <span id="lblValorCalculadoPeso" class="text-xl font-extrabold text-emerald-700">R$ 0,00</span>
+                <div class="mb-5 bg-emerald-950/40 border border-emerald-800/60 p-3 rounded-lg flex justify-between items-center">
+                    <span class="text-xs font-bold text-emerald-300">VALOR TOTAL:</span>
+                    <span id="lblValorCalculadoPeso" class="text-xl font-extrabold text-emerald-400">R$ 0,00</span>
                 </div>
                 <div class="flex space-x-2">
-                    <button onclick="window.fecharModalPesagemManual()" class="w-1/2 bg-slate-200 hover:bg-slate-300 text-slate-700 py-2.5 rounded-lg font-bold text-sm">Cancelar</button>
+                    <button onclick="window.fecharModalPesagemManual()" class="w-1/2 bg-gray-700 hover:bg-gray-600 text-gray-200 py-2.5 rounded-lg font-bold text-sm transition">Cancelar</button>
                     <button onclick="window.confirmarAdicaoPeso()" class="w-1/2 bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-lg font-bold text-sm shadow">Adicionar</button>
                 </div>
             </div>
@@ -218,10 +218,10 @@ export function tratarEnterBuscaCaixa(e) {
 function atualizarDestaqueSugestoes(itens) {
     itens.forEach((el, idx) => {
         if (idx === indiceItemSelecionadoTeclado) {
-            el.classList.add('bg-emerald-100', 'border-emerald-300');
+            el.classList.add('bg-emerald-950', 'border-emerald-700');
             el.scrollIntoView({ block: 'nearest' });
         } else {
-            el.classList.remove('bg-emerald-100', 'border-emerald-300');
+            el.classList.remove('bg-emerald-950', 'border-emerald-700');
         }
     });
 }
@@ -235,6 +235,7 @@ window.calcularValorParcialPeso = calcularValorParcialPeso;
 window.tratarEnterModalPesagem = tratarEnterModalPesagem;
 window.confirmarAdicaoPeso = confirmarAdicaoPeso;
 window.tratarEnterBuscaCaixa = tratarEnterBuscaCaixa;
+
 // ==========================================
 // GESTÃO DE PRODUTOS DO ADMIN (PDV-VS)
 // ==========================================
@@ -255,18 +256,18 @@ export function renderizarTabelaAdmin(lista) {
     
     let html = '';
     lista.forEach(p => {
-        html += `<tr class="border-b">
-            <td class="p-2 text-xs">${p.codigo || '-'}</td>
-            <td class="p-2 font-medium">${p.nome} ${p.unidade === 'KG' ? '<span class="text-amber-600 text-[10px] font-bold">(KG)</span>' : ''}</td>
-            <td class="p-2">R$ ${Number(p.preco).toFixed(2)}${p.unidade === 'KG' ? '/kg' : ''}</td>
-            <td class="p-2">${p.estoque} ${p.unidade || 'UN'}</td>
-            <td class="p-2 text-center">
-                <button onclick="window.abrirEditarProdutoAdmin(${p.id},'${p.nome}','${p.codigo || ''}',${p.preco},${p.estoque}, '${p.unidade || 'UN'}')" class="text-blue-500 hover:text-blue-700 mr-3"><i class="fa-solid fa-pen"></i></button>
-                <button onclick="window.excluirProdutoAdmin(${p.id})" class="text-rose-500 hover:text-rose-700"><i class="fa-solid fa-trash"></i></button>
+        html += `<tr class="border-b border-gray-700 hover:bg-gray-750 transition-colors">
+            <td class="p-3 text-xs text-gray-300">${p.codigo || '-'}</td>
+            <td class="p-3 font-medium text-white">${p.nome} ${p.unidade === 'KG' ? '<span class="text-amber-400 text-[10px] font-bold">(KG)</span>' : ''}</td>
+            <td class="p-3 text-emerald-400 font-semibold">R$ ${Number(p.preco).toFixed(2)}${p.unidade === 'KG' ? '/kg' : ''}</td>
+            <td class="p-3 text-gray-300">${p.estoque} ${p.unidade || 'UN'}</td>
+            <td class="p-3 text-center">
+                <button onclick="window.abrirEditarProdutoAdmin(${p.id},'${p.nome}','${p.codigo || ''}',${p.preco},${p.estoque}, '${p.unidade || 'UN'}')" class="text-blue-400 hover:text-blue-300 mr-3 transition"><i class="fa-solid fa-pen"></i></button>
+                <button onclick="window.excluirProdutoAdmin(${p.id})" class="text-rose-400 hover:text-rose-300 transition"><i class="fa-solid fa-trash"></i></button>
             </td>
         </tr>`;
     });
-    tbody.innerHTML = html || '<tr><td colspan="5" class="p-4 text-center text-slate-400">Nenhum produto cadastrado.</td></tr>';
+    tbody.innerHTML = html || '<tr><td colspan="5" class="p-4 text-center text-gray-400">Nenhum produto cadastrado.</td></tr>';
 }
 
 export function filtrarTabelaAdmin(t) { 
