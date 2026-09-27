@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let cliquesSuperAdmin = sessionStorage.getItem('cliques_admin') ? parseInt(sessionStorage.getItem('cliques_admin')) : 0;
 
-    // Garante a existência do elemento de feedback visual dinamicamente no rodapé do form de login
+    // Elemento de feedback visual dinâmico para o Login
     let authFeedback = document.getElementById('auth-feedback');
     if (!authFeedback && formLogin) {
         authFeedback = document.createElement('div');
@@ -24,30 +24,50 @@ document.addEventListener('DOMContentLoaded', () => {
         formLogin.appendChild(authFeedback);
     }
 
-    // Função sênior para gerenciar os avisos visuais inline (Esmeralda / Vermelho)
-    function showFeedback(message, type) {
+    // Elemento de feedback visual dinâmico para o Cadastro de Empresa
+    let cadastroFeedback = document.getElementById('cadastro-feedback');
+    if (!cadastroFeedback && formCadastro) {
+        cadastroFeedback = document.createElement('div');
+        cadastroFeedback.id = 'cadastro-feedback';
+        cadastroFeedback.className = 'mt-3 text-center text-xs font-medium transition-all duration-300 hidden';
+        formCadastro.appendChild(cadastroFeedback);
+    }
+
+    // Função para gerenciar os avisos do Login
+    function showLoginFeedback(message, type) {
         if (!authFeedback) return;
-        
         authFeedback.className = "mt-3 text-center text-xs font-medium transition-all duration-300 py-2 px-3 rounded-lg";
         
         if (type === 'success') {
             authFeedback.classList.add('text-emerald-400', 'bg-emerald-950/40', 'border', 'border-emerald-500/30');
             authFeedback.innerText = "Login Sucesso";
-            
             if (inputEmail) inputEmail.classList.remove('border-red-500');
             if (inputSenha) inputSenha.classList.remove('border-red-500');
         } else if (type === 'error') {
             authFeedback.classList.add('text-rose-400', 'bg-rose-950/40', 'border', 'border-rose-500/30');
             authFeedback.innerText = message || "Login Invalido";
-            
             if (inputEmail) inputEmail.classList.add('border-red-500');
             if (inputSenha) inputSenha.classList.add('border-red-500');
         }
-        
         authFeedback.classList.remove('hidden');
     }
 
-    // Limpa o destaque vermelho e o aviso do login ao redigitar
+    // Função para gerenciar os avisos do Cadastro de Empresa
+    function showCadastroFeedback(message, type) {
+        if (!cadastroFeedback) return;
+        cadastroFeedback.className = "mt-3 text-center text-xs font-medium transition-all duration-300 py-2 px-3 rounded-lg";
+        
+        if (type === 'success') {
+            cadastroFeedback.classList.add('text-emerald-400', 'bg-emerald-950/40', 'border', 'border-emerald-500/30');
+            cadastroFeedback.innerText = message || "Empresa cadastrada com sucesso! Faça login.";
+        } else if (type === 'error') {
+            cadastroFeedback.classList.add('text-rose-400', 'bg-rose-950/40', 'border', 'border-rose-500/30');
+            cadastroFeedback.innerText = message || "Verifique os campos destacados.";
+        }
+        cadastroFeedback.classList.remove('hidden');
+    }
+
+    // Limpa borda vermelha e avisos ao redigitar no login
     [inputEmail, inputSenha].forEach(input => {
         if (input) {
             input.addEventListener('input', () => {
@@ -80,7 +100,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Modais
-    if (btnAbrirCadastro) btnAbrirCadastro.addEventListener('click', () => modalCadastro.classList.remove('hidden'));
+    if (btnAbrirCadastro) btnAbrirCadastro.addEventListener('click', () => {
+        modalCadastro.classList.remove('hidden');
+        if (cadastroFeedback) cadastroFeedback.classList.add('hidden');
+    });
     if (btnFecharModal) btnFecharModal.addEventListener('click', () => modalCadastro.classList.add('hidden'));
 
     // ViaCEP com preenchimento automático de Endereço, Cidade e UF
@@ -98,7 +121,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         inputCep.classList.remove('border-red-500');
                     } else {
                         inputCep.classList.add('border-red-500');
-                        alert('CEP não encontrado.');
+                        showCadastroFeedback('CEP não encontrado.', 'error');
                     }
                 } catch (err) {
                     console.error('Erro ao buscar CEP:', err);
@@ -107,7 +130,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Limpa a borda vermelha dos campos do cadastro conforme o usuário digita
+    // Limpa bordas vermelhas do cadastro conforme o usuário interage
     if (formCadastro) {
         const inputsCadastro = formCadastro.querySelectorAll('input');
         inputsCadastro.forEach(input => {
@@ -118,24 +141,29 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
 
-        // Validação com destaque vermelho nos campos obrigatórios do cadastro
+        // Validação e Cadastro com feedback visual moderno (Sem alerts)
         formCadastro.addEventListener('submit', async (e) => {
             e.preventDefault();
             let formValido = true;
+            let primeiroCampoComErro = null;
 
             inputsCadastro.forEach(input => {
                 if (!input.value.trim()) {
                     input.classList.add('border-red-500');
                     formValido = false;
+                    if (!primeiroCampoComErro) primeiroCampoComErro = input;
                 } else {
                     input.classList.remove('border-red-500');
                 }
             });
 
             if (!formValido) {
-                alert('Por favor, preencha todos os campos destacados em vermelho.');
+                showCadastroFeedback('Preencha todos os campos destacados em vermelho.', 'error');
+                if (primeiroCampoComErro) primeiroCampoComErro.focus();
                 return;
             }
+
+            if (cadastroFeedback) cadastroFeedback.classList.add('hidden');
 
             const nomeEmpresa = document.getElementById('cad-nome-empresa').value;
             const cnpj = document.getElementById('cad-cnpj').value;
@@ -149,9 +177,27 @@ document.addEventListener('DOMContentLoaded', () => {
             const email = document.getElementById('cad-email').value;
             const senha = document.getElementById('cad-senha').value;
 
+            // Validação de segurança para senha (mínimo de caracteres exigido pelo Supabase)
+            if (senha.length < 6) {
+                const inputSenhaCad = document.getElementById('cad-senha');
+                if (inputSenhaCad) inputSenhaCad.classList.add('border-red-500');
+                showCadastroFeedback('A senha deve conter no mínimo 6 caracteres.', 'error');
+                return;
+            }
+
             const { data: authData, error: authError } = await supabase.auth.signUp({ email, password: senha });
             if (authError) {
-                alert('Erro ao registar credenciais: ' + authError.message);
+                let msgErro = 'Erro ao registar credenciais.';
+                if (authError.message.includes('Password should be at least')) {
+                    msgErro = 'A senha precisa ter pelo menos 6 caracteres.';
+                    const inputSenhaCad = document.getElementById('cad-senha');
+                    if (inputSenhaCad) inputSenhaCad.classList.add('border-red-500');
+                } else if (authError.message.includes('Invalid email')) {
+                    msgErro = 'E-mail inválido. Verifique o formato.';
+                    const inputEmailCad = document.getElementById('cad-email');
+                    if (inputEmailCad) inputEmailCad.classList.add('border-red-500');
+                }
+                showCadastroFeedback(msgErro, 'error');
                 return;
             }
 
@@ -174,16 +220,19 @@ document.addEventListener('DOMContentLoaded', () => {
             }]);
 
             if (dbError) {
-                alert('Erro ao salvar dados da empresa: ' + dbError.message);
+                showCadastroFeedback('Erro ao salvar dados da empresa: ' + dbError.message, 'error');
             } else {
-                alert('Empresa cadastrada com sucesso! Faça login.');
-                modalCadastro.classList.add('hidden');
-                formCadastro.reset();
+                showCadastroFeedback('Empresa cadastrada com sucesso! Faça login.', 'success');
+                setTimeout(() => {
+                    modalCadastro.classList.add('hidden');
+                    formCadastro.reset();
+                    if (cadastroFeedback) cadastroFeedback.classList.add('hidden');
+                }, 1500);
             }
         });
     }
 
-    // Recuperação de Senha
+    // Recuperação de Senha (mantida moderna via prompt seguro ou adaptável)
     if (btnEsqueceuSenha) {
         btnEsqueceuSenha.addEventListener('click', async () => {
             const email = prompt('Digite o seu e-mail cadastrado para redefinir a senha:');
@@ -191,14 +240,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const { error } = await supabase.auth.resetPasswordForEmail(email);
             if (error) {
-                alert('Erro ao enviar e-mail: ' + error.message);
+                showLoginFeedback('Erro ao enviar e-mail: ' + error.message, 'error');
             } else {
-                alert('Instruções enviadas para o seu e-mail!');
+                showLoginFeedback('Instruções enviadas para o seu e-mail!', 'success');
             }
         });
     }
 
-    // Login Real com Feedback Visual Discreto e Destaque nas Bordas dos Campos
+    // Login Real com Feedback Visual Discreto e Destaque nas Bordas
     if (formLogin) {
         formLogin.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -210,11 +259,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const { data, error } = await supabase.auth.signInWithPassword({ email, password: senha });
             
             if (error) {
-                showFeedback('Login Invalido', 'error');
+                showLoginFeedback('Login Invalido', 'error');
                 return;
             }
 
-            showFeedback('Login Sucesso', 'success');
+            showLoginFeedback('Login Sucesso', 'success');
             
             setTimeout(() => {
                 window.location.href = '../pdv/caixa-core.html';
