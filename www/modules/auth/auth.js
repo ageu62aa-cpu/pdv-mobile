@@ -10,8 +10,26 @@ document.addEventListener('DOMContentLoaded', () => {
     const formCadastro = document.getElementById('form-cadastro-empresa');
     const inputCep = document.getElementById('cad-cep');
     const btnEsqueceuSenha = document.getElementById('btn-esqueceu-senha');
+    const authFeedback = document.getElementById('auth-feedback');
 
     let cliquesSuperAdmin = sessionStorage.getItem('cliques_admin') ? parseInt(sessionStorage.getItem('cliques_admin')) : 0;
+
+    // Função auxiliar para exibir feedback visual moderno (Sucesso / Erro)
+    function showFeedback(message, type) {
+        if (!authFeedback) return;
+        
+        authFeedback.className = "mt-3 text-center text-xs font-medium transition-all duration-300 py-2 px-3 rounded-lg";
+        
+        if (type === 'success') {
+            authFeedback.classList.add('text-emerald-400', 'bg-emerald-950/40', 'border', 'border-emerald-500/30');
+            authFeedback.innerText = message || "Login Sucesso";
+        } else if (type === 'error') {
+            authFeedback.classList.add('text-rose-400', 'bg-rose-950/40', 'border', 'border-rose-500/30');
+            authFeedback.innerText = message || "Login Inválido: E-mail ou senha incorretos.";
+        }
+        
+        authFeedback.classList.remove('hidden');
+    }
 
     // Mascote Hard Refresh
     if (mascote) {
@@ -130,36 +148,43 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Recuperação de Senha
     if (btnEsqueceuSenha) {
-        btnEsqueceu_senha: if (btnEsqueceuSenha) {
-            btnEsqueceuSenha.addEventListener('click', async () => {
-                const email = prompt('Digite o seu e-mail cadastrado para redefinir a senha:');
-                if (!email) return;
+        btnEsqueceuSenha.addEventListener('click', async () => {
+            const email = prompt('Digite o seu e-mail cadastrado para redefinir a senha:');
+            if (!email) return;
 
-                const { error } = await supabase.auth.resetPasswordForEmail(email);
-                if (error) {
-                    alert('Erro ao enviar e-mail: ' + error.message);
-                } else {
-                    alert('Instruções enviadas para o seu e-mail!');
-                }
-            });
-        }
+            const { error } = await supabase.auth.resetPasswordForEmail(email);
+            if (error) {
+                alert('Erro ao enviar e-mail: ' + error.message);
+            } else {
+                alert('Instruções enviadas para o seu e-mail!');
+            }
+        });
     }
 
-    // Login Real
+    // Login Real com Feedback Visual Discreto (Sem Pop-ups do Navegador)
     if (formLogin) {
         formLogin.addEventListener('submit', async (e) => {
             e.preventDefault();
             const email = document.getElementById('login-email').value;
             const senha = document.getElementById('login-senha').value;
 
+            // Feedback visual de carregamento opcional ou limpeza prévia
+            if (authFeedback) authFeedback.classList.add('hidden');
+
             const { data, error } = await supabase.auth.signInWithPassword({ email, password: senha });
+            
             if (error) {
-                alert('Erro no login: ' + error.message);
+                // Erro de autenticação: Login Inválido em vermelho delicado
+                showFeedback('Login Inválido: senha ou login incorretos.', 'error');
                 return;
             }
 
-            alert('Login efetuado com sucesso!');
-            window.location.href = '../pdv/caixa-core.html';
+            // Sucesso: Login Sucesso em verde esmeralda com redirecionamento fluido
+            showFeedback('Login Sucesso', 'success');
+            
+            setTimeout(() => {
+                window.location.href = '../pdv/caixa-core.html';
+            }, 800);
         });
     }
 });
