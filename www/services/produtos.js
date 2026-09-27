@@ -5,8 +5,8 @@
 import { 
     empresaAtualId, produtosCache, produtoEmPesagemAtual, setProdutosCache, 
     setProdutoEmPesagemAtual, itensVenda, setItensVenda 
-} from './state.js';
-import { atualizarTabelaVenda, focarBusca } from './caixa.js';
+} from '../core/state.js';
+import { atualizarTabelaVenda, focarBusca } from '../modules/pdv/caixa.js';
 
 // Índice do item selecionado via teclado na lista de sugestões
 let indiceItemSelecionadoTeclado = -1;
