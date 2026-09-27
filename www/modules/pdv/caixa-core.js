@@ -1,5 +1,5 @@
 // ==========================================  
-// MÓDULO DE CAIXA E VENDAS (PDV-VS) - CORREÇÃO DEFINITIVA DE IMPORTS
+// MÓDULO DE CAIXA E VENDAS (PDV-VS) - IMPORTS CORRIGIDOS  
 // ==========================================  
 
 import { initCaixaBusca } from './components/caixa-busca.js';  
