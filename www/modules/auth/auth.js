@@ -177,7 +177,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const email = document.getElementById('cad-email').value;
             const senha = document.getElementById('cad-senha').value;
 
-            // Validação de segurança para senha (mínimo de caracteres exigido pelo Supabase)
             if (senha.length < 6) {
                 const inputSenhaCad = document.getElementById('cad-senha');
                 if (inputSenhaCad) inputSenhaCad.classList.add('border-red-500');
@@ -236,10 +235,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // TRATAMENTO UNIFICADO DE RECUPERAÇÃO E ALTERAÇÃO DE SENHA NA PRÓPRIA TELA
     // =========================================================================
 
-    // 1. Intercepta o evento do Supabase caso o usuário tenha clicado no link do e-mail
     supabase.auth.onAuthStateChange(async (event, session) => {
         if (event === 'PASSWORD_RECOVERY') {
-            // Substitui o formulário de login por um campo limpo de nova senha na mesma tela
             if (formLogin) {
                 formLogin.innerHTML = `
                     <div class="text-center mb-2">
@@ -279,26 +276,34 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // 2. Dispara a recuperação lendo diretamente o que foi digitado no campo de e-mail (sem prompt feio)
+    // Recuperação lendo APENAS o e-mail preenchido (ignorando completamente a senha)
     if (btnEsqueceuSenha) {
         btnEsqueceuSenha.addEventListener('click', async () => {
             const emailDigitado = inputEmail ? inputEmail.value.trim() : '';
 
             if (!emailDigitado) {
                 if (inputEmail) inputEmail.classList.add('border-red-500');
-                showLoginFeedback('Digite o seu e-mail no campo acima antes de pedir a recuperação.', 'error');
+                showLoginFeedback('Digite o seu e-mail no campo acima para recuperar a senha.', 'error');
                 if (inputEmail) inputEmail.focus();
                 return;
             }
+
+            // Desativa o botão temporariamente para evitar cliques duplos (erro 429)
+            btnEsqueceuSenha.style.pointerEvents = 'none';
+            showLoginFeedback('Enviando instruções para o e-mail...', 'success');
 
             const { error } = await supabase.auth.resetPasswordForEmail(emailDigitado, {
                 redirectTo: 'https://pdv-mobile.vercel.app/modules/auth/auth.html'
             });
 
+            setTimeout(() => {
+                btnEsqueceuSenha.style.pointerEvents = 'auto';
+            }, 5000);
+
             if (error) {
-                showLoginFeedback('Erro ao enviar e-mail: ' + error.message, 'error');
+                showLoginFeedback('Erro ao enviar: ' + error.message, 'error');
             } else {
-                showLoginFeedback('Instruções de redefinição enviadas para o seu e-mail!', 'success');
+                showLoginFeedback('E-mail de recuperação enviado com sucesso!', 'success');
             }
         });
     }
