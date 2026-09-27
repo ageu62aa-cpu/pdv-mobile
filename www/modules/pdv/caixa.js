@@ -7,9 +7,9 @@ import {
     acaoCaixaAtual, itensVenda, indiceItemParaRemover, setAcaoCaixaAtual, 
     setCaixaAberto, setFaturamentoDia, setIndiceItemParaRemover, setItensVenda, 
     produtosCache, setEmpresaAtualId 
-} from './state.js';
-import { carregarProdutosCache } from './produtos.js';
-import { carregarHistoricoAdmin, carregarOperadoresLoja } from './admin.js';
+} from '../../core/state.js';
+import { carregarProdutosCache } from '../../services/produtos.js';
+import { carregarHistoricoAdmin, carregarOperadoresLoja } from '../admin/admin-core.js';
 
 let valorTrocoAbertura = 0;
 let horaAberturaCaixa = null;
