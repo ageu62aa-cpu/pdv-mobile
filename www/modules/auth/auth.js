@@ -10,22 +10,32 @@ document.addEventListener('DOMContentLoaded', () => {
     const formCadastro = document.getElementById('form-cadastro-empresa');
     const inputCep = document.getElementById('cad-cep');
     const btnEsqueceuSenha = document.getElementById('btn-esqueceu-senha');
-    const authFeedback = document.getElementById('auth-feedback');
 
     let cliquesSuperAdmin = sessionStorage.getItem('cliques_admin') ? parseInt(sessionStorage.getItem('cliques_admin')) : 0;
 
-    // Função auxiliar para exibir feedback visual moderno (Sucesso / Erro)
+    // Garante a existência do elemento de feedback visual dinamicamente no rodapé do form de login
+    let authFeedback = document.getElementById('auth-feedback');
+    if (!authFeedback && formLogin) {
+        authFeedback = document.createElement('div');
+        authFeedback.id = 'auth-feedback';
+        authFeedback.className = 'mt-3 text-center text-xs font-medium transition-all duration-300 hidden';
+        formLogin.appendChild(authFeedback);
+    }
+
+    // Função sênior para gerenciar os avisos visuais inline (Esmeralda / Vermelho)
     function showFeedback(message, type) {
         if (!authFeedback) return;
         
         authFeedback.className = "mt-3 text-center text-xs font-medium transition-all duration-300 py-2 px-3 rounded-lg";
         
         if (type === 'success') {
+            // Verde esmeralda delicado e moderno para Login Sucesso
             authFeedback.classList.add('text-emerald-400', 'bg-emerald-950/40', 'border', 'border-emerald-500/30');
-            authFeedback.innerText = message || "Login Sucesso";
+            authFeedback.innerText = "Login Sucesso";
         } else if (type === 'error') {
+            // Vermelho elegante para Login Inválido / Erro de senha ou login
             authFeedback.classList.add('text-rose-400', 'bg-rose-950/40', 'border', 'border-rose-500/30');
-            authFeedback.innerText = message || "Login Inválido: E-mail ou senha incorretos.";
+            authFeedback.innerText = message || "Login Inválido";
         }
         
         authFeedback.classList.remove('hidden');
@@ -79,7 +89,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Validação com destaque vermelho em caso de erro nos campos obrigatórios
+    // Validação com destaque vermelho em caso de erro nos campos obrigatórios do cadastro
     if (formCadastro) {
         formCadastro.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -161,30 +171,30 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Login Real com Feedback Visual Discreto (Sem Pop-ups do Navegador)
+    // Login Real com Feedback Visual Discreto (Sucesso em Esmeralda / Inválido em Vermelho)
     if (formLogin) {
         formLogin.addEventListener('submit', async (e) => {
             e.preventDefault();
             const email = document.getElementById('login-email').value;
             const senha = document.getElementById('login-senha').value;
 
-            // Feedback visual de carregamento opcional ou limpeza prévia
+            // Oculta avisos anteriores ao submeter novamente
             if (authFeedback) authFeedback.classList.add('hidden');
 
             const { data, error } = await supabase.auth.signInWithPassword({ email, password: senha });
             
             if (error) {
-                // Erro de autenticação: Login Inválido em vermelho delicado
-                showFeedback('Login Inválido: senha ou login incorretos.', 'error');
+                // Exibe "Login Invalido" em vermelho delicado no rodapé do form
+                showFeedback('Login Invalido', 'error');
                 return;
             }
 
-            // Sucesso: Login Sucesso em verde esmeralda com redirecionamento fluido
+            // Exibe "Login Sucesso" em verde esmeralda e redireciona com elegância
             showFeedback('Login Sucesso', 'success');
             
             setTimeout(() => {
                 window.location.href = '../pdv/caixa-core.html';
-            }, 800);
+            }, 700);
         });
     }
 });
