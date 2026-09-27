@@ -8,13 +8,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const botoesTab = document.querySelectorAll('.tab-btn');
 
     async function carregarAba(tabName) {
-        container.innerHTML = `<p class="text-center text-gray-400 py-8">Carregando...</p>`;
+        container.innerHTML = `<p class="text-center text-gray-400 py-8">A carregar...</p>`;
         
         botoesTab.forEach(btn => {
             if (btn.dataset.tab === tabName) {
-                btn.className = 'tab-btn text-left px-4 py-2.5 rounded-xl text-sm font-bold bg-emerald-50 text-emerald-800 transition-colors';
+                btn.className = 'tab-btn text-left px-4 py-2.5 rounded-xl text-sm font-bold bg-emerald-600 text-white transition-colors shadow';
             } else {
-                btn.className = 'tab-btn text-left px-4 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors';
+                btn.className = 'tab-btn text-left px-4 py-2.5 rounded-xl text-sm font-medium text-gray-300 hover:bg-gray-750 hover:text-white transition-colors';
             }
         });
 

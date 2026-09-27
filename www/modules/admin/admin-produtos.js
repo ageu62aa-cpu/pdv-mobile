@@ -10,18 +10,18 @@ export async function initAdminProdutos(containerEl) {
         <div class="space-y-4">
             <div class="flex justify-between items-center">
                 <div>
-                    <h2 class="text-lg font-bold text-gray-800">Gerenciamento de Produtos e Estoque</h2>
-                    <p id="txt-limite-produtos" class="text-xs text-gray-500">Verificando limite do plano...</p>
+                    <h2 class="text-lg font-bold text-white">Gerenciamento de Produtos e Estoque</h2>
+                    <p id="txt-limite-produtos" class="text-xs text-gray-400">Verificando limite do plano...</p>
                 </div>
-                <button id="btn-novo-produto" class="bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold px-3 py-2 rounded-lg transition-colors">
+                <button id="btn-novo-produto" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition-colors shadow">
                     + Novo Produto
                 </button>
             </div>
 
-            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="bg-gray-800 rounded-xl shadow-sm border border-gray-700 overflow-hidden">
                 <table class="w-full text-left border-collapse text-sm">
                     <thead>
-                        <tr class="bg-gray-50 border-b border-gray-100 text-xs text-gray-500 uppercase">
+                        <tr class="bg-gray-900 border-b border-gray-700 text-xs text-gray-400 uppercase">
                             <th class="p-3">Código</th>
                             <th class="p-3">Nome</th>
                             <th class="p-3">Categoria</th>
@@ -30,7 +30,7 @@ export async function initAdminProdutos(containerEl) {
                             <th class="p-3 text-right">Ações</th>
                         </tr>
                     </thead>
-                    <tbody id="tabela-produtos-corpo" class="divide-y divide-gray-100">
+                    <tbody id="tabela-produtos-corpo" class="divide-y divide-gray-700">
                         <tr><td colspan="6" class="text-center p-4 text-gray-400">Carregando produtos...</td></tr>
                     </tbody>
                 </table>
@@ -85,7 +85,7 @@ async function carregarProdutos() {
         .select('*', { count: 'exact' });
 
     if (error) {
-        tbody.innerHTML = `<tr><td colspan="6" class="text-center p-4 text-red-500">Erro ao carregar produtos.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center p-4 text-red-400">Erro ao carregar produtos.</td></tr>`;
         return;
     }
 
@@ -97,14 +97,14 @@ async function carregarProdutos() {
     }
 
     tbody.innerHTML = produtos.map(p => `
-        <tr class="hover:bg-gray-50">
-            <td class="p-3 font-mono text-xs text-gray-600">${p.codigo_barras}</td>
-            <td class="p-3 font-medium text-gray-800">${p.nome}</td>
-            <td class="p-3 text-gray-600 text-xs">${p.categoria || 'Geral'}</td>
-            <td class="p-3 font-bold text-emerald-700">R$ ${p.preco.toFixed(2)}</td>
-            <td class="p-3 text-gray-700">${p.estoque} un</td>
+        <tr class="hover:bg-gray-750 transition-colors">
+            <td class="p-3 font-mono text-xs text-gray-300">${p.codigo_barras}</td>
+            <td class="p-3 font-medium text-white">${p.nome}</td>
+            <td class="p-3 text-gray-300 text-xs">${p.categoria || 'Geral'}</td>
+            <td class="p-3 font-bold text-emerald-400">R$ ${p.preco.toFixed(2)}</td>
+            <td class="p-3 text-gray-300">${p.estoque} un</td>
             <td class="p-3 text-right">
-                <button onclick="window.excluirProduto('${p.id}')" class="text-red-500 hover:text-red-700 text-xs font-bold">Excluir</button>
+                <button onclick="window.excluirProduto('${p.id}')" class="text-red-400 hover:text-red-300 text-xs font-bold transition">Excluir</button>
             </td>
         </tr>
     `).join('');
