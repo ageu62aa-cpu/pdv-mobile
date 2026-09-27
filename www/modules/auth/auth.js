@@ -40,7 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (type === 'success') {
             authFeedback.classList.add('text-emerald-400', 'bg-emerald-950/40', 'border', 'border-emerald-500/30');
-            authFeedback.innerText = "Login Sucesso";
+            authFeedback.innerText = message || "Sucesso";
             if (inputEmail) inputEmail.classList.remove('border-red-500');
             if (inputSenha) inputSenha.classList.remove('border-red-500');
         } else if (type === 'error') {
@@ -232,17 +232,73 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Recuperação de Senha (mantida moderna via prompt seguro ou adaptável)
+    // =========================================================================
+    // TRATAMENTO UNIFICADO DE RECUPERAÇÃO E ALTERAÇÃO DE SENHA NA PRÓPRIA TELA
+    // =========================================================================
+
+    // 1. Intercepta o evento do Supabase caso o usuário tenha clicado no link do e-mail
+    supabase.auth.onAuthStateChange(async (event, session) => {
+        if (event === 'PASSWORD_RECOVERY') {
+            // Substitui o formulário de login por um campo limpo de nova senha na mesma tela
+            if (formLogin) {
+                formLogin.innerHTML = `
+                    <div class="text-center mb-2">
+                        <span class="text-xs font-bold text-emerald-400 uppercase">Redefinição de Senha</span>
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-gray-300 uppercase">Nova Senha</label>
+                        <input type="password" id="nova-senha-input" required class="w-full mt-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:border-emerald-500 focus:outline-none" placeholder="********">
+                    </div>
+                    <button type="button" id="btn-salvar-nova-senha" class="mt-2 w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-lg text-sm transition-colors shadow-lg">
+                        Salvar Nova Senha
+                    </button>
+                `;
+
+                const btnSalvar = document.getElementById('btn-salvar-nova-senha');
+                btnSalvar.addEventListener('click', async () => {
+                    const novaSenhaInput = document.getElementById('nova-senha-input');
+                    const novaSenha = novaSenhaInput.value;
+
+                    if (!novaSenha || novaSenha.length < 6) {
+                        novaSenhaInput.classList.add('border-red-500');
+                        showLoginFeedback('A senha deve ter pelo menos 6 caracteres.', 'error');
+                        return;
+                    }
+
+                    const { error } = await supabase.auth.updateUser({ password: novaSenha });
+                    if (error) {
+                        showLoginFeedback('Erro ao atualizar: ' + error.message, 'error');
+                    } else {
+                        showLoginFeedback('Senha alterada com sucesso! Redirecionando...', 'success');
+                        setTimeout(() => {
+                            window.location.href = 'auth.html';
+                        }, 2000);
+                    }
+                });
+            }
+        }
+    });
+
+    // 2. Dispara a recuperação lendo diretamente o que foi digitado no campo de e-mail (sem prompt feio)
     if (btnEsqueceuSenha) {
         btnEsqueceuSenha.addEventListener('click', async () => {
-            const email = prompt('Digite o seu e-mail cadastrado para redefinir a senha:');
-            if (!email) return;
+            const emailDigitado = inputEmail ? inputEmail.value.trim() : '';
 
-            const { error } = await supabase.auth.resetPasswordForEmail(email);
+            if (!emailDigitado) {
+                if (inputEmail) inputEmail.classList.add('border-red-500');
+                showLoginFeedback('Digite o seu e-mail no campo acima antes de pedir a recuperação.', 'error');
+                if (inputEmail) inputEmail.focus();
+                return;
+            }
+
+            const { error } = await supabase.auth.resetPasswordForEmail(emailDigitado, {
+                redirectTo: 'https://pdv-mobile.vercel.app/modules/auth/auth.html'
+            });
+
             if (error) {
                 showLoginFeedback('Erro ao enviar e-mail: ' + error.message, 'error');
             } else {
-                showLoginFeedback('Instruções enviadas para o seu e-mail!', 'success');
+                showLoginFeedback('Instruções de redefinição enviadas para o seu e-mail!', 'success');
             }
         });
     }
