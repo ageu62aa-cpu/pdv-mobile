@@ -1,16 +1,16 @@
-// ==========================================
-// MÓDULO DE CAIXA E VENDAS (PDV-VS) - OTIMIZADO & COMPLETO (F1 a F12)
-// ==========================================
+// ==========================================  
+// MÓDULO DE CAIXA E VENDAS (PDV-VS) - CORREÇÃO DEFINITIVA DE IMPORTS
+// ==========================================  
 
-import { initCaixaBusca } from './components/caixa-busca.js';
-import { 
-    usuarioAtual, empresaAtualId, cargoUsuarioAtual, caixaAberto, faturamentoDia, 
-    acaoCaixaAtual, itensVenda, indiceItemParaRemover, setAcaoCaixaAtual, 
-    setCaixaAberto, setFaturamentoDia, setIndiceItemParaRemover, setItensVenda, 
-    produtosCache, setEmpresaAtualId 
-} from './state.js';
-import { carregarProdutosCache } from './produtos.js';
-import { carregarHistoricoAdmin, carregarOperadoresLoja } from './admin.js';
+import { initCaixaBusca } from './components/caixa-busca.js';  
+import {   
+    usuarioAtual, empresaAtualId, cargoUsuarioAtual, caixaAberto, faturamentoDia,   
+    acaoCaixaAtual, itensVenda, indiceItemParaRemover, setAcaoCaixaAtual,   
+    setCaixaAberto, setFaturamentoDia, setIndiceItemParaRemover, setItensVenda,   
+    produtosCache, setEmpresaAtualId   
+} from '../../core/state.js';  
+import { carregarProdutosCache } from '../../services/produtos.js';  
+import { carregarHistoricoAdmin, carregarOperadoresLoja } from '../admin/admin-core.js';
 
 let valorTrocoAbertura = 0;
 let horaAberturaCaixa = null;
