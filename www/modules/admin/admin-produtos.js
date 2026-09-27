@@ -21,7 +21,7 @@ export async function initAdminProdutos(containerEl) {
                 </button>
             </div>
 
-            <!-- Barra de Pesquisa e Scanner (Idêntico Frente de Caixa) -->
+            <!-- Barra de Pesquisa e Scanner -->
             <div class="bg-gray-800 p-4 rounded-xl border border-gray-700 shadow-sm flex flex-col md:flex-row gap-3 items-center">
                 <div class="relative flex-1 w-full">
                     <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
@@ -148,11 +148,11 @@ function renderizarTabelaAdmin(lista) {
 
     tbody.innerHTML = lista.map(p => `
         <tr class="hover:bg-gray-750 transition-colors">
-            <td class="p-3 font-mono text-xs text-gray-300">${p.codigo_barras || p.codigo || '-'}</td>
-            <td class="p-3 font-medium text-white">${p.nome}</td>
+            <td class="p-3 font-mono text-xs text-gray-300">${p.codigo || '-'}</td>
+            <td class="p-3 font-medium text-white">${p.nome} ${p.unidade === 'KG' ? '<span class="text-amber-400 text-[10px] font-bold">(KG)</span>' : ''}</td>
             <td class="p-3 text-gray-300 text-xs">${p.categoria || 'Geral'}</td>
-            <td class="p-3 font-bold text-emerald-400">R$ ${Number(p.preco || 0).toFixed(2)}</td>
-            <td class="p-3 text-gray-300">${p.estoque} un</td>
+            <td class="p-3 font-bold text-emerald-400">R$ ${Number(p.preco || 0).toFixed(2)}${p.unidade === 'KG' ? '/kg' : ''}</td>
+            <td class="p-3 text-gray-300">${p.estoque} ${p.unidade || 'UN'}</td>
             <td class="p-3 text-right space-x-2">
                 <button onclick='window.abrirModalEditarProduto(${JSON.stringify(p).replace(/'/g, "&#39;")})' class="text-blue-400 hover:text-blue-300 transition" title="Editar"><i class="fa-solid fa-pen"></i></button>
                 <button onclick="window.excluirProdutoAdmin('${p.id}')" class="text-red-400 hover:text-red-300 transition" title="Excluir"><i class="fa-solid fa-trash"></i></button>
@@ -165,8 +165,8 @@ window.filtrarProdutosAdmin = function(termo) {
     const t = termo.toLowerCase();
     const filtrados = produtosCacheAdmin.filter(p => 
         p.nome.toLowerCase().includes(t) || 
-        (p.codigo_barras && p.codigo_barras.toLowerCase().includes(t)) || 
-        (p.codigo && p.codigo.toLowerCase().includes(t))
+        (p.codigo && p.codigo.toLowerCase().includes(t)) ||
+        (p.categoria && p.categoria.toLowerCase().includes(t))
     );
     renderizarTabelaAdmin(filtrados);
 };
@@ -193,7 +193,7 @@ window.abrirModalEditarProduto = function(p) {
     document.getElementById('modalTituloProduto').innerHTML = `<i class="fa-solid fa-pen-to-square text-emerald-500"></i> Editar Produto`;
     document.getElementById('formProdId').value = p.id;
     document.getElementById('formProdNome').value = p.nome || '';
-    document.getElementById('formProdCodigo').value = p.codigo_barras || p.codigo || '';
+    document.getElementById('formProdCodigo').value = p.codigo || '';
     document.getElementById('formProdCategoria').value = p.categoria || 'Geral';
     document.getElementById('formProdPreco').value = p.preco || 0;
     document.getElementById('formProdEstoque').value = p.estoque || 0;
@@ -210,12 +210,14 @@ window.salvarProdutoAdmin = async function(e) {
     e.preventDefault();
     const id = document.getElementById('formProdId').value;
     
-    // Enviamos apenas os campos compatíveis com a tabela do Supabase para evitar erros
+    // Todos os campos criados são enviados para a base de dados
     const dados = {
         nome: document.getElementById('formProdNome').value.trim(),
-        codigo_barras: document.getElementById('formProdCodigo').value.trim(),
+        codigo: document.getElementById('formProdCodigo').value.trim(),
+        categoria: document.getElementById('formProdCategoria').value.trim(),
         preco: parseFloat(document.getElementById('formProdPreco').value) || 0,
-        estoque: parseFloat(document.getElementById('formProdEstoque').value) || 0
+        estoque: parseFloat(document.getElementById('formProdEstoque').value) || 0,
+        unidade: document.getElementById('formProdUnidade').value
     };
 
     if (id) {
