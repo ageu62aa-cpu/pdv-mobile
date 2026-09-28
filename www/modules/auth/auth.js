@@ -346,11 +346,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     window.location.href = '../admin/admin.html';
                 }, 700);
             } else if (vinculo.cargo === 'operador') {
-                // Salva os dados do operador na sessão local para uso no PDV[cite: 1]
+                // Salva os dados do operador na sessão local para uso no PDV[cite: 2]
                 localStorage.setItem('operador_logado_id', vinculo.id);
                 localStorage.setItem('operador_logado_user_id', userId);
 
-                // Atualiza o status do caixa do operador para 'aberto' em tempo real[cite: 1]
+                // Atualiza o status do caixa do operador para 'aberto' em tempo real[cite: 2]
                 await supabase
                     .from('usuarios_empresas')
                     .update({ status_caixa: 'aberto' })
@@ -358,7 +358,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 showLoginFeedback('Login de Operador com Sucesso', 'success');
                 setTimeout(() => {
-                    // [CORREÇÃO DO CAMINHO] Apontando para a pasta 'pdv' correta[cite: 1]
+                    // [CORREÇÃO DO CAMINHO] Redireciona o Operador para a nova página exclusiva e segura[cite: 2]
                     window.location.href = '../pdv/operador.html';
                 }, 700);
             } else {
