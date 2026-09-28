@@ -77,7 +77,7 @@
                             <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Leitor Ativo
                         </span>
                         <!-- Botão de Câmera -->
-                        <button onclick="window.abrirCameraScanner ? window.abrirCameraScanner() : alert('Leitor contínuo de câmera ativado.')" id="btn-ativar-camera" class="w-12 h-8 rounded-xl overflow-hidden border-2 border-emerald-600 hover:border-emerald-400 shadow-md transition transform hover:scale-105 flex items-center justify-center bg-gray-900 focus:outline-none" title="Ativar leitor contínuo de câmera">
+                        <button onclick="window.abrirCameraScanner ? window.abrirCameraScanner() : console.log('Leitor contínuo de câmera ativado.')" id="btn-ativar-camera" class="w-12 h-8 rounded-xl overflow-hidden border-2 border-emerald-600 hover:border-emerald-400 shadow-md transition transform hover:scale-105 flex items-center justify-center bg-gray-900 focus:outline-none" title="Ativar leitor contínuo de câmera">
                             <img src="../../assets/botao-camera.jpg" alt="Scanner Câmera" class="w-full h-full object-cover">
                         </button>
                     </div>
@@ -122,7 +122,7 @@
             </div>
         </section>
 
-        <!-- Coluna Direita: Resumo, Total, Atalhos Principais e Pagamento Rápido -->
+        <!-- Coluna Direita: Resumo, Total, Atalhos Principais e Painel Interativo Direto -->
         <section class="flex flex-col gap-4 overflow-y-auto">
             <div class="bg-gray-800 border border-gray-700 rounded-xl p-4 shadow-sm flex flex-col justify-between gap-3">
                 <h2 class="text-xs font-bold text-gray-400 uppercase tracking-wider border-b border-gray-700 pb-2">Resumo da Venda</h2>
@@ -139,6 +139,88 @@
                 <div class="bg-gray-900 p-3 rounded-xl border border-gray-700 flex flex-col">
                     <span class="text-xs font-bold text-gray-400 uppercase">Total a Pagar:</span>
                     <span id="txtResumoTotalGeral" class="text-2xl font-black text-emerald-400 font-mono mt-0.5">R$ 0,00</span>
+                </div>
+
+                <!-- PAINEL INTERATIVO DIREITO (Substitui Pop-ups Nativos) -->
+                <div id="painelInterativoLateral" class="bg-gray-900/90 border border-emerald-500/50 rounded-xl p-3 space-y-3 hidden">
+                    <div class="flex justify-between items-center border-b border-gray-700 pb-1.5">
+                        <span id="tituloPainelLateral" class="text-xs font-bold text-emerald-400 uppercase">Painel de Operação</span>
+                        <button onclick="fecharPainelLateral()" class="text-gray-400 hover:text-white text-xs font-bold">&times;</button>
+                    </div>
+
+                    <!-- F1: Identificação de Consumidor (Somente cadastro para nota) -->
+                    <div id="blocoF1" class="painel-etapa hidden space-y-2">
+                        <label class="text-[11px] text-gray-300">Cadastro para Nota (CPF ou CNPJ):</label>
+                        <input type="text" id="inputCpfNota" placeholder="000.000.000-00 ou CNPJ" class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-xs text-white focus:outline-none focus:ring-1 focus:ring-emerald-500">
+                        <button onclick="salvarConsumidorEImprimir()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded text-xs font-bold">Salvar Cadastro para Nota (F1)</button>
+                    </div>
+
+                    <!-- F3: Dinheiro / Pix e Troco -->
+                    <div id="blocoF3" class="painel-etapa hidden space-y-2">
+                        <div class="flex gap-2">
+                            <button onclick="setTipoPagamentoF3('Dinheiro')" id="btnTipoDinheiro" class="flex-1 bg-emerald-700 text-white py-1 rounded text-xs font-bold">Dinheiro</button>
+                            <button onclick="setTipoPagamentoF3('Pix')" id="btnTipoPix" class="flex-1 bg-gray-800 text-gray-300 py-1 rounded text-xs font-bold">Pix</button>
+                        </div>
+                        <label class="text-[11px] text-gray-300">Valor Recebido (R$):</label>
+                        <input type="number" step="0.01" id="inputValorRecebido" oninput="calcularTrocoPainel()" placeholder="0,00" class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-xs text-white focus:outline-none focus:ring-1 focus:ring-emerald-500">
+                        <div class="flex justify-between text-xs text-gray-300 pt-1">
+                            <span>Troco Calculado:</span>
+                            <span id="txtTrocoCalculado" class="font-mono font-bold text-emerald-400">R$ 0,00</span>
+                        </div>
+                        <button onclick="concluirPagamentoDinheiroPix()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded text-xs font-bold">Confirmar e Imprimir</button>
+                    </div>
+
+                    <!-- F4: Débito com taxa embutida -->
+                    <div id="blocoF4" class="painel-etapa hidden space-y-2">
+                        <label class="text-[11px] text-gray-300">Finalização Débito (Taxas de maquininha embutidas):</label>
+                        <div class="bg-gray-800 p-2 rounded text-xs text-gray-300 flex justify-between">
+                            <span>Taxa de Débito Aplicada:</span>
+                            <span class="font-mono text-blue-400">1.99%</span>
+                        </div>
+                        <button onclick="concluirPagamentoDebito()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded text-xs font-bold">Confirmar Débito</button>
+                    </div>
+
+                    <!-- F7: Painel Geral de Quitação -->
+                    <div id="blocoF7" class="painel-etapa hidden space-y-2">
+                        <label class="text-[11px] text-gray-300">Selecione a forma de pagamento:</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button onclick="window.handleAction('F3')" class="bg-emerald-700 hover:bg-emerald-800 text-white py-2 rounded text-xs font-bold">Dinheiro/Pix</button>
+                            <button onclick="window.handleAction('F4')" class="bg-blue-700 hover:bg-blue-800 text-white py-2 rounded text-xs font-bold">Débito</button>
+                            <button onclick="window.handleAction('F8')" class="bg-amber-700 hover:bg-amber-800 text-white py-2 rounded text-xs font-bold">Crédito</button>
+                            <button onclick="fecharPainelLateral()" class="bg-gray-700 hover:bg-gray-600 text-white py-2 rounded text-xs font-bold">Fechar</button>
+                        </div>
+                    </div>
+
+                    <!-- F8: Crédito à vista / Parcelado com taxas embutidas -->
+                    <div id="blocoF8" class="painel-etapa hidden space-y-2">
+                        <label class="text-[11px] text-gray-300">Crédito à vista / Parcelado (Taxas de maquininha embutidas):</label>
+                        <select id="selectParcelas" onchange="atualizarSimulacaoCredito()" class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-xs text-white focus:outline-none focus:ring-1 focus:ring-emerald-500">
+                            <option value="1">1x à vista (Com taxa embutida)</option>
+                            <option value="2">2x com juros</option>
+                            <option value="3">3x com juros</option>
+                            <option value="4">4x com juros</option>
+                            <option value="5">5x com juros</option>
+                            <option value="6">6x com juros</option>
+                            <option value="7">7x com juros</option>
+                            <option value="8">8x com juros</option>
+                            <option value="9">9x com juros</option>
+                            <option value="10">10x com juros</option>
+                            <option value="11">11x com juros</option>
+                            <option value="12">12x com juros</option>
+                        </select>
+                        <button onclick="concluirCreditoParcelado()" class="w-full bg-amber-600 hover:bg-amber-700 text-white py-2 rounded text-xs font-bold">Finalizar Crédito</button>
+                    </div>
+
+                    <!-- F9: Sangria / Suprimento com Motivo Obrigatório -->
+                    <div id="blocoF9" class="painel-etapa hidden space-y-2">
+                        <div class="flex gap-2">
+                            <button onclick="setTipoCaixaMov('Suprimento')" id="btnMovSuprimento" class="flex-1 bg-cyan-800 text-white py-1 rounded text-xs font-bold">Suprimento</button>
+                            <button onclick="setTipoCaixaMov('Sangria')" id="btnMovSangria" class="flex-1 bg-gray-800 text-gray-300 py-1 rounded text-xs font-bold">Sangria</button>
+                        </div>
+                        <input type="number" step="0.01" id="inputValorMovCaixa" placeholder="Valor retirado/adicionado (R$)" class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-xs text-white">
+                        <input type="text" id="inputMotivoMovCaixa" placeholder="Informe o motivo (obrigatório para fechamento)..." class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-xs text-white">
+                        <button onclick="executarMovimentoCaixa()" class="w-full bg-cyan-600 hover:bg-cyan-700 text-white py-2 rounded text-xs font-bold">Registrar na Gaveta</button>
+                    </div>
                 </div>
 
                 <button onclick="window.acionarFinalizarVenda()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-bold text-xs shadow-lg transition flex items-center justify-center gap-2">
@@ -177,7 +259,7 @@
                     <button onclick="window.handleAction('F1')" class="w-full bg-gray-900/60 hover:bg-gray-700/80 border border-gray-700/80 p-2 rounded-lg transition flex items-center justify-between group pt-1.5">
                         <div class="flex flex-col text-left overflow-hidden">
                             <span class="text-[11px] font-bold text-gray-200 group-hover:text-emerald-400 truncate">Identificar Consumidor</span>
-                            <span class="text-[9px] text-gray-400 truncate">CPF/CNPJ na nota + Impressão</span>
+                            <span class="text-[9px] text-gray-400 truncate">Cadastro para nota</span>
                         </div>
                         <span class="bg-emerald-950 text-emerald-400 text-[10px] font-bold px-1.5 py-0.5 rounded border border-emerald-800/50 font-mono ml-1">F1</span>
                     </button>
@@ -249,7 +331,7 @@
                     <button onclick="window.handleAction('F9')" class="w-full bg-gray-900/60 hover:bg-gray-700/80 border border-gray-700/80 p-2 rounded-lg transition flex items-center justify-between group pt-1.5">
                         <div class="flex flex-col text-left overflow-hidden">
                             <span class="text-[11px] font-bold text-gray-200 group-hover:text-cyan-400 truncate">Caixa (Sangria/Suprimento)</span>
-                            <span class="text-[9px] text-gray-400 truncate">Movimento de gaveta + Impressão</span>
+                            <span class="text-[9px] text-gray-400 truncate">Movimento de gaveta + Motivo</span>
                         </div>
                         <span class="bg-cyan-950/60 text-cyan-400 text-[10px] font-bold px-1.5 py-0.5 rounded border border-cyan-800/50 font-mono ml-1">F9</span>
                     </button>
@@ -311,45 +393,63 @@
 
     <div id="containerModaisDinamicos"></div>
 
-    <!-- Script Unificado de Teclado (F1-F12) e Motor de Negócio PDV -->
+    <!-- Script Unificado de Teclado (F1-F12) e Motor de Negócio PDV Refatorado -->
     <script>
         // Captura global de teclas de função (F1 até F12)
         window.addEventListener('keydown', (e) => {
             if (e.key.startsWith('F') && !isNaN(e.key.substring(1))) {
-                e.preventDefault(); // Evita atalhos nativos do navegador (Ajuda, Atualizar, etc.)
+                e.preventDefault(); // Evita atalhos nativos do navegador
                 window.handleAction(e.key);
             }
         });
+
+        // Controle de Exibição do Painel Lateral
+        function abrirPainelLateral(idBloco, titulo) {
+            const painel = document.getElementById('painelInterativoLateral');
+            painel.classList.remove('hidden');
+            document.getElementById('tituloPainelLateral').innerText = titulo;
+
+            // Oculta todas as etapas internas
+            document.querySelectorAll('.painel-etapa').forEach(el => el.classList.add('hidden'));
+            
+            // Exibe apenas a solicitada
+            const bloco = document.getElementById(idBloco);
+            if (bloco) bloco.classList.remove('hidden');
+        }
+
+        window.fecharPainelLateral = function() {
+            document.getElementById('painelInterativoLateral').classList.add('hidden');
+        }
 
         // Motor unificado centralizado atendendo Click e Teclado
         window.handleAction = function(key) {
             switch (key) {
                 case 'F1':
-                    identificarConsumidorEFinalizar();
+                    acaoAtalhoF1();
                     break;
                 case 'F2':
                     identificarOperador();
                     break;
                 case 'F3':
-                    pagamentoDinheiroPix();
+                    acaoAtalhoF3();
                     break;
                 case 'F4':
-                    pagamentoDebito();
+                    acaoAtalhoF4();
                     break;
                 case 'F5':
-                    consultarProdutosBusca();
+                    acaoAtalhoF5();
                     break;
                 case 'F6':
                     aplicarDescontoEspecial();
                     break;
                 case 'F7':
-                    avancarParaPagamento();
+                    acaoAtalhoF7();
                     break;
                 case 'F8':
-                    pagamentoCreditoParcelado();
+                    acaoAtalhoF8();
                     break;
                 case 'F9':
-                    movimentoCaixaSangriaSuprimento();
+                    acaoAtalhoF9();
                     break;
                 case 'F10':
                     multiplicadorQuantidadeItem();
@@ -372,107 +472,166 @@
             document.getElementById('cupomPagamento').innerText = detalhesPagamento.forma || 'Dinheiro';
             document.getElementById('cupomTroco').innerText = detalhesPagamento.troco || 'R$ 0,00';
             
-            // Simula disparo de transação, baixa de estoque no Supabase e impressão física 58mm/80mm
             console.log("Transação processada, estoque baixado no Supabase. Acionando window.print()...");
             window.print();
         };
 
-        function identificarConsumidorEFinalizar() {
-            const doc = prompt("F1 - Digite o CPF ou CNPJ do Consumidor (ou deixe em branco para Consumidor Final):");
-            if (doc !== null) {
-                document.getElementById('cupomCliente').innerText = doc.trim() ? doc : "Consumidor Final";
-                alert(`Cliente associado com sucesso: ${doc || 'Consumidor Final'}. Finalizando e gerando NFC-e...`);
-                window.dispararImpressaoTermicaNFCe({ forma: 'Dinheiro / NFC-e' });
-            }
-        }
+        // --- FUNÇÕES DIRETAS NO PAINEL LATERAL (SEM POP-UPS NATIVOS) ---
 
-        function identificarOperador() {
-            const op = prompt("F2 - Digite o ID ou Nome do Vendedor/Operador:");
-            if (op) {
-                document.getElementById('cupomOperador').innerText = op;
-                alert(`Vendedor ${op} vinculado com sucesso para controle de comissão.`);
-            }
-        }
+        // F1: Cadastro para nota
+        window.acaoAtalhoF1 = () => {
+            abrirPainelLateral('blocoF1', 'F1 - Cadastro para Nota');
+            document.getElementById('inputCpfNota')?.focus();
+        };
 
-        function pagamentoDinheiroPix() {
-            const tipo = confirm("Clique em [OK] para Dinheiro ou [Cancelar] para Pix") ? "Dinheiro" : "Pix Dinâmico QR Code";
-            const valorTotalStr = prompt(`Pagamento rápido via ${tipo}. Digite o valor recebido em dinheiro ou confirmado no Pix:`);
-            if (valorTotalStr !== null) {
-                const recebido = parseFloat(valorTotalStr.replace(',', '.')) || 0.0;
-                // Exemplo de cálculo de troco automático
-                const troco = recebido > 10 ? recebido - 10 : 0; // Exemplo simulado
-                alert(`Pagamento em ${tipo} validado! Troco calculado: R$ ${troco.toFixed(2)}`);
-                window.dispararImpressaoTermicaNFCe({ forma: tipo, troco: `R$ ${troco.toFixed(2)}` });
-            }
-        }
+        window.salvarConsumidorEImprimir = () => {
+            const doc = document.getElementById('inputCpfNota').value.trim();
+            document.getElementById('cupomCliente').innerText = doc ? doc : "Consumidor Final";
+            window.fecharPainelLateral();
+        };
 
-        function pagamentoDebito() {
-            alert("F4 - Processando pagamento no Débito com aplicação automática de taxas da maquininha embutidas...");
+        // F3: Dinheiro ou Pix com troco no painel lateral
+        let tipoPagamentoAtualF3 = 'Dinheiro';
+        window.acaoAtalhoF3 = () => {
+            abrirPainelLateral('blocoF3', 'F3 - Pagamento Dinheiro / Pix');
+            document.getElementById('inputValorRecebido')?.focus();
+        };
+
+        window.setTipoPagamentoF3 = (tipo) => {
+            tipoPagamentoAtualF3 = tipo;
+            const btnDinheiro = document.getElementById('btnTipoDinheiro');
+            const btnPix = document.getElementById('btnTipoPix');
+            if (tipo === 'Dinheiro') {
+                btnDinheiro.className = 'flex-1 bg-emerald-700 text-white py-1 rounded text-xs font-bold';
+                btnPix.className = 'flex-1 bg-gray-800 text-gray-300 py-1 rounded text-xs font-bold';
+            } else {
+                btnPix.className = 'flex-1 bg-emerald-700 text-white py-1 rounded text-xs font-bold';
+                btnDinheiro.className = 'flex-1 bg-gray-800 text-gray-300 py-1 rounded text-xs font-bold';
+            }
+        };
+
+        window.calcularTrocoPainel = () => {
+            const recebido = parseFloat(document.getElementById('inputValorRecebido').value.replace(',', '.')) || 0;
+            const totalGeralVal = 10.00; // Ajustar conforme a lógica de carrinho
+            const troco = recebido > totalGeralVal ? recebido - totalGeralVal : 0;
+            document.getElementById('txtTrocoCalculado').innerText = `R$ ${troco.toFixed(2)}`;
+        };
+
+        window.concluirPagamentoDinheiroPix = () => {
+            const trocoStr = document.getElementById('txtTrocoCalculado').innerText;
+            window.fecharPainelLateral();
+            window.dispararImpressaoTermicaNFCe({ forma: tipoPagamentoAtualF3, troco: trocoStr });
+        };
+
+        // F4: Débito com taxas embutidas diretamente no painel lateral
+        window.acaoAtalhoF4 = () => {
+            abrirPainelLateral('blocoF4', 'F4 - Pagamento Débito');
+        };
+
+        window.concluirPagamentoDebito = () => {
+            window.fecharPainelLateral();
             window.dispararImpressaoTermicaNFCe({ forma: 'Cartão de Débito (Taxa Embutida)' });
-        }
+        };
 
-        function consultarProdutosBusca() {
+        // F5: Consulta de Produtos (vai direto para a barra de buscas sem avisos)
+        window.acaoAtalhoF5 = () => {
+            focarBusca();
+        };
+
+        function focarBusca() {
             const input = document.getElementById('inputBusca');
             if (input) {
                 input.focus();
                 input.select();
             }
-            alert("F5 - Leitor de código de barras e busca rápida ativados.");
+        }
+
+        // F7: Avançar para Pagamento (Direto no painel lateral)
+        window.acaoAtalhoF7 = () => {
+            abrirPainelLateral('blocoF7', 'F7 - Painel Geral de Quitação');
+        };
+
+        // F8: Crédito à vista ou parcelado com cálculo de taxas embutidas
+        window.acaoAtalhoF8 = () => {
+            abrirPainelLateral('blocoF8', 'F8 - Crédito (À vista / Parcelado)');
+            document.getElementById('selectParcelas')?.focus();
+        };
+
+        window.atualizarSimulacaoCredito = () => {
+            const parcelas = document.getElementById('selectParcelas').value;
+            console.log(`Simulando acréscimo de taxas para ${parcelas}x no painel.`);
+        };
+
+        window.concluirCreditoParcelado = () => {
+            const parcelas = document.getElementById('selectParcelas').value;
+            window.fecharPainelLateral();
+            const descForma = parcelas === "1" ? "Crédito à vista" : `Crédito Parcelado em ${parcelas}x`;
+            window.dispararImpressaoTermicaNFCe({ forma: descForma });
+        };
+
+        // F9: Sangria / Suprimento com valor e motivo obrigatório para fechamento
+        let tipoMovCaixa = 'Suprimento';
+        window.acaoAtalhoF9 = () => {
+            abrirPainelLateral('blocoF9', 'F9 - Sangria / Suprimento');
+            document.getElementById('inputValorMovCaixa')?.focus();
+        };
+
+        window.setTipoCaixaMov = (tipo) => {
+            tipoMovCaixa = tipo;
+            const btnSup = document.getElementById('btnMovSuprimento');
+            const btnSan = document.getElementById('btnMovSangria');
+            if (tipo === 'Suprimento') {
+                btnSup.className = 'flex-1 bg-cyan-800 text-white py-1 rounded text-xs font-bold';
+                btnSan.className = 'flex-1 bg-gray-800 text-gray-300 py-1 rounded text-xs font-bold';
+            } else {
+                btnSan.className = 'flex-1 bg-cyan-800 text-white py-1 rounded text-xs font-bold';
+                btnSup.className = 'flex-1 bg-gray-800 text-gray-300 py-1 rounded text-xs font-bold';
+            }
+        };
+
+        window.executarMovimentoCaixa = () => {
+            const valor = document.getElementById('inputValorMovCaixa').value;
+            const motivo = document.getElementById('inputMotivoMovCaixa').value.trim();
+            if (!valor || !motivo) {
+                console.warn("Preencha o valor e o motivo obrigatório para a movimentação de caixa.");
+                return;
+            }
+            console.log(`Registrado ${tipoMovCaixa}: R$ ${valor} - Motivo: ${motivo} (incluído para fechamento)`);
+            window.fecharPainelLateral();
+        };
+
+        function identificarOperador() {
+            const op = prompt("F2 - Digite o ID ou Nome do Vendedor/Operador:");
+            if (op) {
+                document.getElementById('cupomOperador').innerText = op;
+            }
         }
 
         function aplicarDescontoEspecial() {
             const desc = prompt("F6 - Digite o valor ou porcentagem de desconto (Ex: 10% ou 15.00):");
             if (desc) {
-                alert(`Desconto de ${desc} aplicado com sucesso ao item ou subtotal.`);
-            }
-        }
-
-        function avancarParaPagamento() {
-            alert("F7 - Direcionando diretamente para a tela central de quitação e fechamento.");
-        }
-
-        function pagamentoCreditoParcelado() {
-            const parcelas = prompt("F8 - Crédito: Digite o número de parcelas (1x a 12x):", "1");
-            if (parcelas) {
-                const num = parseInt(parcelas) || 1;
-                alert(`Processando Crédito em ${num}x com cálculo automático de juros e taxas da maquininha.`);
-                window.dispararImpressaoTermicaNFCe({ forma: `Crédito Parcelado em ${num}x` });
-            }
-        }
-
-        function movimentoCaixaSangriaSuprimento() {
-            const tipo = confirm("Clique em [OK] para Suprimento (Entrada) ou [Cancelar] para Sangria (Retirada)") ? "Suprimento" : "Sangria";
-            const valor = prompt(`Informe o valor para ${tipo} da gaveta:`);
-            if (valor) {
-                alert(`${tipo} de R$ ${valor} registrado com sucesso na gaveta.`);
-                if (confirm("Deseja imprimir o comprovante desta movimentação de caixa?")) {
-                    window.print();
-                }
+                console.log(`Desconto aplicado: ${desc}`);
             }
         }
 
         function multiplicadorQuantidadeItem() {
             const qtd = prompt("F10 - Digite o fator multiplicador de quantidade (Ex: 5):", "1");
             if (qtd) {
-                alert(`Multiplicador ativado: ${qtd}x. O próximo item bipado ou digitado será multiplicado.`);
+                console.log(`Multiplicador: ${qtd}`);
             }
         }
 
         function cancelarItemCarrinhoPIN() {
-            const pin = prompt("F11 - Ação restrita. Digite o PIN de Supervisor/Admin para cancelar o item:");
+            const pin = prompt("F11 - Ação restrita. Digite o PIN de Supervisor/Admin:");
             if (pin === "1234" || pin === "0000") {
-                alert("PIN válido. Item cancelado do carrinho.");
-            } else if (pin !== null) {
-                alert("PIN incorreto! Ação negada.");
+                console.log("Item cancelado.");
             }
         }
 
         function cancelarVendaInteiraPIN() {
-            const pin = prompt("F12 - ATENÇÃO: Deseja abortar toda a venda? Digite o PIN de liberação:");
+            const pin = prompt("F12 - ATENÇÃO: Digite o PIN para cancelar a venda:");
             if (pin === "1234" || pin === "0000") {
-                alert("Venda cancelada e limpa com sucesso.");
-            } else if (pin !== null) {
-                alert("PIN incorreto! Ação negada.");
+                console.log("Venda cancelada.");
             }
         }
 

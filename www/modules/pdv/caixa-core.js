@@ -130,7 +130,7 @@ window.acaoAtalhoF3 = () => {
     if (tipoRecebimento === "Dinheiro") {
         const valorRecebidoStr = prompt(`Total da Compra: R$ ${valorTotalVenda.toFixed(2)}\nDigite o valor em dinheiro recebido:`);
         if (valorRecebimentoStr !== null) {
-            const recebido = parseFloat(valorRecebidoStr.replace(',', '.')) || 0;
+            const recebido = parseFloat(valorRecebimentoStr.replace(',', '.')) || 0;
             const troco = Math.max(0, recebido - valorTotalVenda);
             // Atualiza os campos visuais no painel direito se existirem
             const elTroco = document.getElementById('txtPainelTroco');
@@ -343,11 +343,33 @@ export function tratarEnterBuscaCaixa(e) {
         e.preventDefault();
         const input = document.getElementById('inputBusca');
         if (!input) return;
-        const valor = input.value.trim();
+        let valor = input.value.trim();
         
+        let qtdDesejada = window.quantidadeMultiplicador || 1;
+        
+        // Verifica se há multiplicação por asterisco (ex: "5*789102030" ou "5*123")
+        if (valor.includes('*')) {
+            const partes = valor.split('*');
+            const qtdParsed = parseFloat(partes[0].trim());
+            if (!isNaN(qtdParsed) && qtdParsed > 0) {
+                qtdDesejada = qtdParsed;
+                valor = partes.slice(1).join('*').trim(); // Pega o código após o asterisco
+            }
+        }
+
         const encontrado = produtosCache.find(p => p.codigo_barras === valor || p.id === valor);
         if (encontrado) {
-            window.adicionarProdutoAoCarrinho?.(encontrado);
+            // Aplica a quantidade multiplicadora (seja via F10 ou via asterisco direto no input)
+            if (window.adicionarProdutoComQtd) {
+                window.adicionarProdutoComQtd(encontrado, qtdDesejada);
+            } else if (window.adicionarProdutoAoCarrinho) {
+                // Se a função aceitar apenas o produto, ajustamos a qtd temporariamente ou chamamos o padrão
+                encontrado._qtdTemporaria = qtdDesejada;
+                window.adicionarProdutoAoCarrinho(encontrado);
+            }
+            
+            // Reseta o multiplicador global após o uso
+            window.quantidadeMultiplicador = 1;
             input.value = '';
             document.getElementById('sugestoesBusca')?.classList.add('hidden');
         } else {
