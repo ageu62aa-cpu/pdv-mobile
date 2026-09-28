@@ -27,24 +27,46 @@ export async function carregarProdutosCache() {
 }
 
 export function aoDigitarBusca(termo) {
-    const painel = document.getElementById('painelSugestoes');
+    const painel = document.getElementById('painelSugestoes') || document.getElementById('sugestoesBusca');
     if (!painel) return;
-    indiceItemSelecionadoTeclado = -1; // Reseta a seleção ao digitar
-
-    if (termo.length < 2) { painel.classList.add('hidden'); return; }
+    indiceItemSelecionadoTeclado = -1; // Reseta a seleção ao digitar para manter a compatibilidade com o teclado
     
+    if (!termo || termo.length < 1) { 
+        painel.classList.add('hidden'); 
+        return; 
+    }
+  
     const termoLower = termo.toLowerCase();
-    const filtrados = produtosCache.filter(p => 
-        p.nome.toLowerCase().includes(termoLower) || 
-        (p.codigo && p.codigo.toLowerCase().includes(termoLower)) ||
-        (p.codigo_barras && p.codigo_barras.toLowerCase().includes(termoLower))
-    );
+    
+    // Filtro corrigido para contemplar código de barras, código e nome
+    const filtrados = produtosCache.filter(p => {
+        const nomeMatch = p.nome && p.nome.toLowerCase().includes(termoLower);
+        const barraMatch = p.codigo_barras && p.codigo_barras.toLowerCase().includes(termoLower);
+        const codMatch = p.codigo && p.codigo.toLowerCase().includes(termoLower);
+        return nomeMatch || barraMatch || codMatch;
+    });
+
     let html = '';
+    if (filtrados.length === 0) {
+        painel.innerHTML = '<div class="p-3 text-xs text-gray-400">Nenhum produto encontrado.</div>';
+        painel.classList.remove('hidden');
+        return;
+    }
+
     filtrados.forEach((p, idx) => {
         const prodString = JSON.stringify(p).replace(/"/g, '&quot;');
-        html += `<div id="sugestao-item-${idx}" onclick="window.adicionarItemVendaPorObjeto('${prodString}')" class="p-3 hover:bg-gray-700 cursor-pointer border-b border-gray-700 flex justify-between text-sm item-sugestao-busca text-gray-200"> <div><span class="font-semibold text-white">${p.nome}</span><span class="text-xs text-gray-400 block">Cód: ${p.codigo || p.codigo_barras || 'N/A'} | Estoque: ${p.estoque} ${p.unidade === 'KG' ? '<span class="text-amber-400 font-bold">(Por Peso)</span>' : ''}</span></div> <b class="text-emerald-400">R$ ${Number(p.preco).toFixed(2)} ${p.unidade === 'KG' ? '/kg' : ''}</b> </div>`;
+        html += `
+            <div id="sugestao-item-${idx}" onclick="window.adicionarItemVendaPorObjeto('${prodString}')" class="p-3 hover:bg-gray-700 cursor-pointer border-b border-gray-700 flex justify-between text-sm item-sugestao-busca text-gray-200">
+                <div>
+                    <span class="font-semibold text-white">${p.nome}</span>
+                    <span class="text-xs text-gray-400 block">Cód: ${p.codigo_barras || p.codigo || 'N/A'} | Estoque: ${p.estoque} un</span>
+                </div>
+                <b class="text-emerald-400">R$ ${Number(p.preco || 0).toFixed(2)}</b>
+            </div>
+        `;
     });
-    painel.innerHTML = html || '<div class="p-3 text-xs text-gray-400">Nenhum produto encontrado.</div>';
+
+    painel.innerHTML = html;
     painel.classList.remove('hidden');
 }
 
