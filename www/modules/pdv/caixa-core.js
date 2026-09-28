@@ -95,56 +95,80 @@ window.dispararImpressaoTermicaNFCe = function(detalhes) {
     window.print();
 };
 
-// --- MAPEAMENTO COMPLETO DE ATALHOS F1 A F12 (CLIQUE & TECLADO) ---
+// --- MAPEAMENTO DE ATALHOS F1 A F12 (DIRETO NO PAINEL LATERAL / SEM POP-UPS NATIVOS) ---
+
 window.acaoAtalhoF1 = () => {
-    // F1 – Identificar Consumidor / Finalizar & Impressão
-    const cpf = prompt('F1 - Identificar Consumidor: Digite o CPF/CNPJ ou cliente para a nota:', '');
-    if (cpf !== null) {
-        alert(`Cliente associado: ${cpf || 'Consumidor Final'}. Finalizando transação e gerando NFC-e...`);
-        window.dispararImpressaoTermicaNFCe({ tipo: 'F1 - Consumidor', documento: cpf });
+    // F1 – Identificar Consumidor (Somente cadastro para nota direto no painel)
+    const painelCliente = document.getElementById('painelIdentificacaoCliente');
+    if (painelCliente) {
+        painelCliente.classList.toggle('hidden');
+    } else {
+        const cpf = prompt('F1 - Digite o CPF/CNPJ para a Nota Fiscal:');
+        if (cpf !== null) {
+            window.clienteNotaFiscal = cpf.trim();
+        }
     }
 };
 
 window.acaoAtalhoF2 = () => {
     // F2 – Identificar Vendedor / Operador
-    const vendedor = prompt('F2 - Vendedor/Operador: Informe o código ou nome para controle de comissão e sessão:', 'Balcão');
+    const vendedor = prompt('F2 - Informe o nome ou código do Vendedor:', 'Balcão');
     if (vendedor) {
-        alert(`Operador/Vendedor vinculado com sucesso: ${vendedor}`);
+        window.vendedorAtualVenda = vendedor;
     }
 };
 
 window.acaoAtalhoF3 = () => {
-    // F3 – Dinheiro / Pix (Pagamento Rápido com cálculo de troco)
-    const tipo = confirm("Clique em [OK] para Dinheiro ou [Cancelar] para Pix") ? "Dinheiro" : "Pix";
-    const valorReceb = prompt(`F3 - Pagamento em ${tipo}. Digite o valor recebido:`);
-    if (valorReceb !== null) {
-        alert(`Pagamento em ${tipo} validado com cálculo automático de troco e impressão.`);
-        window.dispararImpressaoTermicaNFCe({ forma: tipo, recebido: valorReceb });
+    // F3 – Dinheiro / Pix (Liquidação imediata com troco e controle no painel à direita)
+    const painelPagamento = document.getElementById('secaoPagamentoLateral');
+    if (painelPagamento) {
+        painelPagamento.classList.remove('hidden');
+    }
+    const valorTotalVenda = itensVenda.reduce((acc, item) => acc + (item.qtd * item.preco), 0);
+    const tipoRecebimento = confirm("Clique em [OK] para Dinheiro ou [Cancelar] para Pix") ? "Dinheiro" : "Pix";
+    
+    if (tipoRecebimento === "Dinheiro") {
+        const valorRecebidoStr = prompt(`Total da Compra: R$ ${valorTotalVenda.toFixed(2)}\nDigite o valor em dinheiro recebido:`);
+        if (valorRecebimentoStr !== null) {
+            const recebido = parseFloat(valorRecebidoStr.replace(',', '.')) || 0;
+            const troco = Math.max(0, recebido - valorTotalVenda);
+            // Atualiza os campos visuais no painel direito se existirem
+            const elTroco = document.getElementById('txtPainelTroco');
+            if (elTroco) elTroco.innerText = `R$ ${troco.toFixed(2)}`;
+            window.dispararImpressaoTermicaNFCe({ forma: 'Dinheiro', recebido, troco });
+        }
+    } else {
+        window.dispararImpressaoTermicaNFCe({ forma: 'Pix Dinâmico', recebido: valorTotalVenda, troco: 'R$ 0,00' });
     }
 };
 
 window.acaoAtalhoF4 = () => {
-    // F4 – Débito (Com taxas de maquininha embutidas)
-    alert('F4 - Finalização no Débito processada com valor de juros/taxas da maquininha embutidas.');
-    window.dispararImpressaoTermicaNFCe({ forma: 'Débito' });
+    // F4 – Débito (Com taxas de maquininha embutidas calculadas direto no painel)
+    const valorTotalVenda = itensVenda.reduce((acc, item) => acc + (item.qtd * item.preco), 0);
+    const taxaDebito = valorTotalVenda * 0.015; // Exemplo de taxa de débito embutida
+    const totalComTaxa = valorTotalVenda + taxaDebito;
+    
+    const elDescontos = document.getElementById('txtResumoDescontos');
+    if (elDescontos) elDescontos.innerText = `Taxa: R$ ${taxaDebito.toFixed(2)}`;
+    
+    window.dispararImpressaoTermicaNFCe({ forma: 'Débito (Taxa Embutida)', total: totalComTaxa });
 };
 
 window.acaoAtalhoF5 = () => {
-    // F5 – Consulta de Produtos & Leitor
+    // F5 – Consulta de Produtos (Vai direto para a barra de buscas sem alertas)
     focarBusca();
-    alert('F5 - Consulta rápida de produtos e leitor de código de barras ativos.');
 };
 
 window.acaoAtalhoF6 = () => {
     // F6 – Desconto Especial (% ou R$)
-    const desc = prompt('F6 - Desconto Especial: Digite o valor (Ex: 10% ou 15.00) para o item ou subtotal:');
+    const desc = prompt('F6 - Desconto Especial: Digite o valor (Ex: 10% ou 15.00):');
     if (desc) {
-        alert(`Desconto de ${desc} aplicado com sucesso.`);
+        window.descontoAplicadoVenda = desc;
     }
 };
 
 window.acaoAtalhoF7 = () => {
-    // F7 – Avançar para Pagamento
+    // F7 – Avançar para Pagamento (Direcionamento direto para quitação)
     window.acionarFinalizarVenda();
 };
 
@@ -153,32 +177,43 @@ window.acionarFinalizarVenda = () => {
 };
 
 window.acaoAtalhoF8 = () => {
-    // F8 – Crédito (À vista / Parcelado com taxas da maquininha)
+    // F8 – Crédito à vista / Parcelado (Cálculo de taxas de maquininha embutidas direto no painel)
     const parcelas = prompt('F8 - Crédito: Digite o número de parcelas (1 a 12x):', '1');
     if (parcelas) {
-        alert(`Crédito em ${parcelas}x processado com cálculo de taxas da maquininha embutidas.`);
-        window.dispararImpressaoTermicaNFCe({ forma: `Crédito ${parcelas}x` });
+        const numParcelas = parseInt(parcelas) || 1;
+        const valorTotalVenda = itensVenda.reduce((acc, item) => acc + (item.qtd * item.preco), 0);
+        // Simulação de juros/taxas de parcelamento
+        const taxaJuros = numParcelas > 1 ? 0.03 * numParcelas : 0.02;
+        const totalComJuros = valorTotalVenda * (1 + taxaJuros);
+        
+        const elDescontos = document.getElementById('txtResumoDescontos');
+        if (elDescontos) elDescontos.innerText = `Juros Cartão: R$ ${(totalComJuros - valorTotalVenda).toFixed(2)}`;
+        
+        window.dispararImpressaoTermicaNFCe({ forma: `Crédito em ${numParcelas}x`, total: totalComJuros });
     }
 };
 
 window.acaoAtalhoF9 = () => {
-    // F9 – Caixa (Sangria / Suprimento com opção de impressão)
+    // F9 – Caixa (Sangria / Suprimento com captura de valor e motivo obrigatório para o fechamento)
     const tipo = confirm("Clique em [OK] para Suprimento (Entrada) ou [Cancelar] para Sangria (Retirada)") ? "Suprimento" : "Sangria";
-    const val = prompt(`F9 - Caixa: Informe o valor para ${tipo}:`, '0.00');
-    if (val) {
-        alert(`${tipo} de R$ ${val} registrado com sucesso na gaveta.`);
-        if (confirm("Deseja imprimir o comprovante desta movimentação?")) {
-            window.print();
+    const valorStr = prompt(`Informe o valor da ${tipo} (R$):`, '0.00');
+    if (valorStr) {
+        const valor = parseFloat(valorStr.replace(',', '.')) || 0;
+        const motivo = prompt(`Informe o motivo da ${tipo} (obrigatório para o fechamento do caixa):`, '');
+        if (motivo) {
+            // Salva na sessão ou envia para o backend / estado do caixa
+            window.movimentosCaixaGaveta = window.movimentosCaixaGaveta || [];
+            window.movimentosCaixaGaveta.push({ tipo, valor, motivo, hora: new Date().toLocaleTimeString() });
+            console.log(`Movimento de caixa registrado: ${tipo} de R$ ${valor} - Motivo: ${motivo}`);
         }
     }
 };
 
 window.acaoAtalhoF10 = () => {
     // F10 – Multiplicador de Quantidade (Qtd * Código)
-    const qtd = prompt('F10 - Multiplicador de Quantidade: Digite o fator multiplicador (ex: 5):', '1');
+    const qtd = prompt('F10 - Multiplicador de Quantidade (Ex: 5):', '1');
     if (qtd) {
         window.quantidadeMultiplicador = parseFloat(qtd) || 1;
-        alert(`Multiplicador ativado: ${window.quantidadeMultiplicador}x. Bipe o próximo item.`);
     }
 };
 
@@ -192,32 +227,31 @@ window.acaoAtalhoF12 = () => {
     cancelarVenda();
 };
 
-// Atalhos adicionais legados mapeados por segurança
+// Atalhos legados mapeados
 window.acaoAtalhoPix = () => { window.acaoAtalhoF3(); };
 window.acaoAtalhoParcelamento = () => { window.acaoAtalhoF8(); };
 
-// Função para abrir a janela modal flutuante com todos os atalhos F1 a F12
+// Janela guia de atalhos
 window.abrirModalTodosAtalhos = () => {
-    alert(`GUIA COMPLETO DE ATALHOS (F1 a F12):
-- F1: Identificar Consumidor / NFC-e & Impressão
-- F2: Identificar Vendedor / Operador (Comissão)
-- F3: Dinheiro / Pix (Pagamento Rápido + Troco)
-- F4: Débito (Com taxas da maquininha)
-- F5: Consulta de Produtos & Leitor de Barras
-- F6: Desconto Especial (% ou R$)
-- F7: Avançar para Pagamento (Tela de quitação)
-- F8: Crédito (À vista / Parcelado até 12x + Taxas)
-- F9: Caixa (Sangria / Suprimento + Impressão)
-- F10: Multiplicador de Quantidade (Qtd * Código)
-- F11: Cancelar Item (Exige PIN)
-- F12: Cancelar Venda (Exige PIN)`);
+    alert(`GUIA DE ATALHOS (F1 a F12):
+- F1: Identificar Consumidor (Nota Fiscal)
+- F2: Vendedor / Operador
+- F3: Dinheiro / Pix (Troco Automático)
+- F4: Débito (Taxas Embutidas)
+- F5: Consulta de Produtos & Leitor
+- F6: Desconto Especial
+- F7: Avançar para Pagamento
+- F8: Crédito (Parcelado com Juros)
+- F9: Caixa (Sangria/Suprimento com Motivo)
+- F10: Multiplicador de Quantidade
+- F11: Cancelar Item (PIN)
+- F12: Cancelar Venda (PIN)`);
 };
 
-// Listener global para capturar as teclas F1 a F12 de forma limpa e profissional
+// Listener global para capturar as teclas F1 a F12
 window.addEventListener('keydown', (e) => {
     if (e.key >= 'F1' && e.key <= 'F12') {
-        e.preventDefault(); // Impede o comportamento padrão do navegador
-        
+        e.preventDefault();
         switch (e.key) {
             case 'F1': window.acaoAtalhoF1?.(); break;
             case 'F2': window.acaoAtalhoF2?.(); break;
@@ -240,21 +274,20 @@ window.addEventListener('focus', () => {
 });
 
 export async function atualizarPaginaCompleta() {
-    if (confirm('PDV-VS: Deseja atualizar e sincronizar todos os dados do sistema?')) {
+    if (confirm('PDV-VS: Deseja sincronizar todos os dados do sistema?')) {
         await carregarProdutosCache();
         await verificarStatusCaixaServidor();
         if (cargoUsuarioAtual === 'admin_mercado') {
             await carregarHistoricoAdmin?.();
             await carregarOperadoresLoja?.();
         }
-        alert('PDV-VS: Dados sincronizados com sucesso!');
         focarBusca();
     }
 }
 
 export async function realizarLogout() { 
     if (caixaAberto) {
-        alert('PDV-VS: ATENÇÃO! Você não pode sair do sistema com o caixa individual aberto. Faça o fechamento antes de sair.');
+        alert('PDV-VS: Feche o caixa individual antes de encerrar a sessão.');
         return;
     }
     if (confirm('PDV-VS: Deseja realmente encerrar a sessão?')) {
@@ -522,7 +555,6 @@ export function cancelarVenda() {
         if (confirm('PDV-VS: Deseja realmente cancelar toda a compra?')) { 
             setItensVenda([]); 
             atualizarTabelaVenda(); 
-            alert('Venda cancelada com sucesso.');
         } 
     } else if (pin !== null) {
         alert('PIN incorreto! Ação negada.');
@@ -531,7 +563,7 @@ export function cancelarVenda() {
 
 // --- FINALIZAÇÃO DE VENDAS E ESTOQUE ---
 export async function finalizarVenda() {
-    if (!caixaAberto) { alert('PDV-VS: O caixa individual precisa estar aberto! Pressione [F1] ou abra o caixa.'); return; }
+    if (!caixaAberto) { alert('PDV-VS: O caixa individual precisa estar aberto!'); return; }
     if (itensVenda.length === 0) { alert('PDV-VS: Adicione produtos antes de finalizar.'); return; }
     
     const total = itensVenda.reduce((acc, item) => acc + (item.qtd * item.preco), 0);
@@ -570,7 +602,6 @@ export async function finalizarVenda() {
         carregarOperadoresLoja?.();
         carregarHistoricoAdmin?.();
     }
-    alert('PDV-VS: Venda concluída e estoque atualizado com sucesso!');
     focarBusca();
 }
 
