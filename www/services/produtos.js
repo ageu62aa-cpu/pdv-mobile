@@ -34,11 +34,15 @@ export function aoDigitarBusca(termo) {
     if (termo.length < 2) { painel.classList.add('hidden'); return; }
     
     const termoLower = termo.toLowerCase();
-    const filtrados = produtosCache.filter(p => p.nome.toLowerCase().includes(termoLower) || (p.codigo && p.codigo.toLowerCase().includes(termoLower)));
+    const filtrados = produtosCache.filter(p => 
+        p.nome.toLowerCase().includes(termoLower) || 
+        (p.codigo && p.codigo.toLowerCase().includes(termoLower)) ||
+        (p.codigo_barras && p.codigo_barras.toLowerCase().includes(termoLower))
+    );
     let html = '';
     filtrados.forEach((p, idx) => {
         const prodString = JSON.stringify(p).replace(/"/g, '&quot;');
-        html += `<div id="sugestao-item-${idx}" onclick="window.adicionarItemVendaPorObjeto('${prodString}')" class="p-3 hover:bg-gray-700 cursor-pointer border-b border-gray-700 flex justify-between text-sm item-sugestao-busca text-gray-200"> <div><span class="font-semibold text-white">${p.nome}</span><span class="text-xs text-gray-400 block">Cód: ${p.codigo || 'N/A'} | Estoque: ${p.estoque} ${p.unidade === 'KG' ? '<span class="text-amber-400 font-bold">(Por Peso)</span>' : ''}</span></div> <b class="text-emerald-400">R$ ${Number(p.preco).toFixed(2)} ${p.unidade === 'KG' ? '/kg' : ''}</b> </div>`;
+        html += `<div id="sugestao-item-${idx}" onclick="window.adicionarItemVendaPorObjeto('${prodString}')" class="p-3 hover:bg-gray-700 cursor-pointer border-b border-gray-700 flex justify-between text-sm item-sugestao-busca text-gray-200"> <div><span class="font-semibold text-white">${p.nome}</span><span class="text-xs text-gray-400 block">Cód: ${p.codigo || p.codigo_barras || 'N/A'} | Estoque: ${p.estoque} ${p.unidade === 'KG' ? '<span class="text-amber-400 font-bold">(Por Peso)</span>' : ''}</span></div> <b class="text-emerald-400">R$ ${Number(p.preco).toFixed(2)} ${p.unidade === 'KG' ? '/kg' : ''}</b> </div>`;
     });
     painel.innerHTML = html || '<div class="p-3 text-xs text-gray-400">Nenhum produto encontrado.</div>';
     painel.classList.remove('hidden');
@@ -204,11 +208,19 @@ export function tratarEnterBuscaCaixa(e) {
         const termo = e.target.value.trim().toLowerCase();
         if (!termo) return;
         
-        const p = produtosCache.find(prod => (prod.codigo && prod.codigo.toLowerCase() === termo) || prod.nome.toLowerCase() === termo);
+        const p = produtosCache.find(prod => 
+            (prod.codigo && prod.codigo.toLowerCase() === termo) || 
+            (prod.codigo_barras && prod.codigo_barras.toLowerCase() === termo) || 
+            prod.nome.toLowerCase() === termo
+        );
         if (p) {
             tratarAdicaoProduto(p);
         } else {
-            const pParcial = produtosCache.find(prod => prod.nome.toLowerCase().includes(termo) || (prod.codigo && prod.codigo.toLowerCase().includes(termo)));
+            const pParcial = produtosCache.find(prod => 
+                prod.nome.toLowerCase().includes(termo) || 
+                (prod.codigo && prod.codigo.toLowerCase().includes(termo)) ||
+                (prod.codigo_barras && prod.codigo_barras.toLowerCase().includes(termo))
+            );
             if (pParcial) tratarAdicaoProduto(pParcial);
             else alert('PDV-VS: Produto não encontrado!');
         }
@@ -257,7 +269,7 @@ export function renderizarTabelaAdmin(lista) {
     let html = '';
     lista.forEach(p => {
         html += `<tr class="border-b border-gray-700 hover:bg-gray-750 transition-colors">
-            <td class="p-3 text-xs text-gray-300">${p.codigo || '-'}</td>
+            <td class="p-3 text-xs text-gray-300">${p.codigo || p.codigo_barras || '-'}</td>
             <td class="p-3 font-medium text-white">${p.nome} ${p.unidade === 'KG' ? '<span class="text-amber-400 text-[10px] font-bold">(KG)</span>' : ''}</td>
             <td class="p-3 text-emerald-400 font-semibold">R$ ${Number(p.preco).toFixed(2)}${p.unidade === 'KG' ? '/kg' : ''}</td>
             <td class="p-3 text-gray-300">${p.estoque} ${p.unidade || 'UN'}</td>
@@ -272,7 +284,11 @@ export function renderizarTabelaAdmin(lista) {
 
 export function filtrarTabelaAdmin(t) { 
     const termo = t.toLowerCase();
-    renderizarTabelaAdmin(produtosCache.filter(p => p.nome.toLowerCase().includes(termo) || (p.codigo && p.codigo.toLowerCase().includes(termo)))); 
+    renderizarTabelaAdmin(produtosCache.filter(p => 
+        p.nome.toLowerCase().includes(termo) || 
+        (p.codigo && p.codigo.toLowerCase().includes(termo)) ||
+        (p.codigo_barras && p.codigo_barras.toLowerCase().includes(termo))
+    )); 
 }
 
 export function abrirModalNovoProdutoAdmin() {
