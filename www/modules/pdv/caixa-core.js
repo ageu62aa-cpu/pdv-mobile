@@ -412,9 +412,9 @@ export function tratarEnterBuscaCaixa(e) {
     }
 }
 
-// --- ABRIR CAIXA (COM MUDANÇA IMEDIATA DE STATUS NA TELA) ---
+// --- ABRIR CAIXA ---
 window.acionarAbrirCaixa = async function() {
-    const db = getSupabase();
+    const db = window.supabaseClient || window.supabase || supabase;
     if (!db) {
         alert('PDV-VS: Erro crítico: Cliente Supabase não encontrado.');
         return;
@@ -424,41 +424,16 @@ window.acionarAbrirCaixa = async function() {
     let usuario = window.usuarioAtual;
 
     if (!usuario || !empresaId) {
-        const { data: { session }, error: sessionError } = await db.auth.getSession();
-        if (sessionError || !session || !session.user) {
-            alert('PDV-VS: Sessão não encontrada. Por favor, faça login novamente.');
-            window.location.href = '../auth/auth.html';
-            return;
-        }
-        usuario = session.user;
-        empresaId = empresaId || localStorage.getItem('empresa_id') || session.user.user_metadata?.empresa_id;
-    }
-
-    if (!empresaId && usuario) {
-        try {
-            const { data: userData } = await db
-                .from('usuarios')
-                .select('empresa_id')
-                .eq('id', usuario.id)
-                .maybeSingle();
-
-            if (userData && userData.empresa_id) {
-                empresaId = userData.empresa_id;
-                localStorage.setItem('empresaAtualId', empresaId);
-            } else {
-                const { data: empData } = await db.from('empresas').select('id').limit(1).maybeSingle();
-                if (empData) {
-                    empresaId = empData.id;
-                    localStorage.setItem('empresaAtualId', empresaId);
-                }
-            }
-        } catch (e) {
-            console.warn('Aviso ao buscar empresa automaticamente:', e);
+        const { data: { session } } = await db.auth.getSession();
+        if (session && session.user) {
+            usuario = session.user;
+            empresaId = empresaId || localStorage.getItem('empresaAtualId');
         }
     }
 
     if (!empresaId || !usuario) {
-        alert('PDV-VS: Erro crítico: Não foi possível vincular a empresa ao operador. Verifique o login.');
+        alert('PDV-VS: Sessão não encontrada. Faça login novamente.');
+        window.location.href = '../auth/auth.html';
         return;
     }
 
@@ -487,32 +462,22 @@ window.acionarAbrirCaixa = async function() {
             return;
         }
 
-        // Pega o nome do operador cadastrado (via F2 ou fallback para email/padrão)
         const nomeOperador = window.vendedorAtual?.nome || localStorage.getItem('operadorNome') || usuario.email || 'Operador Ativo';
 
-        // 2. Inserir abertura no banco
+        // 2. Inserir abertura no banco (somente colunas padrão e seguras)
         const { error } = await db.from('caixas').insert([{
             empresa_id: empresaId,
             user_id: usuario.id,
-            operador: nomeOperador,
             status: 'ABERTO',
             valor_abertura: valorAbertura,
             faturamento_dia: 0.00,
-            sangria_total: 0.00,
-            suprimento_total: 0.00,
             created_at: new Date().toISOString()
         }]);
 
         if (error) throw error;
 
-        valorTrocoAbertura = valorAbertura;
-        horaAberturaCaixa = new Date();
-        setCaixaAberto(true);
-        setFaturamentoDia(0);
-
         alert(`Caixa aberto com sucesso! Operador: ${nomeOperador} | Troco: R$ ${valorAbertura.toFixed(2)}`);
         
-        // Atualiza o visual do topo imediatamente
         atualizarBadgesCaixaInterface(true, 0);
 
         if (typeof verificarStatusCaixaServidor === 'function') {
@@ -525,9 +490,9 @@ window.acionarAbrirCaixa = async function() {
     }
 };
 
-// --- FECHAR CAIXA (COM VALIDAÇÃO DE CAIXA ABERTO E RELATÓRIO INTELIGENTE) ---
+// --- FECHAR CAIXA (COM RELATÓRIO INTELIGENTE E COMPATÍVEL) ---
 window.acionarFecharCaixa = async function() {
-    const db = getSupabase();
+    const db = window.supabaseClient || window.supabase || supabase;
     if (!db) return;
 
     let empresaId = window.empresaAtualId || localStorage.getItem('empresaAtualId');
@@ -537,24 +502,7 @@ window.acionarFecharCaixa = async function() {
         const { data: { session } } = await db.auth.getSession();
         if (session && session.user) {
             usuario = session.user;
-            empresaId = empresaId || localStorage.getItem('empresaAtualId') || localStorage.getItem('empresa_id') || session.user.user_metadata?.empresa_id;
-        }
-    }
-
-    if (!empresaId && usuario) {
-        try {
-            const { data: userData } = await db
-                .from('usuarios')
-                .select('empresa_id')
-                .eq('id', usuario.id)
-                .maybeSingle();
-
-            if (userData && userData.empresa_id) {
-                empresaId = userData.empresa_id;
-                localStorage.setItem('empresaAtualId', empresaId);
-            }
-        } catch (e) {
-            console.warn('Aviso ao buscar empresa automaticamente no fechamento:', e);
+            empresaId = empresaId || localStorage.getItem('empresaAtualId');
         }
     }
 
@@ -564,7 +512,7 @@ window.acionarFecharCaixa = async function() {
     }
 
     try {
-        // 1. BUSCAR CAIXA ABERTO (Garante rigorosamente que só fecha se realmente estiver aberto)
+        // 1. BUSCAR CAIXA ABERTO
         const { data: caixaAberto, error: erroBusca } = await db
             .from('caixas')
             .select('*')
@@ -575,18 +523,15 @@ window.acionarFecharCaixa = async function() {
 
         if (erroBusca || !caixaAberto) {
             alert('PDV-VS: Ação negada! Seu caixa encontra-se FECHADO ou não há nenhuma sessão ativa para encerrar.');
-            setCaixaAberto(false);
             atualizarBadgesCaixaInterface(false, 0);
             return;
         }
 
-        const operadorNome = caixaAberto.operador || localStorage.getItem('operadorNome') || usuario.email || 'Operador Ativo';
+        const operadorNome = window.vendedorAtual?.nome || localStorage.getItem('operadorNome') || usuario.email || 'Operador Ativo';
         const trocoInicial = Number(caixaAberto.valor_abertura) || 0;
-        const totalSangria = Number(caixaAberto.sangria_total) || 0;
-        const totalSuprimento = Number(caixaAberto.suprimento_total) || 0;
         const dataAbertura = caixaAberto.created_at;
 
-        // 2. BUSCAR VENDAS APENAS DESTE TURNO (A partir do momento que abriu o caixa)
+        // 2. BUSCAR VENDAS APENAS DESTE TURNO (A partir da abertura)
         const { data: vendasRealizadas, error: erroVendas } = await db
             .from('vendas')
             .select('valor_total, forma_pagamento')
@@ -609,14 +554,14 @@ window.acionarFecharCaixa = async function() {
                 else if (forma.includes('pix')) fatPix += valor;
                 else if (forma.includes('debito') || forma.includes('débito')) fatDebito += valor;
                 else if (forma.includes('credito') || forma.includes('crédito') || forma.includes('parcelado')) fatCredito += valor;
-                else fatDinheiro += valor; // Fallback para dinheiro caso venha vazio
+                else fatDinheiro += valor; // Fallback para dinheiro
             });
         }
 
-        // Cálculo exato do dinheiro físico na gaveta
-        const dinheiroGaveta = (trocoInicial + fatDinheiro + totalSuprimento) - totalSangria;
+        // Dinheiro físico esperado na gaveta (Troco Inicial + Vendas em Dinheiro)
+        const dinheiroGaveta = trocoInicial + fatDinheiro;
 
-        // Montar linhas de pagamento condicionalmente (APENAS SE TIVER VENDAS NESTA FORMA)
+        // Montar linhas de pagamento condicionalmente (APENAS AS QUE TIVEREM VENDAS)
         let blocoPagamentos = '';
         if (fatDinheiro > 0) blocoPagamentos += `  • Dinheiro: R$ ${fatDinheiro.toFixed(2)}\n`;
         if (fatPix > 0) blocoPagamentos += `  • PIX: R$ ${fatPix.toFixed(2)}\n`;
@@ -633,8 +578,6 @@ window.acionarFecharCaixa = async function() {
             `----------------------------------------\n` +
             `(+) Faturamento Total Geral: R$ ${faturamentoGeral.toFixed(2)}\n` +
             `(+) Troco Inicial (Fundo): R$ ${trocoInicial.toFixed(2)}\n` +
-            `(+) Suprimentos (Entradas): R$ ${totalSuprimento.toFixed(2)}\n` +
-            `(-) Sangrias (Retiradas): R$ ${totalSangria.toFixed(2)}\n` +
             `----------------------------------------\n` +
             `(=) Dinheiro Físico Esperado na Gaveta: R$ ${dinheiroGaveta.toFixed(2)}\n\n` +
             `Deseja realmente confirmar o fechamento deste caixa?`;
@@ -643,26 +586,20 @@ window.acionarFecharCaixa = async function() {
             return;
         }
 
-        // 3. Atualizar status para FECHADO no banco
+        // 3. Atualizar status para FECHADO no banco (usando apenas colunas nativas garantidas)
         const { error: erroUpdate } = await db
             .from('caixas')
             .update({ 
                 status: 'FECHADO',
                 faturamento_dia: faturamentoGeral,
-                balanco_final: dinheiroGaveta,
                 updated_at: new Date().toISOString()
             })
             .eq('id', caixaAberto.id);
 
         if (erroUpdate) throw erroUpdate;
 
-        setCaixaAberto(false);
-        valorTrocoAbertura = 0;
-        setFaturamentoDia(0);
-
         alert('Caixa fechado com sucesso! Painel administrativo atualizado.');
         
-        // Atualiza o visual do topo imediatamente para Fechado
         atualizarBadgesCaixaInterface(false, 0);
 
         if (typeof verificarStatusCaixaServidor === 'function') {
