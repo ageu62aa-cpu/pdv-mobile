@@ -1,6 +1,6 @@
 /**
  * Módulo: Admin Operadores (www/modules/admin/admin-operadores.js)
- * Painel organizado em cards com terminais fixos (#01 Admin e #02 Operador).
+ * Painel limpo com nomes reais e terminais fixos (#01 Admin e #02 Operador).
  */
 import { supabase } from '../../core/config.js';
 
@@ -34,12 +34,13 @@ async function carregarGestaoOperadores() {
     const gridContainer = document.getElementById('grid-operadores-container');
     if (!gridContainer) return;
 
-    const { data: caixas, error } = await supabase
-        .from('caixas')
-        .select('*')
-        .order('created_at', { ascending: false });
+    // Busca os dados de caixas e também os nomes cadastrados na tabela de operadores
+    const [{ data: caixas, error: errCaixas }, { data: operadoresLista }] = await Promise.all([
+        supabase.from('caixas').select('*').order('created_at', { ascending: false }),
+        supabase.from('operadores').select('*')
+    ]);
 
-    if (error || !caixas || caixas.length === 0) {
+    if (errCaixas || !caixas || caixas.length === 0) {
         gridContainer.innerHTML = `
             <div class="col-span-2 bg-gray-900/60 border border-gray-800 rounded-2xl p-8 text-center text-gray-400">
                 <i class="fa-solid fa-cash-register text-3xl text-gray-600 mb-2"></i>
@@ -48,7 +49,7 @@ async function carregarGestaoOperadores() {
         return;
     }
 
-    // Filtra para pegar apenas os registros únicos mais recentes por usuário
+    // Filtra para manter apenas a sessão mais recente por usuário
     const unicosPorUsuario = {};
     caixas.forEach(c => {
         if (!unicosPorUsuario[c.user_id]) {
@@ -67,10 +68,17 @@ async function carregarGestaoOperadores() {
         const faturamento = Number(c.faturamento_dia || 0).toFixed(2);
         const valorTroco = Number(c.valor_abertura || 0).toFixed(2);
         
-        // Regra de terminais: O primeiro (index 0 ou admin) é #01, o operador é #02
+        // Define Terminais e Perfis Fixos (#01 Admin e #02 Operador)
         const isAdmin = c.cargo === 'admin_mercado' || index === 0;
         const terminalNumero = isAdmin ? '#01' : '#02';
-        const tituloPerfil = isAdmin ? 'Administrador' : 'Operador';
+        const tipoPerfil = isAdmin ? 'Administrador' : 'Operador';
+
+        // Tenta buscar o nome real cadastrado na tabela de operadores ou usa o perfil
+        let nomeExibicao = tipoPerfil;
+        const opEncontrado = operadoresLista?.find(op => op.email === c.email || op.id === c.user_id);
+        if (opEncontrado && opEncontrado.nome) {
+            nomeExibicao = opEncontrado.nome;
+        }
 
         const cardBorder = isOpen ? 'border-emerald-500/50 bg-gray-900/90 shadow-emerald-950/20' : 'border-gray-800 bg-gray-900/60';
         const statusBadge = isOpen 
@@ -81,9 +89,9 @@ async function carregarGestaoOperadores() {
             <div class="border ${cardBorder} rounded-2xl p-5 shadow-xl flex flex-col justify-between gap-4 transition-all">
                 <div class="flex justify-between items-start">
                     <div>
-                        <span class="text-[10px] font-bold uppercase tracking-wider text-gray-500 block">Identificação / Perfil</span>
-                        <h3 class="font-bold text-sm text-white mt-0.5">
-                            ${tituloPerfil} <span class="text-xs text-gray-400 font-mono">(${c.user_id.substring(0, 8)}...)</span>
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-gray-500 block">${tipoPerfil}</span>
+                        <h3 class="font-bold text-base text-white mt-0.5 truncate max-w-[240px]" title="${nomeExibicao}">
+                            ${nomeExibicao}
                         </h3>
                     </div>
                     <div>${statusBadge}</div>
