@@ -1,241 +1,338 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vancely Software - Frente de Caixa</title>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome para Ícones -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-</head>
-<body class="bg-gray-900 text-gray-100 font-sans h-screen flex flex-col overflow-hidden">
+/**
+ * Vancely Software - Caixa Core (caixa-core.js)
+ * Script principal de controle do Frente de Caixa (PDV)
+ */
 
-    <!-- Topo / Header do PDV -->
-    <header class="bg-gray-800 border-b border-gray-700 px-6 py-3 flex justify-between items-center shadow-md">
-        <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-full overflow-hidden border-2 border-emerald-600 shadow-md flex items-center justify-center bg-white">
-                <img src="../../assets/caixa.registradora.jpeg" alt="Caixa Registradora" class="w-14 h-14 object-cover scale-125">
+// Estado global da aplicação do Caixa
+const estadoCaixa = {
+    aberto: false,
+    operador: "Ativo",
+    caixaId: "#01",
+    carrinho: [],
+    subtotal: 0,
+    descontos: 0,
+    totalGeral: 0
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('Vancely Software - Frente de Caixa inicializado.');
+    atualizarInterfaceCaixa();
+    
+    // Focar automaticamente no input de busca ao iniciar
+    const inputBusca = document.getElementById('inputBusca');
+    if (inputBusca) {
+        inputBusca.focus();
+    }
+});
+
+// ==========================================
+// FUNÇÕES DE GESTÃO DO CAIXA (HEADER)
+// ==========================================
+
+window.acionarAbrirCaixa = function() {
+    estadoCaixa.aberto = true;
+    atualizarInterfaceCaixa();
+    alert('Caixa aberto com sucesso!');
+};
+
+window.acionarFecharCaixa = function() {
+    if (confirm('Deseja realmente fechar o caixa atual?')) {
+        estadoCaixa.aberto = false;
+        atualizarInterfaceCaixa();
+        alert('Caixa fechado.');
+    }
+};
+
+function atualizarInterfaceCaixa() {
+    const txtStatus = document.getElementById('txtStatusCaixaHeader');
+    const btnAbrir = document.getElementById('btnAbrirCaixaHeader');
+    const btnFechar = document.getElementById('btnFecharCaixaHeader');
+
+    if (estadoCaixa.aberto) {
+        if (txtStatus) {
+            txtStatus.className = 'text-xs text-emerald-400 font-semibold flex items-center gap-1.5';
+            txtStatus.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Caixa Aberto';
+        }
+        if (btnAbrir) btnAbrir.classList.add('opacity-50', 'pointer-events-none');
+        if (btnFechar) btnFechar.classList.remove('opacity-50', 'pointer-events-none');
+    } else {
+        if (txtStatus) {
+            txtStatus.className = 'text-xs text-amber-400 font-semibold flex items-center gap-1.5';
+            txtStatus.innerHTML = '<span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span> Caixa Fechado (Necessário Abertura)';
+        }
+        if (btnAbrir) btnAbrir.classList.remove('opacity-50', 'pointer-events-none');
+        if (btnFechar) btnFechar.classList.add('opacity-50', 'pointer-events-none');
+    }
+}
+
+// ==========================================
+// FUNÇÕES DE BUSCA E CARRINHO
+// ==========================================
+
+window.aoDigitarBusca = function(event) {
+    const termo = event.target.value;
+    const containerSugestoes = document.getElementById('sugestoesBusca');
+    
+    if (!termo || termo.trim() === '') {
+        if (containerSugestoes) containerSugestoes.classList.add('hidden');
+        return;
+    }
+
+    // Simulação de sugestões ou busca dinâmica
+    if (containerSugestoes) {
+        containerSugestoes.innerHTML = `
+            <div class="p-3 hover:bg-gray-800 cursor-pointer text-xs text-gray-200 flex justify-between items-center" onclick="window.adicionarItemExemplo()">
+                <span>Produto Exemplo (${termo})</span>
+                <span class="text-emerald-400 font-mono">R$ 10,00</span>
             </div>
-            <div>
-                <h1 class="font-bold text-sm text-white tracking-wide">Vancely Software - Frente de Caixa</h1>
-                <p id="txtStatusCaixaHeader" class="text-xs text-amber-400 font-semibold flex items-center gap-1.5">
-                    <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span> Caixa Fechado (Necessário Abertura)
-                </p>
-            </div>
-        </div>
+        `;
+        containerSugestoes.classList.remove('hidden');
+    }
+};
 
-        <!-- Botões de Gestão de Caixa -->
-        <div class="flex items-center gap-2">
-            <button onclick="window.acionarAbrirCaixa()" id="btnAbrirCaixaHeader" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-lg text-xs font-bold transition shadow flex items-center gap-2">
-                <i class="fa-solid fa-unlock"></i> Abrir Caixa
-            </button>
-            <button onclick="window.acionarFecharCaixa()" id="btnFecharCaixaHeader" class="bg-red-600/80 hover:bg-red-600 text-white px-3.5 py-2 rounded-lg text-xs font-bold transition shadow flex items-center gap-2">
-                <i class="fa-solid fa-lock"></i> Fechar Caixa
-            </button>
-            <div class="h-6 w-px bg-gray-700 mx-1"></div>
-            <span id="txtInfoOperador" class="text-xs text-gray-400">Operador: <strong class="text-gray-200">Ativo</strong> | Caixa: <strong class="text-gray-200">#01</strong></span>
-            
-            <button onclick="window.location.href='../admin/admin.html'" class="w-9 h-9 rounded-full overflow-hidden border-2 border-emerald-600 hover:border-emerald-400 shadow-md transition transform hover:scale-105 flex items-center justify-center bg-white ml-1 focus:outline-none" title="Admin">
-                <img src="../../assets/botao-admin.jpeg" alt="Admin" class="w-12 h-12 object-cover scale-125">
-            </button>
-            <button onclick="window.location.href='../auth/auth.html'" class="bg-red-900/50 hover:bg-red-900 text-red-200 px-3 py-2 rounded-lg text-xs font-bold transition border border-red-800">Sair</button>
-        </div>
-    </header>
+window.tratarEnterBuscaCaixa = function(event) {
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        window.adicionarItemExemplo();
+    }
+};
 
-    <!-- Corpo Principal -->
-    <main class="flex-1 p-6 grid grid-cols-1 lg:grid-cols-3 gap-6 overflow-hidden">
+window.adicionarItemExemplo = function() {
+    const item = {
+        id: Date.now(),
+        nome: 'Produto Exemplo de Catálogo',
+        preco: 10.00,
+        quantidade: 1
+    };
+    estadoCaixa.carrinho.push(item);
+    recalcularCarrinho();
+    
+    const inputBusca = document.getElementById('inputBusca');
+    if (inputBusca) {
+        inputBusca.value = '';
+        inputBusca.focus();
+    }
+    
+    const containerSugestoes = document.getElementById('sugestoesBusca');
+    if (containerSugestoes) containerSugestoes.classList.add('hidden');
+};
+
+function recalcularCarrinho() {
+    const listaVazia = document.getElementById('listaCarrinhoVazio');
+    const listaItens = document.getElementById('listaCarrinhoItens');
+    const txtSubtotal = document.getElementById('txtResumoSubtotal');
+    const txtTotalGeral = document.getElementById('txtResumoTotalGeral');
+
+    if (estadoCaixa.carrinho.length === 0) {
+        if (listaVazia) listaVazia.classList.remove('hidden');
+        if (listaItens) {
+            listaItens.classList.add('hidden');
+            listaItens.innerHTML = '';
+        }
+        estadoCaixa.subtotal = 0;
+        estadoCaixa.totalGeral = 0;
+    } else {
+        if (listaVazia) listaVazia.classList.add('hidden');
+        if (listaItens) {
+            listaItens.classList.remove('hidden');
+            listaItens.innerHTML = estadoCaixa.carrinho.map((prod, index) => `
+                <div class="px-4 py-2.5 grid grid-cols-12 text-xs items-center hover:bg-gray-750 transition">
+                    <div class="col-span-6 font-medium text-gray-200 truncate">${prod.nome}</div>
+                    <div class="col-span-3 text-center text-gray-300 font-mono">${prod.quantidade}x R$ ${prod.preco.toFixed(2)}</div>
+                    <div class="col-span-3 text-right font-mono font-bold text-emerald-400">R$ ${(prod.quantidade * prod.preco).toFixed(2)}</div>
+                </div>
+            `).join('');
+        }
+
+        estadoCaixa.subtotal = estadoCaixa.carrinho.reduce((acc, p) => acc + (p.preco * p.quantidade), 0);
+        estadoCaixa.totalGeral = estadoCaixa.subtotal - estadoCaixa.descontos;
+    }
+
+    if (txtSubtotal) txtSubtotal.innerText = `R$ ${estadoCaixa.subtotal.toFixed(2)}`;
+    if (txtTotalGeral) txtTotalGeral.innerText = `R$ ${estadoCaixa.totalGeral.toFixed(2)}`;
+}
+
+window.abrirCameraScanner = function() {
+    alert('Módulo de leitor contínuo por câmera acionado.');
+};
+
+// ==========================================
+// FUNÇÕES DE ATALHOS (F1 a F12)
+// ==========================================
+
+window.acaoAtalhoF1 = function() {
+    console.log('Atalhos: F1 acionado (CPF na Nota)');
+    const cpf = prompt('Digite o CPF/CNPJ para a Nota Fiscal:');
+    if (cpf) alert(`CPF ${cpf} vinculado à venda com sucesso!`);
+};
+
+window.acaoAtalhoF2 = function() {
+    console.log('Atalhos: F2 acionado (Vendedor)');
+    const vendedor = prompt('Informe o código ou nome do vendedor:');
+    if (vendedor) alert(`Vendedor ${vendedor} vinculado.`);
+};
+
+window.acaoAtalhoF3 = function() {
+    console.log('Atalhos: F3 acionado (Dinheiro/Pix Rápido)');
+    if (estadoCaixa.carrinho.length === 0) {
+        alert('Adicione itens ao carrinho antes de finalizar.');
+        return;
+    }
+    alert(`Pagamento em Dinheiro/Pix Rápido processado para o total de R$ ${estadoCaixa.totalGeral.toFixed(2)}`);
+    estadoCaixa.carrinho = [];
+    recalcularCarrinho();
+};
+
+window.acaoAtalhoF4 = function() {
+    console.log('Atalhos: F4 acionado (Cartão Débito)');
+    if (estadoCaixa.carrinho.length === 0) {
+        alert('Adicione itens ao carrinho antes de finalizar.');
+        return;
+    }
+    alert('Transação de Débito acionada no terminal.');
+    estadoCaixa.carrinho = [];
+    recalcularCarrinho();
+};
+
+window.acaoAtalhoF5 = function() {
+    console.log('Atalhos: F5 acionado (Pesquisa / Focar Busca)');
+    const inputBusca = document.getElementById('inputBusca');
+    if (inputBusca) {
+        inputBusca.focus();
+        inputBusca.select();
+    }
+};
+
+window.acaoAtalhoF6 = function() {
+    console.log('Atalhos: F6 acionado (Pausar Venda)');
+    alert('Venda atual pausada/colocada em espera.');
+    estadoCaixa.carrinho = [];
+    recalcularCarrinho();
+};
+
+window.acionarFinalizarVenda = function() {
+    console.log('Atalhos: F7 acionado (Finalizar Venda / Checkout)');
+    if (estadoCaixa.carrinho.length === 0) {
+        alert('Carrinho vazio. Impossível finalizar.');
+        return;
+    }
+    alert(`Checkout aberto para o valor total de R$ ${estadoCaixa.totalGeral.toFixed(2)}`);
+    estadoCaixa.carrinho = [];
+    recalcularCarrinho();
+};
+
+window.acaoAtalhoF8 = function() {
+    console.log('Atalhos: F8 acionado (Parcelado / Crédito)');
+    if (estadoCaixa.carrinho.length === 0) {
+        alert('Carrinho vazio.');
+        return;
+    }
+    alert('Abertura de modal de parcelamento no cartão de crédito.');
+};
+
+window.acaoAtalhoF9 = function() {
+    console.log('Atalhos: F9 acionado (Movimento de Caixa - Sangria/Suprimento)');
+    const tipo = prompt('Digite "1" para Suprimento ou "2" para Sangria:');
+    if (tipo === '1') {
+        prompt('Valor do Suprimento (R$):');
+        alert('Suprimento registrado com sucesso.');
+    } else if (tipo === '2') {
+        prompt('Valor da Sangria (R$):');
+        alert('Sangria registrada com sucesso.');
+    }
+};
+
+window.acaoAtalhoF10 = function() {
+    console.log('Atalhos: F10 acionado (Consulta de Preço)');
+    const codigo = prompt('Informe o código de barras para consultar o preço:');
+    if (codigo) {
+        alert(`O produto do código ${codigo} custa R$ 15,00 (Exemplo).`);
+    }
+};
+
+window.acaoAtalhoF11 = function() {
+    console.log('Atalhos: F11 acionado (Cancelar Item)');
+    if (estadoCaixa.carrinho.length === 0) {
+        alert('Nenhum item no carrinho para cancelar.');
+        return;
+    }
+    const pin = prompt('PIN do Administrador necessário para cancelar o item:');
+    if (pin === '1234') {
+        estadoCaixa.carrinho.pop();
+        recalcularCarrinho();
+        alert('Último item cancelado com sucesso.');
+    } else if (pin !== null) {
+        alert('PIN incorreto!');
+    }
+};
+
+window.acaoAtalhoF12 = function() {
+    console.log('Atalhos: F12 acionado (Cancelar Venda)');
+    if (estadoCaixa.carrinho.length === 0) {
+        alert('Nenhum item para cancelar.');
+        return;
+    }
+    const pin = prompt('PIN do Administrador necessário para cancelar a venda inteira:');
+    if (pin === '1234') {
+        estadoCaixa.carrinho = [];
+        recalcularCarrinho();
+        alert('Venda cancelada totalmente.');
+    } else if (pin !== null) {
+        alert('PIN incorreto!');
+    }
+};
+
+window.acaoAtalhoParcelamento = function() {
+    window.acaoAtalhoF8();
+};
+
+
+// ==========================================
+// LISTENER GLOBAL DE ATALHOS DE TECLADO (F1 a F12)
+// ==========================================
+
+window.addEventListener('keydown', (e) => {
+    // Verifica se a tecla pressionada é do tipo F1 até F12
+    if (e.key >= 'F1' && e.key <= 'F12') {
+        e.preventDefault(); // Impede o comportamento padrão do browser (ex: ajuda do F1)
         
-        <!-- Coluna Esquerda & Centro: Busca e Lista de Produtos -->
-        <section class="lg:col-span-2 flex flex-col gap-4 overflow-hidden">
-            <!-- Única Barra de Busca Estável -->
-            <div id="containerCaixaBusca" class="w-full bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-700 flex flex-col gap-2 relative">
-                <div class="flex items-center justify-between">
-                    <label for="inputBusca" class="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
-                        PESQUISA / CÓDIGO DE BARRAS <span class="text-emerald-400 font-mono">(F5)</span>
-                    </label>
-                    
-                    <div class="flex items-center gap-3">
-                        <span class="text-xs text-emerald-400 font-semibold flex items-center gap-1.5">
-                            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Leitor Ativo
-                        </span>
-                        <!-- Botão de Câmera -->
-                        <button onclick="window.abrirCameraScanner ? window.abrirCameraScanner() : alert('Leitor contínuo de câmera ativado.')" id="btn-ativar-camera" class="w-12 h-8 rounded-xl overflow-hidden border-2 border-emerald-600 hover:border-emerald-400 shadow-md transition transform hover:scale-105 flex items-center justify-center bg-gray-900 focus:outline-none" title="Ativar leitor contínuo de câmera">
-                            <img src="../../assets/botao-camera.jpg" alt="Scanner Câmera" class="w-full h-full object-cover">
-                        </button>
-                    </div>
-                </div>
-                <div class="relative flex items-center">
-                    <input 
-                        type="text" 
-                        id="inputBusca" 
-                        oninput="window.aoDigitarBusca && window.aoDigitarBusca(event)"
-                        onkeypress="window.tratarEnterBuscaCaixa && window.tratarEnterBuscaCaixa(event)"
-                        placeholder="Escaneie o código de barras ou digite o nome do produto..." 
-                        autocomplete="off"
-                        class="w-full px-4 py-3 pl-10 bg-gray-900 border border-gray-700 rounded-lg text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-gray-900 transition-all text-sm font-medium"
-                    >
-                    <svg class="w-5 h-5 text-gray-400 absolute left-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                    </svg>
-                </div>
-                <!-- Caixa de sugestões flutuante -->
-                <div id="sugestoesBusca" class="hidden absolute left-0 right-0 top-full mt-1 bg-gray-850 border border-gray-700 rounded-xl shadow-2xl max-h-60 overflow-y-auto z-50 divide-y divide-gray-750"></div>
-            </div>
-
-            <!-- Tabela de Produtos no Carrinho -->
-            <div class="flex-1 bg-gray-800 border border-gray-700 rounded-xl flex flex-col overflow-hidden shadow-sm relative">
-                
-                <div class="absolute inset-0 flex items-center justify-center pointer-events-none opacity-10 z-0">
-                    <img src="../../assets/mascote.jpeg" alt="Mascote Marca d'água" class="w-48 h-48 rounded-full object-cover">
-                </div>
-
-                <div class="bg-gray-850 px-4 py-3 border-b border-gray-700 grid grid-cols-12 text-xs font-bold text-gray-400 uppercase tracking-wider relative z-10">
-                    <div class="col-span-6">Item / Produto</div>
-                    <div class="col-span-3 text-center">Qtd / Preço</div>
-                    <div class="col-span-3 text-right">Subtotal</div>
-                </div>
-                
-                <div id="listaCarrinhoVazio" class="flex-1 flex flex-col items-center justify-center p-8 text-center text-gray-400 relative z-10">
-                    <p class="text-sm font-medium">Nenhum item adicionado ao carrinho.</p>
-                    <span class="text-xs text-gray-500 mt-1">Utilize o leitor ou digite o produto (Atalhos: F1 a F12)</span>
-                </div>
-                
-                <div id="listaCarrinhoItens" class="flex-1 overflow-y-auto divide-y divide-gray-750 hidden relative z-10"></div>
-            </div>
-        </section>
-
-        <!-- Coluna Direita: Resumo, Total, Atalhos Principais e Pagamento Rápido -->
-        <section class="flex flex-col gap-4 overflow-y-auto">
-            <div class="bg-gray-800 border border-gray-700 rounded-xl p-4 shadow-sm flex flex-col justify-between gap-3">
-                <h2 class="text-xs font-bold text-gray-400 uppercase tracking-wider border-b border-gray-700 pb-2">Resumo da Venda</h2>
-                <div class="space-y-1.5 text-sm">
-                    <div class="flex justify-between text-gray-300">
-                        <span>Subtotal:</span>
-                        <span id="txtResumoSubtotal" class="font-mono font-bold">R$ 0,00</span>
-                    </div>
-                    <div class="flex justify-between text-gray-300">
-                        <span>Descontos / Taxas:</span>
-                        <span id="txtResumoDescontos" class="font-mono font-bold text-emerald-400">R$ 0,00</span>
-                    </div>
-                </div>
-                <div class="bg-gray-900 p-3 rounded-xl border border-gray-700 flex flex-col">
-                    <span class="text-xs font-bold text-gray-400 uppercase">Total a Pagar:</span>
-                    <span id="txtResumoTotalGeral" class="text-2xl font-black text-emerald-400 font-mono mt-0.5">R$ 0,00</span>
-                </div>
-
-                <button onclick="window.acionarFinalizarVenda()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-bold text-xs shadow-lg transition flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-check-to-slot"></i> Finalizar Pagamento <span class="bg-emerald-800 text-emerald-200 text-[10px] px-1.5 py-0.5 rounded font-mono">F7</span>
-                </button>
-
-                <div class="grid grid-cols-3 gap-2 pt-1 border-t border-gray-700">
-                    <button onclick="window.acaoAtalhoF3 && window.acaoAtalhoF3()" class="bg-gray-900 hover:bg-gray-750 border border-gray-700 py-2 px-1 rounded-lg text-center transition flex flex-col items-center justify-center">
-                        <i class="fa-solid fa-money-bill-wave text-emerald-400 text-xs mb-1"></i>
-                        <span class="text-[10px] font-bold text-gray-200">Dinheiro/Pix</span>
-                        <span class="text-[9px] text-gray-400 font-mono">F3</span>
-                    </button>
-                    <button onclick="window.acaoAtalhoF4 ? window.acaoAtalhoF4() : alert('Débito acionado')" class="bg-gray-900 hover:bg-gray-750 border border-gray-700 py-2 px-1 rounded-lg text-center transition flex flex-col items-center justify-center">
-                        <i class="fa-solid fa-credit-card text-blue-400 text-xs mb-1"></i>
-                        <span class="text-[10px] font-bold text-gray-200">Débito</span>
-                        <span class="text-[9px] text-gray-400 font-mono">F4</span>
-                    </button>
-                    <button onclick="window.acaoAtalhoParcelamento ? window.acaoAtalhoParcelamento() : window.acionarFinalizarVenda()" class="bg-gray-900 hover:bg-gray-750 border border-gray-700 py-2 px-1 rounded-lg text-center transition flex flex-col items-center justify-center">
-                        <i class="fa-solid fa-receipt text-amber-400 text-xs mb-1"></i>
-                        <span class="text-[10px] font-bold text-gray-200">Parcelar</span>
-                        <span class="text-[9px] text-gray-400 font-mono">F8</span>
-                    </button>
-                </div>
-            </div>
-
-            <!-- Atalhos do Caixa (F1 a F12 sem redundâncias) -->
-            <div class="bg-gray-800 border border-gray-700 rounded-xl p-3.5 shadow-sm flex flex-col gap-2 flex-1 overflow-hidden">
-                <div class="flex justify-between items-center mb-0.5">
-                    <span class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Atalhos Adicionais (F1 - F12)</span>
-                </div>
-                
-                <!-- Container com Scroll Estilizado -->
-                <div class="flex-1 overflow-y-auto space-y-1.5 pr-1 max-h-[320px] scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
-                    
-                    <!-- F1 -->
-                    <button onclick="window.acaoAtalhoF1 && window.acaoAtalhoF1()" class="w-full bg-gray-900/60 hover:bg-gray-700/80 border border-gray-700/80 p-2 rounded-lg transition flex items-center justify-between group pt-1.5">
-                        <div class="flex flex-col text-left overflow-hidden">
-                            <span class="text-[11px] font-bold text-gray-200 group-hover:text-emerald-400 truncate">CPF na Nota</span>
-                            <span class="text-[9px] text-gray-400 truncate">Identificar cliente</span>
-                        </div>
-                        <span class="bg-emerald-950 text-emerald-400 text-[10px] font-bold px-1.5 py-0.5 rounded border border-emerald-800/50 font-mono ml-1">F1</span>
-                    </button>
-
-                    <!-- F2 -->
-                    <button onclick="window.acaoAtalhoF2 && window.acaoAtalhoF2()" class="w-full bg-gray-900/60 hover:bg-gray-700/80 border border-gray-700/80 p-2 rounded-lg transition flex items-center justify-between group pt-1.5">
-                        <div class="flex flex-col text-left overflow-hidden">
-                            <span class="text-[11px] font-bold text-gray-200 group-hover:text-emerald-400 truncate">Vendedor</span>
-                            <span class="text-[9px] text-gray-400 truncate">Vincular comissão</span>
-                        </div>
-                        <span class="bg-gray-850 text-gray-300 text-[10px] font-bold px-1.5 py-0.5 rounded border border-gray-700 font-mono ml-1">F2</span>
-                    </button>
-
-                    <!-- F5 -->
-                    <button onclick="window.acaoAtalhoF5 && window.acaoAtalhoF5()" class="w-full bg-gray-900/60 hover:bg-gray-700/80 border border-gray-700/80 p-2 rounded-lg transition flex items-center justify-between group pt-1.5">
-                        <div class="flex flex-col text-left overflow-hidden">
-                            <span class="text-[11px] font-bold text-gray-200 group-hover:text-emerald-400 truncate">Pesquisar</span>
-                            <span class="text-[9px] text-gray-400 truncate">Focar no leitor/busca</span>
-                        </div>
-                        <span class="bg-gray-850 text-gray-300 text-[10px] font-bold px-1.5 py-0.5 rounded border border-gray-700 font-mono ml-1">F5</span>
-                    </button>
-
-                    <!-- F6 -->
-                    <button onclick="window.acaoAtalhoF6 && window.acaoAtalhoF6()" class="w-full bg-gray-900/60 hover:bg-gray-700/80 border border-gray-700/80 p-2 rounded-lg transition flex items-center justify-between group pt-1.5">
-                        <div class="flex flex-col text-left overflow-hidden">
-                            <span class="text-[11px] font-bold text-gray-200 group-hover:text-amber-400 truncate">Pausar Venda</span>
-                            <span class="text-[9px] text-gray-400 truncate">Salvar em espera</span>
-                        </div>
-                        <span class="bg-amber-950/60 text-amber-400 text-[10px] font-bold px-1.5 py-0.5 rounded border border-amber-800/50 font-mono ml-1">F6</span>
-                    </button>
-
-                    <!-- F9 -->
-                    <button onclick="window.acaoAtalhoF9 && window.acaoAtalhoF9()" class="w-full bg-gray-900/60 hover:bg-gray-700/80 border border-gray-700/80 p-2 rounded-lg transition flex items-center justify-between group pt-1.5">
-                        <div class="flex flex-col text-left overflow-hidden">
-                            <span class="text-[11px] font-bold text-gray-200 group-hover:text-cyan-400 truncate">Caixa (Sangria/Suprimento)</span>
-                            <span class="text-[9px] text-gray-400 truncate">Movimento de gaveta</span>
-                        </div>
-                        <span class="bg-cyan-950/60 text-cyan-400 text-[10px] font-bold px-1.5 py-0.5 rounded border border-cyan-800/50 font-mono ml-1">F9</span>
-                    </button>
-
-                    <!-- F10 -->
-                    <button onclick="window.acaoAtalhoF10 && window.acaoAtalhoF10()" class="w-full bg-gray-900/60 hover:bg-gray-700/80 border border-gray-700/80 p-2 rounded-lg transition flex items-center justify-between group pt-1.5">
-                        <div class="flex flex-col text-left overflow-hidden">
-                            <span class="text-[11px] font-bold text-gray-200 group-hover:text-purple-400 truncate">Consulta Preço</span>
-                            <span class="text-[9px] text-gray-400 truncate">Verificar valor rápido</span>
-                        </div>
-                        <span class="bg-purple-950/60 text-purple-400 text-[10px] font-bold px-1.5 py-0.5 rounded border border-purple-800/50 font-mono ml-1">F10</span>
-                    </button>
-
-                    <!-- F11 -->
-                    <button onclick="window.acaoAtalhoF11 && window.acaoAtalhoF11()" class="w-full bg-gray-900/60 hover:bg-gray-700/80 border border-gray-700/80 p-2 rounded-lg transition flex items-center justify-between group pt-1.5">
-                        <div class="flex flex-col text-left overflow-hidden">
-                            <span class="text-[11px] font-bold text-gray-200 group-hover:text-red-400 truncate">Cancelar Item</span>
-                            <span class="text-[9px] text-gray-400 truncate">Exige PIN Admin</span>
-                        </div>
-                        <span class="bg-red-950/60 text-red-400 text-[10px] font-bold px-1.5 py-0.5 rounded border border-red-800/50 font-mono ml-1">F11</span>
-                    </button>
-
-                    <!-- F12 -->
-                    <button onclick="window.acaoAtalhoF12 && window.acaoAtalhoF12()" class="w-full bg-gray-900/60 hover:bg-gray-700/80 border border-gray-700/80 p-2 rounded-lg transition flex items-center justify-between group pt-1.5">
-                        <div class="flex flex-col text-left overflow-hidden">
-                            <span class="text-[11px] font-bold text-gray-200 group-hover:text-red-400 truncate">Cancelar Venda</span>
-                            <span class="text-[9px] text-gray-400 truncate">Exige PIN Admin</span>
-                        </div>
-                        <span class="bg-red-950/60 text-red-400 text-[10px] font-bold px-1.5 py-0.5 rounded border border-red-800/50 font-mono ml-1">F12</span>
-                    </button>
-
-                </div>
-            </div>
-        </section>
-
-    </main>
-
-    <div id="containerModaisDinamicos"></div>
-
-    <script type="module" src="caixa-core.js"></script>
-</body>
-</html>
+        switch (e.key) {
+            case 'F1':
+                if (typeof window.acaoAtalhoF1 === 'function') window.acaoAtalhoF1();
+                break;
+            case 'F2':
+                if (typeof window.acaoAtalhoF2 === 'function') window.acaoAtalhoF2();
+                break;
+            case 'F3':
+                if (typeof window.acaoAtalhoF3 === 'function') window.acaoAtalhoF3();
+                break;
+            case 'F4':
+                if (typeof window.acaoAtalhoF4 === 'function') window.acaoAtalhoF4();
+                break;
+            case 'F5':
+                if (typeof window.acaoAtalhoF5 === 'function') window.acaoAtalhoF5();
+                break;
+            case 'F6':
+                if (typeof window.acaoAtalhoF6 === 'function') window.acaoAtalhoF6();
+                break;
+            case 'F7':
+                if (typeof window.acionarFinalizarVenda === 'function') window.acionarFinalizarVenda();
+                break;
+            case 'F8':
+                if (typeof window.acaoAtalhoF8 === 'function') window.acaoAtalhoF8();
+                break;
+            case 'F9':
+                if (typeof window.acaoAtalhoF9 === 'function') window.acaoAtalhoF9();
+                break;
+            case 'F10':
+                if (typeof window.acaoAtalhoF10 === 'function') window.acaoAtalhoF10();
+                break;
+            case 'F11':
+                if (typeof window.acaoAtalhoF11 === 'function') window.acaoAtalhoF11();
+                break;
+            case 'F12':
+                if (typeof window.acaoAtalhoF12 === 'function') window.acaoAtalhoF12();
+                break;
+        }
+    }
+});
