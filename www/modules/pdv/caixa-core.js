@@ -15,7 +15,7 @@ let valorTrocoAbertura = 0;
 let horaAberturaCaixa = null;
 
 // --- UTILITÁRIO DE CLIENTE SUPABASE ---
-const getSupabase = () => window.supabaseClient;
+const getSupabase = () => window.supabaseClient || window.supabase;
 
 // Checagem de status e faturamento do caixa individual
 export async function verificarStatusCaixaServidor() {
@@ -402,129 +402,146 @@ export function tratarEnterBuscaCaixa(e) {
     }
 }
 
-export function gerenciarCaixaModal(tipo) {
-    setAcaoCaixaAtual(tipo);
-    const modal = document.getElementById('modalCaixa');
-    const tituloModal = document.getElementById('tituloModalCaixa');
-    const secaoAbrir = document.getElementById('secaoAbrirCaixa');
-    const resumoFechamento = document.getElementById('resumoFechamentoCaixa');
-    const inputValorCaixa = document.getElementById('inputValorCaixa');
-
-    if (tituloModal) {
-        tituloModal.innerHTML = tipo === 'abrir' 
-            ? '<i class="fa-solid fa-cash-register text-emerald-600"></i> Abertura de Caixa (Individual)' 
-            : '<i class="fa-solid fa-cash-register text-amber-600"></i> Fechamento de Caixa (Individual)';
-    }
-    secaoAbrir?.classList.toggle('hidden', tipo === 'fechar');
-    resumoFechamento?.classList.toggle('hidden', tipo === 'abrir');
-    
-    if (tipo === 'fechar') {
-        const valFatOp = document.getElementById('valFaturamentoOperador');
-        const valTrocoInicial = document.getElementById('valTrocoInicialCaixa');
-        const valTotalGeral = document.getElementById('valTotalGeralCaixa');
-        
-        if (valFatOp) valFatOp.innerText = `R$ ${faturamentoDia.toFixed(2)}`;
-        if (valTrocoInicial) valTrocoInicial.innerText = `R$ ${(valorTrocoAbertura || 0).toFixed(2)}`;
-        if (valTotalGeral) valTotalGeral.innerText = `R$ ${(faturamentoDia + (valorTrocoAbertura || 0)).toFixed(2)}`;
-    } else if (inputValorCaixa) {
-        inputValorCaixa.value = '';
-    }
-    
-    modal?.classList.remove('hidden');
-    setTimeout(() => {
-        if (tipo === 'abrir' && inputValorCaixa) {
-            inputValorCaixa.focus();
-        } else {
-            document.getElementById('btnConfirmarCaixaModal')?.focus();
-        }
-    }, 100);
-}
-
-export function tratarEnterModalCaixa(e) {
-    if (e.key === 'Enter') { e.preventDefault(); confirmarAcaoCaixa(); }
-}
-
-export function fecharModalCaixa() { 
-    document.getElementById('modalCaixa')?.classList.add('hidden'); 
-}
-
-export async function confirmarAcaoCaixa() {
-    let idEmpresaAtual = empresaAtualId || localStorage.getItem('empresa_id') || localStorage.getItem('pdv_empresa_id');
-
-    try {
-        const { data: { session } } = await getSupabase().auth.getSession();
-        if (session?.user) {
-            const { data: vincData } = await getSupabase()
-                .from('usuarios_empresas')
-                .select('empresa_id')
-                .eq('user_id', session.user.id)
-                .maybeSingle();
-            
-            idEmpresaAtual = vincData?.empresa_id || idEmpresaAtual || session.user.id;
-            setEmpresaAtualId(idEmpresaAtual);
-            localStorage.setItem('empresa_id', idEmpresaAtual);
-        }
-    } catch (e) {
-        console.error("PDV-VS: Erro ao validar empresa na sessão:", e);
-    }
-
-    if (!idEmpresaAtual || !usuarioAtual) {
-        alert('PDV-VS: Erro: Sessão do usuário ou empresa não identificada.');
+// --- FUNÇÕES DE ABERTURA E FECHAMENTO COM RECUPERAÇÃO SEGURA DE SESSÃO ---
+window.acionarAbrirCaixa = async function() {
+    const supabase = window.supabaseClient || window.supabase;
+    if (!supabase) {
+        alert('PDV-VS: Erro crítico: Cliente Supabase não encontrado.');
         return;
     }
 
-    const valorDigitado = parseFloat(document.getElementById('inputValorCaixa')?.value) || 0;
+    // Tentar obter usuário e empresa da sessão caso as variáveis globais estejam vazias
+    let empresaId = window.empresaAtualId;
+    let usuario = window.usuarioAtual;
 
-    if (acaoCaixaAtual === 'abrir') {
-        valorTrocoAbertura = valorDigitado;
-        horaAberturaCaixa = new Date();
+    if (!usuario || !empresaId) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session && session.user) {
+            usuario = session.user;
+            // Se a empresa estiver salva no localStorage ou metadados
+            empresaId = empresaId || localStorage.getItem('empresaAtualId') || localStorage.getItem('empresa_id') || session.user.user_metadata?.empresa_id;
+        }
+    }
 
-        const { error } = await getSupabase().from('caixas').upsert({ 
-            empresa_id: idEmpresaAtual, user_id: usuarioAtual.id, status: 'ABERTO',
-            valor_abertura: valorTrocoAbertura, faturamento_dia: 0,
-            data_abertura: new Date().toISOString(), data_fechamento: null, updated_at: new Date().toISOString()
-        }, { onConflict: 'empresa_id,user_id,status' });
+    if (!empresaId || !usuario) {
+        alert('PDV-VS: Erro: Sessão expirada ou Empresa/Usuário não identificados. Faça login novamente.');
+        window.location.href = '../auth/auth.html';
+        return;
+    }
 
-        if (error) {
-            const { error: errInsert } = await getSupabase().from('caixas').insert({ 
-                empresa_id: idEmpresaAtual, user_id: usuarioAtual.id, status: 'ABERTO',
-                valor_abertura: valorTrocoAbertura, faturamento_dia: 0, data_abertura: new Date().toISOString()
-            });
-            if (errInsert) {
-                alert('PDV-VS: Erro ao salvar abertura do caixa: ' + errInsert.message);
-                return;
-            }
+    const trocoStr = prompt('Digite o valor do troco inicial (fundo de troco) em R$:', '50.00');
+    if (trocoStr === null) return; 
+
+    const valorAbertura = parseFloat(trocoStr.replace(',', '.'));
+    if (isNaN(valorAbertura) || valorAbertura < 0) {
+        alert('PDV-VS: Valor de troco inválido.');
+        return;
+    }
+
+    try {
+        // 1. Verificar se já existe caixa aberto
+        const { data: caixaExistente } = await supabase
+            .from('caixas')
+            .select('id')
+            .eq('empresa_id', empresaId)
+            .eq('user_id', usuario.id)
+            .eq('status', 'ABERTO')
+            .maybeSingle();
+
+        if (caixaExistente) {
+            alert('PDV-VS: Já existe um caixa aberto para este operador!');
+            return;
         }
 
+        // 2. Inserir abertura
+        const { error } = await supabase.from('caixas').insert([{
+            empresa_id: empresaId,
+            user_id: usuario.id,
+            status: 'ABERTO',
+            valor_abertura: valorAbertura,
+            faturamento_dia: 0.00,
+            created_at: new Date().toISOString()
+        }]);
+
+        if (error) throw error;
+
+        // Atualizar estado local de controle
+        valorTrocoAbertura = valorAbertura;
+        horaAberturaCaixa = new Date();
         setCaixaAberto(true);
         setFaturamentoDia(0);
-        alert('PDV-VS: Caixa aberto com sucesso!');
-    } else {
-        const horaFechamento = new Date();
+        atualizarBadgesCaixaInterface();
+
+        alert(`Caixa aberto com sucesso! Troco inicial: R$ ${valorAbertura.toFixed(2)}`);
+        
+        if (typeof verificarStatusCaixaServidor === 'function') {
+            await verificarStatusCaixaServidor();
+        } else {
+            location.reload();
+        }
+
+    } catch (err) {
+        console.error('Erro ao abrir caixa:', err);
+        alert('PDV-VS: Erro ao abrir caixa no servidor: ' + err.message);
+    }
+};
+
+window.acionarFecharCaixa = async function() {
+    const supabase = window.supabaseClient || window.supabase;
+    if (!supabase) return;
+    
+    let empresaId = window.empresaAtualId;
+    let usuario = window.usuarioAtual;
+
+    if (!usuario || !empresaId) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session && session.user) {
+            usuario = session.user;
+            empresaId = empresaId || localStorage.getItem('empresaAtualId') || localStorage.getItem('empresa_id') || session.user.user_metadata?.empresa_id;
+        }
+    }
+
+    if (!empresaId || !usuario) return;
+
+    if (!confirm('Deseja realmente fechar o seu caixa atual? As vendas serão encerradas.')) {
+        return;
+    }
+
+    try {
         const totalGeralGaveta = faturamentoDia + (valorTrocoAbertura || 0);
-        
-        alert(`PDV-VS: Caixa Fechado com Sucesso!\n- Abertura: ${horaAberturaCaixa?.toLocaleTimeString() || 'N/A'}\n- Fechamento: ${horaFechamento.toLocaleTimeString()}\n- Troco Inicial: R$ ${(valorTrocoAbertura || 0).toFixed(2)}\n- Vendas: R$ ${faturamentoDia.toFixed(2)}\n- Total em Gaveta: R$ ${totalGeralGaveta.toFixed(2)}`);
-        
-        await getSupabase().from('caixas').update({ 
-            status: 'FECHADO', valor_fechamento: totalGeralGaveta,
-            data_fechamento: new Date().toISOString(), updated_at: new Date().toISOString()
-        }).eq('empresa_id', idEmpresaAtual).eq('user_id', usuarioAtual.id).eq('status', 'ABERTO');
+
+        const { error } = await supabase
+            .from('caixas')
+            .update({ 
+                status: 'FECHADO',
+                valor_fechamento: totalGeralGaveta,
+                data_fechamento: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            })
+            .eq('empresa_id', empresaId)
+            .eq('user_id', usuario.id)
+            .eq('status', 'ABERTO');
+
+        if (error) throw error;
 
         setCaixaAberto(false);
         valorTrocoAbertura = 0;
         setFaturamentoDia(0);
-        const txtFat = document.getElementById('txtFaturamentoDia');
-        if (txtFat) txtFat.innerText = 'R$ 0,00';
+        atualizarBadgesCaixaInterface();
+
+        alert('Caixa fechado com sucesso! O painel administrativo foi atualizado em tempo real.');
+        
+        if (typeof verificarStatusCaixaServidor === 'function') {
+            await verificarStatusCaixaServidor();
+        } else {
+            location.reload();
+        }
+
+    } catch (err) {
+        console.error('Erro ao fechar caixa:', err);
+        alert('PDV-VS: Erro ao fechar caixa: ' + err.message);
     }
-    
-    atualizarBadgesCaixaInterface();
-    if (cargoUsuarioAtual === 'admin_mercado') {
-        carregarOperadoresLoja?.();
-        carregarHistoricoAdmin?.();
-    }
-    fecharModalCaixa();
-    focarBusca();
-}
+};
 
 export function atualizarBadgesCaixaInterface() {
     document.querySelectorAll('.badgeCaixaStatus').forEach(b => {
@@ -697,12 +714,12 @@ export function alterarQtd(i, qtd) {
 Object.assign(window, {
     verificarStatusCaixaServidor, iniciarRealtimeCaixa, atualizarPaginaCompleta,
     realizarLogout, focarBusca, aoDigitarBusca, tratarEnterBuscaCaixa,
-    gerenciarCaixaModal, tratarEnterModalCaixa, fecharModalCaixa, confirmarAcaoCaixa,
     atualizarBadgesCaixaInterface, salvarPinAdmin, solicitarRemocaoItem,
     tratarEnterModalAutorizacao, confirmarAutorizacaoPin, fecharModalAutorizacao,
     abrirModalCancelarItem, fecharModalCancelarItem, cancelarVenda, finalizarVenda,
     atualizarTabelaVenda, alterarQtd,
+    acionarAbrirCaixa, acionarFecharCaixa,
     acaoAtalhoF1, acaoAtalhoF2, acaoAtalhoF3, acaoAtalhoPix, acaoAtalhoParcelamento,
-    acaoAtalhoF4, acaoAtalhoF5, acaoAtalhoF6, acionarFinalizarVenda, acaoAtalhoF8,
+    acaoAtalhoF4, acaoAtaloF5: acaoAtalhoF5, acaoAtalhoF6, acionarFinalizarVenda, acaoAtalhoF8,
     acaoAtalhoF9, acaoAtalhoF10, acaoAtalhoF11, acaoAtalhoF12, abrirModalTodosAtalhos
 });
