@@ -10,12 +10,13 @@ import {
     produtosCache, setEmpresaAtualId   
 } from '../../core/state.js';  
 import { carregarProdutosCache } from '../../services/produtos.js';
+import { supabase } from '../../../core/config.js'; // Correção definitiva do import do Supabase
 
 let valorTrocoAbertura = 0;
 let horaAberturaCaixa = null;
 
 // --- UTILITÁRIO DE CLIENTE SUPABASE ---
-const getSupabase = () => window.supabaseClient || window.supabase;
+const getSupabase = () => window.supabaseClient || window.supabase || supabase;
 
 // Checagem de status e faturamento do caixa individual
 export async function verificarStatusCaixaServidor() {
@@ -404,8 +405,8 @@ export function tratarEnterBuscaCaixa(e) {
 
 // --- FUNÇÕES DE ABERTURA E FECHAMENTO COM RECUPERAÇÃO SEGURA DE SESSÃO ---
 window.acionarAbrirCaixa = async function() {
-    const supabase = window.supabaseClient || window.supabase;
-    if (!supabase) {
+    const db = getSupabase();
+    if (!db) {
         alert('PDV-VS: Erro crítico: Cliente Supabase não encontrado.');
         return;
     }
@@ -415,7 +416,7 @@ window.acionarAbrirCaixa = async function() {
     let usuario = window.usuarioAtual;
 
     if (!usuario || !empresaId) {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session } } = await db.auth.getSession();
         if (session && session.user) {
             usuario = session.user;
             // Se a empresa estiver salva no localStorage ou metadados
@@ -440,7 +441,7 @@ window.acionarAbrirCaixa = async function() {
 
     try {
         // 1. Verificar se já existe caixa aberto
-        const { data: caixaExistente } = await supabase
+        const { data: caixaExistente } = await db
             .from('caixas')
             .select('id')
             .eq('empresa_id', empresaId)
@@ -454,7 +455,7 @@ window.acionarAbrirCaixa = async function() {
         }
 
         // 2. Inserir abertura
-        const { error } = await supabase.from('caixas').insert([{
+        const { error } = await db.from('caixas').insert([{
             empresa_id: empresaId,
             user_id: usuario.id,
             status: 'ABERTO',
@@ -487,14 +488,14 @@ window.acionarAbrirCaixa = async function() {
 };
 
 window.acionarFecharCaixa = async function() {
-    const supabase = window.supabaseClient || window.supabase;
-    if (!supabase) return;
+    const db = getSupabase();
+    if (!db) return;
     
     let empresaId = window.empresaAtualId;
     let usuario = window.usuarioAtual;
 
     if (!usuario || !empresaId) {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session } } = await db.auth.getSession();
         if (session && session.user) {
             usuario = session.user;
             empresaId = empresaId || localStorage.getItem('empresaAtualId') || localStorage.getItem('empresa_id') || session.user.user_metadata?.empresa_id;
@@ -510,7 +511,7 @@ window.acionarFecharCaixa = async function() {
     try {
         const totalGeralGaveta = faturamentoDia + (valorTrocoAbertura || 0);
 
-        const { error } = await supabase
+        const { error } = await db
             .from('caixas')
             .update({ 
                 status: 'FECHADO',
