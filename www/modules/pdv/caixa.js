@@ -86,6 +86,15 @@ export function iniciarRealtimeCaixa() {
             }
         )
         .subscribe();
+
+    // Sincronização em Tempo Real de Produtos e Estoque (Supabase Realtime)
+    getSupabase()
+        .channel('public:produtos_realtime')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'produtos' }, payload => {
+            console.log('Atualização de estoque/produto em tempo real:', payload);
+            carregarProdutosCache(); // Atualiza o cache do operador na hora
+        })
+        .subscribe();
 }
 
 // Atalhos globais e inicialização controlada
