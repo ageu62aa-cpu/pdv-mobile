@@ -489,17 +489,17 @@
 
         // --- FUNÇÕES DIRETAS NO PAINEL LATERAL (SEM POP-UPS NATIVOS E SEM DUPLICIDADE) ---
 
-        // F1: Cadastro para nota (Janela única centralizada)
-        window.acaoAtalhoF1 = () => {
-            abrirPainelLateral('blocoF1', 'F1 - Cadastro para Nota');
-            document.getElementById('inputCpfNota')?.focus();
-        };
+        // F1: Cadastro para nota 
+window.acaoAtalhoF1 = () => {
+    abrirPainelLateral('blocoF1', 'F1 - Cadastro para Nota');
+    document.getElementById('inputCpfNota')?.focus();
+};
 
-        window.salvarConsumidorEImprimir = () => {
-            const doc = document.getElementById('inputCpfNota').value.trim();
-            document.getElementById('cupomCliente').innerText = doc ? doc : "Consumidor Final";
-            window.fecharPainelLateral();
-        };
+window.salvarConsumidorEImprimir = () => {
+    const doc = document.getElementById('inputCpfNota')?.value.trim();
+    document.getElementById('cupomCliente').innerText = doc || "Consumidor Final";
+    fecharPainelLateral();
+};
 
         // F3: Dinheiro ou Pix com suporte numérico (1 ou 2) e cálculo de troco no painel lateral
         let tipoPagamentoAtualF3 = 'Dinheiro';
