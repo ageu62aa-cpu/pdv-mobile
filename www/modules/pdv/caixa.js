@@ -64,6 +64,7 @@ export function iniciarRealtimeCaixa() {
             'postgres_changes',
             { event: '*', schema: 'public', table: 'caixas', filter: `empresa_id=eq.${empresaAtualId}` },
             (payload) => {
+                // Só atualiza o caixa individual se o registro pertencer ao usuário logado
                 if (payload.new && payload.new.user_id === usuarioAtual?.id) {
                     const novoStatus = payload.new.status === 'ABERTO';
                     const novoFat = Number(payload.new.faturamento_dia) || 0;
@@ -311,7 +312,10 @@ export async function confirmarAcaoCaixa() {
         await getSupabase().from('caixas').update({ 
             status: 'FECHADO', valor_fechamento: totalGeralGaveta,
             data_fechamento: new Date().toISOString(), updated_at: new Date().toISOString()
-        }).eq('empresa_id', idEmpresaAtual).eq('user_id', usuarioAtual.id).eq('status', 'ABERTO');
+        })
+        .eq('empresa_id', idEmpresaAtual)
+        .eq('user_id', usuarioAtual.id) // <-- Isola estritamente ao operador logado
+        .eq('status', 'ABERTO');
 
         setCaixaAberto(false);
         valorTrocoAbertura = 0;
@@ -429,7 +433,10 @@ export async function finalizarVenda() {
     if (empresaAtualId && usuarioAtual) {
         await getSupabase().from('caixas').update({ 
             faturamento_dia: novoFat, updated_at: new Date().toISOString()
-        }).eq('empresa_id', empresaAtualId).eq('user_id', usuarioAtual.id).eq('status', 'ABERTO');
+        })
+        .eq('empresa_id', empresaAtualId)
+        .eq('user_id', usuarioAtual.id) // <-- Garante que atualiza apenas o caixa do usuário logado
+        .eq('status', 'ABERTO');
     }
 
     setItensVenda([]); 
@@ -497,5 +504,21 @@ Object.assign(window, {
     atualizarBadgesCaixaInterface, salvarPinAdmin, solicitarRemocaoItem,
     tratarEnterModalAutorizacao, confirmarAutorizacaoPin, fecharModalAutorizacao,
     abrirModalCancelarItem, fecharModalCancelarItem, cancelarVenda, finalizarVenda,
-    atualizarTabelaVenda, alterarQtd
+    atualizarTabelaVenda, alterarQtd,
+    
+    // Novas funções expostas globalmente para os botões HTML (onclick)
+    acionarAbrirCaixa: async function() {
+        const valor = prompt('Digite o valor do troco inicial (R$):', '50.00');
+        if (valor !== null) {
+            await alterarStatusCaixaServidor('ABERTO', parseFloat(valor) || 0);
+            location.reload(); // Atualiza a página para refletir o estado aberto
+        }
+    },
+    
+    acionarFecharCaixa: async function() {
+        if (confirm('Deseja realmente fechar o caixa?')) {
+            await alterarStatusCaixaServidor('FECHADO', 0);
+            location.reload(); // Atualiza a página para refletir o estado fechado
+        }
+    }
 });
