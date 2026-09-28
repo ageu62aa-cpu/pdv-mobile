@@ -1,6 +1,6 @@
 /**
  * Módulo: Admin Operadores (www/modules/admin/admin-operadores.js)
- * Painel limpo com nomes reais e terminais fixos (#01 Admin e #02 Operador).
+ * Exibe o nome real do operador (comissões/F2) com terminais fixos #01 e #02.
  */
 import { supabase } from '../../core/config.js';
 
@@ -34,7 +34,7 @@ async function carregarGestaoOperadores() {
     const gridContainer = document.getElementById('grid-operadores-container');
     if (!gridContainer) return;
 
-    // Busca os dados de caixas e também os nomes cadastrados na tabela de operadores
+    // Busca os dados de caixas e operadores cadastrados
     const [{ data: caixas, error: errCaixas }, { data: operadoresLista }] = await Promise.all([
         supabase.from('caixas').select('*').order('created_at', { ascending: false }),
         supabase.from('operadores').select('*')
@@ -73,11 +73,11 @@ async function carregarGestaoOperadores() {
         const terminalNumero = isAdmin ? '#01' : '#02';
         const tipoPerfil = isAdmin ? 'Administrador' : 'Operador';
 
-        // Tenta buscar o nome real cadastrado na tabela de operadores ou usa o perfil
-        let nomeExibicao = tipoPerfil;
-        const opEncontrado = operadoresLista?.find(op => op.email === c.email || op.id === c.user_id);
-        if (opEncontrado && opEncontrado.nome) {
-            nomeExibicao = opEncontrado.nome;
+        // Prioriza o nome informado pelo operador (F2 / Vendedor) ou da tabela de operadores
+        let nomeExibicao = c.vendedor_nome || c.nome_operador;
+        if (!nomeExibicao) {
+            const opEncontrado = operadoresLista?.find(op => op.email === c.email || op.id === c.user_id);
+            nomeExibicao = opEncontrado ? opEncontrado.nome : (isAdmin ? 'Administrador' : 'Operador');
         }
 
         const cardBorder = isOpen ? 'border-emerald-500/50 bg-gray-900/90 shadow-emerald-950/20' : 'border-gray-800 bg-gray-900/60';
