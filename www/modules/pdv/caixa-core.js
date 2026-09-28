@@ -99,15 +99,44 @@ window.dispararImpressaoTermicaNFCe = function(detalhes) {
 
 // F1 - Identificar Consumidor (Painel Lateral)
 window.acaoAtalhoF1 = () => {
+    // Se o painel já estiver aberto e o usuário apertar F1 de novo dentro do input, ele salva!
+    const inputCpf = document.getElementById('inputCpfNota');
+    const painelAberto = document.getElementById('blocoF1') && !document.getElementById('blocoF1').classList.contains('hidden'); // Ajuste 'blocoF1' para o ID exato do seu painel se necessário
+    
+    if (painelAberto && document.activeElement === inputCpf) {
+        window.salvarConsumidorEImprimir();
+        return;
+    }
+
     abrirPainelLateral('blocoF1', 'F1 - Cadastro para Nota');
-    document.getElementById('inputCpfNota')?.focus();
+    
+    setTimeout(() => {
+        if (inputCpf) {
+            inputCpf.focus();
+            inputCpf.select();
+            
+            // Adiciona os atalhos de confirmação direto no input (Enter e F1)
+            inputCpf.onkeydown = (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    window.salvarConsumidorEImprimir();
+                } else if (e.key === 'F1') {
+                    e.preventDefault();
+                    window.salvarConsumidorEImprimir();
+                }
+            };
+        }
+    }, 50);
 };
 
 window.salvarConsumidorEImprimir = () => {
     const doc = document.getElementById('inputCpfNota')?.value.trim();
     document.getElementById('cupomCliente').innerText = doc || "Consumidor Final";
-    fecharPainelLateral();
+    if (typeof fecharPainelLateral === 'function') {
+        fecharPainelLateral();
+    }
 };
+
 window.acaoAtalhoF2 = () => {
     // F2 – Identificar Vendedor / Operador
     const vendedor = prompt('F2 - Informe o nome ou código do Vendedor:', 'Balcão');
