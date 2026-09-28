@@ -53,7 +53,7 @@ export async function verificarStatusCaixaServidor() {
     }
 }
 
-// Configuração de Tempo Real (Supabase Realtime)
+// Configuração de Tempo Real (Supabase Realtime) - Atualizado conforme o Passo 2
 export function iniciarRealtimeCaixa() {
     if (!empresaAtualId) return;
     
@@ -63,23 +63,24 @@ export function iniciarRealtimeCaixa() {
             'postgres_changes',
             { event: '*', schema: 'public', table: 'caixas', filter: `empresa_id=eq.${empresaAtualId}` },
             (payload) => {
+                // Atualiza instantaneamente o status do operador e faturamento na tela do PDV e repassa para o Admin
                 if (payload.new && payload.new.user_id === usuarioAtual?.id) {
                     const novoStatus = payload.new.status === 'ABERTO';
                     const novoFat = Number(payload.new.faturamento_dia) || 0;
-                    valorTrocoAbertura = Number(payload.new.valor_abertura) || 0;
-
+                    
                     if (novoStatus !== caixaAberto) {
                         setCaixaAberto(novoStatus);
                         atualizarBadgesCaixaInterface();
                     }
-
+                    
                     if (novoFat !== faturamentoDia) {
                         setFaturamentoDia(novoFat);
                         const txtFat = document.getElementById('txtFaturamentoDia');
                         if (txtFat) txtFat.innerText = `R$ ${novoFat.toFixed(2)}`;
                     }
                 }
-
+                
+                // Se for o painel admin escutando, atualiza a listagem da loja em tempo real
                 if (cargoUsuarioAtual === 'admin_mercado') {
                     carregarOperadoresLoja?.();
                     carregarHistoricoAdmin?.();
@@ -99,9 +100,8 @@ window.dispararImpressaoTermicaNFCe = function(detalhes) {
 
 // F1 - Identificar Consumidor (Painel Lateral)
 window.acaoAtalhoF1 = () => {
-    // Se o painel já estiver aberto e o usuário apertar F1 de novo dentro do input, ele salva!
     const inputCpf = document.getElementById('inputCpfNota');
-    const painelAberto = document.getElementById('blocoF1') && !document.getElementById('blocoF1').classList.contains('hidden'); // Ajuste 'blocoF1' para o ID exato do seu painel se necessário
+    const painelAberto = document.getElementById('blocoF1') && !document.getElementById('blocoF1').classList.contains('hidden');
     
     if (painelAberto && document.activeElement === inputCpf) {
         window.salvarConsumidorEImprimir();
@@ -115,7 +115,6 @@ window.acaoAtalhoF1 = () => {
             inputCpf.focus();
             inputCpf.select();
             
-            // Adiciona os atalhos de confirmação direto no input (Enter e F1)
             inputCpf.onkeydown = (e) => {
                 if (e.key === 'Enter') {
                     e.preventDefault();
@@ -138,7 +137,6 @@ window.salvarConsumidorEImprimir = () => {
 };
 
 window.acaoAtalhoF2 = () => {
-    // F2 – Identificar Vendedor / Operador
     const vendedor = prompt('F2 - Informe o nome ou código do Vendedor:', 'Balcão');
     if (vendedor) {
         window.vendedorAtualVenda = vendedor;
@@ -146,7 +144,6 @@ window.acaoAtalhoF2 = () => {
 };
 
 window.acaoAtalhoF3 = () => {
-    // F3 – Dinheiro / Pix (Liquidação imediata com controle via teclado numérico: [1] Dinheiro ou [2] Pix)
     if (itensVenda.length === 0) {
         alert('PDV-VS: Não há itens na venda para liquidar.');
         return;
@@ -179,13 +176,12 @@ window.acaoAtalhoF3 = () => {
 };
 
 window.acaoAtalhoF4 = () => {
-    // F4 – Débito (Com taxas de maquininha embutidas calculadas direto no painel, sem impressão automática)
     const valorTotalVenda = itensVenda.reduce((acc, item) => acc + (item.qtd * item.preco), 0);
     if (valorTotalVenda <= 0) {
         alert('PDV-VS: Não há itens na venda.');
         return;
     }
-    const taxaDebito = valorTotalVenda * 0.015; // Taxa de débito embutida
+    const taxaDebito = valorTotalVenda * 0.015;
     const totalComTaxa = valorTotalVenda + taxaDebito;
     
     const elDescontos = document.getElementById('txtResumoDescontos');
@@ -196,12 +192,10 @@ window.acaoAtalhoF4 = () => {
 };
 
 window.acaoAtalhoF5 = () => {
-    // F5 – Consulta de Produtos (Vai direto para a barra de buscas sem alertas)
     focarBusca();
 };
 
 window.acaoAtalhoF6 = () => {
-    // F6 – Desconto Especial (% ou R$)
     const desc = prompt('F6 - Desconto Especial: Digite o valor (Ex: 10% ou 15.00):');
     if (desc) {
         window.descontoAplicadoVenda = desc;
@@ -209,7 +203,6 @@ window.acaoAtalhoF6 = () => {
 };
 
 window.acaoAtalhoF7 = () => {
-    // F7 – Avançar para Pagamento (Direcionamento direto para quitação)
     window.acionarFinalizarVenda();
 };
 
@@ -218,7 +211,6 @@ window.acionarFinalizarVenda = () => {
 };
 
 window.acaoAtalhoF8 = () => {
-    // F8 – Crédito à vista / Parcelado (Cálculo de taxas de maquininha embutidas, sem impressão automática)
     const valorTotalVenda = itensVenda.reduce((acc, item) => acc + (item.qtd * item.preco), 0);
     if (valorTotalVenda <= 0) {
         alert('PDV-VS: Não há itens na venda.');
@@ -239,7 +231,6 @@ window.acaoAtalhoF8 = () => {
 };
 
 window.acaoAtalhoF9 = () => {
-    // F9 – Caixa (Sangria / Suprimento com captura de valor e motivo obrigatório para o fechamento)
     const tipo = confirm("Clique em [OK] para Suprimento (Entrada) ou [Cancelar] para Sangria (Retirada)") ? "Suprimento" : "Sangria";
     const valorStr = prompt(`Informe o valor da ${tipo} (R$):`, '0.00');
     if (valorStr) {
@@ -254,7 +245,6 @@ window.acaoAtalhoF9 = () => {
 };
 
 window.acaoAtalhoF10 = () => {
-    // F10 – Multiplicador de Quantidade (Qtd * Código)
     const qtd = prompt('F10 - Multiplicador de Quantidade (Ex: 5):', '1');
     if (qtd) {
         window.quantidadeMultiplicador = parseFloat(qtd) || 1;
@@ -262,20 +252,16 @@ window.acaoAtalhoF10 = () => {
 };
 
 window.acaoAtalhoF11 = () => {
-    // F11 – Cancelar Item (Exige PIN)
     abrirModalCancelarItem();
 };
 
 window.acaoAtalhoF12 = () => {
-    // F12 – Cancelar Venda (Exige PIN)
     cancelarVenda();
 };
 
-// Atalhos legados mapeados
 window.acaoAtalhoPix = () => { window.acaoAtalhoF3(); };
 window.acaoAtalhoParcelamento = () => { window.acaoAtalhoF8(); };
 
-// Janela guia de atalhos
 window.abrirModalTodosAtalhos = () => {
     alert(`GUIA DE ATALHOS (F1 a F12):
 - F1: Identificar Consumidor (Nota Fiscal)
@@ -292,7 +278,6 @@ window.abrirModalTodosAtalhos = () => {
 - F12: Cancelar Venda (PIN)`);
 };
 
-// Listener global para capturar as teclas F1 a F12
 window.addEventListener('keydown', (e) => {
     if (e.key >= 'F1' && e.key <= 'F12') {
         e.preventDefault();
@@ -344,7 +329,6 @@ export function focarBusca() {
     document.getElementById('inputBusca')?.focus(); 
 }
 
-// --- BUSCA E SUGESTÕES ---
 export function aoDigitarBusca(e) {
     if (!e || !e.target) return;
     
@@ -418,7 +402,6 @@ export function tratarEnterBuscaCaixa(e) {
     }
 }
 
-// --- MODAL DE CAIXA ---
 export function gerenciarCaixaModal(tipo) {
     setAcaoCaixaAtual(tipo);
     const modal = document.getElementById('modalCaixa');
@@ -552,7 +535,6 @@ export function atualizarBadgesCaixaInterface() {
     });
 }
 
-// --- SEGURANÇA E PIN GERENCIAL ---
 export function salvarPinAdmin() {
     const pin = document.getElementById('inputAdminPinConfig')?.value.trim() || '';
     if (!pin || pin.length < 4) { alert('PDV-VS: Informe um PIN válido de pelo menos 4 dígitos.'); return; }
@@ -623,7 +605,6 @@ export function cancelarVenda() {
     }
 }
 
-// --- FINALIZAÇÃO DE VENDAS E ESTOQUE ---
 export async function finalizarVenda() {
     if (!caixaAberto) { alert('PDV-VS: O caixa individual precisa estar aberto!'); return; }
     if (itensVenda.length === 0) { alert('PDV-VS: Adicione produtos antes de finalizar.'); return; }

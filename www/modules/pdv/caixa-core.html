@@ -395,6 +395,135 @@
 
     <!-- Script Unificado de Teclado (F1-F12) e Motor de Negócio PDV Refatorado -->
     <script>
+        // Variável de controle de estado do caixa
+        let caixaAberto = false;
+
+        // --- FUNÇÃO DE AJUSTE VISUAL DOS BADGES DE STATUS (PASSO 3) ---
+        function atualizarBadgesCaixaInterface() {
+            const txtStatusHeader = document.getElementById('txtStatusCaixaHeader');
+            const btnAbrir = document.getElementById('btnAbrirCaixaHeader');
+            const btnFechar = document.getElementById('btnFecharCaixaHeader');
+
+            if (caixaAberto) {
+                if (txtStatusHeader) {
+                    txtStatusHeader.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Caixa Aberto`;
+                    txtStatusHeader.className = "text-xs text-emerald-400 font-semibold flex items-center gap-1.5";
+                }
+                if (btnAbrir) btnAbrir.classList.add('opacity-50', 'cursor-not-allowed');
+                if (btnFechar) btnFechar.classList.remove('opacity-50', 'cursor-not-allowed');
+            } else {
+                if (txtStatusHeader) {
+                    txtStatusHeader.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span> Caixa Fechado (Necessário Abertura)`;
+                    txtStatusHeader.className = "text-xs text-amber-400 font-semibold flex items-center gap-1.5";
+                }
+                if (btnAbrir) btnAbrir.classList.remove('opacity-50', 'cursor-not-allowed');
+                if (btnFechar) btnFechar.classList.add('opacity-50', 'cursor-not-allowed');
+            }
+        }
+
+        // --- FUNÇÕES DE ABERTURA E FECHAMENTO DE CAIXA COM SUPORTE EM TEMPO REAL ---
+        window.acionarAbrirCaixa = async function() {
+            if (!window.empresaAtualId || !window.usuarioAtual) {
+                alert('PDV-VS: Erro: Empresa ou usuário não identificados.');
+                return;
+            }
+
+            const trocoStr = prompt('Digite o valor do troco inicial (fundo de troco) em R$:', '50.00');
+            if (trocoStr === null) return; // Cancelado
+
+            const valorAbertura = parseFloat(trocoStr.replace(',', '.'));
+            if (isNaN(valorAbertura) || valorAbertura < 0) {
+                alert('PDV-VS: Valor de troco inválido.');
+                return;
+            }
+
+            try {
+                const supabase = window.supabaseClient;
+
+                // 1. Verificar se já existe um caixa aberto para este operador nesta empresa
+                const { data: caixaExistente } = await supabase
+                    .from('caixas')
+                    .select('id')
+                    .eq('empresa_id', window.empresaAtualId)
+                    .eq('user_id', window.usuarioAtual.id)
+                    .eq('status', 'ABERTO')
+                    .maybeSingle();
+
+                if (caixaExistente) {
+                    alert('PDV-VS: Já existe um caixa aberto para este operador!');
+                    caixaAberto = true;
+                    atualizarBadgesCaixaInterface();
+                    return;
+                }
+
+                // 2. Inserir nova sessão de caixa no Supabase
+                const { error } = await supabase.from('caixas').insert([{
+                    empresa_id: window.empresaAtualId,
+                    user_id: window.usuarioAtual.id,
+                    status: 'ABERTO',
+                    valor_abertura: valorAbertura,
+                    faturamento_dia: 0.00,
+                    created_at: new Date().toISOString()
+                }]);
+
+                if (error) {
+                    throw error;
+                }
+
+                caixaAberto = true;
+                atualizarBadgesCaixaInterface();
+                alert(`Caixa aberto com sucesso! Troco inicial: R$ ${valorAbertura.toFixed(2)}`);
+                
+                // Atualizar interface localmente ou disparar verificação
+                if (typeof verificarStatusCaixaServidor === 'function') {
+                    await verificarStatusCaixaServidor();
+                }
+
+            } catch (err) {
+                console.error('Erro ao abrir caixa:', err);
+                alert('PDV-VS: Erro ao abrir caixa no servidor: ' + err.message);
+            }
+        };
+
+        window.acionarFecharCaixa = async function() {
+            if (!window.empresaAtualId || !window.usuarioAtual) return;
+
+            if (!confirm('Deseja realmente fechar o seu caixa atual? As vendas serão encerradas.')) {
+                return;
+            }
+
+            try {
+                const supabase = window.supabaseClient;
+
+                // Atualizar status do caixa para FECHADO no Supabase
+                const { error } = await supabase
+                    .from('caixas')
+                    .update({ 
+                        status: 'FECHADO',
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('empresa_id', window.empresaAtualId)
+                    .eq('user_id', window.usuarioAtual.id)
+                    .eq('status', 'ABERTO');
+
+                if (error) {
+                    throw error;
+                }
+
+                caixaAberto = false;
+                atualizarBadgesCaixaInterface();
+                alert('Caixa fechado com sucesso! O painel administrativo foi atualizado.');
+                
+                if (typeof verificarStatusCaixaServidor === 'function') {
+                    await verificarStatusCaixaServidor();
+                }
+
+            } catch (err) {
+                console.error('Erro ao fechar caixa:', err);
+                alert('PDV-VS: Erro ao fechar caixa: ' + err.message);
+            }
+        };
+
         // Captura global de teclas de função (F1 até F12) e atalhos numéricos para F3
         window.addEventListener('keydown', (e) => {
             if (e.key.startsWith('F') && !isNaN(e.key.substring(1))) {
@@ -490,16 +619,16 @@
         // --- FUNÇÕES DIRETAS NO PAINEL LATERAL (SEM POP-UPS NATIVOS E SEM DUPLICIDADE) ---
 
         // F1: Cadastro para nota 
-window.acaoAtalhoF1 = () => {
-    abrirPainelLateral('blocoF1', 'F1 - Cadastro para Nota');
-    document.getElementById('inputCpfNota')?.focus();
-};
+        window.acaoAtalhoF1 = () => {
+            abrirPainelLateral('blocoF1', 'F1 - Cadastro para Nota');
+            document.getElementById('inputCpfNota')?.focus();
+        };
 
-window.salvarConsumidorEImprimir = () => {
-    const doc = document.getElementById('inputCpfNota')?.value.trim();
-    document.getElementById('cupomCliente').innerText = doc || "Consumidor Final";
-    fecharPainelLateral();
-};
+        window.salvarConsumidorEImprimir = () => {
+            const doc = document.getElementById('inputCpfNota')?.value.trim();
+            document.getElementById('cupomCliente').innerText = doc || "Consumidor Final";
+            fecharPainelLateral();
+        };
 
         // F3: Dinheiro ou Pix com suporte numérico (1 ou 2) e cálculo de troco no painel lateral
         let tipoPagamentoAtualF3 = 'Dinheiro';
@@ -649,6 +778,11 @@ window.salvarConsumidorEImprimir = () => {
         window.acionarFinalizarVenda = function() {
             window.handleAction('F7');
         };
+
+        // Inicialização padrão do estado do badge ao carregar a página
+        document.addEventListener('DOMContentLoaded', () => {
+            atualizarBadgesCaixaInterface();
+        });
     </script>
     <script type="module" src="caixa-core.js"></script>
 </body>
