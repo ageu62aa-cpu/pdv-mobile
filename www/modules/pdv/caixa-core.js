@@ -190,21 +190,50 @@ window.abrirModalTodosAtalhos = () => {
 - F12: Canc. Venda (Exige PIN Admin)`);
 };
 
-// Listener global unificado para as teclas de função F1 a F12
+// Listener global para capturar as teclas F1 a F12 e evitar conflitos antigos
 window.addEventListener('keydown', (e) => {
-    switch (e.key) {
-        case 'F1': e.preventDefault(); window.acaoAtalhoF1(); break;
-        case 'F2': e.preventDefault(); window.acaoAtalhoF2(); break;
-        case 'F3': e.preventDefault(); window.acaoAtalhoF3(); break;
-        case 'F4': e.preventDefault(); window.acaoAtalhoF4(); break;
-        case 'F5': e.preventDefault(); window.acaoAtalhoF5(); break;
-        case 'F6': e.preventDefault(); window.acaoAtalhoF6(); break;
-        case 'F7': e.preventDefault(); window.acionarFinalizarVenda(); break;
-        case 'F8': e.preventDefault(); window.acaoAtalhoF8(); break;
-        case 'F9': e.preventDefault(); window.acaoAtalhoF9(); break;
-        case 'F10': e.preventDefault(); window.acaoAtalhoF10(); break;
-        case 'F11': e.preventDefault(); window.acaoAtalhoF11(); break;
-        case 'F12': e.preventDefault(); window.acaoAtalhoF12(); break;
+    // Verifica se a tecla pressionada é do tipo F1 até F12
+    if (e.key >= 'F1' && e.key <= 'F12') {
+        e.preventDefault(); // Impede o comportamento padrão do browser (ex: ajuda do F1)
+        
+        switch (e.key) {
+            case 'F1':
+                if (typeof window.acaoAtalhoF1 === 'function') window.acaoAtalhoF1();
+                break;
+            case 'F2':
+                if (typeof window.acaoAtalhoF2 === 'function') window.acaoAtalhoF2();
+                break;
+            case 'F3':
+                if (typeof window.acaoAtalhoF3 === 'function') window.acaoAtalhoF3();
+                break;
+            case 'F4':
+                if (typeof window.acaoAtalhoF4 === 'function') window.acaoAtalhoF4();
+                break;
+            case 'F5':
+                if (typeof window.acaoAtalhoF5 === 'function') window.acaoAtalhoF5();
+                break;
+            case 'F6':
+                if (typeof window.acaoAtalhoF6 === 'function') window.acaoAtalhoF6();
+                break;
+            case 'F7':
+                if (typeof window.acionarFinalizarVenda === 'function') window.acionarFinalizarVenda();
+                break;
+            case 'F8':
+                if (typeof window.acaoAtalhoF8 === 'function') window.acaoAtalhoF8();
+                break;
+            case 'F9':
+                if (typeof window.acaoAtalhoF9 === 'function') window.acaoAtalhoF9();
+                break;
+            case 'F10':
+                if (typeof window.acaoAtalhoF10 === 'function') window.acaoAtalhoF10();
+                break;
+            case 'F11':
+                if (typeof window.acaoAtalhoF11 === 'function') window.acaoAtalhoF11();
+                break;
+            case 'F12':
+                if (typeof window.acaoAtalhoF12 === 'function') window.acaoAtalhoF12();
+                break;
+        }
     }
 });
 
