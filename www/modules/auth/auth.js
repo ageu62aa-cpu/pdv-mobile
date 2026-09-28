@@ -358,7 +358,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 showLoginFeedback('Login de Operador com Sucesso', 'success');
                 setTimeout(() => {
-                    window.location.href = '../pdv/caixa-core.html';
+                    // [ATUALIZAÇÃO SÊNIOR] Redireciona o operador para a nova página dedicada e exclusiva
+                    window.location.href = '../caixa/operador.html';
                 }, 700);
             } else {
                 showLoginFeedback('Cargo não autorizado.', 'error');
