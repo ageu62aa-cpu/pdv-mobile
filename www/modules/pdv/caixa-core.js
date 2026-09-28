@@ -97,24 +97,16 @@ window.dispararImpressaoTermicaNFCe = function(detalhes) {
 
 // --- MAPEAMENTO DE ATALHOS F1 A F12 (DIRETO NO PAINEL LATERAL / SEM POP-UPS NATIVOS) ---
 
-let f1EmExecucao = false;
-
+// F1 - Identificar Consumidor (Painel Lateral)
 window.acaoAtalhoF1 = () => {
-    // F1 – Identificar Consumidor (CPF/CNPJ) para emissão de nota fiscal
-    if (f1EmExecucao) return;
-    f1EmExecucao = true;
-    setTimeout(() => { f1EmExecucao = false; }, 300);
+    abrirPainelLateral('blocoF1', 'F1 - Cadastro para Nota');
+    document.getElementById('inputCpfNota')?.focus();
+};
 
-    const painelCliente = document.getElementById('painelIdentificacaoCliente');
-    if (painelCliente) {
-        painelCliente.classList.remove('hidden');
-        const inputCpf = painelCliente.querySelector('input');
-        if (inputCpf) {
-            setTimeout(() => inputCpf.focus(), 50);
-        }
-    } else {
-        console.warn("Elemento 'painelIdentificacaoCliente' não foi encontrado no HTML.");
-    }
+window.salvarConsumidorEImprimir = () => {
+    const doc = document.getElementById('inputCpfNota')?.value.trim();
+    document.getElementById('cupomCliente').innerText = doc || "Consumidor Final";
+    fecharPainelLateral();
 };
 window.acaoAtalhoF2 = () => {
     // F2 – Identificar Vendedor / Operador
