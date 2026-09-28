@@ -308,27 +308,54 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Login Real com Feedback Visual Discreto e Destaque nas Bordas
+    // Login Real com Verificação Inteligente (Admin ou Operador)
     if (formLogin) {
         formLogin.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const email = inputEmail.value;
-            const senha = inputSenha.value;
+            const email = inputEmail.value.trim();
+            const senha = inputSenha.value.trim();
 
             if (authFeedback) authFeedback.classList.add('hidden');
 
-            const { data, error } = await supabase.auth.signInWithPassword({ email, password: senha });
+            // 1. Tenta autenticar como Administrador (Supabase Auth)
+            const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password: senha });
             
-            if (error) {
-                showLoginFeedback('Login Invalido', 'error');
+            if (!authError && authData) {
+                showLoginFeedback('Login de Administrador com Sucesso', 'success');
+                setTimeout(() => {
+                    window.location.href = '../admin/admin.html';
+                }, 700);
                 return;
             }
 
-            showLoginFeedback('Login Sucesso', 'success');
-            
-            setTimeout(() => {
-                window.location.href = '../pdv/caixa-core.html';
-            }, 700);
+            // 2. Se falhar no Auth principal, verifica se é um Operador cadastrado
+            const { data: operadorData, error: opError } = await supabase
+                .from('operadores')
+                .select('*')
+                .eq('email', email)
+                .eq('senha', senha)
+                .single();
+
+            if (!opError && operadorData) {
+                // Salva os dados do operador na sessão local para uso no PDV
+                localStorage.setItem('operador_logado_id', operadorData.id);
+                localStorage.setItem('operador_logado_nome', operadorData.nome);
+
+                // Atualiza o status do caixa do operador para 'aberto' em tempo real
+                await supabase
+                    .from('operadores')
+                    .update({ status_caixa: 'aberto' })
+                    .eq('id', operadorData.id);
+
+                showLoginFeedback('Login de Operador com Sucesso', 'success');
+                setTimeout(() => {
+                    window.location.href = '../pdv/caixa-core.html';
+                }, 700);
+                return;
+            }
+
+            // Se nenhum dos dois funcionar, exibe erro de login inválido
+            showLoginFeedback('Login Inválido. Verifique e-mail e senha.', 'error');
         });
     }
 });
