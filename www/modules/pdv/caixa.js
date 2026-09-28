@@ -1,7 +1,10 @@
 // ==========================================
 // MÓDULO DE CAIXA E VENDAS (PDV-VS) - OTIMIZADO
 // ==========================================
+import { carregarProdutosCache } from '../../services/produtos.js';
 
+// Chame esta linha assim que o arquivo carregar ou dentro da inicialização do DOM:
+carregarProdutosCache();
 import { 
     usuarioAtual, empresaAtualId, cargoUsuarioAtual, caixaAberto, faturamentoDia, 
     acaoCaixaAtual, itensVenda, indiceItemParaRemover, setAcaoCaixaAtual, 
