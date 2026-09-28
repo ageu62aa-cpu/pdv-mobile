@@ -403,7 +403,7 @@ export function tratarEnterBuscaCaixa(e) {
     }
 }
 
-// --- FUNÇÕES DE ABERTURA E FECHAMENTO COM RECUPERAÇÃO SEGURA DE SESSÃO ---
+// --- FUNÇÕES DE ABERTURA E FECHAMENTO COM AUTO-RECUPERAÇÃO DE SESSÃO ---
 window.acionarAbrirCaixa = async function() {
     const db = getSupabase();
     if (!db) {
@@ -411,22 +411,47 @@ window.acionarAbrirCaixa = async function() {
         return;
     }
 
-    // Tentar obter usuário e empresa da sessão caso as variáveis globais estejam vazias
-    let empresaId = window.empresaAtualId;
+    let empresaId = window.empresaAtualId || localStorage.getItem('empresaAtualId');
     let usuario = window.usuarioAtual;
 
+    // Se faltar dados globais, recupera direto da sessão ativa do Supabase Auth
     if (!usuario || !empresaId) {
-        const { data: { session } } = await db.auth.getSession();
-        if (session && session.user) {
-            usuario = session.user;
-            // Se a empresa estiver salva no localStorage ou metadados
-            empresaId = empresaId || localStorage.getItem('empresaAtualId') || localStorage.getItem('empresa_id') || session.user.user_metadata?.empresa_id;
+        const { data: { session }, error: sessionError } = await db.auth.getSession();
+        if (sessionError || !session || !session.user) {
+            alert('PDV-VS: Sessão não encontrada. Por favor, faça login novamente.');
+            window.location.href = '../auth/auth.html';
+            return;
+        }
+        usuario = session.user;
+        empresaId = empresaId || localStorage.getItem('empresa_id') || session.user.user_metadata?.empresa_id;
+    }
+
+    // Se o ID da empresa ainda não foi encontrado, busca na tabela de usuários ou funcionários vinculados
+    if (!empresaId && usuario) {
+        try {
+            const { data: userData } = await db
+                .from('usuarios')
+                .select('empresa_id')
+                .eq('id', usuario.id)
+                .maybeSingle();
+
+            if (userData && userData.empresa_id) {
+                empresaId = userData.empresa_id;
+                localStorage.setItem('empresaAtualId', empresaId);
+            } else {
+                const { data: empData } = await db.from('empresas').select('id').limit(1).maybeSingle();
+                if (empData) {
+                    empresaId = empData.id;
+                    localStorage.setItem('empresaAtualId', empresaId);
+                }
+            }
+        } catch (e) {
+            console.warn('Aviso ao buscar empresa automaticamente:', e);
         }
     }
 
     if (!empresaId || !usuario) {
-        alert('PDV-VS: Erro: Sessão expirada ou Empresa/Usuário não identificados. Faça login novamente.');
-        window.location.href = '../auth/auth.html';
+        alert('PDV-VS: Erro crítico: Não foi possível vincular a empresa ao operador. Verifique o login.');
         return;
     }
 
@@ -440,7 +465,7 @@ window.acionarAbrirCaixa = async function() {
     }
 
     try {
-        // 1. Verificar se já existe caixa aberto
+        // Verifica se já existe caixa aberto
         const { data: caixaExistente } = await db
             .from('caixas')
             .select('id')
@@ -454,7 +479,7 @@ window.acionarAbrirCaixa = async function() {
             return;
         }
 
-        // 2. Inserir abertura
+        // Insere a abertura do caixa
         const { error } = await db.from('caixas').insert([{
             empresa_id: empresaId,
             user_id: usuario.id,
@@ -491,7 +516,7 @@ window.acionarFecharCaixa = async function() {
     const db = getSupabase();
     if (!db) return;
     
-    let empresaId = window.empresaAtualId;
+    let empresaId = window.empresaAtualId || localStorage.getItem('empresaAtualId');
     let usuario = window.usuarioAtual;
 
     if (!usuario || !empresaId) {
@@ -502,7 +527,28 @@ window.acionarFecharCaixa = async function() {
         }
     }
 
-    if (!empresaId || !usuario) return;
+    // Se o ID da empresa ainda não foi encontrado, busca na tabela de usuários
+    if (!empresaId && usuario) {
+        try {
+            const { data: userData } = await db
+                .from('usuarios')
+                .select('empresa_id')
+                .eq('id', usuario.id)
+                .maybeSingle();
+
+            if (userData && userData.empresa_id) {
+                empresaId = userData.empresa_id;
+                localStorage.setItem('empresaAtualId', empresaId);
+            }
+        } catch (e) {
+            console.warn('Aviso ao buscar empresa automaticamente no fechamento:', e);
+        }
+    }
+
+    if (!empresaId || !usuario) {
+        alert('PDV-VS: Sessão não identificada para fechamento.');
+        return;
+    }
 
     if (!confirm('Deseja realmente fechar o seu caixa atual? As vendas serão encerradas.')) {
         return;
