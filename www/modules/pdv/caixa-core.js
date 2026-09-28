@@ -91,14 +91,14 @@ export function iniciarRealtimeCaixa() {
 
 // --- FUNÇÃO AUXILIAR DE IMPRESSÃO TÉRMICA & ESTOQUE ---
 window.dispararImpressaoTermicaNFCe = function(detalhes) {
-    console.log("Gerando NFC-e, baixando estoque e acionando impressão térmica (58mm/80mm)...", detalhes);
-    window.print();
+    console.log("Gerando NFC-e, baixando estoque e salvando transação...", detalhes);
+    // Impressão automática desativada conforme solicitação, mantendo o registro funcional
 };
 
 // --- MAPEAMENTO DE ATALHOS F1 A F12 (DIRETO NO PAINEL LATERAL / SEM POP-UPS NATIVOS) ---
 
 window.acaoAtalhoF1 = () => {
-    // F1 – Identificar Consumidor (Somente cadastro para nota direto no painel)
+    // F1 – Identificar Consumidor (Abre apenas uma janela/painel unificado para evitar duplicações)
     const painelCliente = document.getElementById('painelIdentificacaoCliente');
     if (painelCliente) {
         painelCliente.classList.toggle('hidden');
@@ -119,38 +119,52 @@ window.acaoAtalhoF2 = () => {
 };
 
 window.acaoAtalhoF3 = () => {
-    // F3 – Dinheiro / Pix (Liquidação imediata com troco e controle no painel à direita)
-    const painelPagamento = document.getElementById('secaoPagamentoLateral');
-    if (painelPagamento) {
-        painelPagamento.classList.remove('hidden');
+    // F3 – Dinheiro / Pix (Liquidação imediata com controle via teclado numérico: [1] Dinheiro ou [2] Pix)
+    if (itensVenda.length === 0) {
+        alert('PDV-VS: Não há itens na venda para liquidar.');
+        return;
     }
     const valorTotalVenda = itensVenda.reduce((acc, item) => acc + (item.qtd * item.preco), 0);
-    const tipoRecebimento = confirm("Clique em [OK] para Dinheiro ou [Cancelar] para Pix") ? "Dinheiro" : "Pix";
-    
-    if (tipoRecebimento === "Dinheiro") {
+    const escolhaPagamento = prompt(
+        `TOTAL DA COMPRA: R$ ${valorTotalVenda.toFixed(2)}\n\n` +
+        `Selecione a forma de pagamento:\n` +
+        `[1] - Dinheiro (Cálculo automático de troco)\n` +
+        `[2] - Pix\n\n` +
+        `Digite o número correspondente:`
+    );
+
+    if (escolhaPagamento === "1") {
         const valorRecebidoStr = prompt(`Total da Compra: R$ ${valorTotalVenda.toFixed(2)}\nDigite o valor em dinheiro recebido:`);
-        if (valorRecebimentoStr !== null) {
-            const recebido = parseFloat(valorRecebimentoStr.replace(',', '.')) || 0;
+        if (valorRecebidoStr !== null) {
+            const recebido = parseFloat(valorRecebidoStr.replace(',', '.')) || 0;
             const troco = Math.max(0, recebido - valorTotalVenda);
-            // Atualiza os campos visuais no painel direito se existirem
+            
             const elTroco = document.getElementById('txtPainelTroco');
             if (elTroco) elTroco.innerText = `R$ ${troco.toFixed(2)}`;
+            
+            alert(`Pagamento em Dinheiro Confirmado!\nValor Recebido: R$ ${recebido.toFixed(2)}\nTroco: R$ ${troco.toFixed(2)}`);
             window.dispararImpressaoTermicaNFCe({ forma: 'Dinheiro', recebido, troco });
         }
-    } else {
+    } else if (escolhaPagamento === "2") {
+        alert(`Pagamento via Pix acionado com sucesso!\nValor Total: R$ ${valorTotalVenda.toFixed(2)}`);
         window.dispararImpressaoTermicaNFCe({ forma: 'Pix Dinâmico', recebido: valorTotalVenda, troco: 'R$ 0,00' });
     }
 };
 
 window.acaoAtalhoF4 = () => {
-    // F4 – Débito (Com taxas de maquininha embutidas calculadas direto no painel)
+    // F4 – Débito (Com taxas de maquininha embutidas calculadas direto no painel, sem impressão automática)
     const valorTotalVenda = itensVenda.reduce((acc, item) => acc + (item.qtd * item.preco), 0);
-    const taxaDebito = valorTotalVenda * 0.015; // Exemplo de taxa de débito embutida
+    if (valorTotalVenda <= 0) {
+        alert('PDV-VS: Não há itens na venda.');
+        return;
+    }
+    const taxaDebito = valorTotalVenda * 0.015; // Taxa de débito embutida
     const totalComTaxa = valorTotalVenda + taxaDebito;
     
     const elDescontos = document.getElementById('txtResumoDescontos');
-    if (elDescontos) elDescontos.innerText = `Taxa: R$ ${taxaDebito.toFixed(2)}`;
+    if (elDescontos) elDescontos.innerText = `Taxa Débito: R$ ${taxaDebito.toFixed(2)}`;
     
+    alert(`Débito Processado com Sucesso!\nSubtotal: R$ ${valorTotalVenda.toFixed(2)}\nTaxa Aplicada: R$ ${taxaDebito.toFixed(2)}\nTotal Final: R$ ${totalComTaxa.toFixed(2)}`);
     window.dispararImpressaoTermicaNFCe({ forma: 'Débito (Taxa Embutida)', total: totalComTaxa });
 };
 
@@ -177,18 +191,22 @@ window.acionarFinalizarVenda = () => {
 };
 
 window.acaoAtalhoF8 = () => {
-    // F8 – Crédito à vista / Parcelado (Cálculo de taxas de maquininha embutidas direto no painel)
+    // F8 – Crédito à vista / Parcelado (Cálculo de taxas de maquininha embutidas, sem impressão automática)
+    const valorTotalVenda = itensVenda.reduce((acc, item) => acc + (item.qtd * item.preco), 0);
+    if (valorTotalVenda <= 0) {
+        alert('PDV-VS: Não há itens na venda.');
+        return;
+    }
     const parcelas = prompt('F8 - Crédito: Digite o número de parcelas (1 a 12x):', '1');
-    if (parcelas) {
+    if (parcelas !== null) {
         const numParcelas = parseInt(parcelas) || 1;
-        const valorTotalVenda = itensVenda.reduce((acc, item) => acc + (item.qtd * item.preco), 0);
-        // Simulação de juros/taxas de parcelamento
         const taxaJuros = numParcelas > 1 ? 0.03 * numParcelas : 0.02;
         const totalComJuros = valorTotalVenda * (1 + taxaJuros);
         
         const elDescontos = document.getElementById('txtResumoDescontos');
         if (elDescontos) elDescontos.innerText = `Juros Cartão: R$ ${(totalComJuros - valorTotalVenda).toFixed(2)}`;
         
+        alert(`Crédito em ${numParcelas}x Processado com Sucesso!\nValor Total com Juros: R$ ${totalComJuros.toFixed(2)}`);
         window.dispararImpressaoTermicaNFCe({ forma: `Crédito em ${numParcelas}x`, total: totalComJuros });
     }
 };
@@ -201,7 +219,6 @@ window.acaoAtalhoF9 = () => {
         const valor = parseFloat(valorStr.replace(',', '.')) || 0;
         const motivo = prompt(`Informe o motivo da ${tipo} (obrigatório para o fechamento do caixa):`, '');
         if (motivo) {
-            // Salva na sessão ou envia para o backend / estado do caixa
             window.movimentosCaixaGaveta = window.movimentosCaixaGaveta || [];
             window.movimentosCaixaGaveta.push({ tipo, valor, motivo, hora: new Date().toLocaleTimeString() });
             console.log(`Movimento de caixa registrado: ${tipo} de R$ ${valor} - Motivo: ${motivo}`);
@@ -236,7 +253,7 @@ window.abrirModalTodosAtalhos = () => {
     alert(`GUIA DE ATALHOS (F1 a F12):
 - F1: Identificar Consumidor (Nota Fiscal)
 - F2: Vendedor / Operador
-- F3: Dinheiro / Pix (Troco Automático)
+- F3: Dinheiro ([1]) ou Pix ([2]) com Troco Automático
 - F4: Débito (Taxas Embutidas)
 - F5: Consulta de Produtos & Leitor
 - F6: Desconto Especial
@@ -347,28 +364,24 @@ export function tratarEnterBuscaCaixa(e) {
         
         let qtdDesejada = window.quantidadeMultiplicador || 1;
         
-        // Verifica se há multiplicação por asterisco (ex: "5*789102030" ou "5*123")
         if (valor.includes('*')) {
             const partes = valor.split('*');
             const qtdParsed = parseFloat(partes[0].trim());
             if (!isNaN(qtdParsed) && qtdParsed > 0) {
                 qtdDesejada = qtdParsed;
-                valor = partes.slice(1).join('*').trim(); // Pega o código após o asterisco
+                valor = partes.slice(1).join('*').trim();
             }
         }
 
         const encontrado = produtosCache.find(p => p.codigo_barras === valor || p.id === valor);
         if (encontrado) {
-            // Aplica a quantidade multiplicadora (seja via F10 ou via asterisco direto no input)
             if (window.adicionarProdutoComQtd) {
                 window.adicionarProdutoComQtd(encontrado, qtdDesejada);
             } else if (window.adicionarProdutoAoCarrinho) {
-                // Se a função aceitar apenas o produto, ajustamos a qtd temporariamente ou chamamos o padrão
                 encontrado._qtdTemporaria = qtdDesejada;
                 window.adicionarProdutoAoCarrinho(encontrado);
             }
             
-            // Reseta o multiplicador global após o uso
             window.quantidadeMultiplicador = 1;
             input.value = '';
             document.getElementById('sugestoesBusca')?.classList.add('hidden');

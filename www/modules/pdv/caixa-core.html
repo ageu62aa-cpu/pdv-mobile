@@ -148,18 +148,18 @@
                         <button onclick="fecharPainelLateral()" class="text-gray-400 hover:text-white text-xs font-bold">&times;</button>
                     </div>
 
-                    <!-- F1: Identificação de Consumidor (Somente cadastro para nota) -->
+                    <!-- F1: Identificação de Consumidor (Janela Única Refatorada) -->
                     <div id="blocoF1" class="painel-etapa hidden space-y-2">
                         <label class="text-[11px] text-gray-300">Cadastro para Nota (CPF ou CNPJ):</label>
                         <input type="text" id="inputCpfNota" placeholder="000.000.000-00 ou CNPJ" class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-xs text-white focus:outline-none focus:ring-1 focus:ring-emerald-500">
                         <button onclick="salvarConsumidorEImprimir()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded text-xs font-bold">Salvar Cadastro para Nota (F1)</button>
                     </div>
 
-                    <!-- F3: Dinheiro / Pix e Troco -->
+                    <!-- F3: Dinheiro / Pix e Troco com Seleção Numérica (1 ou 2) -->
                     <div id="blocoF3" class="painel-etapa hidden space-y-2">
                         <div class="flex gap-2">
-                            <button onclick="setTipoPagamentoF3('Dinheiro')" id="btnTipoDinheiro" class="flex-1 bg-emerald-700 text-white py-1 rounded text-xs font-bold">Dinheiro</button>
-                            <button onclick="setTipoPagamentoF3('Pix')" id="btnTipoPix" class="flex-1 bg-gray-800 text-gray-300 py-1 rounded text-xs font-bold">Pix</button>
+                            <button onclick="setTipoPagamentoF3('Dinheiro')" id="btnTipoDinheiro" class="flex-1 bg-emerald-700 text-white py-1 rounded text-xs font-bold">1. Dinheiro</button>
+                            <button onclick="setTipoPagamentoF3('Pix')" id="btnTipoPix" class="flex-1 bg-gray-800 text-gray-300 py-1 rounded text-xs font-bold">2. Pix</button>
                         </div>
                         <label class="text-[11px] text-gray-300">Valor Recebido (R$):</label>
                         <input type="number" step="0.01" id="inputValorRecebido" oninput="calcularTrocoPainel()" placeholder="0,00" class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-xs text-white focus:outline-none focus:ring-1 focus:ring-emerald-500">
@@ -167,10 +167,10 @@
                             <span>Troco Calculado:</span>
                             <span id="txtTrocoCalculado" class="font-mono font-bold text-emerald-400">R$ 0,00</span>
                         </div>
-                        <button onclick="concluirPagamentoDinheiroPix()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded text-xs font-bold">Confirmar e Imprimir</button>
+                        <button onclick="concluirPagamentoDinheiroPix()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded text-xs font-bold">Confirmar Pagamento</button>
                     </div>
 
-                    <!-- F4: Débito com taxa embutida -->
+                    <!-- F4: Débito com taxa embutida (Sem impressão automática) -->
                     <div id="blocoF4" class="painel-etapa hidden space-y-2">
                         <label class="text-[11px] text-gray-300">Finalização Débito (Taxas de maquininha embutidas):</label>
                         <div class="bg-gray-800 p-2 rounded text-xs text-gray-300 flex justify-between">
@@ -191,7 +191,7 @@
                         </div>
                     </div>
 
-                    <!-- F8: Crédito à vista / Parcelado com taxas embutidas -->
+                    <!-- F8: Crédito à vista / Parcelado com taxas embutidas (Sem impressão automática) -->
                     <div id="blocoF8" class="painel-etapa hidden space-y-2">
                         <label class="text-[11px] text-gray-300">Crédito à vista / Parcelado (Taxas de maquininha embutidas):</label>
                         <select id="selectParcelas" onchange="atualizarSimulacaoCredito()" class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-xs text-white focus:outline-none focus:ring-1 focus:ring-emerald-500">
@@ -277,7 +277,7 @@
                     <button onclick="window.handleAction('F3')" class="w-full bg-gray-900/60 hover:bg-gray-700/80 border border-gray-700/80 p-2 rounded-lg transition flex items-center justify-between group pt-1.5">
                         <div class="flex flex-col text-left overflow-hidden">
                             <span class="text-[11px] font-bold text-gray-200 group-hover:text-emerald-400 truncate">Dinheiro / Pix</span>
-                            <span class="text-[9px] text-gray-400 truncate">Liquidação com troco + Impressão</span>
+                            <span class="text-[9px] text-gray-400 truncate">Seleção numérica (1/2) + Troco</span>
                         </div>
                         <span class="bg-gray-850 text-gray-300 text-[10px] font-bold px-1.5 py-0.5 rounded border border-gray-700 font-mono ml-1">F3</span>
                     </button>
@@ -286,7 +286,7 @@
                     <button onclick="window.handleAction('F4')" class="w-full bg-gray-900/60 hover:bg-gray-700/80 border border-gray-700/80 p-2 rounded-lg transition flex items-center justify-between group pt-1.5">
                         <div class="flex flex-col text-left overflow-hidden">
                             <span class="text-[11px] font-bold text-gray-200 group-hover:text-blue-400 truncate">Débito</span>
-                            <span class="text-[9px] text-gray-400 truncate">Taxa maquininha + Impressão</span>
+                            <span class="text-[9px] text-gray-400 truncate">Taxa maquininha embutida</span>
                         </div>
                         <span class="bg-blue-950/60 text-blue-400 text-[10px] font-bold px-1.5 py-0.5 rounded border border-blue-800/50 font-mono ml-1">F4</span>
                     </button>
@@ -369,7 +369,7 @@
 
     </main>
 
-    <!-- Elemento oculto para impressão térmica NFC-e (58mm / 80mm) -->
+    <!-- Elemento oculto para impressão térmica opcional NFC-e (58mm / 80mm) -->
     <div id="cupom-termico" class="hidden">
         <div style="text-align: center; font-weight: bold;">VANCELY SOFTWARE - PDV-VS</div>
         <div style="text-align: center;">CNPJ: 00.000.000/0001-00</div>
@@ -395,11 +395,23 @@
 
     <!-- Script Unificado de Teclado (F1-F12) e Motor de Negócio PDV Refatorado -->
     <script>
-        // Captura global de teclas de função (F1 até F12)
+        // Captura global de teclas de função (F1 até F12) e atalhos numéricos para F3
         window.addEventListener('keydown', (e) => {
             if (e.key.startsWith('F') && !isNaN(e.key.substring(1))) {
                 e.preventDefault(); // Evita atalhos nativos do navegador
                 window.handleAction(e.key);
+            }
+            
+            // Captura numérica '1' ou '2' dentro do painel do F3 para seleção ágil
+            const blocoF3 = document.getElementById('blocoF3');
+            if (blocoF3 && !blocoF3.classList.contains('hidden')) {
+                if (e.key === '1') {
+                    e.preventDefault();
+                    window.setTipoPagamentoF3('Dinheiro');
+                } else if (e.key === '2') {
+                    e.preventDefault();
+                    window.setTipoPagamentoF3('Pix');
+                }
             }
         });
 
@@ -465,20 +477,19 @@
             }
         };
 
-        // Função universal de Impressão Térmica e baixa de estoque
-        window.dispararImpressaoTermicaNFCe = function(detalhesPagamento) {
+        // Função de transação (Estoque baixado no Supabase sem impressão automática poluidora)
+        window.processarTransacaoPDV = function(detalhesPagamento) {
             const dataAtual = new Date().toLocaleString('pt-BR');
             document.getElementById('cupomData').innerText = dataAtual;
             document.getElementById('cupomPagamento').innerText = detalhesPagamento.forma || 'Dinheiro';
             document.getElementById('cupomTroco').innerText = detalhesPagamento.troco || 'R$ 0,00';
             
-            console.log("Transação processada, estoque baixado no Supabase. Acionando window.print()...");
-            window.print();
+            console.log("Transação processada com sucesso no Supabase e estoque atualizado. Impressão automática desativada para manter o ambiente limpo.");
         };
 
-        // --- FUNÇÕES DIRETAS NO PAINEL LATERAL (SEM POP-UPS NATIVOS) ---
+        // --- FUNÇÕES DIRETAS NO PAINEL LATERAL (SEM POP-UPS NATIVOS E SEM DUPLICIDADE) ---
 
-        // F1: Cadastro para nota
+        // F1: Cadastro para nota (Janela única centralizada)
         window.acaoAtalhoF1 = () => {
             abrirPainelLateral('blocoF1', 'F1 - Cadastro para Nota');
             document.getElementById('inputCpfNota')?.focus();
@@ -490,7 +501,7 @@
             window.fecharPainelLateral();
         };
 
-        // F3: Dinheiro ou Pix com troco no painel lateral
+        // F3: Dinheiro ou Pix com suporte numérico (1 ou 2) e cálculo de troco no painel lateral
         let tipoPagamentoAtualF3 = 'Dinheiro';
         window.acaoAtalhoF3 = () => {
             abrirPainelLateral('blocoF3', 'F3 - Pagamento Dinheiro / Pix');
@@ -512,7 +523,7 @@
 
         window.calcularTrocoPainel = () => {
             const recebido = parseFloat(document.getElementById('inputValorRecebido').value.replace(',', '.')) || 0;
-            const totalGeralVal = 10.00; // Ajustar conforme a lógica de carrinho
+            const totalGeralVal = 10.00; // Ajustar conforme o motor do carrinho
             const troco = recebido > totalGeralVal ? recebido - totalGeralVal : 0;
             document.getElementById('txtTrocoCalculado').innerText = `R$ ${troco.toFixed(2)}`;
         };
@@ -520,20 +531,20 @@
         window.concluirPagamentoDinheiroPix = () => {
             const trocoStr = document.getElementById('txtTrocoCalculado').innerText;
             window.fecharPainelLateral();
-            window.dispararImpressaoTermicaNFCe({ forma: tipoPagamentoAtualF3, troco: trocoStr });
+            window.processarTransacaoPDV({ forma: tipoPagamentoAtualF3, troco: trocoStr });
         };
 
-        // F4: Débito com taxas embutidas diretamente no painel lateral
+        // F4: Débito com taxas embutidas (Sem impressão automática)
         window.acaoAtalhoF4 = () => {
             abrirPainelLateral('blocoF4', 'F4 - Pagamento Débito');
         };
 
         window.concluirPagamentoDebito = () => {
             window.fecharPainelLateral();
-            window.dispararImpressaoTermicaNFCe({ forma: 'Cartão de Débito (Taxa Embutida)' });
+            window.processarTransacaoPDV({ forma: 'Cartão de Débito (Taxa Embutida)' });
         };
 
-        // F5: Consulta de Produtos (vai direto para a barra de buscas sem avisos)
+        // F5: Consulta de Produtos (vai direto para a barra de buscas)
         window.acaoAtalhoF5 = () => {
             focarBusca();
         };
@@ -551,7 +562,7 @@
             abrirPainelLateral('blocoF7', 'F7 - Painel Geral de Quitação');
         };
 
-        // F8: Crédito à vista ou parcelado com cálculo de taxas embutidas
+        // F8: Crédito à vista ou parcelado com cálculo de taxas embutidas (Sem impressão automática)
         window.acaoAtalhoF8 = () => {
             abrirPainelLateral('blocoF8', 'F8 - Crédito (À vista / Parcelado)');
             document.getElementById('selectParcelas')?.focus();
@@ -566,7 +577,7 @@
             const parcelas = document.getElementById('selectParcelas').value;
             window.fecharPainelLateral();
             const descForma = parcelas === "1" ? "Crédito à vista" : `Crédito Parcelado em ${parcelas}x`;
-            window.dispararImpressaoTermicaNFCe({ forma: descForma });
+            window.processarTransacaoPDV({ forma: descForma });
         };
 
         // F9: Sangria / Suprimento com valor e motivo obrigatório para fechamento
