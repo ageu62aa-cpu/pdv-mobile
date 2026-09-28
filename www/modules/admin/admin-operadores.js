@@ -111,11 +111,3 @@ async function carregarGestaoOperadores() {
         `;
     }).join('');
 }
-```[cite: 1]
-
-### O que mudou e foi melhorado:
-1. **Base na tabela `operadores`**: Agora o loop principal itera sobre a lista de operadores cadastrados no Supabase, garantindo que mesmo novos operadores sem caixas abertos apareçam no painel com o status "Caixa Fechado".
-2. **Cruzamento Inteligente (`find`)**: O código cruza os dados do operador com os caixas existentes utilizando tanto o ID (`user_id`) quanto o e-mail (`email`), priorizando sessões que estejam com o status `ABERTO`.
-3. **Integridade Visual**: Toda a estilização original em cards, responsividade, animação de pulso no badge de ativo e formatação monetária foram rigorosamente preservadas[cite: 1].
-
-Se precisar de mais algum ajuste ou expansão no painel administrativo, estou à disposição!
