@@ -147,63 +147,124 @@
                 </div>
             </div>
 
-            <!-- Atalhos Principais -->
-            <div class="bg-gray-800 border border-gray-700 rounded-xl p-3.5 shadow-sm flex flex-col gap-2">
+            <!-- Atalhos Principais e Completo (F1 a F12 em Janela Rolante) -->
+            <div class="bg-gray-800 border border-gray-700 rounded-xl p-3.5 shadow-sm flex flex-col gap-2 flex-1 overflow-hidden">
                 <div class="flex justify-between items-center mb-0.5">
-                    <span class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Atalhos Principais</span>
-                    <button onclick="window.toggleModalAtalhosCustom && window.toggleModalAtalhosCustom()" class="text-[10px] text-emerald-400 hover:text-emerald-300 font-semibold flex items-center gap-1 transition">
-                        <i class="fa-solid fa-bars"></i> Ver Todos (F1-F12)
-                    </button>
+                    <span class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Atalhos do Caixa (F1 - F12)</span>
+                    <span class="text-[9px] text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800/50 font-mono">Rolável</span>
                 </div>
                 
-                <div class="grid grid-cols-2 gap-1.5 text-left">
-                    <button onclick="window.acaoAtalhoF1 && window.acaoAtalhoF1()" class="bg-gray-900/60 hover:bg-gray-700 border border-gray-700/80 p-2 rounded-lg transition flex items-center justify-between group">
-                        <div class="flex flex-col overflow-hidden">
+                <!-- Container Rolante com todos os atalhos padronizados -->
+                <div class="flex-1 overflow-y-auto space-y-1.5 pr-1 max-h-[320px] divide-y divide-gray-750/50">
+                    
+                    <!-- F1 -->
+                    <button onclick="window.acaoAtalhoF1 && window.acaoAtalhoF1()" class="w-full bg-gray-900/60 hover:bg-gray-700 border border-gray-700/80 p-2 rounded-lg transition flex items-center justify-between group pt-1.5">
+                        <div class="flex flex-col text-left overflow-hidden">
                             <span class="text-[11px] font-bold text-gray-200 group-hover:text-emerald-400 truncate">CPF na Nota</span>
-                            <span class="text-[9px] text-gray-400 truncate">Cliente</span>
+                            <span class="text-[9px] text-gray-400 truncate">Identificar cliente</span>
                         </div>
                         <span class="bg-emerald-950 text-emerald-400 text-[10px] font-bold px-1.5 py-0.5 rounded border border-emerald-800/50 font-mono ml-1">F1</span>
                     </button>
 
-                    <button onclick="window.acaoAtalhoF3 && window.acaoAtalhoF3()" class="bg-gray-900/60 hover:bg-gray-700 border border-gray-700/80 p-2 rounded-lg transition flex items-center justify-between group">
-                        <div class="flex flex-col overflow-hidden">
-                            <span class="text-[11px] font-bold text-gray-200 group-hover:text-emerald-400 truncate">Dinheiro Rápido</span>
-                            <span class="text-[9px] text-gray-400 truncate">À vista</span>
+                    <!-- F2 -->
+                    <button onclick="window.acaoAtalhoF2 && window.acaoAtalhoF2()" class="w-full bg-gray-900/60 hover:bg-gray-700 border border-gray-700/80 p-2 rounded-lg transition flex items-center justify-between group pt-1.5">
+                        <div class="flex flex-col text-left overflow-hidden">
+                            <span class="text-[11px] font-bold text-gray-200 group-hover:text-emerald-400 truncate">Vendedor</span>
+                            <span class="text-[9px] text-gray-400 truncate">Vincular comissão</span>
+                        </div>
+                        <span class="bg-gray-850 text-gray-300 text-[10px] font-bold px-1.5 py-0.5 rounded border border-gray-700 font-mono ml-1">F2</span>
+                    </button>
+
+                    <!-- F3 -->
+                    <button onclick="window.acaoAtalhoF3 && window.acaoAtalhoF3()" class="w-full bg-gray-900/60 hover:bg-gray-700 border border-gray-700/80 p-2 rounded-lg transition flex items-center justify-between group pt-1.5">
+                        <div class="flex flex-col text-left overflow-hidden">
+                            <span class="text-[11px] font-bold text-gray-200 group-hover:text-emerald-400 truncate">Dinheiro/Pix Rápido</span>
+                            <span class="text-[9px] text-gray-400 truncate">Pagamento à vista</span>
                         </div>
                         <span class="bg-gray-850 text-gray-300 text-[10px] font-bold px-1.5 py-0.5 rounded border border-gray-700 font-mono ml-1">F3</span>
                     </button>
 
-                    <button onclick="window.acaoAtalhoF5 && window.acaoAtalhoF5()" class="bg-gray-900/60 hover:bg-gray-700 border border-gray-700/80 p-2 rounded-lg transition flex items-center justify-between group">
-                        <div class="flex flex-col overflow-hidden">
+                    <!-- F4 -->
+                    <button onclick="window.acaoAtalhoF4 && window.acaoAtalhoF4()" class="w-full bg-gray-900/60 hover:bg-gray-700 border border-gray-700/80 p-2 rounded-lg transition flex items-center justify-between group pt-1.5">
+                        <div class="flex flex-col text-left overflow-hidden">
+                            <span class="text-[11px] font-bold text-gray-200 group-hover:text-blue-400 truncate">Cartão Débito</span>
+                            <span class="text-[9px] text-gray-400 truncate">Pagamento débito</span>
+                        </div>
+                        <span class="bg-blue-950 text-blue-400 text-[10px] font-bold px-1.5 py-0.5 rounded border border-blue-800/50 font-mono ml-1">F4</span>
+                    </button>
+
+                    <!-- F5 -->
+                    <button onclick="window.acaoAtalhoF5 && window.acaoAtalhoF5()" class="w-full bg-gray-900/60 hover:bg-gray-700 border border-gray-700/80 p-2 rounded-lg transition flex items-center justify-between group pt-1.5">
+                        <div class="flex flex-col text-left overflow-hidden">
                             <span class="text-[11px] font-bold text-gray-200 group-hover:text-emerald-400 truncate">Pesquisar</span>
-                            <span class="text-[9px] text-gray-400 truncate">Focar busca</span>
+                            <span class="text-[9px] text-gray-400 truncate">Focar no leitor/busca</span>
                         </div>
                         <span class="bg-gray-850 text-gray-300 text-[10px] font-bold px-1.5 py-0.5 rounded border border-gray-700 font-mono ml-1">F5</span>
                     </button>
 
-                    <button onclick="window.acaoAtalhoF6 && window.acaoAtalhoF6()" class="bg-gray-900/60 hover:bg-gray-700 border border-gray-700/80 p-2 rounded-lg transition flex items-center justify-between group">
-                        <div class="flex flex-col overflow-hidden">
+                    <!-- F6 -->
+                    <button onclick="window.acaoAtalhoF6 && window.acaoAtalhoF6()" class="w-full bg-gray-900/60 hover:bg-gray-700 border border-gray-700/80 p-2 rounded-lg transition flex items-center justify-between group pt-1.5">
+                        <div class="flex flex-col text-left overflow-hidden">
                             <span class="text-[11px] font-bold text-gray-200 group-hover:text-amber-400 truncate">Pausar Venda</span>
-                            <span class="text-[9px] text-gray-400 truncate">Em espera</span>
+                            <span class="text-[9px] text-gray-400 truncate">Salvar em espera</span>
                         </div>
                         <span class="bg-amber-950/60 text-amber-400 text-[10px] font-bold px-1.5 py-0.5 rounded border border-amber-800/50 font-mono ml-1">F6</span>
                     </button>
 
-                    <button onclick="window.acionarFinalizarVenda && window.acionarFinalizarVenda()" class="bg-gray-900/60 hover:bg-gray-700 border border-gray-700/80 p-2 rounded-lg transition flex items-center justify-between group">
-                        <div class="flex flex-col overflow-hidden">
+                    <!-- F7 -->
+                    <button onclick="window.acionarFinalizarVenda && window.acionarFinalizarVenda()" class="w-full bg-gray-900/60 hover:bg-gray-700 border border-gray-700/80 p-2 rounded-lg transition flex items-center justify-between group pt-1.5">
+                        <div class="flex flex-col text-left overflow-hidden">
                             <span class="text-[11px] font-bold text-gray-200 group-hover:text-emerald-400 truncate">Finalizar Venda</span>
-                            <span class="text-[9px] text-gray-400 truncate">Checkout</span>
+                            <span class="text-[9px] text-gray-400 truncate">Abrir checkout</span>
                         </div>
                         <span class="bg-emerald-950 text-emerald-400 text-[10px] font-bold px-1.5 py-0.5 rounded border border-emerald-800/50 font-mono ml-1">F7</span>
                     </button>
 
-                    <button onclick="window.acaoAtalhoF11 && window.acaoAtalhoF11()" class="bg-gray-900/60 hover:bg-gray-700 border border-gray-700/80 p-2 rounded-lg transition flex items-center justify-between group">
-                        <div class="flex flex-col overflow-hidden">
+                    <!-- F8 -->
+                    <button onclick="window.acaoAtalhoF8 && window.acaoAtalhoF8()" class="w-full bg-gray-900/60 hover:bg-gray-700 border border-gray-700/80 p-2 rounded-lg transition flex items-center justify-between group pt-1.5">
+                        <div class="flex flex-col text-left overflow-hidden">
+                            <span class="text-[11px] font-bold text-gray-200 group-hover:text-amber-400 truncate">Parcelado / Crédito</span>
+                            <span class="text-[9px] text-gray-400 truncate">Cartão parcelado</span>
+                        </div>
+                        <span class="bg-amber-950/60 text-amber-400 text-[10px] font-bold px-1.5 py-0.5 rounded border border-amber-800/50 font-mono ml-1">F8</span>
+                    </button>
+
+                    <!-- F9 -->
+                    <button onclick="window.acaoAtalhoF9 && window.acaoAtalhoF9()" class="w-full bg-gray-900/60 hover:bg-gray-700 border border-gray-700/80 p-2 rounded-lg transition flex items-center justify-between group pt-1.5">
+                        <div class="flex flex-col text-left overflow-hidden">
+                            <span class="text-[11px] font-bold text-gray-200 group-hover:text-cyan-400 truncate">Caixa (Sangria/Suprimento)</span>
+                            <span class="text-[9px] text-gray-400 truncate">Movimento de gaveta</span>
+                        </div>
+                        <span class="bg-cyan-950/60 text-cyan-400 text-[10px] font-bold px-1.5 py-0.5 rounded border border-cyan-800/50 font-mono ml-1">F9</span>
+                    </button>
+
+                    <!-- F10 -->
+                    <button onclick="window.acaoAtalhoF10 && window.acaoAtalhoF10()" class="w-full bg-gray-900/60 hover:bg-gray-700 border border-gray-700/80 p-2 rounded-lg transition flex items-center justify-between group pt-1.5">
+                        <div class="flex flex-col text-left overflow-hidden">
+                            <span class="text-[11px] font-bold text-gray-200 group-hover:text-purple-400 truncate">Consulta Preço</span>
+                            <span class="text-[9px] text-gray-400 truncate">Verificar valor rápido</span>
+                        </div>
+                        <span class="bg-purple-950/60 text-purple-400 text-[10px] font-bold px-1.5 py-0.5 rounded border border-purple-800/50 font-mono ml-1">F10</span>
+                    </button>
+
+                    <!-- F11 -->
+                    <button onclick="window.acaoAtalhoF11 && window.acaoAtalhoF11()" class="w-full bg-gray-900/60 hover:bg-gray-700 border border-gray-700/80 p-2 rounded-lg transition flex items-center justify-between group pt-1.5">
+                        <div class="flex flex-col text-left overflow-hidden">
                             <span class="text-[11px] font-bold text-gray-200 group-hover:text-red-400 truncate">Cancelar Item</span>
-                            <span class="text-[9px] text-gray-400 truncate">Exige PIN</span>
+                            <span class="text-[9px] text-gray-400 truncate">Exige PIN Admin</span>
                         </div>
                         <span class="bg-red-950/60 text-red-400 text-[10px] font-bold px-1.5 py-0.5 rounded border border-red-800/50 font-mono ml-1">F11</span>
                     </button>
+
+                    <!-- F12 -->
+                    <button onclick="window.acaoAtalhoF12 && window.acaoAtalhoF12()" class="w-full bg-gray-900/60 hover:bg-gray-700 border border-gray-700/80 p-2 rounded-lg transition flex items-center justify-between group pt-1.5">
+                        <div class="flex flex-col text-left overflow-hidden">
+                            <span class="text-[11px] font-bold text-gray-200 group-hover:text-red-400 truncate">Cancelar Venda</span>
+                            <span class="text-[9px] text-gray-400 truncate">Exige PIN Admin</span>
+                        </div>
+                        <span class="bg-red-950/60 text-red-400 text-[10px] font-bold px-1.5 py-0.5 rounded border border-red-800/50 font-mono ml-1">F12</span>
+                    </button>
+
                 </div>
             </div>
         </section>
@@ -211,39 +272,6 @@
     </main>
 
     <div id="containerModaisDinamicos"></div>
-
-    <!-- Modal Personalizado de Atalhos (Substitui o alert nativo) -->
-    <div id="modalAtalhosCustom" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-gray-800 border border-gray-700 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
-            <div class="px-5 py-4 border-b border-gray-700 flex justify-between items-center bg-gray-850">
-                <h3 class="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                    <i class="fa-solid fa-keyboard text-emerald-400"></i> Guia Completo de Atalhos (F1 - F12)
-                </h3>
-                <button onclick="window.toggleModalAtalhosCustom()" class="text-gray-400 hover:text-white text-sm font-bold px-2 py-1 rounded-lg">✕</button>
-            </div>
-            <div class="p-5 overflow-y-auto space-y-2 text-xs text-gray-300 divide-y divide-gray-750">
-                <div class="py-1.5 flex justify-between"><span><strong>F1:</strong> CPF na Nota (Identificar cliente)</span><span class="font-mono text-emerald-400">F1</span></div>
-                <div class="py-1.5 flex justify-between"><span><strong>F2:</strong> Vendedor (Vincular comissão)</span><span class="font-mono text-emerald-400">F2</span></div>
-                <div class="py-1.5 flex justify-between"><span><strong>F3:</strong> Dinheiro/Pix Rápido (À vista)</span><span class="font-mono text-emerald-400">F3</span></div>
-                <div class="py-1.5 flex justify-between"><span><strong>F4:</strong> Cartão Débito</span><span class="font-mono text-emerald-400">F4</span></div>
-                <div class="py-1.5 flex justify-between"><span><strong>F5:</strong> Pesquisar (Focar no leitor/busca)</span><span class="font-mono text-emerald-400">F5</span></div>
-                <div class="py-1.5 flex justify-between"><span><strong>F6:</strong> Pausar Venda (Salvar em espera)</span><span class="font-mono text-emerald-400">F6</span></div>
-                <div class="py-1.5 flex justify-between"><span><strong>F7:</strong> Finalizar Venda (Abrir checkout)</span><span class="font-mono text-emerald-400">F7</span></div>
-                <div class="py-1.5 flex justify-between"><span><strong>F8:</strong> Parcelado / Cartão Crédito</span><span class="font-mono text-emerald-400">F8</span></div>
-                <div class="py-1.5 flex justify-between"><span><strong>F11:</strong> Cancelar Item (Exige PIN)</span><span class="font-mono text-red-400">F11</span></div>
-            </div>
-            <div class="p-4 border-t border-gray-700 bg-gray-850 text-right">
-                <button onclick="window.toggleModalAtalhosCustom()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition">Fechar</button>
-            </div>
-        </div>
-    </div>
-    <script>
-        // Função auxiliar para controlar o modal de atalhos personalizado
-        window.toggleModalAtalhosCustom = function() {
-            const modal = document.getElementById('modalAtalhosCustom');
-            if (modal) modal.classList.toggle('hidden');
-        };
-    </script>
 
     <script type="module" src="caixa-core.js"></script>
 </body>
