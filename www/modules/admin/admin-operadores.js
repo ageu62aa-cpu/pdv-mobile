@@ -81,12 +81,41 @@ function configurarModalOperador() {
 
     if (!modal) return;
 
-    btnAbrir.addEventListener('click', () => modal.classList.remove('hidden'));
+    btnAbrir.addEventListener('click', () => {
+        modal.classList.remove('hidden');
+        if (modalFeedback) modalFeedback.classList.add('hidden');
+    });
     btnFechar.addEventListener('click', () => modal.classList.add('hidden'));
     btnCancelar.addEventListener('click', () => modal.classList.add('hidden'));
 
+    // Elemento de feedback visual dentro do modal de operador
+    let modalFeedback = document.getElementById('modal-operador-feedback');
+    if (!modalFeedback && modal) {
+        const formEl = document.getElementById('form-cadastrar-operador');
+        modalFeedback = document.createElement('div');
+        modalFeedback.id = 'modal-operador-feedback';
+        modalFeedback.className = 'mt-3 text-center text-xs font-medium transition-all duration-300 hidden py-2 px-3 rounded-lg';
+        formEl.insertBefore(modalFeedback, formEl.firstChild);
+    }
+
+    function showModalFeedback(message, type) {
+        if (!modalFeedback) return;
+        modalFeedback.className = "mt-3 text-center text-xs font-medium transition-all duration-300 py-2 px-3 rounded-lg";
+        
+        if (type === 'error') {
+            modalFeedback.classList.add('text-rose-400', 'bg-rose-950/40', 'border', 'border-rose-500/30');
+            modalFeedback.innerText = message;
+        } else if (type === 'success') {
+            modalFeedback.classList.add('text-emerald-400', 'bg-emerald-950/40', 'border', 'border-emerald-500/30');
+            modalFeedback.innerText = message;
+        }
+        modalFeedback.classList.remove('hidden');
+    }
+
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
+        if (modalFeedback) modalFeedback.classList.add('hidden');
+
         const nome = document.getElementById('op-nome').value.trim();
         const email = document.getElementById('op-email').value.trim();
         const senha = document.getElementById('op-senha').value.trim();
@@ -104,8 +133,19 @@ function configurarModalOperador() {
 
             if (errEmp || !adminEmpresa) throw new Error('Não foi possível identificar a empresa do administrador.');
 
-            // 2. Criar o usuário operador no Auth do Supabase
-            // Nota: Dependendo das configurações do Supabase, isto pode enviar um e-mail de confirmação ou criar diretamente.
+            // 2. Verificar quantos operadores já estão cadastrados para esta empresa
+            const { count, error: countErr } = await supabase
+                .from('usuarios_empresas')
+                .select('*', { count: 'exact', head: true })
+                .eq('empresa_id', adminEmpresa.empresa_id)
+                .eq('cargo', 'operador');
+
+            if (!countErr && count >= 1) {
+                showModalFeedback('Limite do plano atingido: O plano atual permite apenas 1 operador. Faça o upgrade para o Plano Premium para adicionar mais.', 'error');
+                return;
+            }
+
+            // 3. Criar o usuário operador no Auth do Supabase
             const { data: authData, error: authError } = await supabase.auth.signUp({ 
                 email, 
                 password: senha,
@@ -117,7 +157,7 @@ function configurarModalOperador() {
             const novoUserId = authData.user?.id;
             if (!novoUserId) throw new Error('Erro ao gerar ID de autenticação para o operador.');
 
-            // 3. Inserir na tabela usuarios_empresas com cargo 'operador'
+            // 4. Inserir na tabela usuarios_empresas com cargo 'operador'
             const { error: dbError } = await supabase.from('usuarios_empresas').insert([{
                 user_id: novoUserId,
                 empresa_id: adminEmpresa.empresa_id,
@@ -128,13 +168,16 @@ function configurarModalOperador() {
 
             if (dbError) throw new Error(dbError.message);
 
-            alert('Operador cadastrado com sucesso!');
-            modal.classList.add('hidden');
-            form.reset();
-            await carregarOperadoresComStatus();
+            showModalFeedback('Operador cadastrado com sucesso!', 'success');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                form.reset();
+                if (modalFeedback) modalFeedback.classList.add('hidden');
+                carregarOperadoresComStatus();
+            }, 1200);
 
         } catch (err) {
-            alert('Erro ao registrar operador: ' + err.message);
+            showModalFeedback('Erro ao registar operador: ' + err.message, 'error');
         }
     });
 }
@@ -158,8 +201,8 @@ async function carregarOperadoresComStatus() {
     tbody.innerHTML = operadores.map(op => {
         const caixaAberto = op.status_caixa === 'aberto';
         const badgeStatus = caixaAberto 
-            ? `<span class="px-2 py-1 bg-emerald-900/60 text-emerald-400 border border-emerald-700 rounded-full text-xs font-bold flex items-center gap-1.5 w-fit"><span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Caixa Aberto</span>`
-            : `<span class="px-2 py-1 bg-red-900/50 text-red-300 border border-red-800 rounded-full text-xs font-bold flex items-center gap-1.5 w-fit"><span class="w-2 h-2 rounded-full bg-red-500"></span> Caixa Fechado</span>`;
+            ? '<span class="px-2 py-1 bg-emerald-900/60 text-emerald-400 border border-emerald-700 rounded-full text-xs font-bold flex items-center gap-1.5 w-fit"><span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Caixa Aberto</span>'
+            : '<span class="px-2 py-1 bg-red-900/50 text-red-300 border border-red-800 rounded-full text-xs font-bold flex items-center gap-1.5 w-fit"><span class="w-2 h-2 rounded-full bg-red-500"></span> Caixa Fechado</span>';
 
         return `
         <tr class="hover:bg-gray-800 transition-colors">
