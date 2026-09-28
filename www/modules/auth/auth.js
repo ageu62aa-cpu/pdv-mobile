@@ -308,7 +308,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Login Real com Verificação Inteligente (Admin ou Operador)
+    // Login Real com Verificação Inteligente (Admin ou Operador via usuarios_empresas)
     if (formLogin) {
         formLogin.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -317,45 +317,52 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (authFeedback) authFeedback.classList.add('hidden');
 
-            // 1. Tenta autenticar como Administrador (Supabase Auth)
+            // 1. Autentica no Supabase Auth (válido tanto para Admin quanto para Operador)
             const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password: senha });
             
-            if (!authError && authData) {
+            if (authError || !authData.user) {
+                showLoginFeedback('Login Inválido. Verifique e-mail e senha.', 'error');
+                return;
+            }
+
+            const userId = authData.user.id;
+
+            // 2. Verifica na tabela usuarios_empresas qual é o cargo deste usuário
+            const { data: vinculo, error: vinculoError } = await supabase
+                .from('usuarios_empresas')
+                .select('*')
+                .eq('user_id', userId)
+                .single();
+
+            if (vinculoError || !vinculo) {
+                showLoginFeedback('Erro ao identificar o perfil da empresa.', 'error');
+                return;
+            }
+
+            // 3. Direciona com base no cargo ('admin_mercado' ou 'operador')
+            if (vinculo.cargo === 'admin_mercado') {
                 showLoginFeedback('Login de Administrador com Sucesso', 'success');
                 setTimeout(() => {
                     window.location.href = '../admin/admin.html';
                 }, 700);
-                return;
-            }
-
-            // 2. Se falhar no Auth principal, verifica se é um Operador cadastrado
-            const { data: operadorData, error: opError } = await supabase
-                .from('operadores')
-                .select('*')
-                .eq('email', email)
-                .eq('senha', senha)
-                .single();
-
-            if (!opError && operadorData) {
+            } else if (vinculo.cargo === 'operador') {
                 // Salva os dados do operador na sessão local para uso no PDV
-                localStorage.setItem('operador_logado_id', operadorData.id);
-                localStorage.setItem('operador_logado_nome', operadorData.nome);
+                localStorage.setItem('operador_logado_id', vinculo.id);
+                localStorage.setItem('operador_logado_user_id', userId);
 
                 // Atualiza o status do caixa do operador para 'aberto' em tempo real
                 await supabase
-                    .from('operadores')
+                    .from('usuarios_empresas')
                     .update({ status_caixa: 'aberto' })
-                    .eq('id', operadorData.id);
+                    .eq('id', vinculo.id);
 
                 showLoginFeedback('Login de Operador com Sucesso', 'success');
                 setTimeout(() => {
                     window.location.href = '../pdv/caixa-core.html';
                 }, 700);
-                return;
+            } else {
+                showLoginFeedback('Cargo não autorizado.', 'error');
             }
-
-            // Se nenhum dos dois funcionar, exibe erro de login inválido
-            showLoginFeedback('Login Inválido. Verifique e-mail e senha.', 'error');
         });
     }
 });

@@ -1,6 +1,6 @@
 /**
  * Módulo: Admin Operadores (www/modules/admin/admin-operadores.js)
- * Cadastro via Modal e monitoramento em tempo real do operador e status do caixa.
+ * Cadastro via Modal e monitoramento em tempo real dos operadores na tabela usuarios_empresas.
  */
 
 import { supabase } from '../../core/config.js';
@@ -91,32 +91,50 @@ function configurarModalOperador() {
         const email = document.getElementById('op-email').value.trim();
         const senha = document.getElementById('op-senha').value.trim();
 
-        // Verificar limite de 1 operador para o plano comum
-        const { count, error: countErr } = await supabase
-            .from('operadores')
-            .select('*', { count: 'exact', head: true });
+        try {
+            // 1. Descobrir qual é a empresa_id do admin logado atualmente
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error('Administrador não autenticado.');
 
-        if (!countErr && count >= 1) {
-            alert('O plano atual permite apenas 1 operador cadastrado.');
-            return;
-        }
+            const { data: adminEmpresa, error: errEmp } = await supabase
+                .from('usuarios_empresas')
+                .select('empresa_id')
+                .eq('user_id', user.id)
+                .single();
 
-        // Inserir no Supabase (incluindo senha e status padrão)
-        const { error } = await supabase.from('operadores').insert([{
-            nome,
-            email,
-            senha,
-            status_caixa: 'fechado',
-            faturamento_atual: 0.00
-        }]);
+            if (errEmp || !adminEmpresa) throw new Error('Não foi possível identificar a empresa do administrador.');
 
-        if (error) {
-            alert('Erro ao registrar operador: ' + error.message);
-        } else {
+            // 2. Criar o usuário operador no Auth do Supabase
+            // Nota: Dependendo das configurações do Supabase, isto pode enviar um e-mail de confirmação ou criar diretamente.
+            const { data: authData, error: authError } = await supabase.auth.signUp({ 
+                email, 
+                password: senha,
+                options: { data: { nome } }
+            });
+
+            if (authError) throw new Error(authError.message);
+
+            const novoUserId = authData.user?.id;
+            if (!novoUserId) throw new Error('Erro ao gerar ID de autenticação para o operador.');
+
+            // 3. Inserir na tabela usuarios_empresas com cargo 'operador'
+            const { error: dbError } = await supabase.from('usuarios_empresas').insert([{
+                user_id: novoUserId,
+                empresa_id: adminEmpresa.empresa_id,
+                cargo: 'operador',
+                status_caixa: 'fechado',
+                faturamento_atual: 0.00
+            }]);
+
+            if (dbError) throw new Error(dbError.message);
+
             alert('Operador cadastrado com sucesso!');
             modal.classList.add('hidden');
             form.reset();
             await carregarOperadoresComStatus();
+
+        } catch (err) {
+            alert('Erro ao registrar operador: ' + err.message);
         }
     });
 }
@@ -125,13 +143,18 @@ async function carregarOperadoresComStatus() {
     const tbody = document.getElementById('tabela-operadores-corpo');
     if (!tbody) return;
 
-    const { data: operadores, error } = await supabase.from('operadores').select('*');
+    // Buscar apenas os registros que possuem cargo 'operador' na tabela usuarios_empresas
+    const { data: operadores, error } = await supabase
+        .from('usuarios_empresas')
+        .select('*')
+        .eq('cargo', 'operador');
 
     if (error || !operadores || operadores.length === 0) {
         tbody.innerHTML = `<tr><td colspan="5" class="text-center p-6 text-gray-400">Nenhum operador cadastrado. Utilize o botão acima para adicionar.</td></tr>`;
         return;
     }
 
+    // Como o e-mail e nome podem estar na tabela auth ou precisamos buscar, vamos exibir com base nos dados disponíveis
     tbody.innerHTML = operadores.map(op => {
         const caixaAberto = op.status_caixa === 'aberto';
         const badgeStatus = caixaAberto 
@@ -140,8 +163,8 @@ async function carregarOperadoresComStatus() {
 
         return `
         <tr class="hover:bg-gray-800 transition-colors">
-            <td class="p-3 font-bold text-white">${op.nome}</td>
-            <td class="p-3 text-gray-300 text-xs">${op.email}</td>
+            <td class="p-3 font-bold text-white">Operador ID: ${op.user_id.substring(0, 8)}...</td>
+            <td class="p-3 text-gray-300 text-xs font-mono">${op.user_id}</td>
             <td class="p-3">${badgeStatus}</td>
             <td class="p-3 font-mono font-bold text-emerald-400">R$ ${Number(op.faturamento_atual || 0).toFixed(2)}</td>
             <td class="p-3 text-right">
@@ -155,8 +178,8 @@ async function carregarOperadoresComStatus() {
 function inscreverTempoRealOperadores() {
     try {
         supabase
-            .channel('public:operadores')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'operadores' }, () => {
+            .channel('public:usuarios_empresas_operadores')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'usuarios_empresas', filter: "cargo=eq.operador" }, () => {
                 carregarOperadoresComStatus();
             })
             .subscribe();
@@ -166,8 +189,8 @@ function inscreverTempoRealOperadores() {
 }
 
 window.excluirOperador = async function(id) {
-    if (!confirm('Deseja realmente remover este operador?')) return;
-    const { error } = await supabase.from('operadores').delete().eq('id', id);
+    if (!confirm('Deseja realmente remover este vínculo de operador?')) return;
+    const { error } = await supabase.from('usuarios_empresas').delete().eq('id', id);
     if (error) alert('Erro ao excluir: ' + error.message);
     else await carregarOperadoresComStatus();
 };
