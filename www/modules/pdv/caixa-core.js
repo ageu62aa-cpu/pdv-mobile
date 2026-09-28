@@ -510,7 +510,11 @@ export async function finalizarVenda() {
 
     for (const item of itensVenda) {
         const novoEstoque = Math.max(0, (item.estoque || 0) - item.qtd);
-        await getSupabase().from('produtos').update({ estoque: novoEstoque }).eq('id', item.id);
+        await getSupabase()
+            .from('produtos')
+            .update({ estoque: novoEstoque })
+            .eq('id', item.id)
+            .eq('empresa_id', empresaAtualId);
     }
 
     const novoFat = faturamentoDia + total;
