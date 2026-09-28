@@ -18,6 +18,37 @@ let horaAberturaCaixa = null;
 // --- UTILITÁRIO DE CLIENTE SUPABASE ---
 const getSupabase = () => window.supabaseClient || window.supabase || supabase;
 
+// --- ATUALIZAÇÃO VISUAL DOS BADGES DE STATUS NO CABEÇALHO ---
+export function atualizarBadgesCaixaInterface(isAberto, faturamento = 0) {
+    const txtStatusHeader = document.getElementById('txtStatusCaixaHeader');
+    const btnAbrir = document.getElementById('btnAbrirCaixaHeader');
+    const btnFechar = document.getElementById('btnFecharCaixaHeader');
+
+    if (isAberto) {
+        if (txtStatusHeader) {
+            txtStatusHeader.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Caixa Aberto (Fat: R$ ${Number(faturamento).toFixed(2)})`;
+            txtStatusHeader.className = "text-xs text-emerald-400 font-semibold flex items-center gap-1.5";
+        }
+        if (btnAbrir) btnAbrir.classList.add('opacity-50', 'cursor-not-allowed');
+        if (btnFechar) btnFechar.classList.remove('opacity-50', 'cursor-not-allowed');
+    } else {
+        if (txtStatusHeader) {
+            txtStatusHeader.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span> Caixa Fechado (Necessário Abertura)`;
+            txtStatusHeader.className = "text-xs text-amber-400 font-semibold flex items-center gap-1.5";
+        }
+        if (btnAbrir) btnAbrir.classList.remove('opacity-50', 'cursor-not-allowed');
+        if (btnFechar) btnFechar.classList.add('opacity-50', 'cursor-not-allowed');
+    }
+
+    // Suporte retrocompatível para elementos genéricos `.badgeCaixaStatus`
+    document.querySelectorAll('.badgeCaixaStatus').forEach(b => {
+        b.innerText = isAberto ? 'ABERTO' : 'FECHADO';
+        b.className = isAberto 
+            ? 'badgeCaixaStatus text-xs bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-3 py-1.5 rounded font-semibold' 
+            : 'badgeCaixaStatus text-xs bg-amber-500/20 text-amber-300 border border-amber-500/30 px-3 py-1.5 rounded font-semibold';
+    });
+}
+
 // Checagem de status e faturamento do caixa individual
 export async function verificarStatusCaixaServidor() {
     if (!empresaAtualId || !usuarioAtual) return;
@@ -40,10 +71,11 @@ export async function verificarStatusCaixaServidor() {
                 const txtFat = document.getElementById('txtFaturamentoDia');
                 if (txtFat) txtFat.innerText = `R$ ${fatNoBanco.toFixed(2)}`;
             }
+            atualizarBadgesCaixaInterface(true, fatNoBanco);
         } else {
             setCaixaAberto(false);
+            atualizarBadgesCaixaInterface(false, 0);
         }
-        atualizarBadgesCaixaInterface();
 
         if (cargoUsuarioAtual === 'admin_mercado') {
             carregarOperadoresLoja?.();
@@ -54,7 +86,7 @@ export async function verificarStatusCaixaServidor() {
     }
 }
 
-// Configuração de Tempo Real (Supabase Realtime) - Atualizado conforme o Passo 2
+// Configuração de Tempo Real (Supabase Realtime)
 export function iniciarRealtimeCaixa() {
     if (!empresaAtualId) return;
     
@@ -64,24 +96,23 @@ export function iniciarRealtimeCaixa() {
             'postgres_changes',
             { event: '*', schema: 'public', table: 'caixas', filter: `empresa_id=eq.${empresaAtualId}` },
             (payload) => {
-                // Atualiza instantaneamente o status do operador e faturamento na tela do PDV e repassa para o Admin
                 if (payload.new && payload.new.user_id === usuarioAtual?.id) {
                     const novoStatus = payload.new.status === 'ABERTO';
                     const novoFat = Number(payload.new.faturamento_dia) || 0;
                     
                     if (novoStatus !== caixaAberto) {
                         setCaixaAberto(novoStatus);
-                        atualizarBadgesCaixaInterface();
+                        atualizarBadgesCaixaInterface(novoStatus, novoFat);
                     }
                     
                     if (novoFat !== faturamentoDia) {
                         setFaturamentoDia(novoFat);
                         const txtFat = document.getElementById('txtFaturamentoDia');
                         if (txtFat) txtFat.innerText = `R$ ${novoFat.toFixed(2)}`;
+                        atualizarBadgesCaixaInterface(novoStatus, novoFat);
                     }
                 }
                 
-                // Se for o painel admin escutando, atualiza a listagem da loja em tempo real
                 if (cargoUsuarioAtual === 'admin_mercado') {
                     carregarOperadoresLoja?.();
                     carregarHistoricoAdmin?.();
@@ -94,12 +125,9 @@ export function iniciarRealtimeCaixa() {
 // --- FUNÇÃO AUXILIAR DE IMPRESSÃO TÉRMICA & ESTOQUE ---
 window.dispararImpressaoTermicaNFCe = function(detalhes) {
     console.log("Gerando NFC-e, baixando estoque e salvando transação...", detalhes);
-    // Impressão automática desativada conforme solicitação, mantendo o registro funcional
 };
 
-// --- MAPEAMENTO DE ATALHOS F1 A F12 (DIRETO NO PAINEL LATERAL / SEM POP-UPS NATIVOS) ---
-
-// F1 - Identificar Consumidor (Painel Lateral)
+// --- MAPEAMENTO DE ATALHOS F1 A F12 ---
 window.acaoAtalhoF1 = () => {
     const inputCpf = document.getElementById('inputCpfNota');
     const painelAberto = document.getElementById('blocoF1') && !document.getElementById('blocoF1').classList.contains('hidden');
@@ -141,6 +169,8 @@ window.acaoAtalhoF2 = () => {
     const vendedor = prompt('F2 - Informe o nome ou código do Vendedor:', 'Balcão');
     if (vendedor) {
         window.vendedorAtualVenda = vendedor;
+        window.vendedorAtual = { nome: vendedor };
+        localStorage.setItem('operadorNome', vendedor);
     }
 };
 
@@ -192,24 +222,13 @@ window.acaoAtalhoF4 = () => {
     window.dispararImpressaoTermicaNFCe({ forma: 'Débito (Taxa Embutida)', total: totalComTaxa });
 };
 
-window.acaoAtalhoF5 = () => {
-    focarBusca();
-};
-
+window.acaoAtalhoF5 = () => { focarBusca(); };
 window.acaoAtalhoF6 = () => {
     const desc = prompt('F6 - Desconto Especial: Digite o valor (Ex: 10% ou 15.00):');
-    if (desc) {
-        window.descontoAplicadoVenda = desc;
-    }
+    if (desc) { window.descontoAplicadoVenda = desc; }
 };
-
-window.acaoAtalhoF7 = () => {
-    window.acionarFinalizarVenda();
-};
-
-window.acionarFinalizarVenda = () => {
-    finalizarVenda();
-};
+window.acaoAtalhoF7 = () => { window.acionarFinalizarVenda(); };
+window.acionarFinalizarVenda = () => { finalizarVenda(); };
 
 window.acaoAtalhoF8 = () => {
     const valorTotalVenda = itensVenda.reduce((acc, item) => acc + (item.qtd * item.preco), 0);
@@ -247,19 +266,11 @@ window.acaoAtalhoF9 = () => {
 
 window.acaoAtalhoF10 = () => {
     const qtd = prompt('F10 - Multiplicador de Quantidade (Ex: 5):', '1');
-    if (qtd) {
-        window.quantidadeMultiplicador = parseFloat(qtd) || 1;
-    }
+    if (qtd) { window.quantidadeMultiplicador = parseFloat(qtd) || 1; }
 };
 
-window.acaoAtalhoF11 = () => {
-    abrirModalCancelarItem();
-};
-
-window.acaoAtalhoF12 = () => {
-    cancelarVenda();
-};
-
+window.acaoAtalhoF11 = () => { abrirModalCancelarItem(); };
+window.acaoAtalhoF12 = () => { cancelarVenda(); };
 window.acaoAtalhoPix = () => { window.acaoAtalhoF3(); };
 window.acaoAtalhoParcelamento = () => { window.acaoAtalhoF8(); };
 
@@ -326,9 +337,7 @@ export async function realizarLogout() {
     }
 }
 
-export function focarBusca() { 
-    document.getElementById('inputBusca')?.focus(); 
-}
+export function focarBusca() { document.getElementById('inputBusca')?.focus(); }
 
 export function aoDigitarBusca(e) {
     if (!e || !e.target) return;
@@ -403,7 +412,7 @@ export function tratarEnterBuscaCaixa(e) {
     }
 }
 
-// --- FUNÇÕES DE ABERTURA E FECHAMENTO COM AUTO-RECUPERAÇÃO DE SESSÃO ---
+// --- ABRIR CAIXA (COM MUDANÇA IMEDIATA DE STATUS NA TELA) ---
 window.acionarAbrirCaixa = async function() {
     const db = getSupabase();
     if (!db) {
@@ -414,7 +423,6 @@ window.acionarAbrirCaixa = async function() {
     let empresaId = window.empresaAtualId || localStorage.getItem('empresaAtualId');
     let usuario = window.usuarioAtual;
 
-    // Se faltar dados globais, recupera direto da sessão ativa do Supabase Auth
     if (!usuario || !empresaId) {
         const { data: { session }, error: sessionError } = await db.auth.getSession();
         if (sessionError || !session || !session.user) {
@@ -426,7 +434,6 @@ window.acionarAbrirCaixa = async function() {
         empresaId = empresaId || localStorage.getItem('empresa_id') || session.user.user_metadata?.empresa_id;
     }
 
-    // Se o ID da empresa ainda não foi encontrado, busca na tabela de usuários ou funcionários vinculados
     if (!empresaId && usuario) {
         try {
             const { data: userData } = await db
@@ -455,67 +462,74 @@ window.acionarAbrirCaixa = async function() {
         return;
     }
 
-    const trocoStr = prompt('Digite o valor do troco inicial (fundo de troco) em R$:', '50.00');
-    if (trocoStr === null) return; 
-
-    const valorAbertura = parseFloat(trocoStr.replace(',', '.'));
-    if (isNaN(valorAbertura) || valorAbertura < 0) {
-        alert('PDV-VS: Valor de troco inválido.');
-        return;
-    }
-
     try {
-        // Verifica se já existe caixa aberto
+        // 1. Validar se já existe caixa aberto
         const { data: caixaExistente } = await db
             .from('caixas')
-            .select('id')
+            .select('id, status')
             .eq('empresa_id', empresaId)
             .eq('user_id', usuario.id)
             .eq('status', 'ABERTO')
             .maybeSingle();
 
         if (caixaExistente) {
-            alert('PDV-VS: Já existe um caixa aberto para este operador!');
+            alert('PDV-VS: O seu caixa já está aberto!');
+            atualizarBadgesCaixaInterface(true, 0);
             return;
         }
 
-        // Insere a abertura do caixa
+        const trocoStr = prompt('Digite o valor do troco inicial (fundo de troco) em R$:', '50.00');
+        if (trocoStr === null) return; 
+
+        const valorAbertura = parseFloat(trocoStr.replace(',', '.'));
+        if (isNaN(valorAbertura) || valorAbertura < 0) {
+            alert('PDV-VS: Valor de troco inválido.');
+            return;
+        }
+
+        // Pega o nome do operador cadastrado (via F2 ou fallback para email/padrão)
+        const nomeOperador = window.vendedorAtual?.nome || localStorage.getItem('operadorNome') || usuario.email || 'Operador Ativo';
+
+        // 2. Inserir abertura no banco
         const { error } = await db.from('caixas').insert([{
             empresa_id: empresaId,
             user_id: usuario.id,
+            operador: nomeOperador,
             status: 'ABERTO',
             valor_abertura: valorAbertura,
             faturamento_dia: 0.00,
+            sangria_total: 0.00,
+            suprimento_total: 0.00,
             created_at: new Date().toISOString()
         }]);
 
         if (error) throw error;
 
-        // Atualizar estado local de controle
         valorTrocoAbertura = valorAbertura;
         horaAberturaCaixa = new Date();
         setCaixaAberto(true);
         setFaturamentoDia(0);
-        atualizarBadgesCaixaInterface();
 
-        alert(`Caixa aberto com sucesso! Troco inicial: R$ ${valorAbertura.toFixed(2)}`);
+        alert(`Caixa aberto com sucesso! Operador: ${nomeOperador} | Troco: R$ ${valorAbertura.toFixed(2)}`);
         
+        // Atualiza o visual do topo imediatamente
+        atualizarBadgesCaixaInterface(true, 0);
+
         if (typeof verificarStatusCaixaServidor === 'function') {
             await verificarStatusCaixaServidor();
-        } else {
-            location.reload();
         }
 
     } catch (err) {
         console.error('Erro ao abrir caixa:', err);
-        alert('PDV-VS: Erro ao abrir caixa no servidor: ' + err.message);
+        alert('PDV-VS: Erro ao abrir caixa: ' + err.message);
     }
 };
 
+// --- FECHAR CAIXA (COM VALIDAÇÃO DE CAIXA ABERTO E RELATÓRIO INTELIGENTE) ---
 window.acionarFecharCaixa = async function() {
     const db = getSupabase();
     if (!db) return;
-    
+
     let empresaId = window.empresaAtualId || localStorage.getItem('empresaAtualId');
     let usuario = window.usuarioAtual;
 
@@ -527,7 +541,6 @@ window.acionarFecharCaixa = async function() {
         }
     }
 
-    // Se o ID da empresa ainda não foi encontrado, busca na tabela de usuários
     if (!empresaId && usuario) {
         try {
             const { data: userData } = await db
@@ -546,38 +559,112 @@ window.acionarFecharCaixa = async function() {
     }
 
     if (!empresaId || !usuario) {
-        alert('PDV-VS: Sessão não identificada para fechamento.');
-        return;
-    }
-
-    if (!confirm('Deseja realmente fechar o seu caixa atual? As vendas serão encerradas.')) {
+        alert('PDV-VS: Sessão não identificada.');
         return;
     }
 
     try {
-        const totalGeralGaveta = faturamentoDia + (valorTrocoAbertura || 0);
+        // 1. BUSCAR CAIXA ABERTO (Garante rigorosamente que só fecha se realmente estiver aberto)
+        const { data: caixaAberto, error: erroBusca } = await db
+            .from('caixas')
+            .select('*')
+            .eq('empresa_id', empresaId)
+            .eq('user_id', usuario.id)
+            .eq('status', 'ABERTO')
+            .maybeSingle();
 
-        const { error } = await db
+        if (erroBusca || !caixaAberto) {
+            alert('PDV-VS: Ação negada! Seu caixa encontra-se FECHADO ou não há nenhuma sessão ativa para encerrar.');
+            setCaixaAberto(false);
+            atualizarBadgesCaixaInterface(false, 0);
+            return;
+        }
+
+        const operadorNome = caixaAberto.operador || localStorage.getItem('operadorNome') || usuario.email || 'Operador Ativo';
+        const trocoInicial = Number(caixaAberto.valor_abertura) || 0;
+        const totalSangria = Number(caixaAberto.sangria_total) || 0;
+        const totalSuprimento = Number(caixaAberto.suprimento_total) || 0;
+        const dataAbertura = caixaAberto.created_at;
+
+        // 2. BUSCAR VENDAS APENAS DESTE TURNO (A partir do momento que abriu o caixa)
+        const { data: vendasRealizadas, error: erroVendas } = await db
+            .from('vendas')
+            .select('valor_total, forma_pagamento')
+            .eq('empresa_id', empresaId)
+            .gte('created_at', dataAbertura);
+
+        let fatDinheiro = 0;
+        let fatPix = 0;
+        let fatDebito = 0;
+        let fatCredito = 0;
+        let faturamentoGeral = 0;
+
+        if (!erroVendas && vendasRealizadas) {
+            vendasRealizadas.forEach(v => {
+                const valor = Number(v.valor_total) || 0;
+                faturamentoGeral += valor;
+                const forma = (v.forma_pagamento || 'dinheiro').toLowerCase();
+
+                if (forma.includes('dinheiro')) fatDinheiro += valor;
+                else if (forma.includes('pix')) fatPix += valor;
+                else if (forma.includes('debito') || forma.includes('débito')) fatDebito += valor;
+                else if (forma.includes('credito') || forma.includes('crédito') || forma.includes('parcelado')) fatCredito += valor;
+                else fatDinheiro += valor; // Fallback para dinheiro caso venha vazio
+            });
+        }
+
+        // Cálculo exato do dinheiro físico na gaveta
+        const dinheiroGaveta = (trocoInicial + fatDinheiro + totalSuprimento) - totalSangria;
+
+        // Montar linhas de pagamento condicionalmente (APENAS SE TIVER VENDAS NESTA FORMA)
+        let blocoPagamentos = '';
+        if (fatDinheiro > 0) blocoPagamentos += `  • Dinheiro: R$ ${fatDinheiro.toFixed(2)}\n`;
+        if (fatPix > 0) blocoPagamentos += `  • PIX: R$ ${fatPix.toFixed(2)}\n`;
+        if (fatDebito > 0) blocoPagamentos += `  • Cartão Débito: R$ ${fatDebito.toFixed(2)}\n`;
+        if (fatCredito > 0) blocoPagamentos += `  • Cartão Crédito: R$ ${fatCredito.toFixed(2)}\n`;
+        if (!blocoPagamentos) blocoPagamentos = `  (Nenhuma venda registrada neste turno)\n`;
+
+        const resumoMensagem = 
+            `=== RELATÓRIO DE FECHAMENTO DE CAIXA ===\n` +
+            `Operador: ${operadorNome}\n` +
+            `----------------------------------------\n` +
+            `[ VENDAS POR FORMA DE PAGAMENTO ]\n` +
+            blocoPagamentos +
+            `----------------------------------------\n` +
+            `(+) Faturamento Total Geral: R$ ${faturamentoGeral.toFixed(2)}\n` +
+            `(+) Troco Inicial (Fundo): R$ ${trocoInicial.toFixed(2)}\n` +
+            `(+) Suprimentos (Entradas): R$ ${totalSuprimento.toFixed(2)}\n` +
+            `(-) Sangrias (Retiradas): R$ ${totalSangria.toFixed(2)}\n` +
+            `----------------------------------------\n` +
+            `(=) Dinheiro Físico Esperado na Gaveta: R$ ${dinheiroGaveta.toFixed(2)}\n\n` +
+            `Deseja realmente confirmar o fechamento deste caixa?`;
+
+        if (!confirm(resumoMensagem)) {
+            return;
+        }
+
+        // 3. Atualizar status para FECHADO no banco
+        const { error: erroUpdate } = await db
             .from('caixas')
             .update({ 
                 status: 'FECHADO',
-                valor_fechamento: totalGeralGaveta,
-                data_fechamento: new Date().toISOString(),
+                faturamento_dia: faturamentoGeral,
+                balanco_final: dinheiroGaveta,
                 updated_at: new Date().toISOString()
             })
-            .eq('empresa_id', empresaId)
-            .eq('user_id', usuario.id)
-            .eq('status', 'ABERTO');
+            .eq('id', caixaAberto.id);
 
-        if (error) throw error;
+        if (erroUpdate) throw erroUpdate;
 
         setCaixaAberto(false);
         valorTrocoAbertura = 0;
         setFaturamentoDia(0);
-        atualizarBadgesCaixaInterface();
 
-        alert('Caixa fechado com sucesso! O painel administrativo foi atualizado em tempo real.');
+        alert('Caixa fechado com sucesso! Painel administrativo atualizado.');
         
+        // Atualiza o visual do topo imediatamente para Fechado
+        atualizarBadgesCaixaInterface(false, 0);
+
         if (typeof verificarStatusCaixaServidor === 'function') {
             await verificarStatusCaixaServidor();
         } else {
@@ -589,15 +676,6 @@ window.acionarFecharCaixa = async function() {
         alert('PDV-VS: Erro ao fechar caixa: ' + err.message);
     }
 };
-
-export function atualizarBadgesCaixaInterface() {
-    document.querySelectorAll('.badgeCaixaStatus').forEach(b => {
-        b.innerText = caixaAberto ? 'ABERTO' : 'FECHADO';
-        b.className = caixaAberto 
-            ? 'badgeCaixaStatus text-xs bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-3 py-1.5 rounded font-semibold' 
-            : 'badgeCaixaStatus text-xs bg-amber-500/20 text-amber-300 border border-amber-500/30 px-3 py-1.5 rounded font-semibold';
-    });
-}
 
 export function salvarPinAdmin() {
     const pin = document.getElementById('inputAdminPinConfig')?.value.trim() || '';
