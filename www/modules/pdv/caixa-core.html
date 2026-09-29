@@ -25,6 +25,32 @@
             }
         }
     </style>
+    <style>
+        /* Botão do Scanner (Container) */
+        .scanner-btn {
+            background: none !important;
+            background-color: transparent !important;
+            border: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            width: 32px !important;
+            height: 32px !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            cursor: pointer !important;
+        }
+        /* Imagem dentro do Botão */
+        .scanner-btn img {
+            width: 100% !important;
+            height: 100% !important;
+            max-width: 100% !important;
+            max-height: 100% !important;
+            display: block !important;
+            object-fit: fill !important;
+            border-radius: inherit !important;
+        }
+    </style>
 </head>
 <body class="bg-gray-900 text-gray-100 font-sans h-screen flex flex-col overflow-hidden">
 
@@ -77,14 +103,12 @@
                             <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Leitor Ativo
                         </span>
                         
-                        <!-- BOTÃO DA CÂMERA  -->
+                        <!-- BOTÃO DA CÂMERA ATUALIZADO -->
                         <button onclick="window.abrirCameraScanner ? window.abrirCameraScanner() : alert('Leitor contínuo de câmera ativado.')" 
                                 id="btn-ativar-camera" 
-                                class="w-10 h-8 p-0 bg-transparent border border-emerald-500 hover:border-emerald-400 rounded-lg overflow-hidden flex items-center justify-center shadow transition transform hover:scale-105 focus:outline-none" 
+                                class="scanner-btn" 
                                 title="Ativar leitor contínuo de câmera">
-                            <img src="../../assets/botao-camera.jpg" 
-                                 alt="Scanner Câmera" 
-                                 class="w-full h-full object-cover block"> 
+                            <img src="../../assets/botao-camera.jpg" alt="Scanner Câmera">
                         </button>
                     </div>
                 </div>
