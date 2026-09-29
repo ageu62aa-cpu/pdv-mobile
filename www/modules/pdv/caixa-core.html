@@ -790,23 +790,6 @@
         });
     </script>
     <script type="module" src="caixa-core.js"></script>
-    <script type="module">
-        import { abrirLeitorCamera } from './camera.js';
-
-        document.addEventListener('DOMContentLoaded', () => {
-            const btnCamera = document.getElementById('btn-ativar-camera');
-            if (btnCamera) {
-                btnCamera.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    console.log("Botão de câmera clicado! Acionando leitor...");
-                    if (typeof abrirLeitorCamera === 'function') {
-                        abrirLeitorCamera();
-                    } else {
-                        console.error("Função abrirLeitorCamera não encontrada.");
-                    }
-                });
-            }
-        });
     </script>
 </body>
 </html>
