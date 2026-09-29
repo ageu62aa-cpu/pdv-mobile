@@ -1,81 +1,45 @@
 // ==========================================
-// MÓDULO NATIVO - CAPACITOR ML KIT (PDV-VS)
+// MÓDULO NATIVO - CAPACITOR ML KIT SCANNER
 // ==========================================
 
-let activeScanListener = null;
+import { BarcodeScanner } from '@capacitor-mlkit/barcode-scanning';
 
-export async function dispararLeitorNativo() {
+export async function iniciarCameraNativa(onScanSuccess) {
     try {
-        const isNative = window.Capacitor && window.Capacitor.isNativePlatform();
-        if (!isNative || !window.Capacitor.Plugins || !window.Capacitor.Plugins.BarcodeScanner) {
-            return null;
+        // Solicita permissão para usar a câmera
+        const status = await BarcodeScanner.requestPermissions();
+        if (status.camera !== 'granted') {
+            alert('Permissão de câmera negada.');
+            return;
         }
 
-        const BarcodeScannerPlugin = window.Capacitor.Plugins.BarcodeScanner;
-        const sant = await BarcodeScannerPlugin.isSupported();
-        if (!sant.supported) return null;
+        // Deixa o fundo transparente para o scanner nativo aparecer
+        document.querySelector('body').classList.add('scanner-active');
 
-        const perm = await BarcodeScannerPlugin.requestPermissions();
-        if (perm.camera !== 'granted' && perm.camera !== 'limited') {
-            alert("Permissão de câmara negada nas configurações do seu dispositivo.");
-            return null;
-        }
+        // Inicia o scanner nativo de tela cheia do ML Kit
+        const result = await BarcodeScanner.scan();
 
-        if (activeScanListener) {
-            await activeScanListener.remove().catch(() => {});
-            activeScanListener = null;
-        }
+        await fecharCameraNativa();
 
-        // Ativa a classe que torna a WebView transparente para mostrar a câmara por trás
-        document.body.classList.add('barcode-scanner-active');
-
-        return new Promise(async (resolve) => {
-            let resolvido = false;
-
-            try {
-                activeScanListener = await BarcodeScannerPlugin.addListener('barcodeScanned', async event => {
-                    if (event && event.barcode && !resolvido) {
-                        resolvido = true;
-                        const codigo = event.barcode.displayValue || event.barcode.rawValue;
-                        await fecharLeitorNativo();
-                        resolve(codigo);
-                    }
-                });
-
-                // startScan remove os elementos nativos em T e exibe o stream limpo
-                await BarcodeScannerPlugin.startScan({
-                    formats: ["EAN_13", "EAN_8", "CODE_128", "QR_CODE", "UPC_A", "UPC_E"],
-                    lensFacing: "back"
-                });
-
-            } catch (err) {
-                console.error("PDV-VS Erro no startScan nativo:", err);
-                await fecharLeitorNativo();
-                if (!resolvido) {
-                    resolvido = true;
-                    resolve(null);
-                }
+        if (result.barcodes && result.barcodes.length > 0) {
+            const codigoLimpo = result.barcodes[0].displayValue.trim();
+            if (onScanSuccess) {
+                onScanSuccess(codigoLimpo);
             }
-        });
-
+        }
     } catch (err) {
-        console.error("PDV-VS Erro geral no leitor nativo:", err);
-        await fecharLeitorNativo();
-        return null;
+        console.error("Erro no Scanner Nativo ML Kit:", err);
+        await fecharCameraNativa();
     }
 }
 
-export async function fecharLeitorNativo() {
+export async function fecharCameraNativa() {
     try {
-        const isNative = window.Capacitor && window.Capacitor.isNativePlatform();
-        if (isNative && window.Capacitor.Plugins && window.Capacitor.Plugins.BarcodeScanner) {
-            if (activeScanListener) {
-                await activeScanListener.remove().catch(() => {});
-                activeScanListener = null;
-            }
-            await BarcodeScannerPlugin.stopScan().catch(() => {});
-        }
-    } catch (e) {} finally {
-        document.body.classList.remove('barcode-scanner-active');
+        document.querySelector('body').classList.remove('scanner-active');
+        await BarcodeScanner.stopScan();
+    } catch (e) {
+        console.error("Erro ao fechar scanner nativo:", e);
     }
 }
+
+window.fecharCameraNativa = fecharCameraNativa;
