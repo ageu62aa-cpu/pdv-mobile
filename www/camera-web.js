@@ -43,23 +43,24 @@ export async function iniciarCameraWeb(onScanSuccess) {
             Html5QrcodeSupportedFormats.QR_CODE
         ];
 
-        // Reduzido para 75% para garantir que a moldura apareça perfeitamente dentro da tela em qualquer mobile
-        const larguraEcra = window.innerWidth > 0 ? window.innerWidth : 360;
-        const alturaEcra = window.innerHeight > 0 ? window.innerHeight : 640;
-        const menorLado = Math.min(larguraEcra, alturaEcra);
-        const tamanhoCaixa = Math.floor(menorLado * 0.75);
+        // Abordagem Sênior: Função de callback para o qrbox. 
+        // Calcula a moldura com base na largura e altura reais do vídeo renderizado,
+        // eliminando qualquer divergência entre o Android e o iOS.
+        const qrboxFunction = (viewfinderWidth, viewfinderHeight) => {
+            const menorLado = Math.min(viewfinderWidth, viewfinderHeight);
+            const tamanhoIdeal = Math.floor(menorLado * 0.75);
+            return {
+                width: tamanhoIdeal,
+                height: tamanhoIdeal // Mantém proporção perfeitamente quadrada e uniforme
+            };
+        };
 
         await html5QrcodeInstance.start(
             { facingMode: "environment" },
             {
                 fps: 30,
-                // Moldura proporcional quadrada garantida em ambas as plataformas
-                qrbox: {
-                    width: tamanhoCaixa,
-                    height: Math.floor(tamanhoCaixa * 0.6) // Retangular horizontal facilita a leitura de códigos de barras EAN
-                },
+                qrbox: qrboxFunction,
                 formatsToSupport: formatosPermitidos,
-                // Removido o aspectRatio rígido para evitar conflitos de rotação entre iOS e Android
                 videoConstraints: {
                     facingMode: "environment",
                     width: { ideal: 1280, max: 1920 },
