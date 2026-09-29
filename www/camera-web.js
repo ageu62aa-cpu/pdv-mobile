@@ -43,26 +43,27 @@ export async function iniciarCameraWeb(onScanSuccess) {
             Html5QrcodeSupportedFormats.QR_CODE
         ];
 
-        // Cálculo otimizado: 85% do menor lado do ecrã garante moldura visível e captura fácil de códigos pequenos/grandes
+        // Reduzido para 75% para garantir que a moldura apareça perfeitamente dentro da tela em qualquer mobile
         const larguraEcra = window.innerWidth > 0 ? window.innerWidth : 360;
         const alturaEcra = window.innerHeight > 0 ? window.innerHeight : 640;
-        const tamanhoCaixa = Math.floor(Math.min(larguraEcra, alturaEcra) * 0.85);
+        const menorLado = Math.min(larguraEcra, alturaEcra);
+        const tamanhoCaixa = Math.floor(menorLado * 0.75);
 
         await html5QrcodeInstance.start(
             { facingMode: "environment" },
             {
                 fps: 30,
-                // Objeto estático garante a moldura gráfica visível no Android e iOS sem distorções
+                // Moldura proporcional quadrada garantida em ambas as plataformas
                 qrbox: {
                     width: tamanhoCaixa,
-                    height: tamanhoCaixa
+                    height: Math.floor(tamanhoCaixa * 0.6) // Retangular horizontal facilita a leitura de códigos de barras EAN
                 },
-                aspectRatio: 1.33333,
                 formatsToSupport: formatosPermitidos,
+                // Removido o aspectRatio rígido para evitar conflitos de rotação entre iOS e Android
                 videoConstraints: {
-                    width: { ideal: 1280 },
-                    height: { ideal: 720 },
-                    facingMode: "environment"
+                    facingMode: "environment",
+                    width: { ideal: 1280, max: 1920 },
+                    height: { ideal: 720, max: 1080 }
                 }
             },
             (decodedText) => {
@@ -76,10 +77,8 @@ export async function iniciarCameraWeb(onScanSuccess) {
                 ultimoCodigoLido = codigoLimpo;
                 tempoUltimoDisparo = agora;
 
-                // Executa a inserção do código detetado
                 if (onScanSuccess) onScanSuccess(codigoLimpo);
 
-                // Mantém o teclado fechado no mobile para preservar o fluxo de leitura contínua
                 if (document.activeElement && typeof document.activeElement.blur === 'function') {
                     document.activeElement.blur();
                 }
