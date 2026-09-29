@@ -1,16 +1,14 @@
 // ==========================================
-// MÓDULO NATIVO - CAPACITOR ML KIT SCANNER SEGURO
+// MÓDULO NATIVO - CAPACITOR ML KIT SCANNER
 // ==========================================
 
-export async function iniciarCameraNativa(onScanSuccess) {
+export async function dispararLeitorNativo(onScanSuccess) {
     try {
-        // Verifica se o Capacitor e o plugin nativo estão disponíveis no ambiente atual
         if (!window.Capacitor || !window.Capacitor.isNativePlatform()) {
-            alert("O scanner nativo por câmera só funciona no aplicativo instalado no celular. Na web, utilize o leitor Bluetooth ou os inputs manuais.");
+            alert("O scanner nativo por câmera só funciona no aplicativo instalado no celular.");
             return;
         }
 
-        // Importação dinâmica para evitar que o navegador web quebre ao carregar a página
         const { BarcodeScanner } = await import('@capacitor-mlkit/barcode-scanning');
 
         const status = await BarcodeScanner.requestPermissions();
@@ -23,7 +21,7 @@ export async function iniciarCameraNativa(onScanSuccess) {
 
         const result = await BarcodeScanner.scan();
 
-        await fecharCameraNativa();
+        await fecharLeitorNativo();
 
         if (result.barcodes && result.barcodes.length > 0) {
             const codigoLimpo = result.barcodes[0].displayValue.trim();
@@ -33,11 +31,11 @@ export async function iniciarCameraNativa(onScanSuccess) {
         }
     } catch (err) {
         console.error("Erro no Scanner Nativo ML Kit:", err);
-        await fecharCameraNativa();
+        await fecharLeitorNativo();
     }
 }
 
-export async function fecharCameraNativa() {
+export async function fecharLeitorNativo() {
     try {
         document.querySelector('body').classList.remove('scanner-active');
         if (window.Capacitor && window.Capacitor.isNativePlatform()) {
@@ -49,4 +47,4 @@ export async function fecharCameraNativa() {
     }
 }
 
-window.fecharCameraNativa = fecharCameraNativa;
+window.fecharLeitorNativo = fecharLeitorNativo;
