@@ -90,3 +90,6 @@ export async function fecharCameraWeb() {
         modalCamera.classList.remove('flex');
     }
 }
+
+// GARANTIA DE ENGENHARIA: Expõe a função globalmente para chamadas via HTML onclick
+window.fecharCameraWeb = fecharCameraWeb;

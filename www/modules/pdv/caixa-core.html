@@ -8,6 +8,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome para Ícones -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Biblioteca Html5Qrcode para Fallback Web -->
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <style>
         @media print {
             body * { visibility: hidden; }
@@ -373,6 +375,27 @@
         </section>
 
     </main>
+
+    <!-- Modal da Câmara Web Atualizado e Integrado -->
+    <div id="modalCamera" class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center hidden">
+      <div class="bg-gray-800 border border-gray-700 p-4 rounded-2xl w-full max-w-md flex flex-col gap-4 shadow-2xl">
+        <div class="flex justify-between items-center border-b border-gray-700 pb-2">
+          <h3 class="text-sm font-bold text-white uppercase flex items-center gap-2">
+            <i class="fa-solid fa-camera text-emerald-400"></i> Leitor Contínuo de Câmara
+          </h3>
+          <button onclick="if(window.fecharCameraWeb) { window.fecharCameraWeb(); } else { document.getElementById('modalCamera').classList.add('hidden'); }" class="text-gray-400 hover:text-white text-sm font-bold px-2 py-1">✕</button>
+        </div>
+        
+        <!-- Elemento de vídeo requerido pelo camera-web.js (Ajustado para 4:3 para bater com o aspect ratio do script) -->
+        <div id="videoPreviewCamera" class="w-full rounded-lg overflow-hidden bg-black aspect-[4/3] relative"></div>
+        
+        <p class="text-xs text-gray-400 text-center">Aponte a câmara para o código de barras.</p>
+        
+        <button onclick="if(window.fecharCameraWeb) { window.fecharCameraWeb(); } else { document.getElementById('modalCamera').classList.add('hidden'); }" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 rounded-xl text-xs transition-colors">
+          Fechar Câmara
+        </button>
+      </div>
+    </div>
 
     <!-- Elemento oculto para impressão térmica opcional NFC-e (58mm / 80mm) -->
     <div id="cupom-termico" class="hidden">
@@ -790,6 +813,5 @@
         });
     </script>
     <script type="module" src="caixa-core.js"></script>
-    </script>
 </body>
 </html>
