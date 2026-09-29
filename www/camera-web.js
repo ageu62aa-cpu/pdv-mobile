@@ -43,18 +43,18 @@ export async function iniciarCameraWeb(onScanSuccess) {
             Html5QrcodeSupportedFormats.QR_CODE
         ];
 
-        // Dimensões estáticas absolutas para evitar distorções no iOS e Android
-        const larguraEcra = window.innerWidth > 0 ? window.innerWidth : 360;
-        const tamanhoCaixa = Math.floor(larguraEcra * 0.75);
-
         await html5QrcodeInstance.start(
             { facingMode: "environment" },
             {
                 fps: 30,
-                // Objeto estático garante moldura quadrada perfeita e consistente em ambas as plataformas
-                qrbox: {
-                    width: tamanhoCaixa,
-                    height: tamanhoCaixa
+                // Função dinâmica otimizada para forçar a moldura de 4 cantos visível em Android e iOS
+                qrbox: (viewfinderWidth, viewfinderHeight) => {
+                    const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+                    const edgeSize = Math.floor(minEdge * 0.75);
+                    return {
+                        width: edgeSize,
+                        height: edgeSize
+                    };
                 },
                 aspectRatio: 1.33333,
                 formatsToSupport: formatosPermitidos,
@@ -75,10 +75,10 @@ export async function iniciarCameraWeb(onScanSuccess) {
                 ultimoCodigoLido = codigoLimpo;
                 tempoUltimoDisparo = agora;
 
-                // Executa a ação de sucesso do scan
+                // Insere o código e executa a ação de sucesso
                 if (onScanSuccess) onScanSuccess(codigoLimpo);
 
-                // ENGENHARIA DE UI: Retira o foco de qualquer input ativo para evitar que o teclado abra no mobile
+                // Mantém o teclado fechado no mobile após a leitura para continuar o fluxo contínuo
                 if (document.activeElement && typeof document.activeElement.blur === 'function') {
                     document.activeElement.blur();
                 }
