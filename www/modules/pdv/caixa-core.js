@@ -309,32 +309,13 @@ export async function confirmarAcaoCaixa() {
         
         alert(`PDV-VS: Caixa Fechado com Sucesso!\n- Abertura: ${horaAberturaCaixa?.toLocaleTimeString() || 'N/A'}\n- Fechamento: ${horaFechamento.toLocaleTimeString()}\n- Troco Inicial: R$ ${(valorTrocoAbertura || 0).toFixed(2)}\n- Vendas: R$ ${faturamentoDia.toFixed(2)}\n- Total em Gaveta: R$ ${totalGeralGaveta.toFixed(2)}`);
         
-        // 1. Atualiza o status do caixa para FECHADO de forma isolada e segura
-        const { error: erroCaixa } = await getSupabase().from('caixas').update({ 
-            status: 'FECHADO', 
-            valor_fechamento: totalGeralGaveta,
-            data_fechamento: new Date().toISOString(), 
-            updated_at: new Date().toISOString()
+        await getSupabase().from('caixas').update({ 
+            status: 'FECHADO', valor_fechamento: totalGeralGaveta,
+            data_fechamento: new Date().toISOString(), updated_at: new Date().toISOString()
         })
         .eq('empresa_id', idEmpresaAtual)
         .eq('user_id', usuarioAtual.id) // <-- Isola estritamente ao operador logado
         .eq('status', 'ABERTO');
-
-        if (erroCaixa) {
-            console.error('PDV-VS: Erro ao fechar caixa no banco:', erroCaixa.message);
-            alert('PDV-VS: Erro ao atualizar o status do caixa.');
-            return;
-        }
-
-        // 2. Consulta de vendas blindada contra erros 400 (removendo filtros de colunas inexistentes na tabela vendas)
-        const { data: vendasDia, error: erroVendas } = await getSupabase()
-            .from('vendas')
-            .select('*')
-            .eq('empresa_id', idEmpresaAtual);
-
-        if (erroVendas) {
-            console.warn('PDV-VS Aviso ao buscar vendas do fechamento:', erroVendas.message);
-        }
 
         setCaixaAberto(false);
         valorTrocoAbertura = 0;
@@ -523,21 +504,5 @@ Object.assign(window, {
     atualizarBadgesCaixaInterface, salvarPinAdmin, solicitarRemocaoItem,
     tratarEnterModalAutorizacao, confirmarAutorizacaoPin, fecharModalAutorizacao,
     abrirModalCancelarItem, fecharModalCancelarItem, cancelarVenda, finalizarVenda,
-    atualizarTabelaVenda, alterarQtd,
-
-    // Funções auxiliares globais ligadas aos botões do HTML
-    acionarAbrirCaixa: async function() {
-        const valor = prompt('Digite o valor do troco inicial (R$):', '50.00');
-        if (valor !== null) {
-            await alterarStatusCaixaServidor('ABERTO', parseFloat(valor) || 0);
-            location.reload();
-        }
-    },
-
-    acionarFecharCaixa: async function() {
-        if (confirm('Deseja realmente fechar o caixa?')) {
-            await alterarStatusCaixaServidor('FECHADO', 0);
-            location.reload();
-        }
-    }
+    atualizarTabelaVenda, alterarQtd
 });
