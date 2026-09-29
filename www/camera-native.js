@@ -1,22 +1,26 @@
 // ==========================================
-// MÓDULO NATIVO - CAPACITOR ML KIT SCANNER
+// MÓDULO NATIVO - CAPACITOR ML KIT SCANNER SEGURO
 // ==========================================
-
-import { BarcodeScanner } from '@capacitor-mlkit/barcode-scanning';
 
 export async function iniciarCameraNativa(onScanSuccess) {
     try {
-        // Solicita permissão para usar a câmera
+        // Verifica se o Capacitor e o plugin nativo estão disponíveis no ambiente atual
+        if (!window.Capacitor || !window.Capacitor.isNativePlatform()) {
+            alert("O scanner nativo por câmera só funciona no aplicativo instalado no celular. Na web, utilize o leitor Bluetooth ou os inputs manuais.");
+            return;
+        }
+
+        // Importação dinâmica para evitar que o navegador web quebre ao carregar a página
+        const { BarcodeScanner } = await import('@capacitor-mlkit/barcode-scanning');
+
         const status = await BarcodeScanner.requestPermissions();
         if (status.camera !== 'granted') {
             alert('Permissão de câmera negada.');
             return;
         }
 
-        // Deixa o fundo transparente para o scanner nativo aparecer
         document.querySelector('body').classList.add('scanner-active');
 
-        // Inicia o scanner nativo de tela cheia do ML Kit
         const result = await BarcodeScanner.scan();
 
         await fecharCameraNativa();
@@ -36,7 +40,10 @@ export async function iniciarCameraNativa(onScanSuccess) {
 export async function fecharCameraNativa() {
     try {
         document.querySelector('body').classList.remove('scanner-active');
-        await BarcodeScanner.stopScan();
+        if (window.Capacitor && window.Capacitor.isNativePlatform()) {
+            const { BarcodeScanner } = await import('@capacitor-mlkit/barcode-scanning');
+            await BarcodeScanner.stopScan();
+        }
     } catch (e) {
         console.error("Erro ao fechar scanner nativo:", e);
     }
