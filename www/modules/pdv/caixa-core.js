@@ -2,7 +2,7 @@
 // MÓDULO DE CAIXA E VENDAS (PDV-VS) 
 // ==========================================  
 
-import { initCaixaBusca } from './caixa-busca.js';  
+import { abrirLeitorCamera } from '../../services/camera.js';  
 import {   
     usuarioAtual, empresaAtualId, cargoUsuarioAtual, caixaAberto, faturamentoDia,   
     acaoCaixaAtual, itensVenda, indiceItemParaRemover, setAcaoCaixaAtual,   
@@ -11,7 +11,6 @@ import {
 } from '../../core/state.js';  
 import { carregarProdutosCache } from '../../services/produtos.js';
 import { supabase } from '../../../core/config.js'; // Correção definitiva do import do Supabase
-import { abrirLeitorCamera } from './camera.js'; // Importação do leitor de câmera
 
 let valorTrocoAbertura = 0;
 let horaAberturaCaixa = null;
