@@ -76,9 +76,16 @@
                         <span class="text-xs text-emerald-400 font-semibold flex items-center gap-1.5">
                             <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Leitor Ativo
                         </span>
-                        <!-- Botão de Câmera -->
-                        <button onclick="window.abrirCameraScanner ? window.abrirCameraScanner() : alert('Leitor contínuo de câmera ativado.')" id="btn-ativar-camera" class="w-10 h-8 rounded-lg overflow-hidden border border-emerald-500 hover:border-emerald-400 shadow transition transform hover:scale-105 flex items-center justify-center bg-transparent focus:outline-none" title="Ativar leitor contínuo de câmera">
-                            <img src="../../assets/botao-camera.jpg" alt="Scanner Câmera" class="w-full h-full object-contain scale-125">
+                        
+                        <!-- BOTÃO DA CÂMERA AJUSTADO: Fundo transparente e imagem com zoom e crop -->
+                        <button onclick="window.abrirCameraScanner ? window.abrirCameraScanner() : alert('Leitor contínuo de câmera ativado.')" 
+                                id="btn-ativar-camera" 
+                                class="w-10 h-8 rounded-lg overflow-hidden border border-emerald-500 hover:border-emerald-400 shadow transition transform hover:scale-105 flex items-center justify-center bg-transparent focus:outline-none" 
+                                title="Ativar leitor contínuo de câmera">
+                            <img src="../../assets/botao-camera.jpg" 
+                                 alt="Scanner Câmera" 
+                                 class="w-full h-full object-contain" 
+                                 style="width: 150%; height: 150%; object-position: center;">
                         </button>
                     </div>
                 </div>
