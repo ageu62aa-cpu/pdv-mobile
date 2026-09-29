@@ -3,7 +3,7 @@
 // ==========================================  
 
 import { origemLeitor, setOrigemLeitor, produtosCache } from './state.js';  
-import { tratarAdicaoProduto } from './produtos.js';  
+import { tratarAdicaoProduto } from './services/produtos.js';  
 import { dispararLeitorNativo, fecharLeitorNativo } from './camera-native.js';
 import { iniciarCameraWeb, fecharCameraWeb } from './camera-web.js';
 
