@@ -2,7 +2,7 @@
 // MÓDULO DE CAIXA E VENDAS (PDV-VS) 
 // ==========================================  
 
-import { abrirLeitorCamera } from '../../services/camera.js';  
+import { abrirLeitorCamera, inicializarLeitorTecladoPistola } from '../../camera.js';  
 import {   
     usuarioAtual, empresaAtualId, cargoUsuarioAtual, caixaAberto, faturamentoDia,   
     acaoCaixaAtual, itensVenda, indiceItemParaRemover, setAcaoCaixaAtual,   
