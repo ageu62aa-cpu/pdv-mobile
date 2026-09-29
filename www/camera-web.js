@@ -43,23 +43,11 @@ export async function iniciarCameraWeb(onScanSuccess) {
             Html5QrcodeSupportedFormats.QR_CODE
         ];
 
-        // Abordagem Sênior: Função de callback para o qrbox. 
-        // Calcula a moldura com base na largura e altura reais do vídeo renderizado,
-        // eliminando qualquer divergência entre o Android e o iOS.
-        const qrboxFunction = (viewfinderWidth, viewfinderHeight) => {
-            const menorLado = Math.min(viewfinderWidth, viewfinderHeight);
-            const tamanhoIdeal = Math.floor(menorLado * 0.75);
-            return {
-                width: tamanhoIdeal,
-                height: tamanhoIdeal // Mantém proporção perfeitamente quadrada e uniforme
-            };
-        };
-
+        // Iniciamos a câmera sem qrbox interno da biblioteca para evitar conflitos de renderização no mobile
         await html5QrcodeInstance.start(
             { facingMode: "environment" },
             {
                 fps: 30,
-                qrbox: qrboxFunction,
                 formatsToSupport: formatosPermitidos,
                 videoConstraints: {
                     facingMode: "environment",
@@ -87,12 +75,32 @@ export async function iniciarCameraWeb(onScanSuccess) {
             () => {}
         );
 
+        // Ajustes visuais garantindo consistência no vídeo e criando a moldura fixa universal
         setTimeout(() => {
             const videoElement = container.querySelector('video');
             if (videoElement) {
                 videoElement.style.objectFit = 'cover';
                 videoElement.style.width = '100%';
                 videoElement.style.height = '100%';
+            }
+
+            // Injeta uma camada visual de moldura padronizada se ela já não existir no container
+            if (!container.querySelector('.moldura-customizada-pdv')) {
+                const overlay = document.createElement('div');
+                overlay.className = 'moldura-customizada-pdv';
+                overlay.style.position = 'absolute';
+                overlay.style.top = '50%';
+                overlay.style.left = '50%';
+                overlay.style.transform = 'translate(-50%, -50%)';
+                overlay.style.width = '75%';
+                overlay.style.height = '180px';
+                overlay.style.border = '3px solid rgba(255, 255, 255, 0.8)';
+                overlay.style.boxShadow = '0 0 0 9999px rgba(0, 0, 0, 0.5)';
+                overlay.style.borderRadius = '12px';
+                overlay.style.pointerEvents = 'none';
+                overlay.style.zIndex = '10';
+                container.style.position = 'relative';
+                container.appendChild(overlay);
             }
         }, 150);
 
