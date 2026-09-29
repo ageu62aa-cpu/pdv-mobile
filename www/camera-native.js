@@ -48,3 +48,4 @@ export async function fecharLeitorNativo() {
 }
 
 window.fecharLeitorNativo = fecharLeitorNativo;
+window.abrirCameraScanner = dispararLeitorNativo;
