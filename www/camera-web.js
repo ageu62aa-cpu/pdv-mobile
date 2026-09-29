@@ -33,7 +33,6 @@ export async function iniciarCameraWeb(onScanSuccess) {
         let ultimoCodigoLido = '';
         let tempoUltimoDisparo = 0;
 
-        // Formatos suportados para máxima compatibilidade em todas as marcas e tamanhos de códigos
         const formatosPermitidos = [
             Html5QrcodeSupportedFormats.EAN_13,
             Html5QrcodeSupportedFormats.EAN_8,
@@ -44,18 +43,18 @@ export async function iniciarCameraWeb(onScanSuccess) {
             Html5QrcodeSupportedFormats.QR_CODE
         ];
 
+        // Cálculo estático e determinístico baseado na largura do ecrã para evitar falhas de renderização
+        const larguraEcra = window.innerWidth > 0 ? window.innerWidth : 360;
+        const tamanhoQrBox = Math.floor(larguraEcra * 0.70);
+
         await html5QrcodeInstance.start(
             { facingMode: "environment" },
             {
                 fps: 30,
-                // Moldura otimizada com maior margem de tolerância para leitura versátil
-                qrbox: (viewfinderWidth, viewfinderHeight) => {
-                    const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
-                    const edgeSize = Math.floor(minEdge * 0.85);
-                    return {
-                        width: edgeSize,
-                        height: Math.floor(edgeSize * 0.55)
-                    };
+                // Objeto fixo garante que a biblioteca renderiza sempre a moldura limpa de 4 cantos à primeira
+                qrbox: {
+                    width: tamanhoQrBox,
+                    height: Math.floor(tamanhoQrBox * 0.60)
                 },
                 aspectRatio: 1.33333,
                 formatsToSupport: formatosPermitidos,
@@ -111,5 +110,4 @@ export async function fecharCameraWeb() {
     }
 }
 
-// GARANTIA DE ENGENHARIA: Expõe a função globalmente para chamadas via HTML onclick
 window.fecharCameraWeb = fecharCameraWeb;
