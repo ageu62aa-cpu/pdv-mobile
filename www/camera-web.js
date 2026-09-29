@@ -48,13 +48,13 @@ export async function iniciarCameraWeb(onScanSuccess) {
             { facingMode: "environment" },
             {
                 fps: 30,
-                // Moldura limpa, proporcional e profissional padronizada para iOS e Android
+                // Moldura otimizada com maior margem de tolerância para leitura versátil
                 qrbox: (viewfinderWidth, viewfinderHeight) => {
                     const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
-                    const edgeSize = Math.floor(minEdge * 0.75);
+                    const edgeSize = Math.floor(minEdge * 0.85);
                     return {
                         width: edgeSize,
-                        height: Math.floor(edgeSize * 0.60)
+                        height: Math.floor(edgeSize * 0.55)
                     };
                 },
                 aspectRatio: 1.33333,
