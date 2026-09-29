@@ -33,7 +33,7 @@ export async function iniciarCameraWeb(onScanSuccess) {
         let ultimoCodigoLido = '';
         let tempoUltimoDisparo = 0;
 
-        // Configuração avançada de formatos suportados para garantir leitura de todos os tamanhos no iOS
+        // Formatos suportados para máxima compatibilidade em todas as marcas e tamanhos de códigos
         const formatosPermitidos = [
             Html5QrcodeSupportedFormats.EAN_13,
             Html5QrcodeSupportedFormats.EAN_8,
@@ -48,19 +48,20 @@ export async function iniciarCameraWeb(onScanSuccess) {
             { facingMode: "environment" },
             {
                 fps: 30,
+                // Moldura limpa, proporcional e profissional padronizada para iOS e Android
                 qrbox: (viewfinderWidth, viewfinderHeight) => {
                     const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
-                    const edgeSize = Math.floor(minEdge * 0.80);
+                    const edgeSize = Math.floor(minEdge * 0.75);
                     return {
                         width: edgeSize,
-                        height: Math.floor(edgeSize * 0.50) // Formato retangular ideal para barras lineares de todos os tamanhos
+                        height: Math.floor(edgeSize * 0.60)
                     };
                 },
-                aspectRatio: 1.0,
+                aspectRatio: 1.33333,
                 formatsToSupport: formatosPermitidos,
                 videoConstraints: {
-                    width: { ideal: 1920 }, // Força maior resolução para capturar códigos pequenos com nitidez no iOS
-                    height: { ideal: 1080 },
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 },
                     facingMode: "environment"
                 }
             },
@@ -90,7 +91,7 @@ export async function iniciarCameraWeb(onScanSuccess) {
         }, 150);
 
     } catch (err) {
-        console.error("PDV-VS Erro Html5Qrcode Web iOS:", err);
+        console.error("PDV-VS Erro Html5Qrcode Web:", err);
         fecharCameraWeb();
     }
 }
@@ -110,4 +111,5 @@ export async function fecharCameraWeb() {
     }
 }
 
+// GARANTIA DE ENGENHARIA: Expõe a função globalmente para chamadas via HTML onclick
 window.fecharCameraWeb = fecharCameraWeb;
