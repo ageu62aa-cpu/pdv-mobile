@@ -784,14 +784,14 @@
             window.handleAction('F7');
         };
 
-        // Inicialização padrão do estado do badge ao carregar a página
+        // Inicialização padrão do estado do caixa ao carregar a página
         document.addEventListener('DOMContentLoaded', () => {
             atualizarBadgesCaixaInterface();
         });
     </script>
     <script type="module" src="caixa-core.js"></script>
     <script type="module">
-        import { abrirLeitorCamera } from '../camera.js';
+        import { abrirLeitorCamera } from './camera.js';
 
         document.addEventListener('DOMContentLoaded', () => {
             const btnCamera = document.getElementById('btn-ativar-camera');
