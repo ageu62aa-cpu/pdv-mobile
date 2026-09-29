@@ -1,19 +1,16 @@
-// ==========================================
-// MÓDULO DE CAIXA E VENDAS (PDV-VS) - OTIMIZADO
-// ==========================================
+// ==========================================  
+// MÓDULO DE CAIXA E VENDAS (PDV-VS) - OTIMIZADO  
+// ==========================================  
 
-// Chame esta linha assim que o arquivo carregar ou dentro da inicialização do DOM:
-import { carregarProdutosCache } from '../../services/produtos.js'; // Garante que o orquestrador carrega e expõe as funções globais do leitor
-carregarProdutosCache();
-import { 
-    usuarioAtual, empresaAtualId, cargoUsuarioAtual, caixaAberto, faturamentoDia, 
-    acaoCaixaAtual, itensVenda, indiceItemParaRemover, setAcaoCaixaAtual, 
-    setCaixaAberto, setFaturamentoDia, setIndiceItemParaRemover, setItensVenda, 
-    produtosCache, setEmpresaAtualId 
-} from '../../core/state.js';
-import { carregarProdutosCache } from '../../services/produtos.js';
+import { carregarProdutosCache } from '../../services/produtos.js';  
+import {   
+    usuarioAtual, empresaAtualId, cargoUsuarioAtual, caixaAberto, faturamentoDia,   
+    acaoCaixaAtual, itensVenda, indiceItemParaRemover, setAcaoCaixaAtual,   
+    setCaixaAberto, setFaturamentoDia, setIndiceItemParaRemover, setItensVenda,   
+    produtosCache, setEmpresaAtualId   
+} from '../../core/state.js';  
 
-let valorTrocoAbertura = 0;
+let valorTrocoAbertura = 0;  
 let horaAberturaCaixa = null;
 
 // --- UTILITÁRIO DE CLIENTE SUPABASE ---
