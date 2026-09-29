@@ -43,20 +43,20 @@ export async function iniciarCameraWeb(onScanSuccess) {
             Html5QrcodeSupportedFormats.QR_CODE
         ];
 
-        // Cálculo estático e determinístico baseado na largura do ecrã para evitar falhas de renderização
+        // Forçamos dimensões verticais estritas para eliminar o layout indesejado
         const larguraEcra = window.innerWidth > 0 ? window.innerWidth : 360;
-        const tamanhoQrBox = Math.floor(larguraEcra * 0.70);
+        const larguraCaixa = Math.floor(larguraEcra * 0.75);
 
         await html5QrcodeInstance.start(
             { facingMode: "environment" },
             {
                 fps: 30,
-                // Objeto fixo garante que a biblioteca renderiza sempre a moldura limpa de 4 cantos à primeira
+                // Layout vertical otimizado para códigos de barras lineares (EAN/Code128)
                 qrbox: {
-                    width: tamanhoQrBox,
-                    height: Math.floor(tamanhoQrBox * 0.60)
+                    width: larguraCaixa,
+                    height: Math.floor(larguraCaixa * 0.85)
                 },
-                aspectRatio: 1.33333,
+                aspectRatio: 0.75,
                 formatsToSupport: formatosPermitidos,
                 videoConstraints: {
                     width: { ideal: 1280 },
