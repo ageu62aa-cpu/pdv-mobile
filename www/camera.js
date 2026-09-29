@@ -73,6 +73,12 @@ async function executarLoopLeituraVendas() {
         try {
             while (origemLeitor === 'busca') {
                 const codigoNativo = await dispararLeitorNativo();
+
+                // VERIFICAÇÃO ADICIONAL DE SEGURANÇA: Se a origem mudou ou foi anulada, quebra o loop na hora
+                if (origemLeitor !== 'busca') {
+                    break;
+                }
+
                 if (codigoNativo) {
                     processarCodigoCapturadoUniversal(codigoNativo.trim());
                     // Pequena pausa para evitar leitura dupla instantânea do mesmo item

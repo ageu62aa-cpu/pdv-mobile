@@ -34,10 +34,14 @@ export function initCaixaBusca(onItemAdded) {
     const inputBusca = container.querySelector('#input-busca-produto');
     const btnCamera = container.querySelector('#btn-ativar-camera');
 
-    // Evento para acionar a câmera ao clicar no status do leitor
-    btnCamera.addEventListener('click', () => {
-        // Integração com o módulo de câmera existente no projeto (ex: camera-native.js ou camera.js)
-        if (typeof window.abrirCameraScanner === 'function') {
+    // Evento para acionar o leitor contínuo de câmera corretamente
+    btnCamera.addEventListener('click', (e) => {
+        e.preventDefault();
+        
+        // Verifica se a função global do orquestrador de câmera está disponível
+        if (typeof window.abrirLeitorCamera === 'function') {
+            window.abrirLeitorCamera();
+        } else if (typeof window.abrirCameraScanner === 'function') {
             window.abrirCameraScanner((codigoLido) => {
                 if (codigoLido) {
                     inputBusca.value = codigoLido;
@@ -46,7 +50,8 @@ export function initCaixaBusca(onItemAdded) {
                 }
             });
         } else {
-            alert('Módulo de Câmera Contínua pronto para ativação via Capacitor.');
+            console.error('PDV-VS: Orquestrador de câmera (camera.js) não foi carregado no escopo global.');
+            alert('Erro: Módulo de câmera não inicializado.');
         }
     });
 
