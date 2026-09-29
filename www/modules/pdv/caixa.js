@@ -3,7 +3,7 @@
 // ==========================================
 
 // Chame esta linha assim que o arquivo carregar ou dentro da inicialização do DOM:
-import './camera.js'; // Garante que o orquestrador carrega e expõe as funções globais do leitor
+import { carregarProdutosCache } from '../../services/produtos.js'; // Garante que o orquestrador carrega e expõe as funções globais do leitor
 carregarProdutosCache();
 import { 
     usuarioAtual, empresaAtualId, cargoUsuarioAtual, caixaAberto, faturamentoDia, 
