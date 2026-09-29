@@ -37,8 +37,16 @@ export async function iniciarCameraWeb(onScanSuccess) {
             { facingMode: "environment" },
             {
                 fps: 30,
-                qrbox: { width: 280, height: 180 },
-                aspectRatio: 1.33333,
+                // Garante que a moldura seja calculada de forma exata e idêntica em iOS e Android
+                qrbox: (viewfinderWidth, viewfinderHeight) => {
+                    const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+                    const edgeSize = Math.floor(minEdge * 0.75);
+                    return {
+                        width: edgeSize,
+                        height: Math.floor(edgeSize * 0.65)
+                    };
+                },
+                aspectRatio: 1.0, // Padroniza o rácio para evitar distorções no WebKit do iOS
                 videoConstraints: {
                     width: { ideal: 1280 },
                     height: { ideal: 720 },
