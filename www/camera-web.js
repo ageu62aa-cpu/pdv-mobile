@@ -43,18 +43,19 @@ export async function iniciarCameraWeb(onScanSuccess) {
             Html5QrcodeSupportedFormats.QR_CODE
         ];
 
+        // Cálculo otimizado: 85% do menor lado do ecrã garante moldura visível e captura fácil de códigos pequenos/grandes
+        const larguraEcra = window.innerWidth > 0 ? window.innerWidth : 360;
+        const alturaEcra = window.innerHeight > 0 ? window.innerHeight : 640;
+        const tamanhoCaixa = Math.floor(Math.min(larguraEcra, alturaEcra) * 0.85);
+
         await html5QrcodeInstance.start(
             { facingMode: "environment" },
             {
                 fps: 30,
-                // Função dinâmica otimizada para forçar a moldura de 4 cantos visível em Android e iOS
-                qrbox: (viewfinderWidth, viewfinderHeight) => {
-                    const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
-                    const edgeSize = Math.floor(minEdge * 0.75);
-                    return {
-                        width: edgeSize,
-                        height: edgeSize
-                    };
+                // Objeto estático garante a moldura gráfica visível no Android e iOS sem distorções
+                qrbox: {
+                    width: tamanhoCaixa,
+                    height: tamanhoCaixa
                 },
                 aspectRatio: 1.33333,
                 formatsToSupport: formatosPermitidos,
@@ -75,10 +76,10 @@ export async function iniciarCameraWeb(onScanSuccess) {
                 ultimoCodigoLido = codigoLimpo;
                 tempoUltimoDisparo = agora;
 
-                // Insere o código e executa a ação de sucesso
+                // Executa a inserção do código detetado
                 if (onScanSuccess) onScanSuccess(codigoLimpo);
 
-                // Mantém o teclado fechado no mobile após a leitura para continuar o fluxo contínuo
+                // Mantém o teclado fechado no mobile para preservar o fluxo de leitura contínua
                 if (document.activeElement && typeof document.activeElement.blur === 'function') {
                     document.activeElement.blur();
                 }
