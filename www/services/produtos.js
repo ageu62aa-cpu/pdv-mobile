@@ -1,0 +1,399 @@
+// ==========================================
+// MÓDULO DE PRODUTOS E PESAGEM (PDV-VS)
+// ==========================================
+
+import { 
+    empresaAtualId, produtosCache, produtoEmPesagemAtual, setProdutosCache, 
+    setProdutoEmPesagemAtual, itensVenda, setItensVenda 
+} from '../core/state.js';
+import { atualizarTabelaVenda, focarBusca } from '../modules/pdv/caixa.js';
+
+// Índice do item selecionado via teclado na lista de sugestões
+let indiceItemSelecionadoTeclado = -1;
+
+export async function carregarProdutosCache() {
+    if (!empresaAtualId) return;
+    const { data, error } = await supabaseClient
+        .from('produtos')
+        .select('*')
+        .eq('empresa_id', empresaAtualId)
+        .order('nome', { ascending: true });
+        
+    if (error) {
+        console.error("Erro ao carregar produtos:", error);
+        return;
+    }
+    if (data) setProdutosCache(data);
+}
+
+export function aoDigitarBusca(termo) {
+    const painel = document.getElementById('painelSugestoes') || document.getElementById('sugestoesBusca');
+    if (!painel) return;
+    indiceItemSelecionadoTeclado = -1; // Reseta a seleção ao digitar para manter a compatibilidade com o teclado
+    
+    if (!termo || termo.length < 1) { 
+        painel.classList.add('hidden'); 
+        return; 
+    }
+  
+    const termoLower = termo.toLowerCase();
+    
+    // Filtro corrigido para contemplar código de barras, código e nome
+    const filtrados = produtosCache.filter(p => {
+        const nomeMatch = p.nome && p.nome.toLowerCase().includes(termoLower);
+        const barraMatch = p.codigo_barras && p.codigo_barras.toLowerCase().includes(termoLower);
+        const codMatch = p.codigo && p.codigo.toLowerCase().includes(termoLower);
+        return nomeMatch || barraMatch || codMatch;
+    });
+
+    let html = '';
+    if (filtrados.length === 0) {
+        painel.innerHTML = '<div class="p-3 text-xs text-gray-400">Nenhum produto encontrado.</div>';
+        painel.classList.remove('hidden');
+        return;
+    }
+
+    filtrados.forEach((p, idx) => {
+        const prodString = JSON.stringify(p).replace(/"/g, '&quot;');
+        html += `
+            <div id="sugestao-item-${idx}" onclick="window.adicionarItemVendaPorObjeto('${prodString}')" class="p-3 hover:bg-gray-700 cursor-pointer border-b border-gray-700 flex justify-between text-sm item-sugestao-busca text-gray-200">
+                <div>
+                    <span class="font-semibold text-white">${p.nome}</span>
+                    <span class="text-xs text-gray-400 block">Cód: ${p.codigo_barras || p.codigo || 'N/A'} | Estoque: ${p.estoque} un</span>
+                </div>
+                <b class="text-emerald-400">R$ ${Number(p.preco || 0).toFixed(2)}</b>
+            </div>
+        `;
+    });
+
+    painel.innerHTML = html;
+    painel.classList.remove('hidden');
+}
+
+export function adicionarItemVendaPorObjeto(prodStr) {
+    try {
+        const p = JSON.parse(prodStr.replace(/&quot;/g, '"'));
+        tratarAdicaoProduto(p);
+    } catch(err) {
+        console.error("PDV-VS Erro ao parsear item:", err);
+    }
+}
+
+export function tratarAdicaoProduto(produto) {
+    const painel = document.getElementById('painelSugestoes');
+    if (painel) painel.classList.add('hidden');
+    indiceItemSelecionadoTeclado = -1;
+    
+    const inputBusca = document.getElementById('inputBusca');
+    if (inputBusca) {
+        inputBusca.value = '';
+        inputBusca.focus();
+    }
+
+    if (produto.unidade === 'KG' || produto.por_peso) {
+        abrirModalPesagemManual(produto);
+    } else {
+        adicionarItemVendaDireto(produto, 1);
+    }
+}
+
+export function abrirModalPesagemManual(produto) {
+    setProdutoEmPesagemAtual(produto);
+    let modal = document.getElementById('modalPesagemManual');
+    if (!modal) {
+        const divModal = document.createElement('div');
+        divModal.id = 'modalPesagemManual';
+        divModal.className = 'fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4';
+        divModal.innerHTML = `
+            <div class="bg-gray-800 border border-gray-700 w-full max-w-sm rounded-xl shadow-2xl p-6 text-gray-100 animate-scaleUp">
+                <div class="flex justify-between items-center mb-4 border-b border-gray-700 pb-2">
+                    <h3 class="font-bold text-lg text-white"><i class="fa-solid fa-scale-balanced text-emerald-500 mr-2"></i> Produto por Peso</h3>
+                    <button onclick="window.fecharModalPesagemManual()" class="text-gray-400 hover:text-gray-200"><i class="fa-solid fa-xmark text-lg"></i></button>
+                </div>
+                <div class="mb-4 bg-gray-900 p-3 rounded-lg border border-gray-700">
+                    <p id="lblNomeProdutoPeso" class="font-bold text-white text-base"></p>
+                    <p id="lblPrecoKgProduto" class="text-xs text-gray-400 mt-1"></p>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-xs font-bold text-gray-300 mb-1">PESO NA BALANÇA (KG)</label>
+                    <input type="number" step="0.001" id="inputPesoKg" placeholder="Ex: 0.750" oninput="window.calcularValorParcialPeso(this.value)" onkeydown="window.tratarEnterModalPesagem(event)" class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg text-lg font-bold text-emerald-400 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                </div>
+                <div class="mb-5 bg-emerald-950/40 border border-emerald-800/60 p-3 rounded-lg flex justify-between items-center">
+                    <span class="text-xs font-bold text-emerald-300">VALOR TOTAL:</span>
+                    <span id="lblValorCalculadoPeso" class="text-xl font-extrabold text-emerald-400">R$ 0,00</span>
+                </div>
+                <div class="flex space-x-2">
+                    <button onclick="window.fecharModalPesagemManual()" class="w-1/2 bg-gray-700 hover:bg-gray-600 text-gray-200 py-2.5 rounded-lg font-bold text-sm transition">Cancelar</button>
+                    <button onclick="window.confirmarAdicaoPeso()" class="w-1/2 bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-lg font-bold text-sm shadow">Adicionar</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(divModal);
+        modal = divModal;
+    }
+
+    const lblNome = document.getElementById('lblNomeProdutoPeso');
+    const lblPreco = document.getElementById('lblPrecoKgProduto');
+    const inputPeso = document.getElementById('inputPesoKg');
+    const lblValorCalc = document.getElementById('lblValorCalculadoPeso');
+
+    if (lblNome) lblNome.innerText = produto.nome;
+    if (lblPreco) lblPreco.innerText = `Preço por KG: R$ ${Number(produto.preco).toFixed(2)}`;
+    if (inputPeso) inputPeso.value = '';
+    if (lblValorCalc) lblValorCalc.innerText = 'R$ 0,00';
+    if (modal) modal.classList.remove('hidden');
+    
+    setTimeout(() => {
+        if (inputPeso) inputPeso.focus();
+    }, 100);
+}
+
+export function calcularValorParcialPeso(pesoStr) {
+    const peso = parseFloat(pesoStr) || 0;
+    const lblValorCalc = document.getElementById('lblValorCalculadoPeso');
+    if (produtoEmPesagemAtual && lblValorCalc) {
+        const total = peso * produtoEmPesagemAtual.preco;
+        lblValorCalc.innerText = `R$ ${total.toFixed(2)}`;
+    }
+}
+
+export function tratarEnterModalPesagem(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        confirmarAdicaoPeso();
+    }
+}
+
+export function fecharModalPesagemManual() {
+    const modal = document.getElementById('modalPesagemManual');
+    if (modal) modal.classList.add('hidden');
+    setProdutoEmPesagemAtual(null);
+    focarBusca();
+}
+
+export function confirmarAdicaoPeso() {
+    const inputPeso = document.getElementById('inputPesoKg');
+    const peso = inputPeso ? parseFloat(inputPeso.value) || 0 : 0;
+    if (peso <= 0) {
+        alert('PDV-VS: Informe um peso válido em KG.');
+        return;
+    }
+    if (produtoEmPesagemAtual) {
+        adicionarItemVendaDireto(produtoEmPesagemAtual, peso, true);
+        fecharModalPesagemManual();
+    }
+}
+
+export function adicionarItemVendaDireto(produto, qtd, isPeso = false) {
+    const existente = itensVenda.find(i => i.id === produto.id && i.isPeso === isPeso); 
+    if (existente && !isPeso) { 
+        existente.qtd += qtd; 
+    } else { 
+        setItensVenda([...itensVenda, { 
+            ...produto, 
+            qtd: qtd, 
+            isPeso: isPeso,
+            nomeExibicao: isPeso ? `${produto.nome} (${qtd.toFixed(3)} kg)` : produto.nome
+        }]); 
+    }
+    atualizarTabelaVenda();
+}
+
+// Navegação por Teclado nas Sugestões de Busca (Setas e Enter)
+export function tratarEnterBuscaCaixa(e) {
+    const painel = document.getElementById('painelSugestoes');
+    const itens = painel ? painel.querySelectorAll('.item-sugestao-busca') : [];
+
+    if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (itens.length === 0) return;
+        indiceItemSelecionadoTeclado = (indiceItemSelecionadoTeclado + 1) % itens.length;
+        atualizarDestaqueSugestoes(itens);
+        return;
+    }
+
+    if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (itens.length === 0) return;
+        indiceItemSelecionadoTeclado = (indiceItemSelecionadoTeclado - 1 + itens.length) % itens.length;
+        atualizarDestaqueSugestoes(itens);
+        return;
+    }
+
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        if (itens.length > 0 && indiceItemSelecionadoTeclado >= 0 && itens[indiceItemSelecionadoTeclado]) {
+            itens[indiceItemSelecionadoTeclado].click();
+            return;
+        }
+
+        const termo = e.target.value.trim().toLowerCase();
+        if (!termo) return;
+        
+        const p = produtosCache.find(prod => 
+            (prod.codigo && prod.codigo.toLowerCase() === termo) || 
+            (prod.codigo_barras && prod.codigo_barras.toLowerCase() === termo) || 
+            prod.nome.toLowerCase() === termo
+        );
+        if (p) {
+            tratarAdicaoProduto(p);
+        } else {
+            const pParcial = produtosCache.find(prod => 
+                prod.nome.toLowerCase().includes(termo) || 
+                (prod.codigo && prod.codigo.toLowerCase().includes(termo)) ||
+                (prod.codigo_barras && prod.codigo_barras.toLowerCase().includes(termo))
+            );
+            if (pParcial) tratarAdicaoProduto(pParcial);
+            else alert('PDV-VS: Produto não encontrado!');
+        }
+    }
+}
+
+function atualizarDestaqueSugestoes(itens) {
+    itens.forEach((el, idx) => {
+        if (idx === indiceItemSelecionadoTeclado) {
+            el.classList.add('bg-emerald-950', 'border-emerald-700');
+            el.scrollIntoView({ block: 'nearest' });
+        } else {
+            el.classList.remove('bg-emerald-950', 'border-emerald-700');
+        }
+    });
+}
+
+// Expondo funções deste módulo para o escopo global
+window.carregarProdutosCache = carregarProdutosCache;
+window.aoDigitarBusca = aoDigitarBusca;
+window.adicionarItemVendaPorObjeto = adicionarItemVendaPorObjeto;
+window.fecharModalPesagemManual = fecharModalPesagemManual;
+window.calcularValorParcialPeso = calcularValorParcialPeso;
+window.tratarEnterModalPesagem = tratarEnterModalPesagem;
+window.confirmarAdicaoPeso = confirmarAdicaoPeso;
+window.tratarEnterBuscaCaixa = tratarEnterBuscaCaixa;
+
+// ==========================================
+// GESTÃO DE PRODUTOS DO ADMIN (PDV-VS)
+// ==========================================
+
+export function renderizarTabelaAdmin(lista) {
+    const tbody = document.getElementById('tabelaAdminProdutos');
+    const contadorProdutos = document.getElementById('contadorLimiteProdutosAdmin');
+    
+    const limiteMaximo = 1000;
+    const qtdAtual = produtosCache.length;
+    const vagasDisponiveis = Math.max(0, limiteMaximo - qtdAtual);
+
+    if (contadorProdutos) {
+        contadorProdutos.innerText = `${qtdAtual} cadastrados | Restam ${vagasDisponiveis} vagas (Máx: ${limiteMaximo})`;
+    }
+
+    if (!tbody) return;
+    
+    let html = '';
+    lista.forEach(p => {
+        html += `<tr class="border-b border-gray-700 hover:bg-gray-750 transition-colors">
+            <td class="p-3 text-xs text-gray-300">${p.codigo || p.codigo_barras || '-'}</td>
+            <td class="p-3 font-medium text-white">${p.nome} ${p.unidade === 'KG' ? '<span class="text-amber-400 text-[10px] font-bold">(KG)</span>' : ''}</td>
+            <td class="p-3 text-emerald-400 font-semibold">R$ ${Number(p.preco).toFixed(2)}${p.unidade === 'KG' ? '/kg' : ''}</td>
+            <td class="p-3 text-gray-300">${p.estoque} ${p.unidade || 'UN'}</td>
+            <td class="p-3 text-center">
+                <button onclick="window.abrirEditarProdutoAdmin(${p.id},'${p.nome}','${p.codigo || ''}',${p.preco},${p.estoque}, '${p.unidade || 'UN'}')" class="text-blue-400 hover:text-blue-300 mr-3 transition"><i class="fa-solid fa-pen"></i></button>
+                <button onclick="window.excluirProdutoAdmin(${p.id})" class="text-rose-400 hover:text-rose-300 transition"><i class="fa-solid fa-trash"></i></button>
+            </td>
+        </tr>`;
+    });
+    tbody.innerHTML = html || '<tr><td colspan="5" class="p-4 text-center text-gray-400">Nenhum produto cadastrado.</td></tr>';
+}
+
+export function filtrarTabelaAdmin(t) { 
+    const termo = t.toLowerCase();
+    renderizarTabelaAdmin(produtosCache.filter(p => 
+        p.nome.toLowerCase().includes(termo) || 
+        (p.codigo && p.codigo.toLowerCase().includes(termo)) ||
+        (p.codigo_barras && p.codigo_barras.toLowerCase().includes(termo))
+    )); 
+}
+
+export function abrirModalNovoProdutoAdmin() {
+    if (produtosCache.length >= 1000) {
+        alert('PDV-VS - Aviso do Plano: Você atingiu o limite máximo de 1.000 produtos cadastrados.');
+        return;
+    }
+    alternarCamposFormProduto({ id: '', nome: '', codigo: '', preco: '', estoque: '', unidade: 'UN' });
+    document.getElementById('modalFormProduto')?.classList.remove('hidden');
+}
+
+export function abrirEditarProdutoAdmin(id, nome, cod, preco, est, unidade = 'UN') {
+    alternarCamposFormProduto({ id, nome, codigo: cod, preco, estoque: est, unidade });
+    document.getElementById('modalFormProduto')?.classList.remove('hidden');
+}
+
+function alternarCamposFormProduto(dados) {
+    const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+    setVal('formProdId', dados.id);
+    setVal('formNome', dados.nome);
+    setVal('formCodigo', dados.codigo);
+    setVal('formPreco', dados.preco);
+    setVal('formEstoque', dados.estoque);
+    setVal('formUnidade', dados.unidade);
+}
+
+export function fecharFormProduto() { 
+    document.getElementById('modalFormProduto')?.classList.add('hidden'); 
+}
+
+export async function salvarProdutoAdmin() {
+    if (!empresaAtualId) {
+        alert('PDV-VS Erro Crítico: ID da empresa não encontrado. Faça login novamente.');
+        return;
+    }
+
+    const id = document.getElementById('formProdId')?.value || '';
+    const p = { 
+        empresa_id: empresaAtualId,
+        nome: document.getElementById('formNome')?.value.trim() || '', 
+        codigo: document.getElementById('formCodigo')?.value.trim() || '', 
+        preco: parseFloat(document.getElementById('formPreco')?.value) || 0, 
+        estoque: parseFloat(document.getElementById('formEstoque')?.value) || 0,
+        unidade: document.getElementById('formUnidade')?.value || 'UN'
+    };
+
+    if (!p.nome) {
+        alert('PDV-VS: Informe o nome do produto.');
+        return;
+    }
+    
+    if (id) { 
+        const { error } = await window.supabaseClient.from('produtos').update(p).eq('id', id); 
+        if (error) { alert('Erro ao atualizar produto: ' + error.message); return; }
+    } else { 
+        if (produtosCache.length >= 1000) {
+            alert('PDV-VS: Limite de 1.000 produtos atingido.');
+            return;
+        }
+        const { error } = await window.supabaseClient.from('produtos').insert([p]); 
+        if (error) { alert('Erro ao inserir produto: ' + error.message); return; }
+    }
+    
+    fecharFormProduto(); 
+    await carregarProdutosCache(); 
+    renderizarTabelaAdmin(produtosCache);
+    alert('PDV-VS: Produto salvo com sucesso!');
+}
+
+export async function excluirProdutoAdmin(id) { 
+    if (confirm('PDV-VS: Deseja excluir este item permanentemente?')) { 
+        await window.supabaseClient.from('produtos').delete().eq('id', id); 
+        await carregarProdutosCache(); 
+        renderizarTabelaAdmin(produtosCache); 
+    } 
+}
+
+Object.assign(window, {
+    renderizarTabelaAdmin,
+    filtrarTabelaAdmin,
+    abrirModalNovoProdutoAdmin,
+    abrirEditarProdutoAdmin,
+    fecharFormProduto,
+    salvarProdutoAdmin,
+    excluirProdutoAdmin
+});
