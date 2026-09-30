@@ -2,11 +2,11 @@ const CACHE_NAME = 'pdv-vs-v2';
 const urlsToCache = [
     '/',
     '/index.html',
-    '/manifest.json'
-    // Adicione aqui outros arquivos locais se necessário (ex: /main.js, /style.css)
+    '/manifest.json',
+    '/modules/pdv/caixa-core.html'
 ];
 
-// Instalação do Service Worker (Apenas arquivos locais garantidos)
+// Instalação do Service Worker
 self.addEventListener('install', event => {
     event.waitUntil(
         caches.open(CACHE_NAME)
@@ -41,15 +41,14 @@ self.addEventListener('fetch', event => {
                     return cachedResponse;
                 }
                 return fetch(event.request).then(networkResponse => {
-                    // Opcional: salva CDNs ou novas requisições dinamicamente no cache
                     return caches.open(CACHE_NAME).then(cache => {
                         cache.put(event.request, networkResponse.clone());
                         return networkResponse;
                     });
                 }).catch(() => {
-                    // Fallback caso esteja offline e o recurso não esteja no cache
-                    if (event.request.headers.get('accept').includes('text/html')) {
-                        return caches.match('/index.html');
+                    // Fallback caso esteja offline
+                    if (event.request.headers.get('accept') && event.request.headers.get('accept').includes('text/html')) {
+                        return caches.match('/modules/pdv/caixa-core.html');
                     }
                 });
             })
