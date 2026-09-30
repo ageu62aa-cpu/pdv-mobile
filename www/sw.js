@@ -1,17 +1,24 @@
-const CACHE_NAME = 'pdv-vs-v2';
+const CACHE_NAME = 'pdv-vs-v3';
 const urlsToCache = [
     '/',
     '/index.html',
     '/manifest.json',
+    '/modules/auth/auth.html', // Adicionado para garantir a tela de login no cache
     '/modules/pdv/caixa-core.html'
 ];
 
-// Instalação do Service Worker
+// Instalação do Service Worker de forma robusta (não falha se um recurso oscilar)
 self.addEventListener('install', event => {
     event.waitUntil(
         caches.open(CACHE_NAME)
             .then(cache => {
-                return cache.addAll(urlsToCache);
+                return Promise.all(
+                    urlsToCache.map(url => {
+                        return cache.add(url).catch(err => {
+                            console.warn(`[Service Worker] Não foi possível colocar em cache: ${url}`, err);
+                        });
+                    })
+                );
             })
             .then(() => self.skipWaiting())
     );
@@ -32,7 +39,7 @@ self.addEventListener('activate', event => {
     );
 });
 
-// Interceptação de requisições (Cache First com fallback para rede e cache dinâmico de CDNs)
+// Interceptação de requisições (Cache First com fallback para rede)
 self.addEventListener('fetch', event => {
     event.respondWith(
         caches.match(event.request)
@@ -46,9 +53,9 @@ self.addEventListener('fetch', event => {
                         return networkResponse;
                     });
                 }).catch(() => {
-                    // Fallback caso esteja offline
+                    // Fallback caso esteja offline a tentar abrir páginas HTML
                     if (event.request.headers.get('accept') && event.request.headers.get('accept').includes('text/html')) {
-                        return caches.match('/modules/pdv/caixa-core.html');
+                        return caches.match('/modules/auth/auth.html');
                     }
                 });
             })
