@@ -2,13 +2,25 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="refresh" content="0; url=modules/auth/auth.html">
-    <title>Redirecionando...</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#111827">
+    <title>Vancely Software - Redirecionando...</title>
 </head>
 <body>
-    <p>Redirecionando para o sistema...</p>
+    <p>A carregar o sistema...</p>
     <script>
-        window.location.href = "modules/auth/auth.html";
+        // Regista o Service Worker antes de redirecionar
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js')
+                .then(reg => console.log('Service Worker registado com sucesso na raiz:', reg.scope))
+                .catch(err => console.error('Erro ao registar Service Worker:', err));
+        }
+
+        // Redireciona para o login após um breve instante para garantir o registo
+        setTimeout(() => {
+            window.location.href = "modules/auth/auth.html";
+        }, 300);
     </script>
 </body>
 </html>
