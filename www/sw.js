@@ -39,25 +39,12 @@ self.addEventListener('activate', event => {
     );
 });
 
-// Interceptação de requisições (Cache First com fallback para rede)
+// Interceptação de requisições simplificada
 self.addEventListener('fetch', event => {
     event.respondWith(
         caches.match(event.request)
-            .then(cachedResponse => {
-                if (cachedResponse) {
-                    return cachedResponse;
-                }
-                return fetch(event.request).then(networkResponse => {
-                    return caches.open(CACHE_NAME).then(cache => {
-                        cache.put(event.request, networkResponse.clone());
-                        return networkResponse;
-                    });
-                }).catch(() => {
-                    // Fallback caso esteja offline a tentar abrir páginas HTML
-                    if (event.request.headers.get('accept') && event.request.headers.get('accept').includes('text/html')) {
-                        return caches.match('/modules/auth/auth.html');
-                    }
-                });
+            .then(response => {
+                return response || fetch(event.request);
             })
     );
 });
