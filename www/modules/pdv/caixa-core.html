@@ -46,6 +46,12 @@
 
         <!-- Botões de Gestão de Caixa -->
         <div class="flex items-center gap-2">
+            <!-- Botão de Instalação PWA -->
+            <button id="btnPWAAction" style="display: none;" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-sm font-semibold flex items-center gap-2 shadow-md transition-all">
+                <i id="pwaIcon" class="fa-solid fa-download"></i> 
+                <span id="pwaText">Instalar App</span>
+            </button>
+
             <button onclick="window.acionarAbrirCaixa()" id="btnAbrirCaixaHeader" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-lg text-xs font-bold transition shadow flex items-center gap-2">
                 <i class="fa-solid fa-unlock"></i> Abrir Caixa
             </button>

@@ -111,8 +111,44 @@ function alternarTelaAuth(tipo) {
     elementos.divCamposEnderecoCadastro?.classList.toggle('hidden', !exibirCamposExtra);
 }  
 
+// --- LÓGICA INTELIGENTE PWA ---
+let deferredPrompt = null;
+const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+    // Impede o banner automático do navegador
+    e.preventDefault();
+    // Guarda o evento para usar no clique
+    deferredPrompt = e;
+    
+    const btn = document.getElementById('btnPWAAction');
+    const texto = document.getElementById('pwaText');
+    const icone = document.getElementById('pwaIcon');
+    
+    // Se não estiver instalado ainda, exibe o botão de Instalar
+    if (!isStandalone && btn && texto && icone) {
+        texto.textContent = "Instalar App";
+        icone.className = "fa-solid fa-download";
+        btn.style.display = 'flex';
+    }
+});
+
 function instalarAppPwa() {  
-    console.log("[PWA Event]: Solicitação de instalação capturada.");  
+    if (deferredPrompt) {
+        // Dispara o prompt nativo de instalação do navegador
+        deferredPrompt.prompt();
+        
+        deferredPrompt.userChoice.then(({ outcome }) => {
+            if (outcome === 'accepted') {
+                console.log('Usuário instalou o aplicativo com sucesso!');
+                const btn = document.getElementById('btnPWAAction');
+                if (btn) btn.style.display = 'none';
+            }
+            deferredPrompt = null;
+        });
+    } else {
+        console.log("[PWA Event]: Solicitação de instalação acionada, mas o prompt não está disponível no momento.");
+    }
 }  
 
 function tratarEnterLogin(e) {   
@@ -218,6 +254,22 @@ window.fecharPainelAdmin = function() {
 document.addEventListener("DOMContentLoaded", () => {  
     verificarSessaoEAlternarTelas();  
     inicializarAtalhosTeclado();  
+
+    // Configuração de clique do botão PWA no DOMContentLoaded (conforme solicitado)
+    const btnPwaAction = document.getElementById('btnPWAAction');
+    if (btnPwaAction) {
+        btnPwaAction.addEventListener('click', async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') {
+                    console.log('Usuário instalou o aplicativo com sucesso!');
+                    btnPwaAction.style.display = 'none';
+                }
+                deferredPrompt = null;
+            }
+        });
+    }
 
     const vincularRecarregamento = (idElemento) => {
         document.getElementById(idElemento)?.addEventListener('click', (e) => {
