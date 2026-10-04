@@ -340,6 +340,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // 3. Direciona com base no cargo ('admin_mercado' ou 'operador')
+            const idEmpresaVinculada = vinculo.empresa_id || vinculo.id; // Garante o ID correto da empresa
+            localStorage.setItem('empresaAtualId', idEmpresaVinculada); // [CORREÇÃO SÊNIOR] Salva a empresa ativa
+
             if (vinculo.cargo === 'admin_mercado') {
                 showLoginFeedback('Login de Administrador com Sucesso', 'success');
                 setTimeout(() => {
