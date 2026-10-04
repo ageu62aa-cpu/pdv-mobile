@@ -19,7 +19,25 @@ export async function dispararLeitorNativo(onScanSuccess) {
 
         document.querySelector('body').classList.add('scanner-active');
 
-        const result = await BarcodeScanner.scan();
+        // Oculta elementos web que possam interferir com a UI nativa do scanner
+        const modalCam = document.getElementById('modalCamera');
+        if (modalCam) {
+            modalCam.classList.add('hidden');
+            modalCam.classList.remove('flex');
+        }
+
+        // Dispara o leitor nativo otimizado do ML Kit (com suporte a múltiplos formatos de código de barras)
+        const result = await BarcodeScanner.scan({
+            targetedFormats: [
+                "EAN_13",
+                "EAN_8",
+                "CODE_128",
+                "CODE_39",
+                "UPC_A",
+                "UPC_E",
+                "QR_CODE"
+            ]
+        });
 
         await fecharLeitorNativo();
 
