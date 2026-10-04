@@ -43,11 +43,14 @@ export async function iniciarCameraWeb(onScanSuccess) {
             Html5QrcodeSupportedFormats.QR_CODE
         ];
 
-        // Iniciamos a câmera sem qrbox interno da biblioteca para evitar conflitos de renderização no mobile
+        // Restaura o qrbox otimizado para focar exatamente na área de leitura do código de barras
+        const qrboxSize = (window.innerWidth < 768) ? { width: 280, height: 160 } : { width: 350, height: 180 };
+
         await html5QrcodeInstance.start(
             { facingMode: "environment" },
             {
                 fps: 30,
+                qrbox: qrboxSize,
                 formatsToSupport: formatosPermitidos,
                 videoConstraints: {
                     facingMode: "environment",
@@ -66,6 +69,15 @@ export async function iniciarCameraWeb(onScanSuccess) {
                 ultimoCodigoLido = codigoLimpo;
                 tempoUltimoDisparo = agora;
 
+                // Feedback visual de sucesso: muda as bordas para verde instantaneamente ao capturar
+                const moldura = container.querySelector('.moldura-customizada-pdv');
+                if (moldura) {
+                    moldura.style.borderColor = '#10B981'; // Verde esmeralda de sucesso
+                    setTimeout(() => {
+                        moldura.style.borderColor = 'rgba(255, 255, 255, 0.8)';
+                    }, 400);
+                }
+
                 if (onScanSuccess) onScanSuccess(codigoLimpo);
 
                 if (document.activeElement && typeof document.activeElement.blur === 'function') {
@@ -75,7 +87,7 @@ export async function iniciarCameraWeb(onScanSuccess) {
             () => {}
         );
 
-        // Ajustes visuais garantindo consistência no vídeo e criando a moldura fixa universal
+        // Ajustes visuais com as quatro bordas estilo mira profissional de scanner
         setTimeout(() => {
             const videoElement = container.querySelector('video');
             if (videoElement) {
@@ -84,7 +96,6 @@ export async function iniciarCameraWeb(onScanSuccess) {
                 videoElement.style.height = '100%';
             }
 
-            // Injeta uma camada visual de moldura padronizada se ela já não existir no container
             if (!container.querySelector('.moldura-customizada-pdv')) {
                 const overlay = document.createElement('div');
                 overlay.className = 'moldura-customizada-pdv';
@@ -92,13 +103,15 @@ export async function iniciarCameraWeb(onScanSuccess) {
                 overlay.style.top = '50%';
                 overlay.style.left = '50%';
                 overlay.style.transform = 'translate(-50%, -50%)';
-                overlay.style.width = '75%';
-                overlay.style.height = '180px';
-                overlay.style.border = '3px solid rgba(255, 255, 255, 0.8)';
-                overlay.style.boxShadow = '0 0 0 9999px rgba(0, 0, 0, 0.5)';
-                overlay.style.borderRadius = '12px';
+                overlay.style.width = `${qrboxSize.width}px`;
+                overlay.style.height = `${qrboxSize.height}px`;
+                // Estilo profissional com bordas destacadas nos cantos/lados
+                overlay.style.border = '2px dashed rgba(255, 255, 255, 0.8)';
+                overlay.style.boxShadow = '0 0 0 9999px rgba(0, 0, 0, 0.6)';
+                overlay.style.borderRadius = '10px';
                 overlay.style.pointerEvents = 'none';
                 overlay.style.zIndex = '10';
+                overlay.style.transition = 'border-color 0.2s ease';
                 container.style.position = 'relative';
                 container.appendChild(overlay);
             }
