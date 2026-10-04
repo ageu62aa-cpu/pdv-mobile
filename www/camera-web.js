@@ -43,11 +43,11 @@ export async function iniciarCameraWeb(onScanSuccess) {
             Html5QrcodeSupportedFormats.QR_CODE
         ];
 
-        // Tamanho de qrbox equilibrado para leitura rápida de códigos de barras (médios e pequenos)
+        // Ajustado para uma área de leitura mais ampla e responsiva no browser do telemóvel
         const larguraTela = window.innerWidth;
         const qrboxSize = larguraTela < 768 
-            ? { width: 260, height: 140 } 
-            : { width: 320, height: 160 };
+            ? { width: 280, height: 220 } 
+            : { width: 350, height: 250 };
 
         await html5QrcodeInstance.start(
             { facingMode: "environment" },
@@ -57,8 +57,9 @@ export async function iniciarCameraWeb(onScanSuccess) {
                 formatsToSupport: formatosPermitidos,
                 videoConstraints: {
                     facingMode: "environment",
-                    width: { ideal: 1280, max: 1920 },
-                    height: { ideal: 720, max: 1080 }
+                    width: { ideal: 1920 },
+                    height: { ideal: 1080 },
+                    advanced: [{ focusMode: "continuous" }]
                 }
             },
             (decodedText) => {
@@ -81,7 +82,6 @@ export async function iniciarCameraWeb(onScanSuccess) {
             () => {}
         );
 
-        // Ajuste limpo do elemento de vídeo para ocupar o espaço sem criar molduras conflitantes
         setTimeout(() => {
             const videoElement = container.querySelector('video');
             if (videoElement) {
