@@ -2,3 +2,21 @@ node_modules/
 android/
 ios/
 .DS_Store
+
+# Keep camera permission declarations from the native projects in version control.
+!android/
+android/*
+!android/app/
+android/app/*
+!android/app/src/
+android/app/src/*
+!android/app/src/main/
+android/app/src/main/*
+!android/app/src/main/AndroidManifest.xml
+!ios/
+ios/*
+!ios/App/
+ios/App/*
+!ios/App/App/
+ios/App/App/*
+!ios/App/App/Info.plist

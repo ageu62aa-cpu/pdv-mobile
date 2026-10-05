@@ -4,7 +4,6 @@
 
 import { origemLeitor, setOrigemLeitor, produtosCache } from './state.js';  
 import { tratarAdicaoProduto } from './services/produtos.js';  
-import { dispararLeitorNativo, fecharLeitorNativo } from './camera-native.js';
 import { iniciarCameraWeb, fecharCameraWeb } from './camera-web.js';
 
 let listenerTecladoGlobal = null;  
@@ -66,52 +65,14 @@ export async function abrirLeitorCameraParaCampo() {
 
 // Loop contínuo exclusivo para Vendas (fica ativo lendo vários produtos seguidos)
 async function executarLoopLeituraVendas() {
-    const isNative = window.Capacitor && window.Capacitor.isNativePlatform();
-
-    if (isNative) {
-        // No nativo, criamos um ciclo contínuo até o utilizador fechar manualmente
-        try {
-            while (origemLeitor === 'busca') {
-                const codigoNativo = await dispararLeitorNativo();
-
-                // VERIFICAÇÃO ADICIONAL DE SEGURANÇA: Se a origem mudou ou foi anulada, quebra o loop na hora
-                if (origemLeitor !== 'busca') {
-                    break;
-                }
-
-                if (codigoNativo) {
-                    processarCodigoCapturadoUniversal(codigoNativo.trim());
-                    // Pequena pausa para evitar leitura dupla instantânea do mesmo item
-                    await new Promise(resolve => setTimeout(resolve, 800));
-                } else {
-                    break; // Se cancelou ou fechou a câmara, sai do loop
-                }
-            }
-        } catch (err) {
-            console.error("PDV-VS Erro no loop de vendas nativo:", err);
-        }
-    } else {
-        // Fallback Web para Vendas (modo contínuo na web)
-        await iniciarCameraWeb((codigoLido) => {
-            processarCodigoCapturadoUniversal(codigoLido);
-        });
-    }
+    await iniciarCameraWeb((codigoLido) => {
+        processarCodigoCapturadoUniversal(codigoLido);
+    });
 }
 
 // Abertura única para o Admin (fecha logo após ler o código)
 async function gerenciarAberturaLeitorUnico() {  
     try {  
-        const isNative = window.Capacitor && window.Capacitor.isNativePlatform();  
-
-        if (isNative) {  
-            const codigoNativo = await dispararLeitorNativo();
-            if (codigoNativo) {
-                processarCodigoCapturadoUniversal(codigoNativo.trim());
-            }
-            await fecharLeitorCamera();
-            return;
-        }  
-
         await iniciarCameraWeb((codigoLido) => {
             processarCodigoCapturadoUniversal(codigoLido);
             fecharLeitorCamera();
@@ -163,7 +124,6 @@ function processarCodigoCapturadoUniversal(termoDigitado) {
 
 export async function fecharLeitorCamera() {  
     setOrigemLeitor(null); // Reseta a origem para quebrar o loop de vendas
-    await fecharLeitorNativo();
     await fecharCameraWeb();
 }  
 
@@ -204,3 +164,4 @@ window.abrirLeitorCamera = abrirLeitorCamera;
 window.escanearCameraAdmin = escanearCameraAdmin;  
 window.abrirLeitorCameraParaCampo = abrirLeitorCameraParaCampo;  
 window.fecharLeitorCamera = fecharLeitorCamera;
+window.fecharCameraWeb = fecharLeitorCamera;

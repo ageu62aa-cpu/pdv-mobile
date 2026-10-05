@@ -20,7 +20,7 @@ const getSupabase = () => window.supabaseClient || window.supabase || supabase;
 
 // --- CONTROLE DO SCANNER DE CÂMERA ---
 window.abrirCameraScanner = () => {
-  abrirLeitorCamera(); // Dispara o fluxo que usa o camera-native.js no app (iOS/Android) ou camera-web.js no navegador
+  abrirLeitorCamera(); // Usa o mesmo leitor com moldura qrbox no app e no navegador
 };
 
 // --- ATUALIZAÇÃO VISUAL DOS BADGES DE STATUS NO CABEÇALHO ---

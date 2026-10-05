@@ -8,8 +8,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome para Ícones -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Biblioteca Html5Qrcode para Fallback Web -->
-    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <!-- Biblioteca compartilhada de leitura de QR/barcodes no app e no navegador -->
+    <script src="https://unpkg.com/html5-qrcode@2.3.8" type="text/javascript"></script>
     <style>
         @media print {
             body * { visibility: hidden; }
@@ -400,7 +400,7 @@
           <button onclick="if(window.fecharCameraWeb) { window.fecharCameraWeb(); } else { document.getElementById('modalCamera').classList.add('hidden'); }" class="text-gray-400 hover:text-white text-sm font-bold px-2 py-1">✕</button>
         </div>
         
-        <!-- Elemento de vídeo requerido pelo camera-web.js (Ajustado para 4:3 para bater com o aspect ratio do script) -->
+        <!-- Elemento de vídeo e moldura qrbox compartilhados entre Android, iOS e navegador -->
         <div id="videoPreviewCamera" class="w-full rounded-lg overflow-hidden bg-black aspect-[4/3] relative"></div>
         
         <p class="text-xs text-gray-400 text-center">Aponte a câmara para o código de barras.</p>

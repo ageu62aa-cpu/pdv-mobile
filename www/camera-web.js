@@ -1,5 +1,5 @@
 // ==========================================
-// MÓDULO WEB - HTML5 QRCODE FALLBACK (PDV-VS)
+// LEITOR COMPARTILHADO ANDROID / IOS / WEB (PDV-VS)
 // ==========================================
 
 let html5QrcodeInstance = null;
@@ -7,11 +7,7 @@ let html5QrcodeInstance = null;
 export async function iniciarCameraWeb(onScanSuccess) {
     try {
         if (html5QrcodeInstance) {
-            try {
-                if (html5QrcodeInstance.isScanning) await html5QrcodeInstance.stop();
-            } catch (e) {}
-            html5QrcodeInstance = null;
-            await new Promise(resolve => setTimeout(resolve, 80));
+            await fecharCameraWeb();
         }
 
         const modalCam = document.getElementById('modalCamera');
@@ -23,10 +19,13 @@ export async function iniciarCameraWeb(onScanSuccess) {
 
         const elementId = "videoPreviewCamera";
         const container = document.getElementById(elementId);
-        if (!container) return;
+        if (!container) throw new Error(`Elemento de câmera não encontrado: #${elementId}`);
 
         const QrLib = window.Html5Qrcode;
-        if (!QrLib) return;
+        const supportedFormats = window.Html5QrcodeSupportedFormats;
+        if (!QrLib || !supportedFormats) {
+            throw new Error("Biblioteca Html5Qrcode não foi carregada.");
+        }
 
         html5QrcodeInstance = new QrLib(elementId);
 
@@ -34,32 +33,28 @@ export async function iniciarCameraWeb(onScanSuccess) {
         let tempoUltimoDisparo = 0;
 
         const formatosPermitidos = [
-            Html5QrcodeSupportedFormats.EAN_13,
-            Html5QrcodeSupportedFormats.EAN_8,
-            Html5QrcodeSupportedFormats.CODE_128,
-            Html5QrcodeSupportedFormats.CODE_39,
-            Html5QrcodeSupportedFormats.UPC_A,
-            Html5QrcodeSupportedFormats.UPC_E,
-            Html5QrcodeSupportedFormats.QR_CODE
+            supportedFormats.EAN_13,
+            supportedFormats.EAN_8,
+            supportedFormats.CODE_128,
+            supportedFormats.CODE_39,
+            supportedFormats.UPC_A,
+            supportedFormats.UPC_E,
+            supportedFormats.QR_CODE
         ];
-
-        // Ajustado para uma área de leitura mais ampla e responsiva no browser do telemóvel
-        const larguraTela = window.innerWidth;
-        const qrboxSize = larguraTela < 768 
-            ? { width: 280, height: 220 } 
-            : { width: 350, height: 250 };
 
         await html5QrcodeInstance.start(
             { facingMode: "environment" },
             {
-                fps: 30,
-                qrbox: qrboxSize,
+                fps: 15,
+                qrbox: (viewfinderWidth, viewfinderHeight) => ({
+                    width: Math.floor(Math.min(viewfinderWidth * 0.9, 480)),
+                    height: Math.floor(Math.min(viewfinderHeight * 0.5, 220))
+                }),
                 formatsToSupport: formatosPermitidos,
                 videoConstraints: {
-                    facingMode: "environment",
-                    width: { ideal: 1920 },
-                    height: { ideal: 1080 },
-                    advanced: [{ focusMode: "continuous" }]
+                    facingMode: { ideal: "environment" },
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
                 }
             },
             (decodedText) => {
@@ -93,7 +88,8 @@ export async function iniciarCameraWeb(onScanSuccess) {
 
     } catch (err) {
         console.error("PDV-VS Erro Html5Qrcode Web:", err);
-        fecharCameraWeb();
+        await fecharCameraWeb();
+        alert("Não foi possível iniciar a câmera. Verifique a permissão de câmera do aplicativo e tente novamente.");
     }
 }
 
@@ -101,7 +97,10 @@ export async function fecharCameraWeb() {
     if (html5QrcodeInstance) {
         try {
             if (html5QrcodeInstance.isScanning) await html5QrcodeInstance.stop();
-        } catch (e) {}
+            await html5QrcodeInstance.clear();
+        } catch (err) {
+            console.error("PDV-VS Erro ao encerrar Html5Qrcode:", err);
+        }
         html5QrcodeInstance = null;
     }
 
