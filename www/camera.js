@@ -1,5 +1,5 @@
 /**
- * Módulo de Gestão da Câmara e Leitor de Código de Barras / QR Code
+ * Módulo de Gestão da Câmara para Leitura de Código de Barras / QR Code
  * Dependência: html5-qrcode.min.js
  */
 
@@ -55,15 +55,18 @@ function onScanSuccess(decodedText) {
 }
 
 function onScanFailure(error) {
-  // Ignorado intencionalmente durante a varredura
+  // Ignorado durante a varredura contínua
 }
 
 export async function iniciarCamera() {
+  // Aguarda 100ms para garantir que o DOM/Modal já foi renderizado
+  await new Promise((resolve) => setTimeout(resolve, 100));
+
   const container = document.getElementById(ID_ELEMENTO_CONTAINER);
   
   if (!container) {
     console.error(`[CÂMARA] Elemento #${ID_ELEMENTO_CONTAINER} não encontrado no DOM.`);
-    alert("Erro interno: Contentor da câmara (#reader) não encontrado na página.");
+    alert("Certifique-se de que o painel da câmara (<div id=\"reader\"></div>) está aberto ou presente na página.");
     return;
   }
 
@@ -93,7 +96,7 @@ export async function iniciarCamera() {
     console.log("[CÂMARA] Iniciada com sucesso.");
   } catch (err) {
     console.error("[CÂMARA] Erro ao iniciar:", err);
-    alert("Erro ao aceder à câmara. Verifique se concedeu as permissões necessárias.");
+    alert("Erro ao aceder à câmara. Verifique se concedeu as permissões necessárias no navegador.");
   }
 }
 
@@ -116,19 +119,15 @@ export async function alternarCamera() {
   }
 }
 
-/**
- * Inicializador para leitores físicos (pistolas USB/Bluetooth) que emulam teclado
- */
 export function inicializarLeitorTecladoPistola() {
-  console.log("[LEITOR PISTOLA] Inicializado ou pronto para captura via teclado.");
-  // A lógica de captura do scanner físico pode ser encadeada aqui se necessário
+  console.log("[LEITOR PISTOLA] Inicializado.");
 }
 
-// Aliases exportados para atender ao import do caixa-core.js
+// Aliases exportados
 export const abrirLeitorCamera = iniciarCamera;
 export const abrirCameraScanner = iniciarCamera;
 
-// Exposição no escopo global (window)
+// Exposição global
 if (typeof window !== "undefined") {
   window.iniciarCamera = iniciarCamera;
   window.pararCamera = pararCamera;
