@@ -3,21 +3,21 @@
  * Dependência: html5-qrcode.min.js
  */
 
-let html5QrCodeScanner = null;
-let leituraBloqueada = false;
-const ID_ELEMENTO_CONTAINER = "reader";
+var html5QrCodeScanner = null;
+var leituraBloqueada = false;
+var ID_ELEMENTO_CONTAINER = "reader";
 
 /**
  * Emite um som sintético de bipe para confirmação de leitura
  */
-export function tocarBipeLeitura() {
+function tocarBipeLeitura() {
   try {
-    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    var AudioContext = window.AudioContext || window.webkitAudioContext;
     if (!AudioContext) return;
     
-    const audioCtx = new AudioContext();
-    const oscillator = audioCtx.createOscillator();
-    const gainNode = audioCtx.createGain();
+    var audioCtx = new AudioContext();
+    var oscillator = audioCtx.createOscillator();
+    var gainNode = audioCtx.createGain();
 
     oscillator.type = "sine";
     oscillator.frequency.value = 1800;
@@ -37,7 +37,7 @@ function onScanSuccess(decodedText) {
   if (leituraBloqueada) return;
 
   leituraBloqueada = true;
-  console.log(`[CÂMARA] Código lido: ${decodedText}`);
+  console.log("[CÂMARA] Código lido:", decodedText);
 
   tocarBipeLeitura();
 
@@ -49,26 +49,39 @@ function onScanSuccess(decodedText) {
     console.warn("Nenhuma função global de recebimento de código foi encontrada.");
   }
 
-  setTimeout(() => {
+  setTimeout(function() {
     leituraBloqueada = false;
   }, 1500);
 }
 
 function onScanFailure(error) {
-  // Ignorado durante a varredura contínua
+  // Ignorado durante o scanning
 }
 
-export async function iniciarCamera() {
-  // Aguarda 100ms para garantir que o DOM/Modal já foi renderizado
-  await new Promise((resolve) => setTimeout(resolve, 100));
-
-  const container = document.getElementById(ID_ELEMENTO_CONTAINER);
-  
+/**
+ * Injeta a div #reader dinamicamente caso não exista no DOM
+ */
+function garantirElementoReader() {
+  var container = document.getElementById(ID_ELEMENTO_CONTAINER);
   if (!container) {
-    console.error(`[CÂMARA] Elemento #${ID_ELEMENTO_CONTAINER} não encontrado no DOM.`);
-    alert("Certifique-se de que o painel da câmara (<div id=\"reader\"></div>) está aberto ou presente na página.");
-    return;
+    console.log("[CÂMARA] Criando elemento #reader dinamicamente...");
+    container = document.createElement("div");
+    container.id = ID_ELEMENTO_CONTAINER;
+    container.style.width = "100%";
+    container.style.minHeight = "250px";
+    container.style.backgroundColor = "#000";
+    container.style.borderRadius = "8px";
+    container.style.overflow = "hidden";
+    
+    // Tenta anexar num painel existente ou ao body
+    var painelOuMain = document.querySelector("main") || document.body;
+    painelOuMain.appendChild(container);
   }
+  return container;
+}
+
+async function iniciarCamera() {
+  var container = garantirElementoReader();
 
   if (html5QrCodeScanner && html5QrCodeScanner.isScanning) {
     console.log("[CÂMARA] A câmara já está ativa.");
@@ -80,7 +93,7 @@ export async function iniciarCamera() {
       html5QrCodeScanner = new Html5Qrcode(ID_ELEMENTO_CONTAINER);
     }
 
-    const config = {
+    var config = {
       fps: 12,
       qrbox: { width: 260, height: 140 },
       aspectRatio: 1.777778
@@ -96,11 +109,11 @@ export async function iniciarCamera() {
     console.log("[CÂMARA] Iniciada com sucesso.");
   } catch (err) {
     console.error("[CÂMARA] Erro ao iniciar:", err);
-    alert("Erro ao aceder à câmara. Verifique se concedeu as permissões necessárias no navegador.");
+    alert("Erro ao aceder à câmara. Verifique se concedeu as permissões necessárias.");
   }
 }
 
-export async function pararCamera() {
+async function pararCamera() {
   if (html5QrCodeScanner && html5QrCodeScanner.isScanning) {
     try {
       await html5QrCodeScanner.stop();
@@ -111,7 +124,7 @@ export async function pararCamera() {
   }
 }
 
-export async function alternarCamera() {
+async function alternarCamera() {
   if (html5QrCodeScanner && html5QrCodeScanner.isScanning) {
     await pararCamera();
   } else {
@@ -119,20 +132,15 @@ export async function alternarCamera() {
   }
 }
 
-export function inicializarLeitorTecladoPistola() {
-  console.log("[LEITOR PISTOLA] Inicializado.");
+function inicializarLeitorTecladoPistola() {
+  console.log("[LEITOR PISTOLA] Pronto para leitura de teclado.");
 }
 
-// Aliases exportados
-export const abrirLeitorCamera = iniciarCamera;
-export const abrirCameraScanner = iniciarCamera;
-
-// Exposição global
-if (typeof window !== "undefined") {
-  window.iniciarCamera = iniciarCamera;
-  window.pararCamera = pararCamera;
-  window.alternarCamera = alternarCamera;
-  window.abrirLeitorCamera = iniciarCamera;
-  window.abrirCameraScanner = iniciarCamera;
-  window.inicializarLeitorTecladoPistola = inicializarLeitorTecladoPistola;
-}
+// Vincula todas as funções ao objeto global window
+window.tocarBipeLeitura = tocarBipeLeitura;
+window.iniciarCamera = iniciarCamera;
+window.pararCamera = pararCamera;
+window.alternarCamera = alternarCamera;
+window.abrirLeitorCamera = iniciarCamera;
+window.abrirCameraScanner = iniciarCamera;
+window.inicializarLeitorTecladoPistola = inicializarLeitorTecladoPistola;
