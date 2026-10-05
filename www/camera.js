@@ -1,167 +1,145 @@
-// ==========================================  
-// ORQUESTRADOR DE CÂMERA E PISTOLA (PDV-VS)  
-// ==========================================  
+/**
+ * Módulo de Gestão da Câmara para Leitura de Código de Barras / QR Code
+ * Dependência: html5-qrcode.min.js
+ */
 
-import { origemLeitor, setOrigemLeitor, produtosCache } from './state.js';  
-import { tratarAdicaoProduto } from './services/produtos.js';  
-import { iniciarCameraWeb, fecharCameraWeb } from './camera-web.js';
+// Estado global do leitor
+let html5QrCodeScanner = null;
+let leituraBloqueada = false;
+const ID_ELEMENTO_CONTAINER = "reader"; // Certifique-se que existe um <div id="reader"></div> no seu HTML
 
-let listenerTecladoGlobal = null;  
+/**
+ * Emite um som sintético de bipe para confirmação de leitura
+ */
+function tocarBipeLeitura() {
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    
+    const audioCtx = new AudioContext();
+    const oscillator = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
 
-// Inicializa o listener global da pistola de código de barras física / teclado  
-export function inicializarLeitorTecladoPistola() {  
-    if (listenerTecladoGlobal) return;  
+    oscillator.type = "sine";
+    oscillator.frequency.value = 1800; // Frequência do bipe (Hz)
+    gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime); // Volume
 
-    let bufferLeitor = '';  
-    let ultimoTempo = Date.now();  
+    oscillator.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
 
-    listenerTecladoGlobal = (e) => {  
-        const tempoAtual = Date.now();  
-
-        const modalCam = document.getElementById('modalCamera');  
-        if (modalCam && !modalCam.classList.contains('hidden')) return;  
-
-        if (tempoAtual - ultimoTempo > 100) {  
-            bufferLeitor = '';  
-        }  
-        ultimoTempo = tempoAtual;  
-
-        if (e.key === 'Enter') {  
-            if (bufferLeitor && bufferLeitor.trim().length > 1) {  
-                e.preventDefault();  
-                e.stopPropagation();  
-                const codigoLido = bufferLeitor.trim();  
-                bufferLeitor = '';  
-                processarCodigoCapturadoUniversal(codigoLido);  
-            }  
-        } else if (e.key && e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {  
-            bufferLeitor += e.key;  
-        }  
-    };  
-
-    window.addEventListener('keydown', listenerTecladoGlobal);  
-}  
-
-// Executado ao abrir leitor na Tela Principal de Vendas (Modo Contínuo / Não fecha sozinho)  
-export async function abrirLeitorCamera() {  
-    console.log("PDV-VS: Abrindo leitor contínuo para Vendas");  
-    setOrigemLeitor('busca');  
-    await executarLoopLeituraVendas();  
-}  
-
-// Executado ao abrir leitor no Admin (Modo Único / Fechamento Automático)  
-export async function escanearCameraAdmin() {  
-    console.log("PDV-VS: Abrindo leitor único para Admin");  
-    setOrigemLeitor('admin');  
-    await gerenciarAberturaLeitorUnico();  
-}  
-
-// Executado pelo botão de scan no modal de produtos do admin
-export async function abrirLeitorCameraParaCampo() {  
-    console.log("PDV-VS: Abrindo leitor para preenchimento de campo específico no Admin");  
-    setOrigemLeitor('admin');  
-    await gerenciarAberturaLeitorUnico();  
-}  
-
-// Loop contínuo exclusivo para Vendas (fica ativo lendo vários produtos seguidos)
-async function executarLoopLeituraVendas() {
-    await iniciarCameraWeb((codigoLido) => {
-        processarCodigoCapturadoUniversal(codigoLido);
-    });
+    oscillator.start();
+    oscillator.stop(audioCtx.currentTime + 0.12); // Duração: 120ms
+  } catch (err) {
+    console.warn("Não foi possível reproduzir o bipe sonoro:", err);
+  }
 }
 
-// Abertura única para o Admin (fecha logo após ler o código)
-async function gerenciarAberturaLeitorUnico() {  
-    try {  
-        await iniciarCameraWeb((codigoLido) => {
-            processarCodigoCapturadoUniversal(codigoLido);
-            fecharLeitorCamera();
-        });  
+/**
+ * Callback disparado quando um código é lido com sucesso
+ */
+function onScanSuccess(decodedText, decodedResult) {
+  if (leituraBloqueada) return;
 
-    } catch (err) {  
-        console.error("PDV-VS Erro geral ao gerenciar leitor único:", err);  
-        await fecharLeitorCamera();  
-    }  
-}  
+  // Bloqueia temporariamente para evitar múltiplas leituras seguidas do mesmo item
+  leituraBloqueada = true;
 
-// Processamento unificado direcionando para o Carrinho (Vendas) ou Input (Admin)
-function processarCodigoCapturadoUniversal(termoDigitado) {  
-    if (!termoDigitado || termoDigitado.length < 1) return;  
+  console.log(`[CÂMARA] Código lido: ${decodedText}`);
 
-    console.log(`PDV-VS: Processando termo [Origem: ${origemLeitor}] ->`, termoDigitado);  
-    
-    if (origemLeitor === 'busca') {  
-        const termoLower = termoDigitado.toLowerCase();  
-        
-        const produtoEncontrado = produtosCache.find(prod => {  
-            const codigoMatch = prod.codigo && prod.codigo.trim().toLowerCase() === termoLower;  
-            const nomeMatch = prod.nome && prod.nome.toLowerCase().includes(termoLower);  
-            return codigoMatch || nomeMatch;  
-        });  
+  // 1. Toca o sinal sonoro
+  tocarBipeLeitura();
 
-        if (produtoEncontrado) {  
-            // Adiciona direto à sacola/carrinho somando o total instantaneamente
-            tratarAdicaoProduto(produtoEncontrado);  
-        } else {  
-            const inputBusca = document.getElementById('inputBusca');  
-            if (inputBusca) {  
-                inputBusca.value = termoDigitado;  
-                inputBusca.focus();  
-                inputBusca.dispatchEvent(new Event('input', { bubbles: true }));  
-                inputBusca.dispatchEvent(new Event('change', { bubbles: true }));  
-            }  
-        }  
-    } else if (origemLeitor === 'admin') {  
-        const inputCodigo = document.getElementById('formCodigo');  
-        if (inputCodigo) {  
-            inputCodigo.value = termoDigitado;  
-            inputCodigo.focus();  
-            inputCodigo.dispatchEvent(new Event('input', { bubbles: true }));  
-            inputCodigo.dispatchEvent(new Event('change', { bubbles: true }));  
-        }  
-    }  
-}  
+  // 2. Envia o código lido para a função do caixa (caixa-core.js)
+  if (typeof window.adicionarProdutoPorCodigo === "function") {
+    window.adicionarProdutoPorCodigo(decodedText);
+  } else if (typeof window.processarCodigoLido === "function") {
+    window.processarCodigoLido(decodedText);
+  } else {
+    console.warn("Nenhuma função global de recebimento de código foi encontrada (ex: adicionarProdutoPorCodigo).");
+  }
 
-export async function fecharLeitorCamera() {  
-    setOrigemLeitor(null); // Reseta a origem para quebrar o loop de vendas
-    await fecharCameraWeb();
-}  
+  // 3. Libertação da trava após 1.5 segundos
+  setTimeout(() => {
+    leituraBloqueada = false;
+  }, 1500);
+}
 
-window.mostrarDetalhesCompatibilidade = function(sistema) {  
-    if (sistema === 'android') {  
-        alert("Android: Compatibilidade 100%\n\nO Android consegue capturar com muita eficiência todos os códigos de barras através da câmara.");  
-    } else if (sistema === 'ios') {  
-        alert("iOS (iPhone): Compatibilidade 100%\n\nCom o motor nativo otimizado do ML Kit, o iPhone lê códigos de barras com máxima precisão e velocidade.");  
-    }  
-};  
+/**
+ * Callback silencioso para tentativas de leitura contínuas
+ */
+function onScanFailure(error) {
+  // Ignorado intencionalmente para não poluir a consola enquanto procura códigos
+}
 
-export function renderizarAvisosCompatibilidadeAdmin() {  
-    const inputCodigo = document.getElementById('formCodigo');  
-    if (!inputCodigo) return;  
+/**
+ * Inicia o stream da câmara
+ */
+async function iniciarCamera() {
+  const container = document.getElementById(ID_ELEMENTO_CONTAINER);
+  
+  if (!container) {
+    console.error(`[CÂMARA] Elemento #${ID_ELEMENTO_CONTAINER} não encontrado no DOM.`);
+    alert("Erro interno: Contentor da câmara não encontrado na página.");
+    return;
+  }
 
-    let containerAvisos = document.getElementById('painelAvisosCompatibilidade');  
-    if (!containerAvisos) {  
-        containerAvisos = document.createElement('div');  
-        containerAvisos.id = 'painelAvisosCompatibilidade';  
-        containerAvisos.style.cssText = "display: flex; gap: 10px; margin-top: 8px; justify-content: space-between;";  
-        
-        containerAvisos.innerHTML = '<div onclick="window.mostrarDetalhesCompatibilidade(\'android\')" style="flex: 1; border: 1px solid #d1e7dd; background: #f8f9fa; padding: 6px; border-radius: 6px; text-align: center; cursor: pointer;"><span style="font-size: 16px;">🤖</span><div style="font-size: 11px; font-weight: bold; color: #155724;">Android: 100%</div></div><div onclick="window.mostrarDetalhesCompatibilidade(\'ios\')" style="flex: 1; border: 1px solid #f8f7da; background: #f8f9fa; padding: 6px; border-radius: 6px; text-align: center; cursor: pointer;"><span style="font-size: 16px;">🍏</span><div style="font-size: 11px; font-weight: bold; color: #721c24;">iOS: 100%</div></div>';  
-        
-        inputCodigo.parentNode.insertBefore(containerAvisos, inputCodigo.nextSibling);  
-    }  
-}  
+  // Se já estiver a rodar, não reinicia
+  if (html5QrCodeScanner && html5QrCodeScanner.isScanning) {
+    console.log("[CÂMARA] A câmara já está ativa.");
+    return;
+  }
 
-setInterval(() => {  
-    const modalProduto = document.getElementById('formCodigo');  
-    if (modalProduto) {  
-        renderizarAvisosCompatibilidadeAdmin();  
-    }  
-}, 1000);  
+  try {
+    if (!html5QrCodeScanner) {
+      html5QrCodeScanner = new Html5Qrcode(ID_ELEMENTO_CONTAINER);
+    }
 
-inicializarLeitorTecladoPistola();  
+    const config = {
+      fps: 12, // Frame rate otimizado para leitura sem aquecer o dispositivo
+      qrbox: { width: 260, height: 140 }, // Retângulo alongado (ideal para códigos de barras 1D)
+      aspectRatio: 1.777778
+    };
 
-window.abrirLeitorCamera = abrirLeitorCamera;  
-window.escanearCameraAdmin = escanearCameraAdmin;  
-window.abrirLeitorCameraParaCampo = abrirLeitorCameraParaCampo;  
-window.fecharLeitorCamera = fecharLeitorCamera;
-window.fecharCameraWeb = fecharLeitorCamera;
+    // Tenta utilizar preferencialmente a câmara traseira ("environment")
+    await html5QrCodeScanner.start(
+      { facingMode: "environment" },
+      config,
+      onScanSuccess,
+      onScanFailure
+    );
+
+    console.log("[CÂMARA] Iniciada com sucesso.");
+  } catch (err) {
+    console.error("[CÂMARA] Erro ao iniciar:", err);
+    alert("Erro ao aceder à câmara. Verifique se concedeu as permissões necessárias no navegador.");
+  }
+}
+
+/**
+ * Interrompe a câmara e liberta a lente/hardware
+ */
+async function pararCamera() {
+  if (html5QrCodeScanner && html5QrCodeScanner.isScanning) {
+    try {
+      await html5QrCodeScanner.stop();
+      console.log("[CÂMARA] Desativada com sucesso.");
+    } catch (err) {
+      console.error("[CÂMARA] Erro ao parar:", err);
+    }
+  }
+}
+
+/**
+ * Alterna o estado da câmara (liga se estiver desligada, desliga se estiver ligada)
+ */
+async function alternarCamera() {
+  if (html5QrCodeScanner && html5QrCodeScanner.isScanning) {
+    await pararCamera();
+  } else {
+    await iniciarCamera();
+  }
+}
+
+// Expõe as funções para a janela global (para ser chamado pelos botões do HTML)
+window.iniciarCamera = iniciarCamera;
+window.pararCamera = pararCamera;
+window.alternarCamera = alternarCamera;
