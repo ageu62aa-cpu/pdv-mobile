@@ -8,6 +8,7 @@ export function abrirLeitorCamera() {
     // Código para abrir e ler a câmera/código de barras
     console.log("Leitor de câmera iniciado...");
 }
+
 var html5QrCodeScanner = null;
 var leituraBloqueada = false;
 var ID_CONTAINER_READER = "reader-camera-modal";
@@ -110,7 +111,6 @@ function onScanSuccess(decodedText) {
   leituraBloqueada = true;
   console.log("[PDV-CAMERA] Código capturado:", decodedText);
 
-  // Atualiza visualmente o código lido no modal
   var displayCodigo = document.getElementById(ID_CODIGO_EXIBIDO);
   if (displayCodigo) {
     displayCodigo.innerText = "Código: " + decodedText;
@@ -118,7 +118,6 @@ function onScanSuccess(decodedText) {
 
   tocarBipeLeitura();
 
-  // Envia diretamente para a lógica de adicionar ao carrinho
   if (typeof window.adicionarProdutoPorCodigo === "function") {
     window.adicionarProdutoPorCodigo(decodedText);
   } else if (typeof window.processarCodigoLido === "function") {
@@ -127,7 +126,6 @@ function onScanSuccess(decodedText) {
     console.warn("Função 'adicionarProdutoPorCodigo' não encontrada no caixa-core.js");
   }
 
-  // Trava curta de 1.2s para evitar duplicações involuntárias no mesmo item
   setTimeout(function() {
     leituraBloqueada = false;
   }, 1200);
@@ -144,10 +142,8 @@ async function iniciarCamera() {
   var modal = garantirModalDOM();
   modal.classList.remove("hidden");
 
-  // Adiciona atalho para tecla ESC
   window.addEventListener("keydown", escKeyHandler);
 
-  // Reseta o texto exibido do código ao reabrir
   var displayCodigo = document.getElementById(ID_CODIGO_EXIBIDO);
   if (displayCodigo) {
     displayCodigo.innerText = "";
@@ -168,7 +164,6 @@ async function iniciarCamera() {
       aspectRatio: 1.0
     };
 
-    // Tenta primeiro a câmara traseira (mobile)
     try {
       await html5QrCodeScanner.start(
         { facingMode: "environment" },
@@ -178,7 +173,6 @@ async function iniciarCamera() {
       );
     } catch (facingErr) {
       console.warn("[PDV-CAMERA] Câmara traseira não encontrada. Tentando qualquer câmara disponível...", facingErr);
-      // Fallback para qualquer câmara disponível (ex: webcam de desktop/notebook)
       await html5QrCodeScanner.start(
         { facingMode: "user" },
         config,
@@ -201,7 +195,6 @@ async function iniciarCamera() {
 async function pararCamera() {
   var modal = document.getElementById(ID_MODAL_CAMERA);
 
-  // Remove listener da tecla ESC
   window.removeEventListener("keydown", escKeyHandler);
 
   if (html5QrCodeScanner && html5QrCodeScanner.isScanning) {
@@ -227,7 +220,11 @@ async function alternarCamera() {
   }
 }
 
-function inicializarLeitorTecladoPistola() {
+/**
+ * EXPORTAÇÃO EXIGIDA PELO CAIXA-CORE:
+ * Adicionada a exportação nomeada que o seu arquivo HTML/Core está tentando carregar.
+ */
+export function inicializarLeitorTecladoPistola() {
   console.log("[PDV-PISTOLA] Suporte a leitor USB/Bluetooth ativo.");
 }
 
