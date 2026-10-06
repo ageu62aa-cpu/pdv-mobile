@@ -1,12 +1,13 @@
 /**
  * Módulo de Gestão da Câmara PDV-Mobile
- * Suporta Modal Flutuante, Leitura Contínua e Fallback de Dispositivos
+ * Suporta Modal Flutuante, Leitura Contínua, Fechamento por ESC e Exibição de Código Lido.
  */
 
 var html5QrCodeScanner = null;
 var leituraBloqueada = false;
 var ID_CONTAINER_READER = "reader-camera-modal";
 var ID_MODAL_CAMERA = "modal-leitor-camera";
+var ID_CODIGO_EXIBIDO = "codigo-lido-display";
 
 /**
  * Sinal sonoro de confirmação
@@ -34,6 +35,18 @@ function tocarBipeLeitura() {
 }
 
 /**
+ * Trata o evento de tecla para fechar o leitor com ESC
+ */
+function escKeyHandler(e) {
+  if (e.key === "Escape" || e.keyCode === 27) {
+    var modal = document.getElementById(ID_MODAL_CAMERA);
+    if (modal && !modal.classList.contains("hidden")) {
+      window.pararCamera();
+    }
+  }
+}
+
+/**
  * Garante a existência do Modal na árvore DOM
  */
 function garantirModalDOM() {
@@ -49,10 +62,10 @@ function garantirModalDOM() {
         <div class="flex items-center justify-between px-4 py-3 bg-gray-800/90 border-b border-gray-700">
           <div class="flex items-center gap-2">
             <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            <h3 class="text-sm font-semibold text-white">Leitor Contínuo</h3>
+            <h3 class="text-sm font-semibold text-white">Leitor de Código de Barras</h3>
           </div>
           <!-- Botão X no Topo Direito -->
-          <button type="button" onclick="window.pararCamera()" class="text-gray-400 hover:text-white p-1 rounded-lg transition-colors">
+          <button type="button" onclick="window.pararCamera()" class="text-gray-400 hover:text-white p-1 rounded-lg transition-colors" title="Fechar (ESC)">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
             </svg>
@@ -60,8 +73,14 @@ function garantirModalDOM() {
         </div>
 
         <!-- Viewport do Vídeo da Câmara -->
-        <div class="p-3 bg-black">
+        <div class="p-3 bg-black flex flex-col items-center">
           <div id="${ID_CONTAINER_READER}" class="w-full aspect-square bg-gray-950 rounded-xl overflow-hidden border border-gray-800"></div>
+          
+          <!-- Exibição do Último Código Capturado -->
+          <div class="mt-3 text-center w-full bg-gray-800/60 rounded-lg py-2 border border-gray-700/50">
+            <span class="text-xs text-gray-400 block font-medium">Aguardando leitura...</span>
+            <span id="${ID_CODIGO_EXIBIDO}" class="text-sm font-mono font-bold text-emerald-400"></span>
+          </div>
         </div>
 
         <!-- Rodapé com Botão Fechar -->
@@ -86,6 +105,12 @@ function onScanSuccess(decodedText) {
   leituraBloqueada = true;
   console.log("[PDV-CAMERA] Código capturado:", decodedText);
 
+  // Atualiza visualmente o código lido no modal
+  var displayCodigo = document.getElementById(ID_CODIGO_EXIBIDO);
+  if (displayCodigo) {
+    displayCodigo.innerText = "Código: " + decodedText;
+  }
+
   tocarBipeLeitura();
 
   // Envia diretamente para a lógica de adicionar ao carrinho
@@ -97,7 +122,7 @@ function onScanSuccess(decodedText) {
     console.warn("Função 'adicionarProdutoPorCodigo' não encontrada no caixa-core.js");
   }
 
-  // Trava curta de 1.2s para permitir varreduras contínuas eficientes de itens diferentes
+  // Trava curta de 1.2s para evitar duplicações involuntárias no mesmo item
   setTimeout(function() {
     leituraBloqueada = false;
   }, 1200);
@@ -113,6 +138,15 @@ function onScanFailure(error) {
 async function iniciarCamera() {
   var modal = garantirModalDOM();
   modal.classList.remove("hidden");
+
+  // Adiciona atalho para tecla ESC
+  window.addEventListener("keydown", escKeyHandler);
+
+  // Reseta o texto exibido do código ao reabrir
+  var displayCodigo = document.getElementById(ID_CODIGO_EXIBIDO);
+  if (displayCodigo) {
+    displayCodigo.innerText = "";
+  }
 
   if (html5QrCodeScanner && html5QrCodeScanner.isScanning) {
     return;
@@ -161,7 +195,10 @@ async function iniciarCamera() {
  */
 async function pararCamera() {
   var modal = document.getElementById(ID_MODAL_CAMERA);
-  
+
+  // Remove listener da tecla ESC
+  window.removeEventListener("keydown", escKeyHandler);
+
   if (html5QrCodeScanner && html5QrCodeScanner.isScanning) {
     try {
       await html5QrCodeScanner.stop();
