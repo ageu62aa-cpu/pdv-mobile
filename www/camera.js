@@ -2,7 +2,12 @@
  * Módulo de Gestão da Câmara PDV-Mobile
  * Suporta Modal Flutuante, Leitura Contínua, Fechamento por ESC e Exibição de Código Lido.
  */
+// camera.js
 
+export function abrirLeitorCamera() {
+    // Código para abrir e ler a câmera/código de barras
+    console.log("Leitor de câmera iniciado...");
+}
 var html5QrCodeScanner = null;
 var leituraBloqueada = false;
 var ID_CONTAINER_READER = "reader-camera-modal";

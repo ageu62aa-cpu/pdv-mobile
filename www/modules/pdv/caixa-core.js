@@ -12,6 +12,16 @@ import {
 import { carregarProdutosCache } from '../../services/produtos.js';
 import { supabase } from '../../../core/config.js'; // Correção definitiva do import do Supabase
 
+// Verificação de sessão (para evitar erros quando limpar os dados)
+const usuario = localStorage.getItem('usuario'); // ou a sua chave de login
+if (!usuario) {
+    alert("Sessão expirada. Redirecionando para o login...");
+    window.location.href = '/login.html'; // ajuste a URL da sua tela de login
+} else {
+    // Se estiver logado, chama a função normalmente quando precisar
+    // abrirLeitorCamera();
+}
+
 let valorTrocoAbertura = 0;
 let horaAberturaCaixa = null;
 
