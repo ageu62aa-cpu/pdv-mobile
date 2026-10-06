@@ -1,20 +1,20 @@
 /**
- * Módulo de Gestão da Câmara para Leitura de Código de Barras / QR Code
- * Dependência: html5-qrcode.min.js
+ * Módulo de Gestão da Câmara PDV-Mobile
+ * Suporta Modal Flutuante, Leitura Contínua e Fallback de Dispositivos
  */
 
 var html5QrCodeScanner = null;
 var leituraBloqueada = false;
-var ID_ELEMENTO_CONTAINER = "reader";
+var ID_CONTAINER_READER = "reader-camera-modal";
+var ID_MODAL_CAMERA = "modal-leitor-camera";
 
 /**
- * Emite um som sintético de bipe para confirmação de leitura
+ * Sinal sonoro de confirmação
  */
 function tocarBipeLeitura() {
   try {
     var AudioContext = window.AudioContext || window.webkitAudioContext;
     if (!AudioContext) return;
-    
     var audioCtx = new AudioContext();
     var oscillator = audioCtx.createOscillator();
     var gainNode = audioCtx.createGain();
@@ -29,103 +29,156 @@ function tocarBipeLeitura() {
     oscillator.start();
     oscillator.stop(audioCtx.currentTime + 0.12);
   } catch (err) {
-    console.warn("Não foi possível reproduzir o bipe sonoro:", err);
+    console.warn("Bipe áudio indisponível:", err);
   }
 }
 
+/**
+ * Garante a existência do Modal na árvore DOM
+ */
+function garantirModalDOM() {
+  var modal = document.getElementById(ID_MODAL_CAMERA);
+  if (!modal) {
+    modal = document.createElement("div");
+    modal.id = ID_MODAL_CAMERA;
+    modal.className = "fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 hidden";
+    
+    modal.innerHTML = `
+      <div class="relative w-full max-w-sm bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+        <!-- Cabeçalho do Modal -->
+        <div class="flex items-center justify-between px-4 py-3 bg-gray-800/90 border-b border-gray-700">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <h3 class="text-sm font-semibold text-white">Leitor Contínuo</h3>
+          </div>
+          <!-- Botão X no Topo Direito -->
+          <button type="button" onclick="window.pararCamera()" class="text-gray-400 hover:text-white p-1 rounded-lg transition-colors">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Viewport do Vídeo da Câmara -->
+        <div class="p-3 bg-black">
+          <div id="${ID_CONTAINER_READER}" class="w-full aspect-square bg-gray-950 rounded-xl overflow-hidden border border-gray-800"></div>
+        </div>
+
+        <!-- Rodapé com Botão Fechar -->
+        <div class="p-3 bg-gray-800/50 border-t border-gray-700/50 flex justify-end">
+          <button type="button" onclick="window.pararCamera()" class="w-full py-2 px-4 bg-gray-700 hover:bg-gray-600 text-white text-xs font-medium rounded-xl transition-all shadow">
+            Fechar Leitor
+          </button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  }
+  return modal;
+}
+
+/**
+ * Processamento contínuo de leituras
+ */
 function onScanSuccess(decodedText) {
   if (leituraBloqueada) return;
 
   leituraBloqueada = true;
-  console.log("[CÂMARA] Código lido:", decodedText);
+  console.log("[PDV-CAMERA] Código capturado:", decodedText);
 
   tocarBipeLeitura();
 
+  // Envia diretamente para a lógica de adicionar ao carrinho
   if (typeof window.adicionarProdutoPorCodigo === "function") {
     window.adicionarProdutoPorCodigo(decodedText);
   } else if (typeof window.processarCodigoLido === "function") {
     window.processarCodigoLido(decodedText);
   } else {
-    console.warn("Nenhuma função global de recebimento de código foi encontrada.");
+    console.warn("Função 'adicionarProdutoPorCodigo' não encontrada no caixa-core.js");
   }
 
+  // Trava curta de 1.2s para permitir varreduras contínuas eficientes de itens diferentes
   setTimeout(function() {
     leituraBloqueada = false;
-  }, 1500);
+  }, 1200);
 }
 
 function onScanFailure(error) {
-  // Ignorado durante o scanning
+  // Varredura contínua silenciosa
 }
 
 /**
- * Injeta a div #reader dinamicamente caso não exista no DOM
+ * Abre o Modal e Inicia o Stream da Câmara
  */
-function garantirElementoReader() {
-  var container = document.getElementById(ID_ELEMENTO_CONTAINER);
-  if (!container) {
-    console.log("[CÂMARA] Criando elemento #reader dinamicamente...");
-    container = document.createElement("div");
-    container.id = ID_ELEMENTO_CONTAINER;
-    container.style.width = "100%";
-    container.style.minHeight = "250px";
-    container.style.backgroundColor = "#000";
-    container.style.borderRadius = "8px";
-    container.style.overflow = "hidden";
-    
-    // Tenta anexar num painel existente ou ao body
-    var painelOuMain = document.querySelector("main") || document.body;
-    painelOuMain.appendChild(container);
-  }
-  return container;
-}
-
 async function iniciarCamera() {
-  var container = garantirElementoReader();
+  var modal = garantirModalDOM();
+  modal.classList.remove("hidden");
 
   if (html5QrCodeScanner && html5QrCodeScanner.isScanning) {
-    console.log("[CÂMARA] A câmara já está ativa.");
     return;
   }
 
   try {
     if (!html5QrCodeScanner) {
-      html5QrCodeScanner = new Html5Qrcode(ID_ELEMENTO_CONTAINER);
+      html5QrCodeScanner = new Html5Qrcode(ID_CONTAINER_READER);
     }
 
     var config = {
-      fps: 12,
-      qrbox: { width: 260, height: 140 },
-      aspectRatio: 1.777778
+      fps: 15,
+      qrbox: { width: 220, height: 220 },
+      aspectRatio: 1.0
     };
 
-    await html5QrCodeScanner.start(
-      { facingMode: "environment" },
-      config,
-      onScanSuccess,
-      onScanFailure
-    );
+    // Tenta primeiro a câmara traseira (mobile)
+    try {
+      await html5QrCodeScanner.start(
+        { facingMode: "environment" },
+        config,
+        onScanSuccess,
+        onScanFailure
+      );
+    } catch (facingErr) {
+      console.warn("[PDV-CAMERA] Câmara traseira não encontrada. Tentando qualquer câmara disponível...", facingErr);
+      // Fallback para qualquer câmara disponível (ex: webcam de desktop/notebook)
+      await html5QrCodeScanner.start(
+        { facingMode: "user" },
+        config,
+        onScanSuccess,
+        onScanFailure
+      );
+    }
 
-    console.log("[CÂMARA] Iniciada com sucesso.");
+    console.log("[PDV-CAMERA] Leitor ativo e operante.");
   } catch (err) {
-    console.error("[CÂMARA] Erro ao iniciar:", err);
-    alert("Erro ao aceder à câmara. Verifique se concedeu as permissões necessárias.");
+    console.error("[PDV-CAMERA] Erro ao ativar câmara:", err);
+    alert("Não foi possível aceder à câmara. Verifique as permissões do navegador ou se existe uma câmara conetada.");
+    pararCamera();
   }
 }
 
+/**
+ * Interrompe a câmara e esconde o Modal
+ */
 async function pararCamera() {
+  var modal = document.getElementById(ID_MODAL_CAMERA);
+  
   if (html5QrCodeScanner && html5QrCodeScanner.isScanning) {
     try {
       await html5QrCodeScanner.stop();
-      console.log("[CÂMARA] Desativada com sucesso.");
+      console.log("[PDV-CAMERA] Leitor encerrado.");
     } catch (err) {
-      console.error("[CÂMARA] Erro ao parar:", err);
+      console.error("[PDV-CAMERA] Erro ao parar leitor:", err);
     }
+  }
+
+  if (modal) {
+    modal.classList.add("hidden");
   }
 }
 
 async function alternarCamera() {
-  if (html5QrCodeScanner && html5QrCodeScanner.isScanning) {
+  var modal = document.getElementById(ID_MODAL_CAMERA);
+  if (modal && !modal.classList.contains("hidden") && html5QrCodeScanner && html5QrCodeScanner.isScanning) {
     await pararCamera();
   } else {
     await iniciarCamera();
@@ -133,11 +186,10 @@ async function alternarCamera() {
 }
 
 function inicializarLeitorTecladoPistola() {
-  console.log("[LEITOR PISTOLA] Pronto para leitura de teclado.");
+  console.log("[PDV-PISTOLA] Suporte a leitor USB/Bluetooth ativo.");
 }
 
-// Vincula todas as funções ao objeto global window
-window.tocarBipeLeitura = tocarBipeLeitura;
+// Mapeamento Global para compatibilidade total com o caixa-core.js e botões do HTML
 window.iniciarCamera = iniciarCamera;
 window.pararCamera = pararCamera;
 window.alternarCamera = alternarCamera;
