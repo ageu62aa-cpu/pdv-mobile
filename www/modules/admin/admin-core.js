@@ -19,88 +19,56 @@ document.addEventListener('DOMContentLoaded', async () => {
     const botoesTab = document.querySelectorAll('.tab-btn');
 
     async function obterContextoAdmin() {
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
-        if (authError) {
-            console.error('PDV-VS: Falha ao validar a sessão administrativa:', authError);
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        if (userError || !user) {
+            if (userError) console.error('PDV-VS: Falha ao validar a sessão administrativa:', userError);
             window.location.href = '../auth/auth.html';
             return null;
         }
-        if (!user) return null;
 
-        const tabelasVinculo = ['empresas', 'tenants', 'perfis'];
-        const colunasUsuario = ['user_id', 'auth_id', 'id'];
-        const errosConsulta = [];
+        const { data: vinculo, error: vinculoError } = await supabase
+            .from('usuarios_empresas')
+            .select('empresa_id, cargo')
+            .eq('user_id', user.id)
+            .maybeSingle();
+        if (vinculoError) console.error('PDV-VS: Erro ao buscar vínculo do administrador:', vinculoError);
 
-        async function buscarVinculoPorIdUsuario() {
-            for (const tabela of tabelasVinculo) {
-                for (const colunaUsuario of colunasUsuario) {
-                    const { data, error } = await supabase
-                        .from(tabela)
-                        .select('*')
-                        .eq(colunaUsuario, user.id)
-                        .maybeSingle();
-
-                    if (error) {
-                        errosConsulta.push(`${tabela}.${colunaUsuario}: ${error.message}`);
-                        continue;
-                    }
-                    if (data) return { tabela, registro: data };
-                }
-            }
-            return null;
-        }
-
-        async function buscarVinculoPorEmail() {
-            for (const tabela of tabelasVinculo) {
-                const { data, error } = await supabase
-                    .from(tabela)
-                    .select('*')
-                    .eq('email', user.email)
-                    .maybeSingle();
-                if (error) {
-                    errosConsulta.push(`${tabela}.email: ${error.message}`);
-                    continue;
-                }
-                if (data) return { tabela, registro: data };
-            }
-            return null;
-        }
-
-        let vinculo = await buscarVinculoPorIdUsuario();
-        if (!vinculo && user.email) vinculo = await buscarVinculoPorEmail();
-        if (!vinculo) {
-            const detalhe = errosConsulta.length ? ` Consultas: ${errosConsulta.join(' | ')}` : '';
-            throw new Error(`Não foi encontrada uma empresa vinculada ao administrador ${user.email || user.id}.${detalhe}`);
-        }
-
-        const registro = vinculo.registro;
-        const empresaId = registro.empresa_id || registro.tenant_id || registro.id;
-        if (!empresaId) throw new Error(`O vínculo encontrado em ${vinculo.tabela} não informa o identificador da empresa.`);
-
-        let empresa = registro;
-        if (vinculo.tabela !== 'empresas' || registro.id !== empresaId) {
-            const { data: empresaEncontrada, error: empresaError } = await supabase
+        let empresaId = vinculo ? vinculo.empresa_id : null;
+        if (!empresaId && user.email) {
+            const { data: empresaPorEmail, error: emailError } = await supabase
                 .from('empresas')
-                .select('*')
-                .eq('id', empresaId)
+                .select('id')
+                .eq('email_admin', user.email)
                 .maybeSingle();
-            if (empresaError) throw empresaError;
-            if (empresaEncontrada) empresa = empresaEncontrada;
+            if (emailError) console.error('PDV-VS: Erro ao buscar empresa pelo email do administrador:', emailError);
+            if (empresaPorEmail) empresaId = empresaPorEmail.id;
         }
+        if (!empresaId) throw new Error('Não foi encontrada uma empresa vinculada ao administrador autenticado.');
+
+        const { data: empresa, error: empresaError } = await supabase
+            .from('empresas')
+            .select('*')
+            .eq('id', empresaId)
+            .single();
+        if (empresaError || !empresa) {
+            console.error('PDV-VS: Erro ao carregar a empresa vinculada:', empresaError);
+            throw new Error('Erro ao carregar os dados da empresa vinculada.');
+        }
+
+        localStorage.setItem('empresa_id', empresa.id);
+        localStorage.setItem('empresa_dados', JSON.stringify(empresa));
+        localStorage.setItem('user_email', user.email || '');
 
         setUsuarioAtual(user);
-        setEmpresaAtualId(empresaId);
-        setCargoUsuarioAtual('admin_mercado');
+        setEmpresaAtualId(empresa.id);
+        setCargoUsuarioAtual(vinculo?.cargo || 'admin_mercado');
         setDadosEmpresaAtual(empresa);
         window.usuarioAtual = user;
-        window.empresaAtualId = empresaId;
-        window.cargoUsuarioAtual = 'admin_mercado';
+        window.empresaAtualId = empresa.id;
+        window.cargoUsuarioAtual = vinculo?.cargo || 'admin_mercado';
         window.dadosEmpresaAtual = empresa;
-        localStorage.setItem('empresa_id', empresaId);
-        localStorage.setItem('empresaAtualId', empresaId);
-        localStorage.setItem('pdv_empresa_id', empresaId);
 
-        return { user, empresaId };
+        return { user, empresa };
     }
 
     function agendarAtualizacaoRealtime(abasAfetadas) {
@@ -163,17 +131,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             window.location.href = '../auth/auth.html';
             return;
         }
+        const empresaId = contexto.empresa.id;
 
         const [{ data: produtos, error: produtosError }, { data: statusCaixas, error: caixasError }] = await Promise.all([
             supabase
                 .from('produtos')
                 .select('*')
-                .eq('empresa_id', contexto.empresaId)
+                .eq('empresa_id', empresaId)
                 .order('nome', { ascending: true }),
             supabase
                 .from('caixa_status')
                 .select('*')
-                .eq('empresa_id', contexto.empresaId)
+                .eq('empresa_id', empresaId)
         ]);
 
         if (produtosError) throw produtosError;
@@ -186,7 +155,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             window.adminErroStatusCaixas = null;
         }
 
-        iniciarMonitoramentoRealtime(contexto.empresaId);
+        iniciarMonitoramentoRealtime(empresaId);
 
         botoesTab.forEach(btn => {
             btn.addEventListener('click', () => carregarAba(btn.dataset.tab));
