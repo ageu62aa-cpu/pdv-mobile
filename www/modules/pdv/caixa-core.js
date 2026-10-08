@@ -7,26 +7,79 @@ import {
     usuarioAtual, empresaAtualId, cargoUsuarioAtual, caixaAberto, faturamentoDia,   
     acaoCaixaAtual, itensVenda, indiceItemParaRemover, setAcaoCaixaAtual,   
     setCaixaAberto, setFaturamentoDia, setIndiceItemParaRemover, setItensVenda,   
-    produtosCache, setEmpresaAtualId   
+    produtosCache, setEmpresaAtualId, setUsuarioAtual, setCargoUsuarioAtual,
+    setDadosEmpresaAtual
 } from '../../core/state.js';  
 import { carregarProdutosCache } from '../../services/produtos.js';
 import { supabase } from '../../../core/config.js'; // Correção definitiva do import do Supabase
-
-// Verificação de sessão (para evitar erros quando limpar os dados)
-const usuario = localStorage.getItem('usuario'); // ou a sua chave de login
-if (!usuario) {
-    alert("Sessão expirada. Redirecionando para o login...");
-    window.location.href = '/login.html'; // ajuste a URL da sua tela de login
-} else {
-    // Se estiver logado, chama a função normalmente quando precisar
-    // abrirLeitorCamera();
-}
 
 let valorTrocoAbertura = 0;
 let horaAberturaCaixa = null;
 
 // --- UTILITÁRIO DE CLIENTE SUPABASE ---
 const getSupabase = () => window.supabaseClient || window.supabase || supabase;
+window.supabaseClient = window.supabaseClient || supabase;
+window.supabase = window.supabase || supabase;
+
+export async function obterContextoAutenticadoSupabase() {
+    const db = getSupabase();
+    const { data: { user }, error: authError } = await db.auth.getUser();
+    if (authError) throw authError;
+    if (!user) return null;
+
+    const { data: vinculo, error: vinculoError } = await db
+        .from('usuarios_empresas')
+        .select('empresa_id, cargo')
+        .eq('user_id', user.id)
+        .maybeSingle();
+    if (vinculoError) throw vinculoError;
+
+    const empresaId = vinculo?.empresa_id || user.id;
+    const { data: empresa, error: empresaError } = await db
+        .from('empresas')
+        .select('*')
+        .eq('id', empresaId)
+        .maybeSingle();
+    if (empresaError) throw empresaError;
+    if (!empresa) throw new Error('Não foi possível localizar a empresa vinculada à sessão.');
+
+    const cargo = vinculo?.cargo || 'admin_mercado';
+    setUsuarioAtual(user);
+    setEmpresaAtualId(empresaId);
+    setCargoUsuarioAtual(cargo);
+    setDadosEmpresaAtual(empresa);
+
+    window.usuarioAtual = user;
+    window.empresaAtualId = empresaId;
+    window.cargoUsuarioAtual = cargo;
+    window.dadosEmpresaAtual = empresa;
+    localStorage.setItem('usuario', JSON.stringify(user));
+    localStorage.setItem('empresa_id', empresaId);
+    localStorage.setItem('empresaAtualId', empresaId);
+    localStorage.setItem('pdv_empresa_id', empresaId);
+
+    return { user, empresaId, cargo, empresa };
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+    try {
+        const contexto = await obterContextoAutenticadoSupabase();
+        if (!contexto) {
+            alert('Sessão expirada. Redirecionando para o login...');
+            window.location.href = '../auth/auth.html';
+            return;
+        }
+
+        await carregarProdutosCache();
+        await verificarStatusCaixaServidor();
+        iniciarRealtimeCaixa();
+        focarBusca();
+    } catch (error) {
+        console.error('PDV-VS: Falha ao inicializar a sessão pelo Supabase:', error);
+        alert(`PDV-VS: Não foi possível validar a sessão ou carregar a empresa. ${error.message}`);
+        window.location.href = '../auth/auth.html';
+    }
+});
 
 // --- CONTROLE DO SCANNER DE CÂMERA ---
 window.abrirCameraScanner = () => {

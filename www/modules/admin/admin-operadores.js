@@ -33,14 +33,33 @@ export async function initAdminOperadores(containerEl) {
 async function carregarGestaoOperadores() {
     const gridContainer = document.getElementById('grid-operadores-container');
     if (!gridContainer) return;
+    const empresaId = window.empresaAtualId;
+    if (!empresaId) throw new Error('Empresa não identificada para carregar o status dos caixas.');
 
-    // Busca os dados de caixas e operadores cadastrados
-    const [{ data: caixas, error: errCaixas }, { data: operadoresLista }] = await Promise.all([
-        supabase.from('caixas').select('*').order('created_at', { ascending: false }),
-        supabase.from('operadores').select('*')
+    const [
+        { data: statusCaixas, error: erroStatusCaixas },
+        { data: caixas, error: erroCaixas },
+        { data: operadoresLista, error: erroOperadores }
+    ] = await Promise.all([
+        Array.isArray(window.adminStatusCaixasIniciais)
+            ? Promise.resolve({ data: window.adminStatusCaixasIniciais, error: null })
+            : supabase.from('caixa_status').select('*').eq('empresa_id', empresaId),
+        supabase.from('caixas').select('*').eq('empresa_id', empresaId).order('created_at', { ascending: false }),
+        supabase.from('usuarios_empresas').select('user_id, cargo').eq('empresa_id', empresaId)
     ]);
+    window.adminStatusCaixasIniciais = null;
 
-    if (errCaixas || !caixas || caixas.length === 0) {
+    if (erroStatusCaixas) console.error('PDV-VS: Erro ao carregar caixa_status:', erroStatusCaixas);
+    if (erroCaixas) console.error('PDV-VS: Erro ao carregar caixas:', erroCaixas);
+    if (erroOperadores) console.error('PDV-VS: Erro ao carregar operadores:', erroOperadores);
+    const registrosCaixa = [...(statusCaixas || []), ...(caixas || [])];
+    if (registrosCaixa.length === 0 && (erroCaixas || erroStatusCaixas)) {
+        const erro = erroStatusCaixas || erroCaixas;
+        gridContainer.innerHTML = `<div class="col-span-2 text-center py-8 text-red-400 text-sm">Erro ao carregar status dos caixas. ${erro.message}</div>`;
+        return;
+    }
+
+    if (registrosCaixa.length === 0) {
         gridContainer.innerHTML = `
             <div class="col-span-2 bg-gray-900/60 border border-gray-800 rounded-2xl p-8 text-center text-gray-400">
                 <i class="fa-solid fa-cash-register text-3xl text-gray-600 mb-2"></i>
@@ -51,7 +70,7 @@ async function carregarGestaoOperadores() {
 
     // Filtra para manter apenas a sessão mais recente por usuário
     const unicosPorUsuario = {};
-    caixas.forEach(c => {
+    registrosCaixa.forEach(c => {
         if (!unicosPorUsuario[c.user_id]) {
             unicosPorUsuario[c.user_id] = c;
         } else {
@@ -63,10 +82,19 @@ async function carregarGestaoOperadores() {
 
     const listaUsuarios = Object.values(unicosPorUsuario);
 
-    gridContainer.innerHTML = listaUsuarios.map((c, index) => {
-        const isOpen = c.status === 'ABERTO';
-        const faturamento = Number(c.faturamento_dia || 0).toFixed(2);
-        const valorTroco = Number(c.valor_abertura || 0).toFixed(2);
+    const avisos = [
+        erroStatusCaixas && `Não foi possível consultar caixa_status: ${erroStatusCaixas.message}`,
+        erroCaixas && `Não foi possível consultar caixas: ${erroCaixas.message}`,
+        erroOperadores && `Não foi possível consultar os perfis dos operadores: ${erroOperadores.message}`
+    ].filter(Boolean);
+    const avisoStatus = avisos.length
+        ? `<div class="col-span-2 text-amber-400 text-xs">${avisos.join('<br>')}</div>`
+        : '';
+    gridContainer.innerHTML = avisoStatus + listaUsuarios.map((c, index) => {
+        const isOpen = String(c.status || '').toUpperCase() === 'ABERTO';
+        const faturamento = Number(c.faturamento_dia ?? c.total_faturado ?? 0).toFixed(2);
+        const valorTroco = Number(c.valor_abertura ?? c.valor_inicial ?? c.troco_inicial ?? 0).toFixed(2);
+        const sangrias = Number(c.sangrias ?? c.valor_sangria ?? c.total_sangrias ?? 0);
         
         // Define Terminais e Perfis Fixos (#01 Admin e #02 Operador)
         const isAdmin = c.cargo === 'admin_mercado' || index === 0;
@@ -76,8 +104,8 @@ async function carregarGestaoOperadores() {
         // Prioriza o nome informado pelo operador (F2 / Vendedor) ou da tabela de operadores
         let nomeExibicao = c.vendedor_nome || c.nome_operador;
         if (!nomeExibicao) {
-            const opEncontrado = operadoresLista?.find(op => op.email === c.email || op.id === c.user_id);
-            nomeExibicao = opEncontrado ? opEncontrado.nome : (isAdmin ? 'Administrador' : 'Operador');
+            const opEncontrado = operadoresLista?.find(op => op.user_id === c.user_id);
+            nomeExibicao = c.email || opEncontrado?.nome || (isAdmin ? 'Administrador' : 'Operador');
         }
 
         const cardBorder = isOpen ? 'border-emerald-500/50 bg-gray-900/90 shadow-emerald-950/20' : 'border-gray-800 bg-gray-900/60';
@@ -105,6 +133,7 @@ async function carregarGestaoOperadores() {
                     <div>
                         <span class="text-[11px] text-gray-400 block font-medium">Troco Inicial</span>
                         <span class="text-sm font-bold text-gray-200 font-mono">R$ ${valorTroco}</span>
+                        ${sangrias ? `<span class="text-[10px] text-amber-400 block">Sangrias: R$ ${sangrias.toFixed(2)}</span>` : ''}
                     </div>
                 </div>
 

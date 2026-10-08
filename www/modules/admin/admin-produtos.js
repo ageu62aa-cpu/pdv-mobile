@@ -123,13 +123,29 @@ export async function initAdminProdutos(containerEl) {
 async function carregarProdutosAdmin() {
     const tbody = document.getElementById('tabela-produtos-corpo');
     const txtLimite = document.getElementById('txt-limite-produtos');
+    const empresaId = window.empresaAtualId;
 
-    const { data: produtos, count, error } = await supabase
+    if (!empresaId) throw new Error('Empresa não identificada para carregar o estoque.');
+
+    const produtosIniciais = window.adminProdutosIniciais;
+    let produtos = produtosIniciais;
+    let count = produtosIniciais?.length;
+    let error = null;
+    window.adminProdutosIniciais = null;
+
+    if (!produtosIniciais) {
+        const resposta = await supabase
         .from('produtos')
         .select('*', { count: 'exact' })
+        .eq('empresa_id', empresaId)
         .order('nome', { ascending: true });
+        produtos = resposta.data;
+        count = resposta.count;
+        error = resposta.error;
+    }
 
     if (error) {
+        console.error('PDV-VS: Erro ao carregar produtos da empresa:', error);
         tbody.innerHTML = `<tr><td colspan="6" class="text-center p-4 text-red-400">Erro ao carregar produtos.</td></tr>`;
         return;
     }
@@ -226,7 +242,9 @@ window.salvarProdutoAdmin = async function(e) {
     };
 
     if (id) {
-        const { error } = await supabase.from('produtos').update(dados).eq('id', id);
+        const { error } = await supabase.from('produtos').update(dados)
+            .eq('id', id)
+            .eq('empresa_id', window.empresaAtualId);
         if (error) {
             alert('Erro ao atualizar produto: ' + error.message);
             return;
@@ -237,7 +255,10 @@ window.salvarProdutoAdmin = async function(e) {
             alert('Limite máximo de 1.000 produtos atingido.');
             return;
         }
-        const { error } = await supabase.from('produtos').insert([dados]);
+        const { error } = await supabase.from('produtos').insert([{
+            ...dados,
+            empresa_id: window.empresaAtualId
+        }]);
         if (error) {
             alert('Erro ao cadastrar produto: ' + error.message);
             return;
@@ -251,7 +272,9 @@ window.salvarProdutoAdmin = async function(e) {
 
 window.excluirProdutoAdmin = async function(id) {
     if (!confirm('Deseja realmente excluir este produto?')) return;
-    const { error } = await supabase.from('produtos').delete().eq('id', id);
+    const { error } = await supabase.from('produtos').delete()
+        .eq('id', id)
+        .eq('empresa_id', window.empresaAtualId);
     if (error) {
         alert('Erro ao excluir: ' + error.message);
     } else {
