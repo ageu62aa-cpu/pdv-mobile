@@ -140,7 +140,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 .eq('empresa_id', empresaId)
                 .order('nome', { ascending: true }),
             supabase
-                .from('caixa_status')
+                .from('caixas')
                 .select('*')
                 .eq('empresa_id', empresaId)
         ]);
@@ -149,7 +149,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.adminProdutosIniciais = produtos || [];
         if (caixasError) {
             window.adminErroStatusCaixas = caixasError.message;
-            console.error('PDV-VS: Erro ao carregar caixa_status:', caixasError);
+            console.error('PDV-VS: Erro ao carregar caixas:', caixasError);
         } else {
             window.adminStatusCaixasIniciais = statusCaixas || [];
             window.adminErroStatusCaixas = null;
