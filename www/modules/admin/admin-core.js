@@ -27,27 +27,80 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         if (!user) return null;
 
-        const { data: empresa, error: empresaError } = await supabase
-            .from('empresas')
-            .select('*')
-            .eq('id', user.id)
-            .maybeSingle();
-        if (empresaError) throw empresaError;
-        if (!empresa) throw new Error('Não foi encontrada uma empresa vinculada ao administrador autenticado.');
+        const tabelasVinculo = ['empresas', 'tenants', 'perfis'];
+        const colunasUsuario = ['user_id', 'auth_id', 'id'];
+        const errosConsulta = [];
+
+        async function buscarVinculoPorIdUsuario() {
+            for (const tabela of tabelasVinculo) {
+                for (const colunaUsuario of colunasUsuario) {
+                    const { data, error } = await supabase
+                        .from(tabela)
+                        .select('*')
+                        .eq(colunaUsuario, user.id)
+                        .maybeSingle();
+
+                    if (error) {
+                        errosConsulta.push(`${tabela}.${colunaUsuario}: ${error.message}`);
+                        continue;
+                    }
+                    if (data) return { tabela, registro: data };
+                }
+            }
+            return null;
+        }
+
+        async function buscarVinculoPorEmail() {
+            for (const tabela of tabelasVinculo) {
+                const { data, error } = await supabase
+                    .from(tabela)
+                    .select('*')
+                    .eq('email', user.email)
+                    .maybeSingle();
+                if (error) {
+                    errosConsulta.push(`${tabela}.email: ${error.message}`);
+                    continue;
+                }
+                if (data) return { tabela, registro: data };
+            }
+            return null;
+        }
+
+        let vinculo = await buscarVinculoPorIdUsuario();
+        if (!vinculo && user.email) vinculo = await buscarVinculoPorEmail();
+        if (!vinculo) {
+            const detalhe = errosConsulta.length ? ` Consultas: ${errosConsulta.join(' | ')}` : '';
+            throw new Error(`Não foi encontrada uma empresa vinculada ao administrador ${user.email || user.id}.${detalhe}`);
+        }
+
+        const registro = vinculo.registro;
+        const empresaId = registro.empresa_id || registro.tenant_id || registro.id;
+        if (!empresaId) throw new Error(`O vínculo encontrado em ${vinculo.tabela} não informa o identificador da empresa.`);
+
+        let empresa = registro;
+        if (vinculo.tabela !== 'empresas' || registro.id !== empresaId) {
+            const { data: empresaEncontrada, error: empresaError } = await supabase
+                .from('empresas')
+                .select('*')
+                .eq('id', empresaId)
+                .maybeSingle();
+            if (empresaError) throw empresaError;
+            if (empresaEncontrada) empresa = empresaEncontrada;
+        }
 
         setUsuarioAtual(user);
-        setEmpresaAtualId(empresa.id);
+        setEmpresaAtualId(empresaId);
         setCargoUsuarioAtual('admin_mercado');
         setDadosEmpresaAtual(empresa);
         window.usuarioAtual = user;
-        window.empresaAtualId = empresa.id;
+        window.empresaAtualId = empresaId;
         window.cargoUsuarioAtual = 'admin_mercado';
         window.dadosEmpresaAtual = empresa;
-        localStorage.setItem('empresa_id', empresa.id);
-        localStorage.setItem('empresaAtualId', empresa.id);
-        localStorage.setItem('pdv_empresa_id', empresa.id);
+        localStorage.setItem('empresa_id', empresaId);
+        localStorage.setItem('empresaAtualId', empresaId);
+        localStorage.setItem('pdv_empresa_id', empresaId);
 
-        return { user, empresaId: empresa.id };
+        return { user, empresaId };
     }
 
     function agendarAtualizacaoRealtime(abasAfetadas) {

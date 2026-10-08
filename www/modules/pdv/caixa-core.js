@@ -146,8 +146,8 @@ export async function verificarStatusCaixaServidor() {
         }
 
         if (cargoUsuarioAtual === 'admin_mercado') {
-            carregarOperadoresLoja?.();
-            carregarHistoricoAdmin?.();
+            if (typeof window.carregarOperadoresLoja === 'function') window.carregarOperadoresLoja();
+            if (typeof window.carregarHistoricoAdmin === 'function') window.carregarHistoricoAdmin();
         }
     } catch (err) {
         console.error('PDV-VS: Erro ao verificar status do caixa no servidor:', err);
@@ -182,8 +182,8 @@ export function iniciarRealtimeCaixa() {
                 }
                 
                 if (cargoUsuarioAtual === 'admin_mercado') {
-                    carregarOperadoresLoja?.();
-                    carregarHistoricoAdmin?.();
+                    if (typeof window.carregarOperadoresLoja === 'function') window.carregarOperadoresLoja();
+                    if (typeof window.carregarHistoricoAdmin === 'function') window.carregarHistoricoAdmin();
                 }
             }
         )
@@ -387,8 +387,8 @@ export async function atualizarPaginaCompleta() {
         await carregarProdutosCache();
         await verificarStatusCaixaServidor();
         if (cargoUsuarioAtual === 'admin_mercado') {
-            await carregarHistoricoAdmin?.();
-            await carregarOperadoresLoja?.();
+            if (typeof window.carregarHistoricoAdmin === 'function') await window.carregarHistoricoAdmin();
+            if (typeof window.carregarOperadoresLoja === 'function') await window.carregarOperadoresLoja();
         }
         focarBusca();
     }
@@ -789,8 +789,8 @@ export async function finalizarVenda() {
     await carregarProdutosCache();
     
     if (cargoUsuarioAtual === 'admin_mercado') {
-        carregarOperadoresLoja?.();
-        carregarHistoricoAdmin?.();
+        if (typeof window.carregarOperadoresLoja === 'function') window.carregarOperadoresLoja();
+        if (typeof window.carregarHistoricoAdmin === 'function') window.carregarHistoricoAdmin();
     }
     focarBusca();
 }
