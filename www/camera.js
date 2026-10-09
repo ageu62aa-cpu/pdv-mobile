@@ -300,66 +300,86 @@ async function iniciarLeitura() {
     };
     if (formatosToSupport?.length) config.formatsToSupport = formatosToSupport;
     const cameraTraseira = await localizarCameraTraseira();
-    atualizarStatusCamera(`Iniciando câmera traseira: ${cameraTraseira.label || 'câmera selecionada'}...`);
-    await scanner.start(
-        cameraTraseira.deviceId
-            ? { deviceId: { exact: cameraTraseira.deviceId } }
-            : { facingMode: { exact: 'environment' } },
-        config,
-        processarLeitura,
-        () => {}
-    );
+    atualizarStatusCamera(`Iniciando câmera traseira${cameraTraseira.label ? `: ${cameraTraseira.label}` : ''}...`);
+
+    try {
+        await scanner.start(
+            cameraTraseira.deviceId
+                ? { deviceId: { exact: cameraTraseira.deviceId } }
+                : { facingMode: { ideal: 'environment' } },
+            config,
+            processarLeitura,
+            () => {}
+        );
+    } catch (errorAberturaPorDispositivo) {
+        if (!cameraTraseira.deviceId) throw errorAberturaPorDispositivo;
+        console.warn('[PDV-CAMERA] A abertura pelo dispositivo listado falhou; tentando seleção traseira do Safari.', errorAberturaPorDispositivo);
+        await recriarScanner();
+        await scanner.start(
+            { facingMode: { ideal: 'environment' } },
+            config,
+            processarLeitura,
+            () => {}
+        );
+    }
 
     const configuracoesVideo = scanner.getRunningTrackSettings();
     const nomeCamera = cameraTraseira.label.toLowerCase();
     if (configuracoesVideo.facingMode === 'user' || /front|facetime|frontal/i.test(nomeCamera)) {
-        await scanner.stop();
-        await scanner.clear();
-        scanner = null;
-        throw new Error('O navegador iniciou a câmera frontal. Permita o acesso à câmera traseira e tente novamente.');
+        await recriarScanner();
+        throw new Error('O Safari selecionou a câmera frontal. Verifique a permissão de câmera e tente novamente.');
     }
 
     const botaoFoco = document.getElementById('camera-focus-button');
     if (botaoFoco) botaoFoco.disabled = false;
     await configurarFocoAutomatico();
     configurarZoomCamera();
-    atualizarStatusCamera(`Câmera traseira ativa${cameraTraseira.label ? `: ${cameraTraseira.label}` : ''}. Aponte para um código.`);
-    console.info('[PDV-CAMERA] Câmera traseira confirmada.', configuracoesVideo);
+    atualizarStatusCamera(`Câmera iniciada${cameraTraseira.label ? `: ${cameraTraseira.label}` : ' com preferência traseira'}. Aponte para um código.`);
+    console.info('[PDV-CAMERA] Câmera iniciada.', { ...configuracoesVideo, label: cameraTraseira.label });
 }
 
 async function localizarCameraTraseira() {
-    let streamTeste;
+    let cameras = [];
     try {
-        streamTeste = await navigator.mediaDevices.getUserMedia({
-            audio: false,
-            video: {
-                facingMode: { exact: 'environment' },
-                width: { ideal: 1920 },
-                height: { ideal: 1080 }
-            }
-        });
-
-        const track = streamTeste.getVideoTracks()[0];
-        const settings = track.getSettings();
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        const device = devices.find(({ kind, deviceId }) =>
-            kind === 'videoinput' && deviceId === settings.deviceId
-        );
-        const label = device?.label || track.label || '';
-        if (settings.facingMode === 'user' || /front|facetime|frontal/i.test(label)) {
-            throw new Error('O navegador selecionou a câmera frontal ao solicitar a traseira.');
-        }
-        if (!settings.deviceId && settings.facingMode !== 'environment') {
-            throw new Error('O navegador não identificou o dispositivo da câmera traseira.');
-        }
-
-        return { deviceId: settings.deviceId, label };
-    } catch (erroSelecaoTraseira) {
-        console.error('[PDV-CAMERA] Não foi possível obter um dispositivo traseiro confirmado:', erroSelecaoTraseira);
-        throw new Error('Não foi possível acessar a câmera traseira. Verifique as permissões da câmera no Safari e tente novamente.');
-    } finally {
-        streamTeste?.getTracks().forEach(track => track.stop());
+        cameras = await window.Html5Qrcode.getCameras();
+    } catch (error) {
+        console.warn('[PDV-CAMERA] Não foi possível listar câmeras; usando a preferência traseira compatível com Safari.', error);
     }
+    if (!cameras.length) {
+        console.warn('[PDV-CAMERA] Nenhuma câmera foi listada; usando a preferência traseira do Safari.');
+        return { deviceId: '', label: '' };
+    }
+
+    const camerasTraseiras = cameras.filter(({ label }) =>
+        /back|rear|environment|traseir|trás|wide|ultra.?wide|telephoto/i.test(label)
+        && !/front|user|facetime|frontal|true.?depth/i.test(label)
+    );
+    const camera = camerasTraseiras[0];
+    if (camera) return { deviceId: camera.id, label: camera.label || '' };
+
+    console.warn('[PDV-CAMERA] Safari não expôs rótulos de câmera; solicitando a câmera traseira por facingMode preferencial.');
+    return { deviceId: '', label: '' };
+}
+
+async function recriarScanner() {
+    if (scanner?.isScanning) {
+        try {
+            await scanner.stop();
+        } catch (error) {
+            console.warn('[PDV-CAMERA] Não foi necessário parar o scanner antes da nova tentativa:', error);
+        }
+    }
+
+    try {
+        await scanner?.clear();
+    } catch (error) {
+        console.warn('[PDV-CAMERA] Não foi necessário limpar o scanner antes da nova tentativa:', error);
+    }
+
+    scanner = new window.Html5Qrcode(READER_ID, {
+        verbose: false,
+        useBarCodeDetectorIfSupported: false
+    });
 }
 
 export async function abrirLeitorCamera() {
@@ -376,6 +396,14 @@ export async function abrirLeitorCamera() {
     } catch (error) {
         console.error('[PDV-CAMERA] Não foi possível iniciar a câmera:', error);
         atualizarStatusCamera(error.message || 'Não foi possível iniciar a câmera.', true);
+        if (scanner && !scanner.isScanning) {
+            try {
+                await scanner.clear();
+            } catch (clearError) {
+                console.warn('[PDV-CAMERA] Falha ao limpar o scanner após erro de inicialização:', clearError);
+            }
+            scanner = null;
+        }
     } finally {
         cameraStartInProgress = false;
     }
