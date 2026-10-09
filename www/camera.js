@@ -7,6 +7,7 @@ const READER_ID = 'reader';
 let scanner = null;
 let cameraStartInProgress = false;
 let leituraBloqueada = false;
+let modosFocoDisponiveis = [];
 
 function atualizarStatusCamera(mensagem, erro = false) {
     const status = document.getElementById('camera-status');
@@ -95,21 +96,85 @@ function processarLeitura(codigo) {
 
     window.setTimeout(() => {
         leituraBloqueada = false;
-        if (scanner?.isScanning && produto) atualizarStatusCamera('Leitor contínuo ativo. Aponte para outro código.');
+        if (scanner?.isScanning && produto)         await configurarFocoAutomatico();
+        atualizarStatusCamera('Leitor contínuo ativo. Aponte para outro código.');
     }, 1200);
 }
 
-function obterConfigLeitura() {
-    const container = document.getElementById(READER_ID);
-    const largura = container?.clientWidth || 280;
-    const tamanhoJanela = Math.max(160, Math.min(240, largura - 32));
+function obterFormatosSuportados() {
+    const formatos = window.Html5QrcodeSupportedFormats;
+    if (!formatos) return undefined;
 
-    return {
-        fps: 12,
-        qrbox: { width: tamanhoJanela, height: tamanhoJanela },
-        aspectRatio: 1,
-        disableFlip: false
-    };
+    return [
+        'AZTEC',
+        'CODABAR',
+        'CODE_39',
+        'CODE_93',
+        'CODE_128',
+        'DATA_MATRIX',
+        'EAN_8',
+        'EAN_13',
+        'ITF',
+        'MAXICODE',
+        'PDF_417',
+        'QR_CODE',
+        'UPC_A',
+        'UPC_E',
+        'UPC_EAN_EXTENSION'
+    ].map(nome => formatos[nome]).filter(formato => formato !== undefined);
+}
+
+async function configurarFocoAutomatico() {
+    try {
+        const capacidades = scanner.getRunningTrackCapabilities();
+        modosFocoDisponiveis = capacidades.focusMode || [];
+
+        if (modosFocoDisponiveis.includes('continuous')) {
+            await scanner.applyVideoConstraints({
+                advanced: [{ focusMode: 'continuous' }]
+            });
+        }
+    } catch (error) {
+        modosFocoDisponiveis = [];
+        console.info('[PDV-CAMERA] O foco automático é controlado pelo sistema da câmera.', error);
+    }
+}
+
+async function focarCamera() {
+    if (!scanner?.isScanning) return;
+
+    try {
+        const capacidades = scanner.getRunningTrackCapabilities();
+        const modosFoco = capacidades.focusMode || modosFocoDisponiveis;
+
+        if (modosFoco.includes('single-shot')) {
+            await scanner.applyVideoConstraints({
+                advanced: [{ focusMode: 'single-shot' }]
+            });
+            atualizarStatusCamera('Ajustando foco. Mantenha o código estável.');
+            window.setTimeout(() => {
+                if (scanner?.isScanning && modosFoco.includes('continuous')) {
+                    scanner.applyVideoConstraints({
+                        advanced: [{ focusMode: 'continuous' }]
+                    }).catch(error => console.info('[PDV-CAMERA] Não foi possível restaurar o foco contínuo:', error));
+                }
+            }, 900);
+            return;
+        }
+
+        if (modosFoco.includes('continuous')) {
+            await scanner.applyVideoConstraints({
+                advanced: [{ focusMode: 'continuous' }]
+            });
+            atualizarStatusCamera('Foco automático ativo. Aproxime e mantenha o código estável.');
+            return;
+        }
+
+        atualizarStatusCamera('O foco é controlado pelo iPhone. Afaste um pouco e aproxime devagar.');
+    } catch (error) {
+        console.warn('[PDV-CAMERA] O aparelho não permite ajuste manual do foco:', error);
+        atualizarStatusCamera('Foco controlado pelo aparelho. Afaste um pouco e aproxime devagar.');
+    }
 }
 
 async function iniciarLeitura() {
@@ -146,10 +211,21 @@ async function iniciarLeitura() {
     document.getElementById('camera-produto-preco').textContent = '—';
     document.getElementById('camera-integracao-status').textContent = 'Nenhum produto adicionado';
 
-    const config = obterConfigLeitura();
+    const formatosToSupport = obterFormatosSuportados();
+    const config = {
+        fps: 10,
+        qrbox: false,
+        disableFlip: false,
+        videoConstraints: {
+            width: { ideal: 1920 },
+            height: { ideal: 1080 },
+            frameRate: { ideal: 30, max: 30 }
+        }
+    };
+    if (formatosToSupport?.length) config.formatsToSupport = formatosToSupport;
     try {
         await scanner.start(
-            { facingMode: 'environment' },
+            { facingMode: { ideal: 'environment' } },
             config,
             processarLeitura,
             () => {}
@@ -223,4 +299,5 @@ window.alternarCamera = async () => {
 };
 window.abrirLeitorCamera = abrirLeitorCamera;
 window.abrirCameraScanner = abrirLeitorCamera;
+window.focarCameraScanner = focarCamera;
 window.inicializarLeitorTecladoPistola = inicializarLeitorTecladoPistola;
