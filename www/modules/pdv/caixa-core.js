@@ -15,14 +15,43 @@ import { supabase } from '../../../core/config.js'; // Correção definitiva do 
 
 let valorTrocoAbertura = 0;
 let horaAberturaCaixa = null;
+let canalRealtimeCaixa = null;
 
 // --- UTILITÁRIO DE CLIENTE SUPABASE ---
 const getSupabase = () => window.supabaseClient || window.supabase || supabase;
 window.supabaseClient = window.supabaseClient || supabase;
 window.supabase = window.supabase || supabase;
 
+window.carregarOperadoresLoja = window.carregarOperadoresLoja || async function() {
+    try {
+        const db = getSupabase();
+        if (!db || !empresaAtualId) return [];
+
+        const { data, error } = await db
+            .from('usuarios_empresas')
+            .select('user_id, cargo')
+            .eq('empresa_id', empresaAtualId);
+        if (error) throw error;
+
+        const selectOperador = document.getElementById('operador-select');
+        if (selectOperador && data) {
+            selectOperador.replaceChildren(...data.map(operador => {
+                const option = document.createElement('option');
+                option.value = operador.user_id;
+                option.textContent = operador.cargo || operador.user_id;
+                return option;
+            }));
+        }
+        return data || [];
+    } catch (error) {
+        console.warn('PDV-VS: Aviso ao carregar operadores (não bloqueante):', error);
+        return [];
+    }
+};
+
 export async function obterContextoAutenticadoSupabase() {
     const db = getSupabase();
+    if (!db) throw new Error('Cliente Supabase não inicializado.');
     const { data: { user }, error: authError } = await db.auth.getUser();
     if (authError) throw authError;
     if (!user) return null;
@@ -61,25 +90,40 @@ export async function obterContextoAutenticadoSupabase() {
     return { user, empresaId, cargo, empresa };
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
+async function inicializarCaixaDefinitivo() {
     try {
+        const db = getSupabase();
+        if (!db) throw new Error('Cliente Supabase não inicializado.');
+
+        const { data: { session }, error: sessionError } = await db.auth.getSession();
+        if (sessionError) throw sessionError;
+        if (!session?.user) {
+            console.warn('PDV-VS: Sessão ausente. Redirecionando para autenticação...');
+            window.location.href = '../auth/auth.html';
+            return;
+        }
+
         const contexto = await obterContextoAutenticadoSupabase();
         if (!contexto) {
-            alert('Sessão expirada. Redirecionando para o login...');
+            console.warn('PDV-VS: Sessão expirada. Redirecionando para autenticação...');
             window.location.href = '../auth/auth.html';
             return;
         }
 
         await carregarProdutosCache();
         await verificarStatusCaixaServidor();
-        iniciarRealtimeCaixa();
+        await iniciarRealtimeCaixa();
         focarBusca();
     } catch (error) {
         console.error('PDV-VS: Falha ao inicializar a sessão pelo Supabase:', error);
-        alert(`PDV-VS: Não foi possível validar a sessão ou carregar a empresa. ${error.message}`);
-        window.location.href = '../auth/auth.html';
     }
-});
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', inicializarCaixaDefinitivo, { once: true });
+} else {
+    inicializarCaixaDefinitivo();
+}
 
 // --- CONTROLE DO SCANNER DE CÂMERA ---
 window.abrirCameraScanner = () => {
@@ -121,15 +165,19 @@ export function atualizarBadgesCaixaInterface(isAberto, faturamento = 0) {
 export async function verificarStatusCaixaServidor() {
     if (!empresaAtualId || !usuarioAtual) return;
     try {
-        const { data, error } = await getSupabase()
+        const db = getSupabase();
+        if (!db) throw new Error('Cliente Supabase não inicializado.');
+
+        const { data, error } = await db
             .from('caixas')
             .select('status, valor_abertura, faturamento_dia')
             .eq('empresa_id', empresaAtualId)
             .eq('user_id', usuarioAtual.id)
             .eq('status', 'ABERTO')
             .maybeSingle();
+        if (error) throw error;
 
-        if (!error && data) {
+        if (data) {
             setCaixaAberto(true);
             valorTrocoAbertura = Number(data.valor_abertura) || 0;
             const fatNoBanco = Number(data.faturamento_dia) || 0;
@@ -155,10 +203,20 @@ export async function verificarStatusCaixaServidor() {
 }
 
 // Configuração de Tempo Real (Supabase Realtime)
-export function iniciarRealtimeCaixa() {
+export async function iniciarRealtimeCaixa() {
     if (!empresaAtualId) return;
-    
-    getSupabase()
+
+    const db = getSupabase();
+    if (!db) {
+        console.warn('PDV-VS: Cliente Supabase indisponível; Realtime do caixa não foi iniciado.');
+        return;
+    }
+
+    if (canalRealtimeCaixa) {
+        await db.removeChannel(canalRealtimeCaixa);
+    }
+
+    canalRealtimeCaixa = db
         .channel('escuta_mudancas_caixa')
         .on(
             'postgres_changes',
@@ -187,7 +245,11 @@ export function iniciarRealtimeCaixa() {
                 }
             }
         )
-        .subscribe();
+        .subscribe((status, error) => {
+            if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                console.warn('PDV-VS: Aviso no canal Realtime do caixa:', error || status);
+            }
+        });
 }
 
 // --- FUNÇÃO AUXILIAR DE IMPRESSÃO TÉRMICA & ESTOQUE ---
