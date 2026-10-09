@@ -8,6 +8,7 @@ let scanner = null;
 let cameraStartInProgress = false;
 let leituraBloqueada = false;
 let modosFocoDisponiveis = [];
+let contextoAudio = null;
 
 function atualizarStatusCamera(mensagem, erro = false) {
     const status = document.getElementById('camera-status');
@@ -22,50 +23,70 @@ function tratarEscapeCamera(evento) {
     if (evento.key === 'Escape') pararCamera();
 }
 
-function tocarBipeLeitura() {
+async function prepararAudioLeitura() {
     try {
         const AudioContextConstructor = window.AudioContext || window.webkitAudioContext;
         if (!AudioContextConstructor) return;
 
-        const audioContext = new AudioContextConstructor();
+        if (!contextoAudio) contextoAudio = new AudioContextConstructor();
+        if (contextoAudio.state === 'suspended') await contextoAudio.resume();
+    } catch (error) {
+        console.warn('[PDV-CAMERA] Não foi possível preparar o áudio do leitor:', error);
+    }
+}
+
+function tocarBipeLeitura() {
+    try {
+        if (!contextoAudio || contextoAudio.state !== 'running') {
+            navigator.vibrate?.(80);
+            return;
+        }
+
+        const audioContext = contextoAudio;
         const oscillator = audioContext.createOscillator();
         const gain = audioContext.createGain();
         oscillator.type = 'sine';
         oscillator.frequency.value = 1800;
-        gain.gain.setValueAtTime(0.1, audioContext.currentTime);
+        gain.gain.setValueAtTime(0.0001, audioContext.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.16, audioContext.currentTime + 0.015);
+        gain.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 0.14);
         oscillator.connect(gain);
         gain.connect(audioContext.destination);
         oscillator.start();
-        oscillator.stop(audioContext.currentTime + 0.12);
-        oscillator.addEventListener('ended', () => audioContext.close(), { once: true });
+        oscillator.stop(audioContext.currentTime + 0.15);
+        navigator.vibrate?.(45);
     } catch (error) {
         console.warn('[PDV-CAMERA] Bipe de confirmação indisponível:', error);
     }
 }
 
-function processarLeitura(codigo) {
+async function processarLeitura(codigo) {
     if (leituraBloqueada) return;
 
     leituraBloqueada = true;
+    tocarBipeLeitura();
     const codigoInput = document.getElementById('camera-codigo');
     const leituraStatus = document.getElementById('camera-leitura-status');
     if (codigoInput) codigoInput.value = codigo;
     if (leituraStatus) leituraStatus.textContent = `${codigo.length} dígitos identificados`;
 
-    const produto = window.buscarProdutoPorCodigoScanner?.(codigo);
-    if (produto) {
-        document.getElementById('camera-produto-status').textContent = 'Cadastrado';
-        document.getElementById('camera-produto-status').className = 'rounded-full bg-emerald-500/10 px-2 py-1 text-[9px] font-bold uppercase text-emerald-400';
-        document.getElementById('camera-produto-nome').textContent = produto.nome || 'Produto sem descrição';
-        document.getElementById('camera-produto-categoria').textContent = `Categoria: ${produto.categoria || 'Não informada'}`;
-        document.getElementById('camera-produto-estoque').textContent = Number(produto.estoque || 0).toLocaleString('pt-BR');
-        document.getElementById('camera-produto-unidade').textContent = `Unidade: ${produto.unidade || 'UN'}`;
-        document.getElementById('camera-produto-preco').textContent = Number(produto.preco_venda || produto.preco || 0).toLocaleString('pt-BR', {
-            style: 'currency',
-            currency: 'BRL'
-        });
+    try {
+        if (typeof window.buscarProdutoPorCodigoScanner !== 'function') {
+            throw new Error('A consulta de produtos do caixa ainda não está disponível.');
+        }
+        const produto = await window.buscarProdutoPorCodigoScanner(codigo);
+        if (produto) {
+            document.getElementById('camera-produto-status').textContent = 'Cadastrado · estoque atualizado';
+            document.getElementById('camera-produto-status').className = 'rounded-full bg-emerald-500/10 px-2 py-1 text-[9px] font-bold uppercase text-emerald-400';
+            document.getElementById('camera-produto-nome').textContent = produto.nome || 'Produto sem descrição';
+            document.getElementById('camera-produto-categoria').textContent = `Categoria: ${produto.categoria || 'Não informada'}`;
+            document.getElementById('camera-produto-estoque').textContent = Number(produto.estoque || 0).toLocaleString('pt-BR');
+            document.getElementById('camera-produto-unidade').textContent = `Unidade: ${produto.unidade || 'UN'}`;
+            document.getElementById('camera-produto-preco').textContent = Number(produto.preco_venda || produto.preco || 0).toLocaleString('pt-BR', {
+                style: 'currency',
+                currency: 'BRL'
+            });
 
-        try {
             if (typeof window.adicionarItemVendaPorObjeto === 'function') {
                 window.adicionarItemVendaPorObjeto(JSON.stringify(produto).replace(/"/g, '&quot;'));
                 document.getElementById('camera-integracao-status').textContent = 'Produto adicionado ao caixa';
@@ -76,29 +97,31 @@ function processarLeitura(codigo) {
                 document.getElementById('camera-integracao-status').textContent = 'Código enviado para o caixa';
             }
             atualizarStatusCamera('Produto identificado e enviado ao caixa.');
-            tocarBipeLeitura();
-        } catch (error) {
-            atualizarStatusCamera('Produto identificado, mas não foi possível adicioná-lo ao caixa.', true);
-            document.getElementById('camera-integracao-status').textContent = 'Falha ao adicionar produto';
-            console.error('[PDV-CAMERA] Erro ao integrar o produto com o caixa:', error);
+        } else {
+            document.getElementById('camera-produto-status').textContent = 'Não cadastrado';
+            document.getElementById('camera-produto-status').className = 'rounded-full bg-amber-500/10 px-2 py-1 text-[9px] font-bold uppercase text-amber-400';
+            document.getElementById('camera-produto-nome').textContent = 'Produto não encontrado no cadastro';
+            document.getElementById('camera-produto-categoria').textContent = 'Categoria: —';
+            document.getElementById('camera-produto-estoque').textContent = '—';
+            document.getElementById('camera-produto-unidade').textContent = 'Unidade: —';
+            document.getElementById('camera-produto-preco').textContent = '—';
+            document.getElementById('camera-integracao-status').textContent = 'Não adicionado';
+            atualizarStatusCamera(`Código ${codigo} não localizado no cadastro.`, true);
         }
-    } else {
-        document.getElementById('camera-produto-status').textContent = 'Não cadastrado';
-        document.getElementById('camera-produto-status').className = 'rounded-full bg-amber-500/10 px-2 py-1 text-[9px] font-bold uppercase text-amber-400';
-        document.getElementById('camera-produto-nome').textContent = 'Produto não encontrado no cadastro';
-        document.getElementById('camera-produto-categoria').textContent = 'Categoria: —';
-        document.getElementById('camera-produto-estoque').textContent = '—';
-        document.getElementById('camera-produto-unidade').textContent = 'Unidade: —';
-        document.getElementById('camera-produto-preco').textContent = '—';
+    } catch (error) {
+        atualizarStatusCamera('Falha ao consultar o produto no estoque.', true);
+        document.getElementById('camera-produto-status').textContent = 'Erro na consulta';
+        document.getElementById('camera-produto-status').className = 'rounded-full bg-red-500/10 px-2 py-1 text-[9px] font-bold uppercase text-red-400';
         document.getElementById('camera-integracao-status').textContent = 'Não adicionado';
-        atualizarStatusCamera(`Código ${codigo} não localizado no cadastro.`, true);
+        console.error('[PDV-CAMERA] Erro ao consultar/adicionar produto:', error);
+    } finally {
+        window.setTimeout(() => {
+            leituraBloqueada = false;
+            if (scanner?.isScanning) {
+                atualizarStatusCamera('Leitor contínuo ativo. Aponte para outro código.');
+            }
+        }, 1200);
     }
-
-    window.setTimeout(() => {
-        leituraBloqueada = false;
-        if (scanner?.isScanning && produto)         await configurarFocoAutomatico();
-        atualizarStatusCamera('Leitor contínuo ativo. Aponte para outro código.');
-    }, 1200);
 }
 
 function obterFormatosSuportados() {
@@ -138,6 +161,46 @@ async function configurarFocoAutomatico() {
         modosFocoDisponiveis = [];
         console.info('[PDV-CAMERA] O foco automático é controlado pelo sistema da câmera.', error);
     }
+}
+
+function configurarZoomCamera() {
+    const wrapper = document.getElementById('camera-zoom-wrapper');
+    const controle = document.getElementById('camera-zoom');
+    const valorZoom = document.getElementById('camera-zoom-value');
+
+    let faixaZoom;
+    try {
+        faixaZoom = scanner.getRunningTrackCapabilities().zoom;
+    } catch (error) {
+        console.info('[PDV-CAMERA] O aparelho não expõe controle de zoom.', error);
+    }
+
+    if (!faixaZoom || !wrapper || !controle || !valorZoom || faixaZoom.max <= faixaZoom.min) {
+        wrapper?.classList.add('hidden');
+        return;
+    }
+
+    controle.min = String(faixaZoom.min);
+    controle.max = String(faixaZoom.max);
+    controle.step = String(faixaZoom.step || Math.max((faixaZoom.max - faixaZoom.min) / 20, 0.1));
+    controle.value = String(Math.max(faixaZoom.min, Math.min(1, faixaZoom.max)));
+    valorZoom.textContent = `${Number(controle.value).toFixed(1)}×`;
+    wrapper.classList.remove('hidden');
+    wrapper.classList.add('flex');
+
+    controle.oninput = () => {
+        valorZoom.textContent = `${Number(controle.value).toFixed(1)}×`;
+    };
+    controle.onchange = async () => {
+        try {
+            await scanner.applyVideoConstraints({
+                advanced: [{ zoom: Number(controle.value) }]
+            });
+        } catch (error) {
+            console.warn('[PDV-CAMERA] O aparelho não permite alterar o zoom da câmera:', error);
+            atualizarStatusCamera('Zoom não compatível com este aparelho.');
+        }
+    };
 }
 
 async function focarCamera() {
@@ -199,7 +262,14 @@ async function iniciarLeitura() {
         return;
     }
 
-    if (!scanner) scanner = new window.Html5Qrcode(READER_ID, { verbose: false });
+    if (!scanner) {
+        scanner = new window.Html5Qrcode(READER_ID, {
+            verbose: false,
+            useBarCodeDetectorIfSupported: false
+        });
+    }
+
+    container.onclick = focarCamera;
     document.getElementById('camera-codigo').value = 'Aguardando leitura...';
     document.getElementById('camera-leitura-status').textContent = 'Nenhum código capturado';
     document.getElementById('camera-produto-status').textContent = 'Aguardando leitura';
@@ -243,6 +313,8 @@ async function iniciarLeitura() {
             () => {}
         );
     }
+    await configurarFocoAutomatico();
+    configurarZoomCamera();
     atualizarStatusCamera('Leitor contínuo ativo. Aponte para um código.');
     console.info('[PDV-CAMERA] Leitor contínuo ativo.');
 }
@@ -256,6 +328,7 @@ export async function abrirLeitorCamera() {
     window.addEventListener('keydown', tratarEscapeCamera);
 
     try {
+        await prepararAudioLeitura();
         await iniciarLeitura();
     } catch (error) {
         console.error('[PDV-CAMERA] Não foi possível iniciar a câmera:', error);
@@ -279,6 +352,9 @@ export async function pararCamera() {
     }
 
     leituraBloqueada = false;
+    modosFocoDisponiveis = [];
+    document.getElementById('camera-zoom-wrapper')?.classList.add('hidden');
+    document.getElementById(READER_ID)?.removeAttribute('onclick');
     modal?.classList.add('hidden');
 }
 

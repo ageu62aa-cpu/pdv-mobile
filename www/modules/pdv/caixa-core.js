@@ -6,7 +6,7 @@ import { abrirLeitorCamera, inicializarLeitorTecladoPistola } from '../../camera
 import {   
     usuarioAtual, empresaAtualId, cargoUsuarioAtual, caixaAberto, faturamentoDia,   
     acaoCaixaAtual, itensVenda, indiceItemParaRemover, setAcaoCaixaAtual,   
-    setCaixaAberto, setFaturamentoDia, setIndiceItemParaRemover, setItensVenda,   
+    setCaixaAberto, setFaturamentoDia, setIndiceItemParaRemover, setItensVenda, setProdutosCache,
     produtosCache, setEmpresaAtualId, setUsuarioAtual, setCargoUsuarioAtual,
     setDadosEmpresaAtual
 } from '../../core/state.js';  
@@ -926,14 +926,47 @@ export function alterarQtd(i, qtd) {
     if (q > 0) { itensVenda[i].qtd = q; atualizarTabelaVenda(); } 
 }
 
-function buscarProdutoPorCodigoScanner(codigo) {
-    const codigoNormalizado = String(codigo || '').trim().toLowerCase();
-    if (!codigoNormalizado) return null;
+async function buscarProdutoPorCodigoScanner(codigo) {
+    const codigoNormalizado = String(codigo || '').trim();
+    if (!codigoNormalizado || !empresaAtualId) return null;
 
-    return produtosCache.find(produto =>
-        [produto.codigo_barras, produto.codigo, produto.id]
-            .some(valor => String(valor ?? '').trim().toLowerCase() === codigoNormalizado)
-    ) || null;
+    const db = getSupabase();
+    if (!db) throw new Error('Cliente Supabase indisponível ao consultar o produto.');
+
+    for (const campo of ['codigo_barras', 'codigo']) {
+        const { data, error } = await db
+            .from('produtos')
+            .select('*')
+            .eq('empresa_id', empresaAtualId)
+            .eq(campo, codigoNormalizado)
+            .maybeSingle();
+        if (error) throw error;
+        if (data) {
+            const cacheAtualizado = produtosCache.filter(produto => produto.id !== data.id);
+            setProdutosCache([...cacheAtualizado, data]);
+            return data;
+        }
+    }
+
+    const produtoEmCache = produtosCache.find(produto =>
+        String(produto.id) === codigoNormalizado
+    );
+    if (produtoEmCache) {
+        const { data, error } = await db
+            .from('produtos')
+            .select('*')
+            .eq('empresa_id', empresaAtualId)
+            .eq('id', produtoEmCache.id)
+            .maybeSingle();
+        if (error) throw error;
+        if (data) {
+            const cacheAtualizado = produtosCache.filter(produto => produto.id !== data.id);
+            setProdutosCache([...cacheAtualizado, data]);
+            return data;
+        }
+    }
+
+    return null;
 }
 
 // ==========================================
