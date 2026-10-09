@@ -287,7 +287,7 @@ async function iniciarLeitura() {
     };
     if (formatosToSupport?.length) config.formatsToSupport = formatosToSupport;
 
-    // Inicialização flexível: prioriza a traseira e usa uma câmera padrão se necessário.
+    // Prioriza a câmera traseira e recorre à câmera padrão quando necessário.
     try {
         await scanner.start(
             { facingMode: { ideal: 'environment' } },
@@ -295,10 +295,10 @@ async function iniciarLeitura() {
             processarLeitura,
             () => {}
         );
-    } catch (erroAmbiente) {
-        console.warn('[PDV-CAMERA] Câmera traseira não encontrada; tentando a câmera padrão disponível...', erroAmbiente);
+    } catch (errAmbiente) {
+        console.warn('[PDV-CAMERA] Tentando inicialização genérica de vídeo...', errAmbiente);
         await scanner.start(
-            { facingMode: 'user' },
+            {},
             config,
             processarLeitura,
             () => {}
@@ -310,7 +310,7 @@ async function iniciarLeitura() {
         videoElement.style.objectFit = 'cover';
         videoElement.style.width = '100%';
         videoElement.style.height = '100%';
-        videoElement.style.background = 'transparent';
+        videoElement.style.backgroundColor = '#0b0f19';
     }
 
     const configuracoesVideo = scanner.getRunningTrackSettings();
