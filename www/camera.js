@@ -9,6 +9,7 @@ let cameraStartInProgress = false;
 let leituraBloqueada = false;
 let modosFocoDisponiveis = [];
 let contextoAudio = null;
+let zoomNativoDisponivel = false;
 
 function atualizarStatusCamera(mensagem, erro = false) {
     const status = document.getElementById('camera-status');
@@ -160,6 +161,8 @@ function configurarZoomCamera() {
     const wrapper = document.getElementById('camera-zoom-wrapper');
     const controle = document.getElementById('camera-zoom');
     const valorZoom = document.getElementById('camera-zoom-value');
+    const botaoDiminuirZoom = document.getElementById('camera-zoom-out');
+    const botaoAumentarZoom = document.getElementById('camera-zoom-in');
 
     let faixaZoom;
     try {
@@ -168,7 +171,16 @@ function configurarZoomCamera() {
         console.info('[PDV-CAMERA] O aparelho não expõe controle de zoom.', error);
     }
 
-    if (!faixaZoom || !wrapper || !controle || !valorZoom || faixaZoom.max <= faixaZoom.min) {
+    if (!wrapper || !controle || !valorZoom) {
+        return;
+    }
+
+    zoomNativoDisponivel = Boolean(faixaZoom && faixaZoom.max > faixaZoom.min);
+    if (!zoomNativoDisponivel) {
+        faixaZoom = { min: 1, max: 3, step: 0.1 };
+        atualizarStatusCamera('Zoom digital disponível para aproximar a imagem.');
+    }
+    if (faixaZoom.max <= faixaZoom.min) {
         wrapper?.classList.add('hidden');
         return;
     }
@@ -183,17 +195,120 @@ function configurarZoomCamera() {
 
     controle.oninput = () => {
         valorZoom.textContent = `${Number(controle.value).toFixed(1)}×`;
+        atualizarBotoesZoom(Number(controle.value), {
+            min: Number(controle.min),
+            max: Number(controle.max)
+        });
     };
     controle.onchange = async () => {
-        try {
-            await scanner.applyVideoConstraints({
-                advanced: [{ zoom: Number(controle.value) }]
-            });
-        } catch (error) {
-            console.warn('[PDV-CAMERA] O aparelho não permite alterar o zoom da câmera:', error);
-            atualizarStatusCamera('Zoom não compatível com este aparelho.');
-        }
+        await aplicarZoomCamera(Number(controle.value));
     };
+    if (botaoDiminuirZoom) {
+        botaoDiminuirZoom.disabled = Number(controle.value) <= faixaZoom.min;
+        botaoDiminuirZoom.onclick = () => alterarZoomCamera(-1);
+    }
+    if (botaoAumentarZoom) {
+        botaoAumentarZoom.disabled = Number(controle.value) >= faixaZoom.max;
+        botaoAumentarZoom.onclick = () => alterarZoomCamera(1);
+    }
+}
+
+function atualizarBotoesZoom(valor, faixaZoom) {
+    const botaoDiminuirZoom = document.getElementById('camera-zoom-out');
+    const botaoAumentarZoom = document.getElementById('camera-zoom-in');
+    if (botaoDiminuirZoom) botaoDiminuirZoom.disabled = valor <= faixaZoom.min;
+    if (botaoAumentarZoom) botaoAumentarZoom.disabled = valor >= faixaZoom.max;
+}
+
+async function aplicarZoomCamera(valor) {
+    const controle = document.getElementById('camera-zoom');
+    const valorZoom = document.getElementById('camera-zoom-value');
+    const botaoDiminuirZoom = document.getElementById('camera-zoom-out');
+    const botaoAumentarZoom = document.getElementById('camera-zoom-in');
+    if (!scanner?.isScanning || !controle || !valorZoom) return;
+
+    const valorAnterior = Number(controle.value);
+    let proximoValor = Math.max(Number(controle.min), Math.min(Number(controle.max), valor));
+    controle.value = String(proximoValor);
+    valorZoom.textContent = `${proximoValor.toFixed(1)}×`;
+    if (botaoDiminuirZoom) botaoDiminuirZoom.disabled = true;
+    if (botaoAumentarZoom) botaoAumentarZoom.disabled = true;
+
+    try {
+        if (zoomNativoDisponivel) {
+            try {
+                await scanner.applyVideoConstraints({
+                    advanced: [{ zoom: proximoValor }]
+                });
+            } catch (error) {
+                console.info('[PDV-CAMERA] Zoom nativo indisponível; ativando zoom digital.', error);
+                zoomNativoDisponivel = false;
+                controle.min = '1';
+                controle.max = '3';
+                controle.step = '0.1';
+                proximoValor = Math.max(1, Math.min(3, proximoValor));
+                controle.value = String(proximoValor);
+                valorZoom.textContent = `${proximoValor.toFixed(1)}×`;
+                aplicarZoomDigital(proximoValor);
+            }
+        } else {
+            aplicarZoomDigital(proximoValor);
+        }
+        atualizarStatusCamera(`Zoom ajustado para ${proximoValor.toFixed(1)}×.`);
+    } catch (error) {
+        controle.value = String(valorAnterior);
+        valorZoom.textContent = `${valorAnterior.toFixed(1)}×`;
+        console.warn('[PDV-CAMERA] O aparelho não permite alterar o zoom da câmera:', error);
+        atualizarStatusCamera('Zoom não compatível com este aparelho.', true);
+    } finally {
+        atualizarBotoesZoom(Number(controle.value), {
+            min: Number(controle.min),
+            max: Number(controle.max)
+        });
+    }
+}
+
+function aplicarZoomDigital(zoom) {
+    const videoElement = document.querySelector(`#${READER_ID} video`);
+    if (videoElement) {
+        videoElement.style.transform = `scale(${zoom})`;
+        videoElement.style.transformOrigin = 'center';
+    }
+}
+
+function alterarZoomCamera(direcao) {
+    const controle = document.getElementById('camera-zoom');
+    if (!controle) return;
+
+    const passo = Number(controle.step) || 0.1;
+    void aplicarZoomCamera(Number(controle.value) + passo * direcao);
+}
+
+async function ativarFocoAutomatico() {
+    if (!scanner?.isScanning) return;
+
+    try {
+        const modosFoco = scanner.getRunningTrackCapabilities().focusMode || modosFocoDisponiveis;
+        if (modosFoco.includes('continuous')) {
+            await scanner.applyVideoConstraints({
+                advanced: [{ focusMode: 'continuous' }]
+            });
+            atualizarStatusCamera('Foco automático contínuo ativo.');
+            return;
+        }
+        if (modosFoco.includes('single-shot')) {
+            await scanner.applyVideoConstraints({
+                advanced: [{ focusMode: 'single-shot' }]
+            });
+            atualizarStatusCamera('Foco automático ajustado. Mantenha o código estável.');
+            return;
+        }
+
+        atualizarStatusCamera('O foco automático é controlado pelo dispositivo.');
+    } catch (error) {
+        console.warn('[PDV-CAMERA] Não foi possível ativar o foco automático:', error);
+        atualizarStatusCamera('O foco é controlado pelo dispositivo.', true);
+    }
 }
 
 async function focarCamera() {
@@ -290,8 +405,8 @@ async function iniciarLeitura() {
         }),
         disableFlip: false,
         videoConstraints: {
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
+            width: { ideal: 1920 },
+            height: { ideal: 1080 },
             facingMode: { ideal: 'environment' }
         }
     };
@@ -396,6 +511,7 @@ export async function pararCamera() {
 
     leituraBloqueada = false;
     modosFocoDisponiveis = [];
+    zoomNativoDisponivel = false;
     document.getElementById('camera-zoom-wrapper')?.classList.add('hidden');
     document.getElementById(READER_ID)?.removeAttribute('onclick');
     modal?.classList.add('hidden');
@@ -419,4 +535,5 @@ window.alternarCamera = async () => {
 window.abrirLeitorCamera = abrirLeitorCamera;
 window.abrirCameraScanner = abrirLeitorCamera;
 window.focarCameraScanner = focarCamera;
+window.ativarFocoAutomaticoScanner = ativarFocoAutomatico;
 window.inicializarLeitorTecladoPistola = inicializarLeitorTecladoPistola;

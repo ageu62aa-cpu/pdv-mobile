@@ -477,15 +477,19 @@
             <div class="rounded-xl border border-slate-700 bg-slate-800 p-2">
               <div id="reader" class="overflow-hidden rounded-lg bg-slate-950" aria-label="Área de captura da câmera"></div>
               <div class="flex flex-wrap items-center justify-between gap-2 pt-2">
-                <p class="text-[10px] text-slate-400">Centralize o código e aproxime devagar.</p>
-                <button id="camera-focus-button" type="button" onclick="window.focarCameraScanner()" class="rounded-md border border-slate-600 bg-slate-900 px-2.5 py-1 text-[10px] font-semibold text-slate-200 hover:border-emerald-500 hover:text-emerald-300">
+                <p class="text-[10px] text-slate-400">Toque na imagem para ajustar o foco; use o botão para foco automático.</p>
+                <button id="camera-focus-button" type="button" onclick="window.ativarFocoAutomaticoScanner()" class="rounded-md border border-slate-600 bg-slate-900 px-2.5 py-1 text-[10px] font-semibold text-slate-200 hover:border-emerald-500 hover:text-emerald-300" aria-label="Ativar foco automático" title="Ativar foco automático">
                   <i class="fa-solid fa-crosshairs mr-1"></i>Ajustar foco
                 </button>
               </div>
               <div id="camera-zoom-wrapper" class="mt-2 hidden items-center gap-2 rounded-lg bg-slate-900/80 px-2.5 py-2">
-                <i class="fa-solid fa-magnifying-glass-minus text-[10px] text-slate-400"></i>
+                <button id="camera-zoom-out" type="button" class="rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-white disabled:cursor-not-allowed disabled:opacity-40" aria-label="Diminuir zoom" title="Diminuir zoom">
+                  <i class="fa-solid fa-magnifying-glass-minus text-[10px]"></i>
+                </button>
                 <input id="camera-zoom" type="range" min="1" max="2" step="0.1" value="1" class="h-1.5 flex-1 accent-emerald-500" aria-label="Zoom da câmera">
-                <i class="fa-solid fa-magnifying-glass-plus text-[10px] text-slate-400"></i>
+                <button id="camera-zoom-in" type="button" class="rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-white disabled:cursor-not-allowed disabled:opacity-40" aria-label="Aumentar zoom" title="Aumentar zoom">
+                  <i class="fa-solid fa-magnifying-glass-plus text-[10px]"></i>
+                </button>
                 <span id="camera-zoom-value" class="w-9 text-right text-[10px] text-slate-300">1.0×</span>
               </div>
             </div>
