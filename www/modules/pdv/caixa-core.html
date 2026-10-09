@@ -54,16 +54,35 @@
         }
 
         #reader #qr-shaded-region {
-            border-color: #f8fafc !important;
+            --scanner-corner-color: #10b981;
+            border: none !important;
+            background: transparent !important;
             transition: border-color 120ms ease;
         }
 
-        #reader.barcode-detected #qr-shaded-region {
-            border-color: #10b981 !important;
+        #reader #qr-shaded-region::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            background:
+                linear-gradient(var(--scanner-corner-color), var(--scanner-corner-color)) left top / 24px 3px no-repeat,
+                linear-gradient(var(--scanner-corner-color), var(--scanner-corner-color)) left top / 3px 24px no-repeat,
+                linear-gradient(var(--scanner-corner-color), var(--scanner-corner-color)) right top / 24px 3px no-repeat,
+                linear-gradient(var(--scanner-corner-color), var(--scanner-corner-color)) right top / 3px 24px no-repeat,
+                linear-gradient(var(--scanner-corner-color), var(--scanner-corner-color)) left bottom / 24px 3px no-repeat,
+                linear-gradient(var(--scanner-corner-color), var(--scanner-corner-color)) left bottom / 3px 24px no-repeat,
+                linear-gradient(var(--scanner-corner-color), var(--scanner-corner-color)) right bottom / 24px 3px no-repeat,
+                linear-gradient(var(--scanner-corner-color), var(--scanner-corner-color)) right bottom / 3px 24px no-repeat;
+            transition: filter 120ms ease;
         }
 
-        #reader.barcode-detected #qr-shaded-region path:last-child {
-            stroke: #10b981 !important;
+        #reader.barcode-detected #qr-shaded-region {
+            --scanner-corner-color: #34d399;
+        }
+
+        #reader.barcode-detected #qr-shaded-region::after {
+            filter: drop-shadow(0 0 5px #10b981);
         }
     </style>
 </head>

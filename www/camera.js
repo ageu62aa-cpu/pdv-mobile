@@ -37,10 +37,13 @@ async function prepararAudioLeitura() {
 
 function tocarBipeLeitura() {
     try {
-        if (!contextoAudio || contextoAudio.state !== 'running') {
-            navigator.vibrate?.(80);
-            return;
-        }
+        navigator.vibrate?.(45);
+    } catch (error) {
+        console.info('[PDV-CAMERA] Vibração de confirmação indisponível:', error);
+    }
+
+    try {
+        if (!contextoAudio || contextoAudio.state !== 'running') return;
 
         const audioContext = contextoAudio;
         const oscillator = audioContext.createOscillator();
@@ -54,7 +57,6 @@ function tocarBipeLeitura() {
         gain.connect(audioContext.destination);
         oscillator.start();
         oscillator.stop(audioContext.currentTime + 0.15);
-        navigator.vibrate?.(45);
     } catch (error) {
         console.warn('[PDV-CAMERA] Bipe de confirmação indisponível:', error);
     }
@@ -281,10 +283,10 @@ async function iniciarLeitura() {
 
     const formatosToSupport = obterFormatosSuportados();
     const config = {
-        fps: 10,
+        fps: 20,
         qrbox: (viewfinderWidth, viewfinderHeight) => ({
-            width: Math.floor(viewfinderWidth * 0.9),
-            height: Math.floor(viewfinderHeight * 0.38)
+            width: Math.floor(viewfinderWidth * 0.85),
+            height: Math.floor(viewfinderHeight * 0.45)
         }),
         disableFlip: false,
         videoConstraints: {
