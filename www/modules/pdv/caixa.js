@@ -44,8 +44,8 @@ export async function verificarStatusCaixaServidor() {
         atualizarBadgesCaixaInterface();
 
         if (cargoUsuarioAtual === 'admin_mercado') {
-            carregarOperadoresLoja?.();
-            carregarHistoricoAdmin?.();
+            window.carregarOperadoresLoja?.();
+            window.carregarHistoricoAdmin?.();
         }
     } catch (err) {
         console.error('PDV-VS: Erro ao verificar status do caixa no servidor:', err);
@@ -81,8 +81,8 @@ export function iniciarRealtimeCaixa() {
                 }
 
                 if (cargoUsuarioAtual === 'admin_mercado') {
-                    carregarOperadoresLoja?.();
-                    carregarHistoricoAdmin?.();
+                    window.carregarOperadoresLoja?.();
+                    window.carregarHistoricoAdmin?.();
                 }
             }
         )
@@ -110,8 +110,8 @@ setTimeout(() => {
     iniciarRealtimeCaixa();
     verificarStatusCaixaServidor();
     if (cargoUsuarioAtual === 'admin_mercado') {
-        carregarOperadoresLoja?.();
-        carregarHistoricoAdmin?.();
+        window.carregarOperadoresLoja?.();
+        window.carregarHistoricoAdmin?.();
     }
 }, 500);
 
@@ -124,8 +124,8 @@ export async function atualizarPaginaCompleta() {
         await carregarProdutosCache();
         await verificarStatusCaixaServidor();
         if (cargoUsuarioAtual === 'admin_mercado') {
-            await carregarHistoricoAdmin?.();
-            await carregarOperadoresLoja?.();
+            await window.carregarHistoricoAdmin?.();
+            await window.carregarOperadoresLoja?.();
         }
         alert('PDV-VS: Dados sincronizados com sucesso!');
         focarBusca();
@@ -324,8 +324,8 @@ export async function confirmarAcaoCaixa() {
     
     atualizarBadgesCaixaInterface();
     if (cargoUsuarioAtual === 'admin_mercado') {
-        carregarOperadoresLoja?.();
-        carregarHistoricoAdmin?.();
+        window.carregarOperadoresLoja?.();
+        window.carregarHistoricoAdmin?.();
     }
     fecharModalCaixa();
     focarBusca();
@@ -442,8 +442,8 @@ export async function finalizarVenda() {
     await carregarProdutosCache();
     
     if (cargoUsuarioAtual === 'admin_mercado') {
-        carregarOperadoresLoja?.();
-        carregarHistoricoAdmin?.();
+        window.carregarOperadoresLoja?.();
+        window.carregarHistoricoAdmin?.();
     }
     alert('PDV-VS: Venda concluída e estoque atualizado com sucesso!');
     focarBusca();

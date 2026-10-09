@@ -217,7 +217,7 @@ export async function iniciarRealtimeCaixa() {
     }
 
     canalRealtimeCaixa = db
-        .channel('escuta_mudancas_caixa')
+        .channel(`caixa-core-${empresaAtualId}`)
         .on(
             'postgres_changes',
             { event: '*', schema: 'public', table: 'caixas', filter: `empresa_id=eq.${empresaAtualId}` },

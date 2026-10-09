@@ -6,7 +6,6 @@ import {
     empresaAtualId, produtosCache, produtoEmPesagemAtual, setProdutosCache, 
     setProdutoEmPesagemAtual, itensVenda, setItensVenda 
 } from '../core/state.js';
-import { atualizarTabelaVenda, focarBusca } from '../modules/pdv/caixa.js';
 
 // Índice do item selecionado via teclado na lista de sugestões
 let indiceItemSelecionadoTeclado = -1;
@@ -168,7 +167,7 @@ export function fecharModalPesagemManual() {
     const modal = document.getElementById('modalPesagemManual');
     if (modal) modal.classList.add('hidden');
     setProdutoEmPesagemAtual(null);
-    focarBusca();
+    window.focarBusca?.();
 }
 
 export function confirmarAdicaoPeso() {
@@ -196,7 +195,7 @@ export function adicionarItemVendaDireto(produto, qtd, isPeso = false) {
             nomeExibicao: isPeso ? `${produto.nome} (${qtd.toFixed(3)} kg)` : produto.nome
         }]); 
     }
-    atualizarTabelaVenda();
+    window.atualizarTabelaVenda?.();
 }
 
 // Navegação por Teclado nas Sugestões de Busca (Setas e Enter)
