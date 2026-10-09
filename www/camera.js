@@ -299,13 +299,7 @@ async function iniciarLeitura() {
         }
     };
     if (formatosToSupport?.length) config.formatsToSupport = formatosToSupport;
-    const cameraTraseira = await selecionarCameraTraseira();
-    await scanner.start(
-        { deviceId: { exact: cameraTraseira.id } },
-        config,
-        processarLeitura,
-        () => {}
-    );
+    await iniciarCameraTraseira(config);
     const botaoFoco = document.getElementById('camera-focus-button');
     if (botaoFoco) botaoFoco.disabled = false;
     await configurarFocoAutomatico();
@@ -314,25 +308,33 @@ async function iniciarLeitura() {
     console.info('[PDV-CAMERA] Leitor contínuo ativo.');
 }
 
-async function selecionarCameraTraseira() {
+async function iniciarCameraTraseira(config) {
+    const callbacks = [processarLeitura, () => {}];
+    try {
+        await scanner.start(
+            { facingMode: { exact: 'environment' } },
+            config,
+            ...callbacks
+        );
+        return;
+    } catch (erroCameraTraseira) {
+        console.warn('[PDV-CAMERA] A seleção direta da câmera traseira falhou; procurando dispositivo traseiro identificado.', erroCameraTraseira);
+    }
+
     const cameras = await window.Html5Qrcode.getCameras();
-    if (!cameras.length) {
-        throw new Error('Nenhuma câmera disponível. Verifique a permissão de câmera do navegador.');
-    }
-
     const cameraTraseira = cameras.find(({ label }) =>
-        /back|rear|environment|traseir|tras\b/i.test(label)
+        /back|rear|environment|traseir|trás/i.test(label)
+        && !/front|user|facetime|frontal/i.test(label)
     );
-    if (cameraTraseira) return cameraTraseira;
-
-    const camerasNaoFrontais = cameras.filter(({ label }) =>
-        !/front|user|facetime|frontal/i.test(label)
-    );
-    if (!camerasNaoFrontais.length) {
-        throw new Error('Não foi possível identificar uma câmera traseira neste aparelho.');
+    if (!cameraTraseira) {
+        throw new Error('Não foi possível confirmar qual câmera é a traseira. A câmera frontal não será iniciada.');
     }
 
-    return camerasNaoFrontais[camerasNaoFrontais.length - 1];
+    await scanner.start(
+        { deviceId: { exact: cameraTraseira.id } },
+        config,
+        ...callbacks
+    );
 }
 
 export async function abrirLeitorCamera() {
