@@ -43,8 +43,17 @@
             display: none !important;
         }
 
-        #reader__scan_region #qr-shaded-region {
-            display: none !important;
+        #reader #qr-shaded-region {
+            border-color: #f8fafc !important;
+            transition: border-color 120ms ease;
+        }
+
+        #reader.barcode-detected #qr-shaded-region {
+            border-color: #10b981 !important;
+        }
+
+        #reader.barcode-detected #qr-shaded-region path:last-child {
+            stroke: #10b981 !important;
         }
     </style>
 </head>
@@ -437,14 +446,7 @@
               <span id="camera-status" class="text-right text-[10px] text-emerald-400">Aguardando permissão da câmera...</span>
             </div>
             <div class="rounded-xl border border-slate-700 bg-slate-800 p-2">
-              <div class="relative overflow-hidden rounded-lg bg-slate-950">
-                <div id="reader" aria-label="Área de captura da câmera"></div>
-                <div class="pointer-events-none absolute inset-0 flex items-center justify-center">
-                  <div class="flex h-16 w-[78%] max-w-xs items-center justify-center rounded-lg border border-emerald-400/90 bg-slate-950/20 shadow-[0_0_20px_rgba(16,185,129,0.18)]">
-                    <i class="fa-solid fa-barcode text-2xl text-emerald-300/80"></i>
-                  </div>
-                </div>
-              </div>
+              <div id="reader" class="overflow-hidden rounded-lg bg-slate-950" aria-label="Área de captura da câmera"></div>
               <div class="flex flex-wrap items-center justify-between gap-2 pt-2">
                 <p class="text-[10px] text-slate-400">Centralize o código e aproxime devagar.</p>
                 <button id="camera-focus-button" type="button" onclick="window.focarCameraScanner()" class="rounded-md border border-slate-600 bg-slate-900 px-2.5 py-1 text-[10px] font-semibold text-slate-200 hover:border-emerald-500 hover:text-emerald-300">

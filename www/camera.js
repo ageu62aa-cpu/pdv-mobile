@@ -64,6 +64,9 @@ async function processarLeitura(codigo) {
     if (leituraBloqueada) return;
 
     leituraBloqueada = true;
+    const reader = document.getElementById(READER_ID);
+    reader?.classList.add('barcode-detected');
+    window.setTimeout(() => reader?.classList.remove('barcode-detected'), 700);
     tocarBipeLeitura();
     const codigoInput = document.getElementById('camera-codigo');
     const leituraStatus = document.getElementById('camera-leitura-status');
@@ -284,7 +287,10 @@ async function iniciarLeitura() {
     const formatosToSupport = obterFormatosSuportados();
     const config = {
         fps: 10,
-        qrbox: false,
+        qrbox: (viewfinderWidth, viewfinderHeight) => ({
+            width: Math.floor(viewfinderWidth * 0.9),
+            height: Math.floor(viewfinderHeight * 0.38)
+        }),
         disableFlip: false,
         videoConstraints: {
             width: { ideal: 1920 },
@@ -293,30 +299,40 @@ async function iniciarLeitura() {
         }
     };
     if (formatosToSupport?.length) config.formatsToSupport = formatosToSupport;
-    try {
-        await scanner.start(
-            { facingMode: { ideal: 'environment' } },
-            config,
-            processarLeitura,
-            () => {}
-        );
-    } catch (erroCameraTraseira) {
-        console.warn('[PDV-CAMERA] Não foi possível selecionar a câmera traseira diretamente; tentando listar as câmeras disponíveis.', erroCameraTraseira);
-        const cameras = await window.Html5Qrcode.getCameras();
-        if (!cameras.length) throw erroCameraTraseira;
-
-        const camera = cameras.find(({ label }) => /back|rear|environment|traseir/i.test(label)) || cameras[0];
-        await scanner.start(
-            { deviceId: { exact: camera.id } },
-            config,
-            processarLeitura,
-            () => {}
-        );
-    }
+    const cameraTraseira = await selecionarCameraTraseira();
+    await scanner.start(
+        { deviceId: { exact: cameraTraseira.id } },
+        config,
+        processarLeitura,
+        () => {}
+    );
+    const botaoFoco = document.getElementById('camera-focus-button');
+    if (botaoFoco) botaoFoco.disabled = false;
     await configurarFocoAutomatico();
     configurarZoomCamera();
     atualizarStatusCamera('Leitor contínuo ativo. Aponte para um código.');
     console.info('[PDV-CAMERA] Leitor contínuo ativo.');
+}
+
+async function selecionarCameraTraseira() {
+    const cameras = await window.Html5Qrcode.getCameras();
+    if (!cameras.length) {
+        throw new Error('Nenhuma câmera disponível. Verifique a permissão de câmera do navegador.');
+    }
+
+    const cameraTraseira = cameras.find(({ label }) =>
+        /back|rear|environment|traseir|tras\b/i.test(label)
+    );
+    if (cameraTraseira) return cameraTraseira;
+
+    const camerasNaoFrontais = cameras.filter(({ label }) =>
+        !/front|user|facetime|frontal/i.test(label)
+    );
+    if (!camerasNaoFrontais.length) {
+        throw new Error('Não foi possível identificar uma câmera traseira neste aparelho.');
+    }
+
+    return camerasNaoFrontais[camerasNaoFrontais.length - 1];
 }
 
 export async function abrirLeitorCamera() {
