@@ -132,21 +132,9 @@ function obterFormatosSuportados() {
     if (!formatos) return undefined;
 
     return [
-        'AZTEC',
-        'CODABAR',
-        'CODE_39',
-        'CODE_93',
-        'CODE_128',
-        'DATA_MATRIX',
-        'EAN_8',
-        'EAN_13',
-        'ITF',
-        'MAXICODE',
-        'PDF_417',
-        'QR_CODE',
-        'UPC_A',
-        'UPC_E',
-        'UPC_EAN_EXTENSION'
+        'AZTEC', 'CODABAR', 'CODE_39', 'CODE_93', 'CODE_128',
+        'DATA_MATRIX', 'EAN_8', 'EAN_13', 'ITF', 'MAXICODE',
+        'PDF_417', 'QR_CODE', 'UPC_A', 'UPC_E', 'UPC_EAN_EXTENSION'
     ].map(nome => formatos[nome]).filter(formato => formato !== undefined);
 }
 
@@ -236,7 +224,7 @@ async function focarCamera() {
             return;
         }
 
-        atualizarStatusCamera('O foco é controlado pelo iPhone. Afaste um pouco e aproxime devagar.');
+        atualizarStatusCamera('O foco é controlado pelo dispositivo. Afaste um pouco e aproxime devagar.');
     } catch (error) {
         console.warn('[PDV-CAMERA] O aparelho não permite ajuste manual do foco:', error);
         atualizarStatusCamera('Foco controlado pelo aparelho. Afaste um pouco e aproxime devagar.');
@@ -299,34 +287,58 @@ async function iniciarLeitura() {
         }
     };
     if (formatosToSupport?.length) config.formatsToSupport = formatosToSupport;
-    atualizarStatusCamera('Solicitando acesso à câmera traseira...');
-    await scanner.start(
-        { facingMode: { ideal: 'environment' } },
-        config,
-        processarLeitura,
-        () => {}
-    );
+    
+    atualizarStatusCamera('Solicitando acesso à câmara traseira...');
 
-    const configuracoesVideo = scanner.getRunningTrackSettings();
-    const cameras = await window.Html5Qrcode.getCameras().catch(error => {
-        console.info('[PDV-CAMERA] Safari não disponibilizou os nomes das câmeras após a autorização.', error);
-        return [];
-    });
-    const cameraAtiva = cameras.find(camera => camera.id === configuracoesVideo.deviceId);
-    const nomeCamera = cameraAtiva?.label || '';
-    if (configuracoesVideo.facingMode === 'user' || /front|facetime|frontal|true.?depth/i.test(nomeCamera)) {
-        await scanner.stop();
-        await scanner.clear();
-        scanner = null;
-        throw new Error('O Safari iniciou a câmera frontal. Altere a permissão de câmera do site e tente novamente.');
+    // Abordagem robusta: Tenta iniciar diretamente com a câmara traseira (environment).
+    // Se falhar por restrição do dispositivo, tenta abrir por ID de câmara ou com restrição exata.
+    try {
+        await scanner.start(
+            { facingMode: { exact: 'environment' } },
+            config,
+            processarLeitura,
+            () => {}
+        );
+    } catch (errPreciso) {
+        console.warn('[PDV-CAMERA] Falha com exact environment, tentando ideal...', errPreciso);
+        try {
+            await scanner.start(
+                { facingMode: 'environment' },
+                config,
+                processarLeitura,
+                () => {}
+            );
+        } catch (errIdeal) {
+            console.warn('[PDV-CAMERA] Falha com environment ideal, buscando por dispositivos disponíveis...', errIdeal);
+            const cameras = await window.Html5Qrcode.getCameras().catch(() => []);
+            const cameraTraseira = cameras.find(c => /back|traseira|rear|environment/i.test(c.label)) || cameras[cameras.length - 1];
+            
+            if (cameraTraseira) {
+                await scanner.start(
+                    { deviceId: { exact: cameraTraseira.id } },
+                    config,
+                    processarLeitura,
+                    () => {}
+                );
+            } else {
+                // Último recurso: abre qualquer câmara disponível para não travar a venda
+                await scanner.start(
+                    { facingMode: 'user' },
+                    config,
+                    processarLeitura,
+                    () => {}
+                );
+            }
+        }
     }
 
+    const configuracoesVideo = scanner.getRunningTrackSettings();
     const botaoFoco = document.getElementById('camera-focus-button');
     if (botaoFoco) botaoFoco.disabled = false;
     await configurarFocoAutomatico();
     configurarZoomCamera();
-    atualizarStatusCamera(`Câmera traseira solicitada${nomeCamera ? `: ${nomeCamera}` : ''}. Aponte para um código.`);
-    console.info('[PDV-CAMERA] Câmera iniciada com preferência traseira.', configuracoesVideo);
+    atualizarStatusCamera('Câmera traseira ativa. Aponte para um código.');
+    console.info('[PDV-CAMERA] Câmera iniciada com sucesso.', configuracoesVideo);
 }
 
 export async function abrirLeitorCamera() {
@@ -374,7 +386,7 @@ function descreverErroCamera(error) {
         || /notreadableerror|could not start video source/.test(mensagem)) {
         return 'A câmera está ocupada por outro aplicativo. Feche-o e tente novamente.';
     }
-    return error?.message || 'Não foi possível iniciar a câmera. Verifique as permissões do Safari.';
+    return error?.message || 'Não foi possível iniciar a câmera. Verifique as permissões do navegador.';
 }
 
 export async function pararCamera() {
