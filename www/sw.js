@@ -1,10 +1,15 @@
-const CACHE_NAME = 'pdv-vs-v13';
+const CACHE_NAME = 'pdv-vs-v15';
 const urlsToCache = [
     '/',
     '/index.html',
     '/manifest.json',
     '/modules/auth/auth.html', // Adicionado para garantir a tela de login no cache
-    '/modules/pdv/caixa-core.html'
+    '/modules/pdv/caixa-core.html',
+    '/modules/pdv/caixa-core.js',
+    '/camera.js',
+    '/core/config.js',
+    '/core/state.js',
+    '/services/produtos.js'
 ];
 
 // Instalação do Service Worker de forma robusta (não falha se um recurso oscilar)

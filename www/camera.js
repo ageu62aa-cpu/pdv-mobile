@@ -246,7 +246,7 @@ async function iniciarLeitura() {
     }
 
     modal.classList.remove('hidden');
-    atualizarStatusCamera('Solicitando acesso à câmera...');
+    atualizarStatusCamera('Solicitando acesso à câmera traseira...');
 
     if (scanner?.isScanning) {
         atualizarStatusCamera('Leitor contínuo ativo. Aponte para um código.');
@@ -282,16 +282,11 @@ async function iniciarLeitura() {
         disableFlip: false,
         videoConstraints: {
             width: { ideal: 1920 },
-            height: { ideal: 1080 },
-            frameRate: { ideal: 30, max: 30 }
+            height: { ideal: 1080 }
         }
     };
     if (formatosToSupport?.length) config.formatsToSupport = formatosToSupport;
-    
-    atualizarStatusCamera('Solicitando acesso à câmara traseira...');
 
-    // Abordagem robusta: Tenta iniciar diretamente com a câmara traseira (environment).
-    // Se falhar por restrição do dispositivo, tenta abrir por ID de câmara ou com restrição exata.
     try {
         await scanner.start(
             { facingMode: { exact: 'environment' } },
@@ -299,8 +294,8 @@ async function iniciarLeitura() {
             processarLeitura,
             () => {}
         );
-    } catch (errPreciso) {
-        console.warn('[PDV-CAMERA] Falha com exact environment, tentando ideal...', errPreciso);
+    } catch (erroRestrito) {
+        console.warn('[PDV-CAMERA] Falha com exact environment; tentando a câmera traseira sem restrição exata.', erroRestrito);
         try {
             await scanner.start(
                 { facingMode: 'environment' },
@@ -308,36 +303,55 @@ async function iniciarLeitura() {
                 processarLeitura,
                 () => {}
             );
-        } catch (errIdeal) {
-            console.warn('[PDV-CAMERA] Falha com environment ideal, buscando por dispositivos disponíveis...', errIdeal);
-            const cameras = await window.Html5Qrcode.getCameras().catch(() => []);
-            const cameraTraseira = cameras.find(c => /back|traseira|rear|environment/i.test(c.label)) || cameras[cameras.length - 1];
-            
-            if (cameraTraseira) {
+        } catch (erroFlexivel) {
+            console.warn('[PDV-CAMERA] Falha com facingMode environment; procurando uma câmera traseira identificada.', erroFlexivel);
+            const cameras = await window.Html5Qrcode.getCameras().catch(erro => {
+                console.warn('[PDV-CAMERA] Não foi possível listar câmeras após a tentativa de autorização.', erro);
+                return [];
+            });
+            const cameraTraseira = cameras.find(camera =>
+                /back|traseira|rear|environment|trasera|arrière|背面/i.test(camera.label)
+            );
+
+            if (!cameraTraseira) {
+                throw new Error('Nenhuma câmera traseira identificada foi encontrada. Verifique a permissão de câmera do navegador.');
+            }
+
+            try {
                 await scanner.start(
                     { deviceId: { exact: cameraTraseira.id } },
                     config,
                     processarLeitura,
                     () => {}
                 );
-            } else {
-                // Último recurso: abre qualquer câmara disponível para não travar a venda
-                await scanner.start(
-                    { facingMode: 'user' },
-                    config,
-                    processarLeitura,
-                    () => {}
-                );
+            } catch (erroDispositivo) {
+                console.error('[PDV-CAMERA] Não foi possível iniciar a câmera traseira identificada:', erroDispositivo);
+                throw erroDispositivo;
             }
         }
     }
 
+    const videoElement = container.querySelector('video');
+    if (videoElement) {
+        videoElement.style.objectFit = 'cover';
+        videoElement.style.width = '100%';
+        videoElement.style.height = '100%';
+        videoElement.style.background = 'transparent';
+    }
+
     const configuracoesVideo = scanner.getRunningTrackSettings();
+    if (configuracoesVideo.facingMode === 'user') {
+        await scanner.stop();
+        await scanner.clear();
+        scanner = null;
+        throw new Error('O navegador iniciou a câmera frontal em vez da traseira. Verifique as permissões e tente novamente.');
+    }
+
     const botaoFoco = document.getElementById('camera-focus-button');
     if (botaoFoco) botaoFoco.disabled = false;
     await configurarFocoAutomatico();
     configurarZoomCamera();
-    atualizarStatusCamera('Câmera traseira ativa. Aponte para um código.');
+    atualizarStatusCamera('Câmera traseira ativa. Centralize o código na moldura.');
     console.info('[PDV-CAMERA] Câmera iniciada com sucesso.', configuracoesVideo);
 }
 
