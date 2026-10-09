@@ -22,6 +22,28 @@ const getSupabase = () => window.supabaseClient || window.supabase || supabase;
 window.supabaseClient = window.supabaseClient || supabase;
 window.supabase = window.supabase || supabase;
 
+function isInvalidAuthSessionError(error) {
+    const message = String(error?.message || '').toLowerCase();
+    return error?.status === 401
+        || /jwt|invalid token|token is expired|refresh token|auth session missing|session_not_found/.test(message);
+}
+
+async function redirecionarSessaoInvalida(db, error) {
+    if (!isInvalidAuthSessionError(error)) return false;
+
+    console.warn('PDV-VS: Sessão inválida ou expirada. Encerrando a sessão local e redirecionando para autenticação.', error);
+    try {
+        const { error: signOutError } = await db.auth.signOut({ scope: 'local' });
+        if (signOutError) {
+            console.error('PDV-VS: Não foi possível limpar a sessão local inválida:', signOutError);
+        }
+    } catch (signOutError) {
+        console.error('PDV-VS: Falha ao limpar a sessão local inválida:', signOutError);
+    }
+    window.location.href = '../auth/auth.html';
+    return true;
+}
+
 window.carregarOperadoresLoja = window.carregarOperadoresLoja || async function() {
     try {
         const db = getSupabase();
@@ -96,7 +118,10 @@ async function inicializarCaixaDefinitivo() {
         if (!db) throw new Error('Cliente Supabase não inicializado.');
 
         const { data: { session }, error: sessionError } = await db.auth.getSession();
-        if (sessionError) throw sessionError;
+        if (sessionError) {
+            if (await redirecionarSessaoInvalida(db, sessionError)) return;
+            throw sessionError;
+        }
         if (!session?.user) {
             console.warn('PDV-VS: Sessão ausente. Redirecionando para autenticação...');
             window.location.href = '../auth/auth.html';
@@ -115,6 +140,7 @@ async function inicializarCaixaDefinitivo() {
         await iniciarRealtimeCaixa();
         focarBusca();
     } catch (error) {
+        if (await redirecionarSessaoInvalida(getSupabase(), error)) return;
         console.error('PDV-VS: Falha ao inicializar a sessão pelo Supabase:', error);
     }
 }
