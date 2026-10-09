@@ -24,6 +24,24 @@
                 padding: 5mm;
             }
         }
+
+        #reader {
+            width: 100%;
+            aspect-ratio: 4 / 3;
+            min-height: 0 !important;
+            border: 0 !important;
+            background: #0f172a !important;
+        }
+
+        #reader video {
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: cover !important;
+        }
+
+        #reader__dashboard {
+            display: none !important;
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-gray-100 font-sans h-screen flex flex-col overflow-hidden">
@@ -388,28 +406,89 @@
 
     </main>
 
-    <!-- Modal da Câmara Web Atualizado e Integrado -->
-    <div id="modalCamera" class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center hidden">
-      <div class="bg-gray-800 border border-gray-700 p-4 rounded-2xl w-full max-w-md flex flex-col gap-4 shadow-2xl">
-        <div class="flex justify-between items-center border-b border-gray-700 pb-2">
-          <h3 class="text-sm font-bold text-white uppercase flex items-center gap-2">
-            <i class="fa-solid fa-camera text-emerald-400"></i> Leitor Contínuo de Câmara
-          </h3>
-          <button onclick="if(window.fecharCameraWeb) { window.fecharCameraWeb(); } else { document.getElementById('modalCamera').classList.add('hidden'); }" class="text-gray-400 hover:text-white text-sm font-bold px-2 py-1">✕</button>
-        </div>
-        
-        <!-- Elemento de vídeo e moldura qrbox compartilhados entre Android, iOS e navegador -->
-        <div id="videoPreviewCamera" class="w-full rounded-lg overflow-hidden bg-black aspect-[4/3] relative"></div>
+    <div id="modalCamera" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-3 backdrop-blur-sm sm:p-5 hidden">
+      <section class="max-h-[94vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-slate-700 bg-slate-900 text-slate-100 shadow-2xl">
+        <header class="sticky top-0 z-10 flex items-center justify-between border-b border-slate-700 bg-slate-900/95 px-4 py-3 backdrop-blur">
+          <div class="flex items-center gap-3">
+            <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-400">
+              <i class="fa-solid fa-barcode"></i>
+            </span>
+            <div>
+              <h2 class="text-sm font-bold text-white">Scanner de Produtos</h2>
+              <p class="text-[10px] uppercase tracking-wide text-slate-400">Vancely Software · PDV</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-3">
+            <span class="rounded-full bg-emerald-500/10 px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-emerald-400">Leitura contínua</span>
+            <button type="button" onclick="window.fecharCameraWeb()" class="rounded-lg p-2 text-slate-400 hover:bg-slate-800 hover:text-white" aria-label="Fechar scanner">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+        </header>
 
-        <!-- ELEMENTO OBRIGATÓRIO ONDE A CÂMARA É INJETADA -->
-        <div id="reader" class="w-full min-h-[220px] bg-black rounded overflow-hidden border border-gray-700"></div>
-        
-        <p id="camera-status" class="text-xs text-gray-400 text-center">Aponte a câmara para o código de barras.</p>
-        
-        <button onclick="if(window.fecharCameraWeb) { window.fecharCameraWeb(); } else { document.getElementById('modalCamera').classList.add('hidden'); }" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 rounded-xl text-xs transition-colors">
-          Fechar Câmara
-        </button>
-      </div>
+        <div class="space-y-4 p-4">
+          <section>
+            <div class="mb-2 flex items-center justify-between gap-2">
+              <h3 class="text-xs font-bold text-slate-200">Câmera ativa</h3>
+              <span id="camera-status" class="text-right text-[10px] text-emerald-400">Aguardando permissão da câmera...</span>
+            </div>
+            <div class="rounded-xl border border-slate-700 bg-slate-800 p-2">
+              <div class="relative overflow-hidden rounded-lg bg-slate-950">
+                <div id="reader" aria-label="Área de captura da câmera"></div>
+                <div class="pointer-events-none absolute inset-0 flex items-center justify-center">
+                  <div class="flex h-16 w-[78%] max-w-xs items-center justify-center rounded-lg border border-emerald-400/90 bg-slate-950/20 shadow-[0_0_20px_rgba(16,185,129,0.18)]">
+                    <i class="fa-solid fa-barcode text-2xl text-emerald-300/80"></i>
+                  </div>
+                </div>
+              </div>
+              <p class="pt-2 text-center text-[10px] text-slate-400">Posicione o próximo código dentro da área de captura.</p>
+            </div>
+          </section>
+
+          <section>
+            <div class="mb-1.5 flex items-center justify-between gap-2">
+              <label for="camera-codigo" class="text-[9px] font-bold uppercase tracking-wide text-slate-400">Código de barras completo</label>
+              <span id="camera-leitura-status" class="text-right text-[9px] text-slate-500">Nenhum código capturado</span>
+            </div>
+            <div class="rounded-lg border border-slate-800 bg-slate-950 px-3 py-2.5">
+              <input id="camera-codigo" readonly value="Aguardando leitura..." class="w-full bg-transparent text-center font-mono text-sm font-bold tracking-wider text-slate-100 outline-none">
+            </div>
+          </section>
+
+          <section>
+            <div class="mb-2 flex items-center justify-between gap-2">
+              <h3 class="text-xs font-bold text-white">Informações do produto</h3>
+              <span id="camera-produto-status" class="rounded-full bg-slate-800 px-2 py-1 text-[9px] font-bold uppercase text-slate-400">Aguardando leitura</span>
+            </div>
+            <div class="rounded-xl border border-slate-800 bg-slate-800/80 p-3">
+              <p class="mb-1 text-[9px] font-bold uppercase tracking-wide text-slate-400">Descrição</p>
+              <p id="camera-produto-nome" class="text-sm font-bold text-slate-100">Leia um código para consultar o produto</p>
+              <p id="camera-produto-categoria" class="mt-1 text-[10px] text-slate-400">Categoria: —</p>
+
+              <div class="mt-3 grid grid-cols-2 gap-2">
+                <div class="rounded-lg border border-slate-700/70 bg-slate-900/70 p-2.5">
+                  <p class="text-[9px] font-bold uppercase text-slate-400">Estoque atual</p>
+                  <p id="camera-produto-estoque" class="mt-1 text-sm font-bold text-slate-100">—</p>
+                  <p id="camera-produto-unidade" class="text-[9px] text-slate-500">Unidade: —</p>
+                </div>
+                <div class="rounded-lg border border-slate-700/70 bg-slate-900/70 p-2.5">
+                  <p class="text-[9px] font-bold uppercase text-emerald-400">Preço de venda</p>
+                  <p id="camera-produto-preco" class="mt-1 text-sm font-bold text-emerald-300">—</p>
+                  <p class="text-[9px] text-slate-500">Preço por unidade</p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <footer class="flex items-center justify-between gap-3 border-t border-slate-800 pt-3">
+            <div class="min-w-0">
+              <p class="text-[9px] uppercase tracking-wide text-slate-500">Integração com o caixa</p>
+              <p id="camera-integracao-status" class="truncate text-xs font-bold text-slate-300">Nenhum produto adicionado</p>
+            </div>
+            <button type="button" onclick="window.fecharCameraWeb()" class="shrink-0 rounded-lg bg-slate-700 px-4 py-2 text-xs font-bold text-white transition hover:bg-slate-600">Fechar scanner</button>
+          </footer>
+        </div>
+      </section>
     </div>
 
     <!-- Elemento oculto para impressão térmica opcional NFC-e (58mm / 80mm) -->

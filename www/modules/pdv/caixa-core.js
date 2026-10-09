@@ -926,10 +926,21 @@ export function alterarQtd(i, qtd) {
     if (q > 0) { itensVenda[i].qtd = q; atualizarTabelaVenda(); } 
 }
 
+function buscarProdutoPorCodigoScanner(codigo) {
+    const codigoNormalizado = String(codigo || '').trim().toLowerCase();
+    if (!codigoNormalizado) return null;
+
+    return produtosCache.find(produto =>
+        [produto.codigo_barras, produto.codigo, produto.id]
+            .some(valor => String(valor ?? '').trim().toLowerCase() === codigoNormalizado)
+    ) || null;
+}
+
 // ==========================================
 // EXPOSIÇÃO GLOBAL UNIFICADA (WINDOW)
 // ==========================================
 Object.assign(window, {
+    buscarProdutoPorCodigoScanner,
     verificarStatusCaixaServidor, iniciarRealtimeCaixa, atualizarPaginaCompleta,
     realizarLogout, focarBusca, aoDigitarBusca, tratarEnterBuscaCaixa,
     atualizarBadgesCaixaInterface, salvarPinAdmin, solicitarRemocaoItem,

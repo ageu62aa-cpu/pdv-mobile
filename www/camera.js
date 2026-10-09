@@ -46,22 +46,56 @@ function processarLeitura(codigo) {
     if (leituraBloqueada) return;
 
     leituraBloqueada = true;
-    const inputBusca = document.getElementById('inputBusca');
-    if (inputBusca) inputBusca.value = codigo;
+    const codigoInput = document.getElementById('camera-codigo');
+    const leituraStatus = document.getElementById('camera-leitura-status');
+    if (codigoInput) codigoInput.value = codigo;
+    if (leituraStatus) leituraStatus.textContent = `${codigo.length} dígitos identificados`;
 
-    const processarCodigo = window.tratarEnterBuscaCaixa;
-    if (typeof processarCodigo === 'function') {
-        processarCodigo({ key: 'Enter', preventDefault() {} });
-        atualizarStatusCamera(`Código lido: ${codigo}`);
-        tocarBipeLeitura();
+    const produto = window.buscarProdutoPorCodigoScanner?.(codigo);
+    if (produto) {
+        document.getElementById('camera-produto-status').textContent = 'Cadastrado';
+        document.getElementById('camera-produto-status').className = 'rounded-full bg-emerald-500/10 px-2 py-1 text-[9px] font-bold uppercase text-emerald-400';
+        document.getElementById('camera-produto-nome').textContent = produto.nome || 'Produto sem descrição';
+        document.getElementById('camera-produto-categoria').textContent = `Categoria: ${produto.categoria || 'Não informada'}`;
+        document.getElementById('camera-produto-estoque').textContent = Number(produto.estoque || 0).toLocaleString('pt-BR');
+        document.getElementById('camera-produto-unidade').textContent = `Unidade: ${produto.unidade || 'UN'}`;
+        document.getElementById('camera-produto-preco').textContent = Number(produto.preco_venda || produto.preco || 0).toLocaleString('pt-BR', {
+            style: 'currency',
+            currency: 'BRL'
+        });
+
+        try {
+            if (typeof window.adicionarItemVendaPorObjeto === 'function') {
+                window.adicionarItemVendaPorObjeto(JSON.stringify(produto).replace(/"/g, '&quot;'));
+                document.getElementById('camera-integracao-status').textContent = 'Produto adicionado ao caixa';
+            } else {
+                const inputBusca = document.getElementById('inputBusca');
+                if (inputBusca) inputBusca.value = codigo;
+                window.tratarEnterBuscaCaixa?.({ key: 'Enter', target: inputBusca, preventDefault() {} });
+                document.getElementById('camera-integracao-status').textContent = 'Código enviado para o caixa';
+            }
+            atualizarStatusCamera('Produto identificado e enviado ao caixa.');
+            tocarBipeLeitura();
+        } catch (error) {
+            atualizarStatusCamera('Produto identificado, mas não foi possível adicioná-lo ao caixa.', true);
+            document.getElementById('camera-integracao-status').textContent = 'Falha ao adicionar produto';
+            console.error('[PDV-CAMERA] Erro ao integrar o produto com o caixa:', error);
+        }
     } else {
-        atualizarStatusCamera('A função de busca do PDV ainda não está disponível.', true);
-        console.error('[PDV-CAMERA] window.tratarEnterBuscaCaixa não está disponível.');
+        document.getElementById('camera-produto-status').textContent = 'Não cadastrado';
+        document.getElementById('camera-produto-status').className = 'rounded-full bg-amber-500/10 px-2 py-1 text-[9px] font-bold uppercase text-amber-400';
+        document.getElementById('camera-produto-nome').textContent = 'Produto não encontrado no cadastro';
+        document.getElementById('camera-produto-categoria').textContent = 'Categoria: —';
+        document.getElementById('camera-produto-estoque').textContent = '—';
+        document.getElementById('camera-produto-unidade').textContent = 'Unidade: —';
+        document.getElementById('camera-produto-preco').textContent = '—';
+        document.getElementById('camera-integracao-status').textContent = 'Não adicionado';
+        atualizarStatusCamera(`Código ${codigo} não localizado no cadastro.`, true);
     }
 
     window.setTimeout(() => {
         leituraBloqueada = false;
-        if (scanner?.isScanning) atualizarStatusCamera('Leitor contínuo ativo. Aponte para outro código.');
+        if (scanner?.isScanning && produto) atualizarStatusCamera('Leitor contínuo ativo. Aponte para outro código.');
     }, 1200);
 }
 
@@ -101,6 +135,16 @@ async function iniciarLeitura() {
     }
 
     if (!scanner) scanner = new window.Html5Qrcode(READER_ID, { verbose: false });
+    document.getElementById('camera-codigo').value = 'Aguardando leitura...';
+    document.getElementById('camera-leitura-status').textContent = 'Nenhum código capturado';
+    document.getElementById('camera-produto-status').textContent = 'Aguardando leitura';
+    document.getElementById('camera-produto-status').className = 'rounded-full bg-slate-800 px-2 py-1 text-[9px] font-bold uppercase text-slate-400';
+    document.getElementById('camera-produto-nome').textContent = 'Leia um código para consultar o produto';
+    document.getElementById('camera-produto-categoria').textContent = 'Categoria: —';
+    document.getElementById('camera-produto-estoque').textContent = '—';
+    document.getElementById('camera-produto-unidade').textContent = 'Unidade: —';
+    document.getElementById('camera-produto-preco').textContent = '—';
+    document.getElementById('camera-integracao-status').textContent = 'Nenhum produto adicionado';
 
     const config = obterConfigLeitura();
     try {
