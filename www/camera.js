@@ -272,6 +272,13 @@ async function iniciarLeitura() {
     document.getElementById('camera-produto-preco').textContent = '—';
     document.getElementById('camera-integracao-status').textContent = 'Nenhum produto adicionado';
 
+    Object.assign(container.style, {
+        display: 'block',
+        width: '100%',
+        minHeight: '300px',
+        position: 'relative'
+    });
+
     const formatosToSupport = obterFormatosSuportados();
     const config = {
         fps: 10,
@@ -281,13 +288,14 @@ async function iniciarLeitura() {
         }),
         disableFlip: false,
         videoConstraints: {
-            width: { ideal: 1920 },
-            height: { ideal: 1080 }
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+            facingMode: { ideal: 'environment' }
         }
     };
     if (formatosToSupport?.length) config.formatsToSupport = formatosToSupport;
 
-    // Prioriza a câmera traseira e recorre à câmera padrão quando necessário.
+    // Prioriza a câmera traseira e recorre a uma câmera padrão quando necessário.
     try {
         await scanner.start(
             { facingMode: { ideal: 'environment' } },
@@ -297,12 +305,7 @@ async function iniciarLeitura() {
         );
     } catch (errAmbiente) {
         console.warn('[PDV-CAMERA] Tentando inicialização genérica de vídeo...', errAmbiente);
-        await scanner.start(
-            {},
-            config,
-            processarLeitura,
-            () => {}
-        );
+        await scanner.start({}, config, processarLeitura, () => {});
     }
 
     const videoElement = container.querySelector('video');
