@@ -406,13 +406,17 @@ function descreverErroCamera(error) {
 export async function pararCamera() {
     const modal = document.getElementById(MODAL_ID);
     window.removeEventListener('keydown', tratarEscapeCamera);
-    if (scanner?.isScanning) {
+
+    if (scanner) {
         try {
-            await scanner.stop();
+            if (scanner.isScanning) {
+                await scanner.stop();
+            }
             await scanner.clear();
-            scanner = null;
         } catch (error) {
-            console.error('[PDV-CAMERA] Erro ao encerrar a câmera:', error);
+            console.warn('[PDV-CAMERA] Aviso ao limpar o scanner:', error);
+        } finally {
+            scanner = null;
         }
     }
 
