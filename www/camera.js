@@ -299,42 +299,67 @@ async function iniciarLeitura() {
         }
     };
     if (formatosToSupport?.length) config.formatsToSupport = formatosToSupport;
-    await iniciarCameraTraseira(config);
+    const cameraTraseira = await localizarCameraTraseira();
+    atualizarStatusCamera(`Iniciando câmera traseira: ${cameraTraseira.label || 'câmera selecionada'}...`);
+    await scanner.start(
+        cameraTraseira.deviceId
+            ? { deviceId: { exact: cameraTraseira.deviceId } }
+            : { facingMode: { exact: 'environment' } },
+        config,
+        processarLeitura,
+        () => {}
+    );
+
+    const configuracoesVideo = scanner.getRunningTrackSettings();
+    const nomeCamera = cameraTraseira.label.toLowerCase();
+    if (configuracoesVideo.facingMode === 'user' || /front|facetime|frontal/i.test(nomeCamera)) {
+        await scanner.stop();
+        await scanner.clear();
+        scanner = null;
+        throw new Error('O navegador iniciou a câmera frontal. Permita o acesso à câmera traseira e tente novamente.');
+    }
+
     const botaoFoco = document.getElementById('camera-focus-button');
     if (botaoFoco) botaoFoco.disabled = false;
     await configurarFocoAutomatico();
     configurarZoomCamera();
-    atualizarStatusCamera('Leitor contínuo ativo. Aponte para um código.');
-    console.info('[PDV-CAMERA] Leitor contínuo ativo.');
+    atualizarStatusCamera(`Câmera traseira ativa${cameraTraseira.label ? `: ${cameraTraseira.label}` : ''}. Aponte para um código.`);
+    console.info('[PDV-CAMERA] Câmera traseira confirmada.', configuracoesVideo);
 }
 
-async function iniciarCameraTraseira(config) {
-    const callbacks = [processarLeitura, () => {}];
+async function localizarCameraTraseira() {
+    let streamTeste;
     try {
-        await scanner.start(
-            { facingMode: { exact: 'environment' } },
-            config,
-            ...callbacks
+        streamTeste = await navigator.mediaDevices.getUserMedia({
+            audio: false,
+            video: {
+                facingMode: { exact: 'environment' },
+                width: { ideal: 1920 },
+                height: { ideal: 1080 }
+            }
+        });
+
+        const track = streamTeste.getVideoTracks()[0];
+        const settings = track.getSettings();
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const device = devices.find(({ kind, deviceId }) =>
+            kind === 'videoinput' && deviceId === settings.deviceId
         );
-        return;
-    } catch (erroCameraTraseira) {
-        console.warn('[PDV-CAMERA] A seleção direta da câmera traseira falhou; procurando dispositivo traseiro identificado.', erroCameraTraseira);
-    }
+        const label = device?.label || track.label || '';
+        if (settings.facingMode === 'user' || /front|facetime|frontal/i.test(label)) {
+            throw new Error('O navegador selecionou a câmera frontal ao solicitar a traseira.');
+        }
+        if (!settings.deviceId && settings.facingMode !== 'environment') {
+            throw new Error('O navegador não identificou o dispositivo da câmera traseira.');
+        }
 
-    const cameras = await window.Html5Qrcode.getCameras();
-    const cameraTraseira = cameras.find(({ label }) =>
-        /back|rear|environment|traseir|trás/i.test(label)
-        && !/front|user|facetime|frontal/i.test(label)
-    );
-    if (!cameraTraseira) {
-        throw new Error('Não foi possível confirmar qual câmera é a traseira. A câmera frontal não será iniciada.');
+        return { deviceId: settings.deviceId, label };
+    } catch (erroSelecaoTraseira) {
+        console.error('[PDV-CAMERA] Não foi possível obter um dispositivo traseiro confirmado:', erroSelecaoTraseira);
+        throw new Error('Não foi possível acessar a câmera traseira. Verifique as permissões da câmera no Safari e tente novamente.');
+    } finally {
+        streamTeste?.getTracks().forEach(track => track.stop());
     }
-
-    await scanner.start(
-        { deviceId: { exact: cameraTraseira.id } },
-        config,
-        ...callbacks
-    );
 }
 
 export async function abrirLeitorCamera() {
