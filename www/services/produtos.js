@@ -6,23 +6,25 @@ import {
     empresaAtualId, produtosCache, produtoEmPesagemAtual, setProdutosCache, 
     setProdutoEmPesagemAtual, itensVenda, setItensVenda 
 } from '../core/state.js';
+import { supabaseClient } from '../core/config.js';
 
 // Índice do item selecionado via teclado na lista de sugestões
 let indiceItemSelecionadoTeclado = -1;
 
 export async function carregarProdutosCache() {
-    if (!empresaAtualId) return;
+    const idEmpresa = empresaAtualId || window.empresaAtualId;
+    if (!idEmpresa) throw new Error('Empresa não identificada para carregar os produtos.');
     const { data, error } = await supabaseClient
         .from('produtos')
         .select('*')
-        .eq('empresa_id', empresaAtualId)
+        .eq('empresa_id', idEmpresa)
         .order('nome', { ascending: true });
         
     if (error) {
         console.error("Erro ao carregar produtos:", error);
-        return;
+        throw error;
     }
-    if (data) setProdutosCache(data);
+    setProdutosCache(data || []);
 }
 
 export function aoDigitarBusca(termo) {

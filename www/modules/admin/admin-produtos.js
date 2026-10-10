@@ -167,7 +167,7 @@ function renderizarTabelaAdmin(lista) {
 
     tbody.innerHTML = lista.map(p => `
         <tr class="hover:bg-gray-750 transition-colors">
-            <td class="p-3 font-mono text-xs text-gray-300">${p.codigo || '-'}</td>
+            <td class="p-3 font-mono text-xs text-gray-300">${p.codigo_barras || p.codigo || '-'}</td>
             <td class="p-3 font-medium text-white">${p.nome} ${p.unidade === 'KG' ? '<span class="text-amber-400 text-[10px] font-bold">(KG)</span>' : ''}</td>
             <td class="p-3 text-gray-300 text-xs">${p.categoria || 'Geral'}</td>
             <td class="p-3 font-bold text-emerald-400">R$ ${Number(p.preco || 0).toFixed(2)}${p.unidade === 'KG' ? '/kg' : ''}</td>
@@ -183,9 +183,10 @@ function renderizarTabelaAdmin(lista) {
 window.filtrarProdutosAdmin = function(termo) {
     const t = termo.toLowerCase();
     const filtrados = produtosCacheAdmin.filter(p => 
-        p.nome.toLowerCase().includes(t) || 
-        (p.codigo && p.codigo.toLowerCase().includes(t)) ||
-        (p.categoria && p.categoria.toLowerCase().includes(t))
+        String(p.nome || '').toLowerCase().includes(t) ||
+        String(p.codigo || '').toLowerCase().includes(t) ||
+        String(p.codigo_barras || '').toLowerCase().includes(t) ||
+        String(p.categoria || '').toLowerCase().includes(t)
     );
     renderizarTabelaAdmin(filtrados);
 };
@@ -215,7 +216,7 @@ window.abrirModalEditarProduto = function(p) {
     document.getElementById('modalTituloProduto').innerHTML = `<i class="fa-solid fa-pen-to-square text-emerald-500"></i> Editar Produto`;
     document.getElementById('formProdId').value = p.id;
     document.getElementById('formProdNome').value = p.nome || '';
-    document.getElementById('formProdCodigo').value = p.codigo || '';
+    document.getElementById('formProdCodigo').value = p.codigo_barras || p.codigo || '';
     document.getElementById('formProdCategoria').value = p.categoria || 'Geral';
     document.getElementById('formProdPreco').value = p.preco || 0;
     document.getElementById('formProdEstoque').value = p.estoque || 0;
@@ -235,6 +236,7 @@ window.salvarProdutoAdmin = async function(e) {
     const dados = {
         nome: document.getElementById('formProdNome').value.trim(),
         codigo: document.getElementById('formProdCodigo').value.trim(),
+        codigo_barras: document.getElementById('formProdCodigo').value.trim(),
         categoria: document.getElementById('formProdCategoria').value.trim(),
         preco: parseFloat(document.getElementById('formProdPreco').value) || 0,
         estoque: parseFloat(document.getElementById('formProdEstoque').value) || 0,
@@ -266,7 +268,7 @@ window.salvarProdutoAdmin = async function(e) {
         alert('Produto cadastrado com sucesso!');
     }
 
-    fecharModalProdutoAdmin();
+    window.fecharModalProdutoAdmin();
     await carregarProdutosAdmin();
 };
 

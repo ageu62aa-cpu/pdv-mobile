@@ -583,8 +583,9 @@ export function aoDigitarBusca(e) {
     }
 
     const filtrados = produtosCache.filter(p => 
-        (p.nome && p.nome.toLowerCase().includes(termo)) || 
-        (p.codigo_barras && p.codigo_barras.toLowerCase().includes(termo))
+        String(p.nome || '').toLowerCase().includes(termo) ||
+        String(p.codigo_barras || '').toLowerCase().includes(termo) ||
+        String(p.codigo || '').toLowerCase().includes(termo)
     );
 
     if (filtrados.length === 0) {
@@ -605,7 +606,7 @@ export function aoDigitarBusca(e) {
     suggestionsBox.classList.remove('hidden');
 }
 
-export function tratarEnterBuscaCaixa(e) {
+export async function tratarEnterBuscaCaixa(e) {
     if (e.key === 'Enter') {
         e.preventDefault();
         const input = document.getElementById('inputBusca');
@@ -623,7 +624,22 @@ export function tratarEnterBuscaCaixa(e) {
             }
         }
 
-        const encontrado = produtosCache.find(p => p.codigo_barras === valor || p.id === valor);
+        const valorNormalizado = valor.toLowerCase();
+        let encontrado = produtosCache.find(p =>
+            String(p.codigo_barras || '').trim().toLowerCase() === valorNormalizado ||
+            String(p.codigo || '').trim().toLowerCase() === valorNormalizado ||
+            String(p.nome || '').trim().toLowerCase() === valorNormalizado ||
+            String(p.id) === valor
+        );
+        if (!encontrado && !valor.includes('*')) {
+            try {
+                encontrado = await buscarProdutoPorCodigoScanner(valor);
+            } catch (error) {
+                console.error('PDV-VS: Erro ao consultar produto no Supabase:', error);
+                alert(`PDV-VS: Não foi possível consultar o produto no servidor: ${error.message}`);
+                return;
+            }
+        }
         if (encontrado) {
             if (window.adicionarProdutoComQtd) {
                 window.adicionarProdutoComQtd(encontrado, qtdDesejada);
