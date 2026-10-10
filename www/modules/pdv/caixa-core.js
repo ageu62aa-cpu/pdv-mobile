@@ -1228,31 +1228,32 @@ export function atualizarTabelaVenda() {
         
         const qtdDisplay = item.isPeso
             ? `<span class="text-amber-300 font-bold">${qtd.toFixed(3)} kg</span>`
-            : `<input type="number" min="1" step="1" value="${qtd}" onchange="window.alterarQtd(${i}, this.value)" aria-label="Quantidade de ${item.nome}" class="w-20 text-center bg-gray-900 border border-gray-600 rounded px-2 py-1 text-white">`;
+            : `<input type="number" min="1" step="1" value="${qtd}" oninput="window.alterarQtd(${i}, this.value)" onchange="window.alterarQtd(${i}, this.value, true)" aria-label="Quantidade de ${item.nome}" class="w-16 shrink-0 text-center bg-gray-900 border border-gray-600 rounded px-2 py-1 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500">`;
 
         if (tbody) {
             tabelaHtml += `<tr class="border-b">
                 <td class="p-2">${item.nome} ${item.isPeso ? '<span class="text-[10px] text-amber-300 block">Pesado (Baixa por Peso)</span>' : ''}</td>
-                <td class="p-2">${qtdDisplay}</td>
-                <td class="p-2">R$ ${preco.toFixed(2)}${item.isPeso ? '/kg' : ''}</td>
-                <td class="p-2 font-bold">R$ ${subtotalItem.toFixed(2)}</td>
+                <td class="p-2"><div class="flex items-center justify-center gap-2">${qtdDisplay}<span class="whitespace-nowrap">R$ ${preco.toFixed(2)}${item.isPeso ? '/kg' : ''}</span></div></td>
+                <td class="p-2 text-right font-bold"><span data-subtotal-item="${i}">R$ ${subtotalItem.toFixed(2)}</span></td>
                 <td class="p-2 text-center"><button onclick="window.solicitarRemocaoItem(${i})" aria-label="Remover ${item.nome}" class="text-rose-400 hover:text-rose-300"><i class="fa-solid fa-trash"></i></button></td>
             </tr>`;
         }
 
         if (listaCarrinho) {
-            carrinhoHtml += `<div class="grid grid-cols-12 items-center gap-2 p-3 text-sm text-gray-100">
-                <div class="col-span-6 min-w-0 font-medium">
-                    <span class="block truncate">${item.nome}</span>
-                    ${item.isPeso ? '<span class="text-[10px] text-amber-300">Pesado (Baixa por Peso)</span>' : ''}
+            carrinhoHtml += `<div class="grid grid-cols-12 items-center gap-2 px-4 py-3 text-sm text-gray-100 hover:bg-gray-700/50">
+                <div class="col-span-6 flex min-w-0 items-center justify-between gap-2 font-medium">
+                    <div class="min-w-0">
+                        <span class="block truncate">${item.nome}</span>
+                        ${item.isPeso ? '<span class="text-[10px] text-amber-300">Pesado (Baixa por Peso)</span>' : ''}
+                    </div>
+                    <button onclick="window.solicitarRemocaoItem(${i})" aria-label="Remover ${item.nome}" class="shrink-0 px-1 text-rose-400 hover:text-rose-300"><i class="fa-solid fa-trash"></i></button>
                 </div>
-                <div class="col-span-3 flex flex-col items-center gap-1">
+                <div class="col-span-3 flex items-center justify-center gap-2">
                     ${qtdDisplay}
-                    <span class="text-[11px] text-gray-400">R$ ${preco.toFixed(2)}${item.isPeso ? '/kg' : ''}</span>
+                    <span class="whitespace-nowrap text-[11px] text-gray-300">R$ ${preco.toFixed(2)}${item.isPeso ? '/kg' : ''}</span>
                 </div>
-                <div class="col-span-3 flex items-center justify-end gap-2">
-                    <span class="font-bold text-right">R$ ${subtotalItem.toFixed(2)}</span>
-                    <button onclick="window.solicitarRemocaoItem(${i})" aria-label="Remover ${item.nome}" class="text-rose-400 hover:text-rose-300 px-1"><i class="fa-solid fa-trash"></i></button>
+                <div class="col-span-3 min-w-0 text-right">
+                    <span data-subtotal-item="${i}" class="whitespace-nowrap font-bold">R$ ${subtotalItem.toFixed(2)}</span>
                 </div>
             </div>`;
         }
@@ -1269,9 +1270,36 @@ export function atualizarTabelaVenda() {
     if (txtResumoTotal) txtResumoTotal.innerText = `R$ ${total.toFixed(2)}`;
 }
 
-export function alterarQtd(i, qtd) { 
-    const q = parseFloat(qtd); 
-    if (q > 0) { itensVenda[i].qtd = q; atualizarTabelaVenda(); } 
+export function alterarQtd(i, qtd, finalizarEdicao = false) {
+    const item = itensVenda[i];
+    if (!item) return;
+
+    const quantidade = Number(qtd);
+    if (!Number.isFinite(quantidade) || quantidade <= 0) {
+        if (finalizarEdicao) {
+            const input = [...document.querySelectorAll('#listaCarrinhoItens input[aria-label]')]
+                .find(elemento => elemento.getAttribute('aria-label') === `Quantidade de ${item.nome}`);
+            if (input) input.value = String(item.qtd);
+        }
+        return;
+    }
+
+    item.qtd = quantidade;
+    const preco = Number(item.preco_venda ?? item.preco ?? 0);
+    const subtotalItem = quantidade * preco;
+    document.querySelectorAll(`[data-subtotal-item="${i}"]`).forEach(element => {
+        element.textContent = `R$ ${subtotalItem.toFixed(2)}`;
+    });
+
+    const totalVenda = itensVenda.reduce((acc, vendaItem) => {
+        const precoItem = Number(vendaItem.preco_venda ?? vendaItem.preco ?? 0);
+        return acc + (Number(vendaItem.qtd) || 0) * precoItem;
+    }, 0);
+    const valorFormatado = `R$ ${totalVenda.toFixed(2)}`;
+    ['txtSubtotal', 'txtTotal', 'txtResumoSubtotal', 'txtResumoTotalGeral'].forEach(id => {
+        const elemento = document.getElementById(id);
+        if (elemento) elemento.innerText = valorFormatado;
+    });
 }
 
 async function buscarProdutoPorCodigoScanner(codigo) {
