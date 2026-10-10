@@ -141,14 +141,8 @@ function atualizarIdentidadeCaixa({ user, cargo }) {
     const terminal = cargo === 'admin_mercado' ? '#01' : '#02';
     const infoOperador = document.getElementById('txtInfoOperador');
     if (infoOperador) {
-        infoOperador.textContent = '';
-        const nomeEl = document.createElement('strong');
-        nomeEl.className = 'text-gray-200';
-        nomeEl.textContent = nome;
-        const terminalEl = document.createElement('strong');
-        terminalEl.className = 'text-gray-200';
-        terminalEl.textContent = terminal;
-        infoOperador.append('Perfil: ', nomeEl, ' | Caixa: ', terminalEl);
+        infoOperador.textContent = `${cargo === 'admin_mercado' ? 'Admin' : 'Operador'} · ${terminal}`;
+        infoOperador.title = `${nome} · Caixa ${terminal}`;
     }
 
     const botaoAdmin = document.getElementById('btnPainelAdmin');
@@ -1444,6 +1438,12 @@ async function buscarProdutoPorCodigoScanner(codigo) {
     const codigoNormalizado = String(codigo || '').trim();
     if (!codigoNormalizado) return null;
 
+    const produtoEmCache = produtosCache.find(produto =>
+        [produto.codigo_barras, produto.codigo, produto.id]
+            .some(valor => String(valor ?? '').trim().toLocaleLowerCase() === codigoNormalizado.toLocaleLowerCase())
+    );
+    if (produtoEmCache) return produtoEmCache;
+
     const idEmpresa = empresaAtualId
         || window.empresaAtualId;
     if (!idEmpresa) {
@@ -1459,25 +1459,6 @@ async function buscarProdutoPorCodigoScanner(codigo) {
             .select('*')
             .eq('empresa_id', idEmpresa)
             .eq(campo, codigoNormalizado)
-            .limit(1)
-            .maybeSingle();
-        if (error) throw error;
-        if (data) {
-            const cacheAtualizado = produtosCache.filter(produto => String(produto.id) !== String(data.id));
-            setProdutosCache([...cacheAtualizado, data]);
-            return data;
-        }
-    }
-
-    const produtoEmCache = produtosCache.find(produto =>
-        String(produto.id) === codigoNormalizado
-    );
-    if (produtoEmCache) {
-        const { data, error } = await db
-            .from('produtos')
-            .select('*')
-            .eq('empresa_id', idEmpresa)
-            .eq('id', produtoEmCache.id)
             .limit(1)
             .maybeSingle();
         if (error) throw error;

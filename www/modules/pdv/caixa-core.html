@@ -7,6 +7,7 @@
     <meta name="theme-color" content="#111827">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <link rel="apple-touch-icon" href="../../assets/pwa-192.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="../../assets/pwa-192.png">
     <title>Vancely Software - Frente de Caixa</title>
     <script src="../../pwa.js" defer></script>
     <!-- Tailwind CSS -->
@@ -126,13 +127,94 @@
         .item-sugestao-busca {
             transition: all 120ms ease;
         }
+
+        @media (max-width: 640px) {
+            #pdvHeader {
+                display: grid;
+                grid-template-columns: minmax(0, 1fr);
+                gap: 0.5rem;
+                padding: 0.5rem;
+            }
+
+            #pdvHeaderIdentidade {
+                min-width: 0;
+                flex: 1 1 auto;
+                gap: 0.4rem;
+            }
+
+            #pdvHeaderIdentidade img {
+                width: 2rem;
+                height: 2rem;
+            }
+
+            #pdvHeaderIdentidade h1 {
+                max-width: 10rem;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                font-size: 0.7rem;
+            }
+
+            #txtStatusCaixaHeader {
+                max-width: 10rem;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                font-size: 0.6rem;
+            }
+
+            #pdvHeaderAcoes {
+                width: 100%;
+                flex-wrap: nowrap;
+                justify-content: space-between;
+                gap: 0.3rem;
+            }
+
+            #pdvHeaderAcoes #btnAbrirCaixaHeader,
+            #pdvHeaderAcoes #btnFecharCaixaHeader,
+            #pdvHeaderAcoes #btnPainelAdmin,
+            #pdvHeaderAcoes #btnSairCaixa,
+            #pdvHeaderAcoes #btnPWAAction {
+                width: 2rem;
+                height: 2rem;
+                min-width: 2rem;
+                padding: 0;
+                justify-content: center;
+                border-radius: 0.5rem;
+            }
+
+            #txtInfoOperador {
+                max-width: 6.5rem;
+                padding: 0.2rem 0.35rem;
+                font-size: 0.55rem;
+                line-height: 1.1;
+            }
+
+            #pdvHeaderAcoes .header-separador {
+                display: none;
+            }
+        }
+
+        @media (max-width: 380px) {
+            #pdvHeaderIdentidade h1 {
+                max-width: 7.5rem;
+            }
+
+            #txtStatusCaixaHeader {
+                max-width: 7.5rem;
+            }
+
+            #txtInfoOperador {
+                max-width: 5.5rem;
+            }
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-gray-100 font-sans h-screen flex flex-col overflow-hidden">
 
     <!-- Topo / Header do PDV -->
-    <header class="bg-gray-800 border-b border-gray-700 px-6 py-3 flex justify-between items-center shadow-md">
-        <div class="flex items-center gap-3">
+    <header id="pdvHeader" class="bg-gray-800 border-b border-gray-700 px-6 py-3 flex justify-between items-center shadow-md">
+        <div id="pdvHeaderIdentidade" class="flex items-center gap-3">
             <div class="w-10 h-10 rounded-full overflow-hidden border-2 border-emerald-600 shadow-md flex items-center justify-center bg-white">
                 <img src="../../assets/caixa.registradora.jpeg" alt="Caixa Registradora" class="w-14 h-14 object-cover scale-125">
             </div>
@@ -145,31 +227,30 @@
         </div>
 
         <!-- Botões de Gestão de Caixa -->
-        <div class="flex items-center gap-2">
+        <div id="pdvHeaderAcoes" class="flex items-center gap-2">
             <!-- Botão Estilo "Abrir no app" -->
             <button id="btnAbrirNoApp" style="display: none;" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-sm font-semibold flex items-center gap-2 shadow-md">
                 <i class="fa-solid fa-arrow-up-right-from-square"></i> Abrir no app
             </button>
 
             <!-- Botão de Instalação PWA -->
-            <button id="btnPWAAction" style="display: none;" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-sm font-semibold flex items-center gap-2 shadow-md transition-all">
-                <i id="pwaIcon" class="fa-solid fa-download"></i> 
-                <span id="pwaText">Instalar App</span>
+            <button id="btnPWAAction" aria-label="Instalar PDV-VS" title="Instalar PDV-VS" style="display: none;" class="bg-emerald-600 hover:bg-emerald-700 text-white w-9 h-9 rounded-lg flex items-center justify-center shadow-md transition-all">
+                <i id="pwaIcon" class="fa-solid fa-download" aria-hidden="true"></i>
             </button>
 
-            <button onclick="window.acionarAbrirCaixa()" id="btnAbrirCaixaHeader" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-lg text-xs font-bold transition shadow flex items-center gap-2">
-                <i class="fa-solid fa-unlock"></i> Abrir Caixa
+            <button onclick="window.acionarAbrirCaixa()" id="btnAbrirCaixaHeader" aria-label="Abrir caixa" title="Abrir caixa" class="bg-emerald-600 hover:bg-emerald-700 text-white w-9 h-9 rounded-lg text-xs font-bold transition shadow flex items-center justify-center">
+                <i class="fa-solid fa-lock-open" aria-hidden="true"></i>
             </button>
-            <button onclick="window.acionarFecharCaixa()" id="btnFecharCaixaHeader" class="bg-red-600/80 hover:bg-red-600 text-white px-3.5 py-2 rounded-lg text-xs font-bold transition shadow flex items-center gap-2">
-                <i class="fa-solid fa-lock"></i> Fechar Caixa
+            <button onclick="window.acionarFecharCaixa()" id="btnFecharCaixaHeader" aria-label="Fechar caixa" title="Fechar caixa" class="bg-red-600/80 hover:bg-red-600 text-white w-9 h-9 rounded-lg text-xs font-bold transition shadow flex items-center justify-center">
+                <i class="fa-solid fa-lock" aria-hidden="true"></i>
             </button>
-            <div class="h-6 w-px bg-gray-700 mx-1"></div>
-            <span id="txtInfoOperador" class="text-xs text-gray-400">Operador: <strong class="text-gray-200">Ativo</strong> | Caixa: <strong class="text-gray-200">#01</strong></span>
+            <div class="header-separador h-6 w-px bg-gray-700 mx-1"></div>
+            <span id="txtInfoOperador" class="text-xs text-gray-300 bg-gray-900 border border-gray-700 rounded-lg px-2 py-1" title="Operador do caixa">Operador · #01</span>
             
-            <button id="btnPainelAdmin" style="display: none;" onclick="window.location.href='../admin/admin.html'" class="w-9 h-9 rounded-full overflow-hidden border-2 border-emerald-600 hover:border-emerald-400 shadow-md transition transform hover:scale-105 flex items-center justify-center bg-white ml-1 focus:outline-none" title="Painel administrativo">
+            <button id="btnPainelAdmin" style="display: none;" onclick="window.location.href='../admin/admin.html'" class="w-9 h-9 rounded-lg overflow-hidden border border-emerald-600 hover:border-emerald-400 shadow-md transition flex items-center justify-center bg-white ml-1 focus:outline-none" title="Painel administrativo" aria-label="Abrir painel administrativo">
                 <img src="../../assets/botao-admin.jpeg" alt="Admin" class="w-12 h-12 object-cover scale-125">
             </button>
-            <button onclick="window.location.href='../auth/auth.html'" class="bg-red-900/50 hover:bg-red-900 text-red-200 px-3 py-2 rounded-lg text-xs font-bold transition border border-red-800">Sair</button>
+            <button id="btnSairCaixa" onclick="window.location.href='../auth/auth.html'" class="bg-red-900/50 hover:bg-red-900 text-red-200 w-9 h-9 rounded-lg text-xs font-bold transition border border-red-800 flex items-center justify-center" title="Sair" aria-label="Sair"><i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i></button>
         </div>
     </header>
 

@@ -7,18 +7,81 @@
     <meta name="theme-color" content="#111827">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <link rel="apple-touch-icon" href="../../assets/pwa-192.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="../../assets/pwa-192.png">
     <title>Vancely Software - Painel Administrativo</title>
     <script src="../../pwa.js" defer></script>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome para Ícones -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @media (max-width: 640px) {
+            #adminHeader {
+                gap: 0.5rem;
+                padding: 0.5rem;
+            }
+
+            #adminBrand {
+                min-width: 0;
+                gap: 0.4rem;
+                flex: 1 1 auto;
+            }
+
+            #adminBrand img {
+                width: 2rem;
+                height: 2rem;
+            }
+
+            #adminBrand h1 {
+                max-width: 9rem;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                font-size: 0.65rem;
+            }
+
+            #adminHeaderActions {
+                gap: 0.3rem;
+            }
+
+            #adminHeaderActions a {
+                width: 2rem;
+                height: 2rem;
+                padding: 0;
+                justify-content: center;
+            }
+
+            #adminHeaderActions .action-label {
+                display: none;
+            }
+
+            #adminLayout {
+                padding: 0.5rem;
+                gap: 0.5rem;
+            }
+
+            #adminTabs {
+                padding: 0.4rem;
+                gap: 0.25rem;
+            }
+
+            #adminTabs .tab-btn {
+                padding: 0.45rem 0.6rem;
+                font-size: 0.65rem;
+                white-space: nowrap;
+            }
+
+            #admin-conteudo-dinamico {
+                padding: 0.75rem;
+            }
+        }
+    </style>
 </head>
 <body class="bg-gray-900 text-gray-100 font-sans min-h-screen flex flex-col overflow-x-hidden">
 
     <!-- Cabeçalho do Admin -->
-    <header class="bg-gray-800 border-b border-gray-700 px-6 py-3 flex justify-between items-center shadow-md">
-        <div class="flex items-center gap-3">
+    <header id="adminHeader" class="bg-gray-800 border-b border-gray-700 px-6 py-3 flex justify-between items-center shadow-md">
+        <div id="adminBrand" class="flex items-center gap-3">
             <div class="w-10 h-10 rounded-full overflow-hidden border-2 border-emerald-600 shadow-md flex items-center justify-center bg-white">
                 <img src="../../assets/botao-admin.jpeg" alt="Admin" class="w-14 h-14 object-cover scale-125">
             </div>
@@ -29,20 +92,20 @@
                 </p>
             </div>
         </div>
-        <div class="flex items-center gap-3">
-            <a href="../pdv/caixa-core.html" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3.5 py-2 rounded-lg font-bold transition-colors shadow flex items-center gap-2">
-                <i class="fa-solid fa-cash-register"></i> Voltar ao Caixa
+        <div id="adminHeaderActions" class="flex items-center gap-3">
+            <a href="../pdv/caixa-core.html" aria-label="Voltar ao caixa" title="Voltar ao caixa" class="bg-emerald-600 hover:bg-emerald-700 text-white w-9 h-9 rounded-lg font-bold transition-colors shadow flex items-center justify-center">
+                <i class="fa-solid fa-cash-register" aria-hidden="true"></i>
             </a>
-            <a href="../auth/auth.html" class="bg-red-900/50 hover:bg-red-900 text-red-200 text-xs px-3.5 py-2 rounded-lg font-bold transition-colors border border-red-800">
-                Sair
+            <a href="../auth/auth.html" aria-label="Sair" title="Sair" class="bg-red-900/50 hover:bg-red-900 text-red-200 w-9 h-9 rounded-lg font-bold transition-colors border border-red-800 flex items-center justify-center">
+                <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
             </a>
         </div>
     </header>
 
     <!-- Conteúdo Principal com Abas -->
-    <main class="flex-1 max-w-7xl mx-auto w-full p-6 flex flex-col md:flex-row gap-6">
+    <main id="adminLayout" class="flex-1 max-w-7xl mx-auto w-full p-6 flex flex-col md:flex-row gap-6">
         <!-- Menu Lateral de Abas -->
-        <aside class="w-full md:w-64 bg-gray-800 border border-gray-700 rounded-xl p-3 h-fit flex flex-row md:flex-col gap-1.5 overflow-x-auto shadow-sm">
+        <aside id="adminTabs" class="w-full md:w-64 bg-gray-800 border border-gray-700 rounded-xl p-3 h-fit flex flex-row md:flex-col gap-1.5 overflow-x-auto shadow-sm">
             <button data-tab="produtos" class="tab-btn text-left px-4 py-3 rounded-lg text-xs font-bold bg-emerald-600 text-white transition-colors flex items-center gap-2 shadow">
                 <i class="fa-solid fa-boxes-stacked w-4"></i> Produtos e Estoque
             </button>
