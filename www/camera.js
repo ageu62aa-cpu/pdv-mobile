@@ -93,15 +93,16 @@ async function processarLeitura(codigo) {
                 currency: 'BRL'
             });
 
-            if (typeof window.adicionarItemVendaPorObjeto === 'function') {
+            if (typeof window.adicionarProdutoAoCarrinho === 'function') {
+                window.adicionarProdutoAoCarrinho(produto);
+            } else if (typeof window.adicionarProdutoComQtd === 'function') {
+                window.adicionarProdutoComQtd(produto);
+            } else if (typeof window.adicionarItemVendaPorObjeto === 'function') {
                 window.adicionarItemVendaPorObjeto(JSON.stringify(produto).replace(/"/g, '&quot;'));
-                document.getElementById('camera-integracao-status').textContent = 'Produto adicionado ao caixa';
             } else {
-                const inputBusca = document.getElementById('inputBusca');
-                if (inputBusca) inputBusca.value = codigo;
-                window.tratarEnterBuscaCaixa?.({ key: 'Enter', target: inputBusca, preventDefault() {} });
-                document.getElementById('camera-integracao-status').textContent = 'Código enviado para o caixa';
+                throw new Error('A função de inclusão de produtos no carrinho não está disponível.');
             }
+            document.getElementById('camera-integracao-status').textContent = 'Produto enviado ao caixa';
             atualizarStatusCamera('Produto identificado e enviado ao caixa.');
         } else {
             document.getElementById('camera-produto-status').textContent = 'Não cadastrado';
