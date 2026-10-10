@@ -84,6 +84,38 @@
         #reader.barcode-detected #qr-shaded-region::after {
             filter: drop-shadow(0 0 5px #10b981);
         }
+
+        #containerCaixaBusca {
+            position: relative;
+            z-index: 40;
+            isolation: isolate;
+        }
+
+        #sugestoesBusca {
+            position: absolute;
+            inset: auto 0 0 0;
+            top: calc(100% + 0.35rem);
+            display: none;
+            visibility: hidden;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 100;
+            background: rgba(15, 23, 42, 0.98);
+            border: 1px solid rgba(51, 65, 85, 0.9);
+            border-radius: 0.75rem;
+            box-shadow: 0 20px 45px rgba(15, 23, 42, 0.8);
+        }
+
+        #sugestoesBusca:not(.hidden) {
+            display: block;
+            visibility: visible;
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .item-sugestao-busca {
+            transition: all 120ms ease;
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-gray-100 font-sans h-screen flex flex-col overflow-hidden">

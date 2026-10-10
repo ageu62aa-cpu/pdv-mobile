@@ -566,7 +566,37 @@ export async function realizarLogout() {
     }
 }
 
-export function focarBusca() { document.getElementById('inputBusca')?.focus(); }
+export function focarBusca() {
+    const input = document.getElementById('inputBusca');
+    if (!input) return;
+    input.focus();
+    const length = input.value.length;
+    if (typeof input.setSelectionRange === 'function') {
+        input.setSelectionRange(length, length);
+    }
+}
+
+function mostrarPainelSugestoes() {
+    const painel = document.getElementById('sugestoesBusca');
+    if (!painel) return;
+    painel.classList.remove('hidden');
+    painel.style.display = 'block';
+    painel.style.visibility = 'visible';
+    painel.style.pointerEvents = 'auto';
+    painel.style.opacity = '1';
+    painel.style.zIndex = '100';
+}
+
+function ocultarPainelSugestoes() {
+    const painel = document.getElementById('sugestoesBusca');
+    if (!painel) return;
+    painel.classList.add('hidden');
+    painel.innerHTML = '';
+    painel.style.display = 'none';
+    painel.style.visibility = 'hidden';
+    painel.style.pointerEvents = 'none';
+    painel.style.opacity = '0';
+}
 
 function atualizarSelecaoSugestoes(painel, indexAtual) {
     const itens = [...(painel?.querySelectorAll('.item-sugestao-busca') || [])];
@@ -579,10 +609,58 @@ function atualizarSelecaoSugestoes(painel, indexAtual) {
         item.classList.toggle('border-emerald-700', selecionado);
         item.classList.toggle('text-white', selecionado);
         item.classList.toggle('shadow-md', selecionado);
+        item.classList.toggle('ring-1', selecionado);
+        item.classList.toggle('ring-emerald-500/80', selecionado);
         item.setAttribute('aria-selected', String(selecionado));
         if (selecionado) item.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     });
 }
+
+window.adicionarProdutoAoCarrinho = function(produto, quantidade = 1) {
+    if (!produto || !produto.id) return;
+
+    const qtd = Number.isFinite(Number(quantidade)) && Number(quantidade) > 0 ? Number(quantidade) : 1;
+    const produtoParaAdicionar = { ...produto, qtd, isPeso: Boolean(produto.isPeso || produto.por_peso || produto.unidade === 'KG') };
+
+    if (produtoParaAdicionar.isPeso) {
+        if (typeof window.abrirModalPesagemManual === 'function') {
+            window.abrirModalPesagemManual(produtoParaAdicionar);
+        } else if (typeof window.abrirModalPesagem === 'function') {
+            window.abrirModalPesagem(produtoParaAdicionar);
+        }
+        return;
+    }
+
+    const itemExistente = itensVenda.find(item => item.id === produto.id && !item.isPeso);
+    if (itemExistente) {
+        itemExistente.qtd += qtd;
+        setItensVenda([...itensVenda]);
+    } else {
+        setItensVenda([...itensVenda, produtoParaAdicionar]);
+    }
+
+    atualizarTabelaVenda();
+    ocultarPainelSugestoes();
+    const inputBusca = document.getElementById('inputBusca');
+    if (inputBusca) {
+        inputBusca.value = '';
+        inputBusca.dataset.indiceSelecionado = '0';
+        inputBusca.focus();
+    }
+};
+
+window.adicionarProdutoComQtd = function(produto, quantidade = 1) {
+    window.adicionarProdutoAoCarrinho(produto, quantidade);
+};
+
+window.adicionarProdutoPorId = function(produtoId) {
+    const produto = produtosCache.find(item => String(item.id) === String(produtoId));
+    if (!produto) {
+        alert('PDV-VS: Produto não encontrado para adicionar ao carrinho.');
+        return;
+    }
+    window.adicionarProdutoAoCarrinho(produto, 1);
+};
 
 export function aoDigitarBusca(e) {
     if (!e || !e.target) return;
@@ -593,8 +671,8 @@ export function aoDigitarBusca(e) {
     if (!suggestionsBox) return;
 
     if (!termo) {
-        suggestionsBox.classList.add('hidden');
-        suggestionsBox.innerHTML = '';
+        ocultarPainelSugestoes();
+        e.target.dataset.indiceSelecionado = '0';
         return;
     }
 
@@ -606,27 +684,23 @@ export function aoDigitarBusca(e) {
 
     if (filtrados.length === 0) {
         suggestionsBox.innerHTML = '<div class="p-3 text-sm text-slate-400">Nenhum produto encontrado.</div>';
-        suggestionsBox.classList.remove('hidden');
-        suggestionsBox.classList.add('opacity-100');
-        suggestionsBox.style.display = 'block';
+        mostrarPainelSugestoes();
+        e.target.dataset.indiceSelecionado = '0';
         return;
     }
 
     let html = '';
     filtrados.slice(0, 10).forEach((prod, index) => {
         const preco = Number(prod.preco_venda || prod.preco || 0).toFixed(2);
-        html += `<div data-index="${index}" class="item-sugestao-busca p-2.5 cursor-pointer border-b border-slate-700 flex justify-between items-center gap-3 text-sm transition-colors hover:bg-slate-700/80 ${index === 0 ? 'bg-emerald-950/80 border-emerald-700 text-white' : 'text-slate-200'}" onclick="window.adicionarProdutoPorId('${prod.id}')" role="option" aria-selected="${index === 0}">
+        html += `<div data-index="${index}" class="item-sugestao-busca p-2.5 cursor-pointer border-b border-slate-700 flex justify-between items-center gap-3 text-sm transition-colors hover:bg-slate-700/80 ${index === 0 ? 'bg-emerald-950/80 border-emerald-700 text-white shadow-md ring-1 ring-emerald-500/80' : 'text-slate-200'}" onclick="window.adicionarProdutoPorId('${prod.id}')" role="option" aria-selected="${index === 0}">
             <span class="font-medium truncate">${prod.nome}</span>
             <span class="text-xs font-bold text-emerald-400">R$ ${preco}</span>
         </div>`;
     });
     
     suggestionsBox.innerHTML = html;
-    suggestionsBox.classList.remove('hidden');
-    suggestionsBox.classList.add('opacity-100');
-    suggestionsBox.style.display = 'block';
-    suggestionsBox.style.visibility = 'visible';
-    suggestionsBox.style.pointerEvents = 'auto';
+    e.target.dataset.indiceSelecionado = '0';
+    mostrarPainelSugestoes();
     atualizarSelecaoSugestoes(suggestionsBox, 0);
 }
 
@@ -635,7 +709,8 @@ export async function tratarEnterBuscaCaixa(e) {
 
     const suggestionsBox = document.getElementById('sugestoesBusca');
     const itens = suggestionsBox ? [...suggestionsBox.querySelectorAll('.item-sugestao-busca')] : [];
-    const indiceAtual = Number(e.target.dataset?.indiceSelecionado || 0);
+    const input = document.getElementById('inputBusca');
+    const indiceAtual = Number(input?.dataset?.indiceSelecionado || 0);
 
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
         e.preventDefault();
@@ -643,14 +718,13 @@ export async function tratarEnterBuscaCaixa(e) {
         let proximoIndice = indiceAtual;
         if (e.key === 'ArrowDown') proximoIndice = proximoIndice >= itens.length - 1 ? 0 : proximoIndice + 1;
         if (e.key === 'ArrowUp') proximoIndice = proximoIndice <= 0 ? itens.length - 1 : proximoIndice - 1;
-        e.target.dataset.indiceSelecionado = String(proximoIndice);
+        if (input) input.dataset.indiceSelecionado = String(proximoIndice);
         atualizarSelecaoSugestoes(suggestionsBox, proximoIndice);
         return;
     }
 
     if (e.key === 'Enter') {
         e.preventDefault();
-        const input = document.getElementById('inputBusca');
         if (!input) return;
         let valor = input.value.trim();
 
@@ -701,7 +775,7 @@ export async function tratarEnterBuscaCaixa(e) {
             window.quantidadeMultiplicador = 1;
             input.value = '';
             input.dataset.indiceSelecionado = '0';
-            suggestionsBox?.classList.add('hidden');
+            ocultarPainelSugestoes();
         } else {
             alert('PDV-VS: Produto não encontrado pelo código digitado.');
         }
