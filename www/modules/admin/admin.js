@@ -418,6 +418,16 @@ export async function salvarNovoOperador() {
 // ==========================================
 // HISTÓRICO DE VENDAS E CONFIGURAÇÕES
 // ==========================================
+function escaparTextoHtml(valor) {
+    return String(valor ?? '').replace(/[&<>"']/g, caractere => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+    })[caractere]);
+}
+
 export async function carregarHistoricoAdmin() {
     const dataLimite = new Date();
     dataLimite.setDate(dataLimite.getDate() - 15);
@@ -453,17 +463,18 @@ export function renderizarHistoricoVendasPorJanelasDiarias() {
     const gruposPorDia = {};
 
     historicoVendasCache.forEach(v => {
-        total15Dias += v.valor_total;
+        const valorVenda = Number(v.valor_total) || 0;
+        total15Dias += valorVenda;
         const dataVenda = new Date(v.created_at);
         const diaKey = dataVenda.toISOString().split('T')[0];
 
-        if (dataVenda.toDateString() === hojeStr) totalHoje += v.valor_total;
-        if ((new Date() - dataVenda) / (1000 * 60 * 60 * 24) <= 7) totalSemanal += v.valor_total;
+        if (dataVenda.toDateString() === hojeStr) totalHoje += valorVenda;
+        if ((new Date() - dataVenda) / (1000 * 60 * 60 * 24) <= 7) totalSemanal += valorVenda;
 
         if (!gruposPorDia[diaKey]) {
             gruposPorDia[diaKey] = { dataStr: dataVenda.toLocaleDateString('pt-BR'), totalDia: 0, vendas: [] };
         }
-        gruposPorDia[diaKey].totalDia += v.valor_total;
+        gruposPorDia[diaKey].totalDia += valorVenda;
         gruposPorDia[diaKey].vendas.push(v);
     });
 
@@ -479,14 +490,15 @@ export function renderizarHistoricoVendasPorJanelasDiarias() {
         let htmlItensVendasDia = '';
         grupo.vendas.forEach(v => {
             const horaVenda = new Date(v.created_at).toLocaleTimeString();
-            const itensDesc = v.itens ? v.itens.map(i => i.isPeso ? `${i.nome} (${i.qtd.toFixed(3)}kg)` : `${i.nome} (x${i.qtd})`).join(', ') : 'Itens diversos';
+            const itensDesc = v.itens ? v.itens.map(i => i.isPeso ? `${i.nome} (${Number(i.qtd).toFixed(3)}kg)` : `${i.nome} (x${i.qtd})`).join(', ') : 'Itens diversos';
             htmlItensVendasDia += `
                 <div class="py-2 px-3 bg-white border-b flex justify-between items-center text-xs">
                     <div>
                         <span class="font-bold text-slate-700">${horaVenda}</span> - <span class="text-slate-600">Op: ${v.operador}</span>
                         <p class="text-[11px] text-slate-500 mt-0.5">${itensDesc}</p>
+                        <p class="text-[11px] text-slate-500">CPF: ${escaparTextoHtml(v.cliente_cpf || 'Não informado')} · Pagamento: ${escaparTextoHtml(v.forma_pagamento || 'Não informado')}</p>
                     </div>
-                    <span class="font-bold text-emerald-700">R$ ${v.valor_total.toFixed(2)}</span>
+                    <span class="font-bold text-emerald-700">R$ ${Number(v.valor_total || 0).toFixed(2)}</span>
                 </div>`;
         });
 

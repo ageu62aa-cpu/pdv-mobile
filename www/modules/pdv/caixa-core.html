@@ -19,6 +19,7 @@
             body * { visibility: hidden; }
             #cupom-termico, #cupom-termico * { visibility: visible; }
             #cupom-termico {
+                display: block !important;
                 position: absolute;
                 left: 0;
                 top: 0;
@@ -29,6 +30,10 @@
                 background: #fff;
                 padding: 5mm;
             }
+            #cupom-termico .cupom-cabecalho { font-size: 14px; margin-bottom: 3mm; }
+            #cupom-termico .cupom-separador { border-top: 1px dashed #000; margin: 2mm 0; }
+            #cupom-termico .cupom-item { margin: 2mm 0; }
+            #cupom-termico .cupom-item-detalhe { display: flex; justify-content: space-between; gap: 3mm; }
         }
 
         #reader {
@@ -353,7 +358,7 @@
                         <span id="txtResumoSubtotal" class="font-mono font-bold">R$ 0,00</span>
                     </div>
                     <div class="flex justify-between text-gray-300">
-                        <span>Descontos / Taxas:</span>
+                        <span>Desconto:</span>
                         <span id="txtResumoDescontos" class="font-mono font-bold text-emerald-400">R$ 0,00</span>
                     </div>
                 </div>
@@ -378,25 +383,30 @@
 
                     <!-- F3: Dinheiro / Pix e Troco com Seleção Numérica (1 ou 2) -->
                     <div id="blocoF3" class="painel-etapa hidden space-y-2">
+                        <div class="flex justify-between text-xs font-bold text-gray-200">
+                            <span>Total da venda:</span>
+                            <span id="txtTotalPagamentoF3" class="font-mono text-emerald-400">R$ 0,00</span>
+                        </div>
                         <div class="flex gap-2">
                             <button onclick="setTipoPagamentoF3('Dinheiro')" id="btnTipoDinheiro" class="flex-1 bg-emerald-700 text-white py-1 rounded text-xs font-bold">1. Dinheiro</button>
                             <button onclick="setTipoPagamentoF3('Pix')" id="btnTipoPix" class="flex-1 bg-gray-800 text-gray-300 py-1 rounded text-xs font-bold">2. Pix</button>
                         </div>
-                        <label class="text-[11px] text-gray-300">Valor Recebido (R$):</label>
-                        <input type="number" step="0.01" id="inputValorRecebido" oninput="calcularTrocoPainel()" placeholder="0,00" class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-xs text-white focus:outline-none focus:ring-1 focus:ring-emerald-500">
-                        <div class="flex justify-between text-xs text-gray-300 pt-1">
+                        <div id="camposDinheiroF3" class="space-y-2">
+                            <label for="inputValorRecebido" class="text-[11px] text-gray-300">Valor recebido em dinheiro (R$):</label>
+                            <input type="number" min="0" step="0.01" id="inputValorRecebido" oninput="calcularTrocoPainel()" placeholder="0,00" class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-xs text-white focus:outline-none focus:ring-1 focus:ring-emerald-500">
+                        </div>
+                        <div id="resumoTrocoF3" class="flex justify-between text-xs text-gray-300 pt-1">
                             <span>Troco Calculado:</span>
                             <span id="txtTrocoCalculado" class="font-mono font-bold text-emerald-400">R$ 0,00</span>
                         </div>
-                        <button onclick="concluirPagamentoDinheiroPix()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded text-xs font-bold">Confirmar Pagamento</button>
+                        <button id="btnConcluirPagamentoF3" onclick="concluirPagamentoDinheiroPix()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded text-xs font-bold">Confirmar pagamento em dinheiro</button>
                     </div>
 
-                    <!-- F4: Débito com taxa embutida (Sem impressão automática) -->
+                    <!-- F4: Débito -->
                     <div id="blocoF4" class="painel-etapa hidden space-y-2">
-                        <label class="text-[11px] text-gray-300">Finalização Débito (Taxas de maquininha embutidas):</label>
-                        <div class="bg-gray-800 p-2 rounded text-xs text-gray-300 flex justify-between">
-                            <span>Taxa de Débito Aplicada:</span>
-                            <span class="font-mono text-blue-400">1.99%</span>
+                        <div class="flex justify-between text-xs font-bold text-gray-200">
+                            <span>Total no débito:</span>
+                            <span id="txtTotalPagamentoF4" class="font-mono text-blue-400">R$ 0,00</span>
                         </div>
                         <button onclick="concluirPagamentoDebito()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded text-xs font-bold">Confirmar Débito</button>
                     </div>
@@ -412,23 +422,28 @@
                         </div>
                     </div>
 
-                    <!-- F8: Crédito à vista / Parcelado com taxas embutidas (Sem impressão automática) -->
+                    <!-- F8: Crédito à vista / parcelado -->
                     <div id="blocoF8" class="painel-etapa hidden space-y-2">
-                        <label class="text-[11px] text-gray-300">Crédito à vista / Parcelado (Taxas de maquininha embutidas):</label>
+                        <label for="selectParcelas" class="text-[11px] text-gray-300">Crédito à vista / Parcelado:</label>
                         <select id="selectParcelas" onchange="atualizarSimulacaoCredito()" class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-xs text-white focus:outline-none focus:ring-1 focus:ring-emerald-500">
-                            <option value="1">1x à vista (Com taxa embutida)</option>
-                            <option value="2">2x com juros</option>
-                            <option value="3">3x com juros</option>
-                            <option value="4">4x com juros</option>
-                            <option value="5">5x com juros</option>
-                            <option value="6">6x com juros</option>
-                            <option value="7">7x com juros</option>
-                            <option value="8">8x com juros</option>
-                            <option value="9">9x com juros</option>
-                            <option value="10">10x com juros</option>
-                            <option value="11">11x com juros</option>
-                            <option value="12">12x com juros</option>
+                            <option value="1">1x à vista</option>
+                            <option value="2">2x</option>
+                            <option value="3">3x</option>
+                            <option value="4">4x</option>
+                            <option value="5">5x</option>
+                            <option value="6">6x</option>
+                            <option value="7">7x</option>
+                            <option value="8">8x</option>
+                            <option value="9">9x</option>
+                            <option value="10">10x</option>
+                            <option value="11">11x</option>
+                            <option value="12">12x</option>
                         </select>
+                        <div class="flex justify-between text-xs font-bold text-gray-200">
+                            <span>Total no crédito:</span>
+                            <span id="txtTotalPagamentoF8" class="font-mono text-amber-400">R$ 0,00</span>
+                        </div>
+                        <button onclick="concluirCreditoParcelado()" class="w-full bg-amber-600 hover:bg-amber-700 text-white py-2 rounded text-xs font-bold">Confirmar crédito</button>
                         <button onclick="concluirCreditoParcelado()" class="w-full bg-amber-600 hover:bg-amber-700 text-white py-2 rounded text-xs font-bold">Finalizar Crédito</button>
                     </div>
 
@@ -498,7 +513,7 @@
                     <button onclick="window.handleAction('F3')" class="w-full bg-gray-900/60 hover:bg-gray-700/80 border border-gray-700/80 p-2 rounded-lg transition flex items-center justify-between group pt-1.5">
                         <div class="flex flex-col text-left overflow-hidden">
                             <span class="text-[11px] font-bold text-gray-200 group-hover:text-emerald-400 truncate">Dinheiro / Pix</span>
-                            <span class="text-[9px] text-gray-400 truncate">Seleção numérica (1/2) + Troco</span>
+                            <span class="text-[9px] text-gray-400 truncate">Troco somente no dinheiro; Pix finaliza direto</span>
                         </div>
                         <span class="bg-gray-850 text-gray-300 text-[10px] font-bold px-1.5 py-0.5 rounded border border-gray-700 font-mono ml-1">F3</span>
                     </button>
@@ -700,24 +715,25 @@
 
     <!-- Elemento oculto para impressão térmica opcional NFC-e (58mm / 80mm) -->
     <div id="cupom-termico" class="hidden">
-        <div style="text-align: center; font-weight: bold;">VANCELY SOFTWARE - PDV-VS</div>
-        <div style="text-align: center;">CNPJ: 00.000.000/0001-00</div>
-        <div style="text-align: center;">----------------------------------------</div>
+        <div class="cupom-cabecalho" style="text-align: center; font-weight: bold;">VANCELY SOFTWARE - PDV-VS</div>
+        <div style="text-align: center;">Comprovante não fiscal</div>
+        <div class="cupom-separador"></div>
         <div>Data: <span id="cupomData">--/--/---- --:--:--</span></div>
         <div>Cliente/CPF: <span id="cupomCliente">Consumidor Final</span></div>
-        <div>Vendedor: <span id="cupomOperador">Padrão</span></div>
-        <div style="text-align: center;">----------------------------------------</div>
-        <div style="font-weight: bold;">ITENS DA VENDA:</div>
+        <div>Operador: <span id="cupomOperador">Padrão</span></div>
+        <div class="cupom-separador"></div>
+        <div style="font-weight: bold;">ITENS DA VENDA</div>
         <div id="cupomItensLista">Nenhum item</div>
-        <div style="text-align: center;">----------------------------------------</div>
+        <div class="cupom-separador"></div>
         <div style="display: flex; justify-content: space-between;"><span>SUBTOTAL:</span> <span id="cupomSubtotal">R$ 0,00</span></div>
-        <div style="display: flex; justify-content: space-between;"><span>DESCONTO/TAXA:</span> <span id="cupomDesconto">R$ 0,00</span></div>
+        <div style="display: flex; justify-content: space-between;"><span>DESCONTO:</span> <span id="cupomDesconto">R$ 0,00</span></div>
         <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 13px;"><span>TOTAL:</span> <span id="cupomTotal">R$ 0,00</span></div>
         <div style="display: flex; justify-content: space-between;" id="cupomLinhaPagamento"><span>PAGAMENTO:</span> <span id="cupomPagamento">--</span></div>
+        <div style="display: flex; justify-content: space-between;" id="cupomLinhaRecebido"><span>RECEBIDO:</span> <span id="cupomRecebido">R$ 0,00</span></div>
         <div style="display: flex; justify-content: space-between;" id="cupomLinhaTroco"><span>TROCO:</span> <span id="cupomTroco">R$ 0,00</span></div>
-        <div style="text-align: center;">----------------------------------------</div>
-        <div style="text-align: center; font-size: 10px;">Documento Auxiliar da Nota Fiscal de Consumidor Eletrônica - NFC-e</div>
-        <div style="text-align: center; font-size: 10px;">Obrigado pela preferência! Volte Sempre.</div>
+        <div class="cupom-separador"></div>
+        <div style="text-align: center;">Obrigado pela preferência!</div>
+        <div style="text-align: center;">Volte sempre.</div>
     </div>
 
     <div id="containerModaisDinamicos"></div>
@@ -853,26 +869,6 @@
             }
         };
 
-        // Captura global de teclas de função (F1 até F12) e atalhos numéricos para F3
-        window.addEventListener('keydown', (e) => {
-            if (e.key.startsWith('F') && !isNaN(e.key.substring(1))) {
-                e.preventDefault(); // Evita atalhos nativos do navegador
-                window.handleAction(e.key);
-            }
-            
-            // Captura numérica '1' ou '2' dentro do painel do F3 para seleção ágil
-            const blocoF3 = document.getElementById('blocoF3');
-            if (blocoF3 && !blocoF3.classList.contains('hidden')) {
-                if (e.key === '1') {
-                    e.preventDefault();
-                    window.setTipoPagamentoF3('Dinheiro');
-                } else if (e.key === '2') {
-                    e.preventDefault();
-                    window.setTipoPagamentoF3('Pix');
-                }
-            }
-        });
-
         // Controle de Exibição do Painel Lateral
         function abrirPainelLateral(idBloco, titulo) {
             const painel = document.getElementById('painelInterativoLateral');
@@ -937,16 +933,6 @@
                 default:
                     console.warn(`Função ${key} não mapeada.`);
             }
-        };
-
-        // Função de transação (Estoque baixado no Supabase sem impressão automática poluidora)
-        window.processarTransacaoPDV = function(detalhesPagamento) {
-            const dataAtual = new Date().toLocaleString('pt-BR');
-            document.getElementById('cupomData').innerText = dataAtual;
-            document.getElementById('cupomPagamento').innerText = detalhesPagamento.forma || 'Dinheiro';
-            document.getElementById('cupomTroco').innerText = detalhesPagamento.troco || 'R$ 0,00';
-            
-            console.log("Transação processada com sucesso no Supabase e estoque atualizado. Impressão automática desativada para manter o ambiente limpo.");
         };
 
         // --- FUNÇÕES DIRETAS NO PAINEL LATERAL (SEM POP-UPS NATIVOS E SEM DUPLICIDADE) ---

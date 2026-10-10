@@ -4,6 +4,16 @@
 
 import { supabase } from '../../core/config.js';
 
+function escaparTextoHtml(valor) {
+    return String(valor ?? '').replace(/[&<>"']/g, caractere => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+    })[caractere]);
+}
+
 export async function initAdminHistorico(containerEl) {
     containerEl.innerHTML = `
     <div class="space-y-4">
@@ -66,7 +76,11 @@ async function carregarHistorico() {
     tbody.innerHTML = data.map(item => `
         <tr class="hover:bg-gray-750 transition-colors">
             <td class="p-3 text-gray-300 text-xs">${item.created_at ? new Date(item.created_at).toLocaleString('pt-BR') : '--'}</td>
-            <td class="p-3 font-medium text-white">Venda${item.operador ? ` - ${item.operador}` : ''}</td>
+            <td class="p-3 font-medium text-white">
+                <div>Venda${item.operador ? ` - ${escaparTextoHtml(item.operador)}` : ''}</div>
+                <div class="mt-1 text-[11px] font-normal text-gray-400">CPF: ${escaparTextoHtml(item.cliente_cpf || 'Não informado')}</div>
+                <div class="text-[11px] font-normal text-gray-400">Pagamento: ${escaparTextoHtml(item.forma_pagamento || 'Não informado')}</div>
+            </td>
             <td class="p-3 text-gray-300">--</td>
             <td class="p-3 font-bold text-emerald-400">R$ ${Number(item.valor_total || 0).toFixed(2)}</td>
             <td class="p-3 text-gray-300">--</td>
