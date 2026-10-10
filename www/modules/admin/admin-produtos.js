@@ -392,13 +392,8 @@ window.ativarScannerModal = async function() {
         if (typeof window.escanearCameraAdmin !== 'function') {
             throw new Error('O módulo de captura da câmera não foi inicializado.');
         }
-        await window.escanearCameraAdmin(codigo => {
-            if (!campoProduto) throw new Error('O campo de código do produto não foi encontrado.');
-            campoProduto.value = codigo;
-            campoProduto.dispatchEvent(new Event('input', { bubbles: true }));
-            campoProduto.dispatchEvent(new Event('change', { bubbles: true }));
-            campoProduto.focus();
-        });
+        if (!campoProduto) throw new Error('O campo de código do produto não foi encontrado.');
+        await window.escanearCameraAdmin(campoProduto);
     } catch (error) {
         console.error('PDV-VS: Erro ao abrir o leitor de câmera do modal:', error);
         alert(`Não foi possível abrir o leitor de câmera: ${error.message || error}`);

@@ -81,16 +81,13 @@ async function processarLeitura(codigo) {
         if (capturaCodigoCallback) {
             const callback = capturaCodigoCallback;
             capturaCodigoCallback = null;
-            const produtoStatus = document.getElementById('camera-produto-status');
-            const produtoNome = document.getElementById('camera-produto-nome');
-            const integracaoStatus = document.getElementById('camera-integracao-status');
-            if (produtoStatus) produtoStatus.textContent = 'Código capturado';
-            if (produtoNome) produtoNome.textContent = 'Preenchendo o código no cadastro do produto.';
-            if (integracaoStatus) integracaoStatus.textContent = 'Código enviado ao formulário';
             atualizarStatusCamera('Código capturado. Fechando o leitor...');
-            callback(codigo);
-            await pararCamera();
-            document.getElementById('formProdCodigo')?.focus();
+            try {
+                callback(codigo);
+            } finally {
+                await pararCamera();
+                document.getElementById('formProdCodigo')?.focus();
+            }
             return;
         }
 
@@ -400,6 +397,7 @@ async function iniciarLeitura() {
     }
 
     modal.classList.remove('hidden');
+    modal.style.display = 'flex';
     atualizarStatusCamera('Solicitando acesso à câmera traseira...');
 
     if (scanner?.isScanning) {
@@ -536,17 +534,16 @@ function descreverErroCamera(error) {
     return error?.message || 'Não foi possível iniciar a câmera. Verifique as permissões do navegador.';
 }
 
-export async function escanearCameraAdmin(onCodigoLido) {
-    const campoCodigo = document.getElementById('formProdCodigo');
-    capturaCodigoCallback = typeof onCodigoLido === 'function'
-        ? onCodigoLido
-        : codigo => {
-            if (!campoCodigo) {
-                throw new Error('O campo de código do produto não está disponível.');
-            }
-            campoCodigo.value = codigo;
-            campoCodigo.focus();
-        };
+export async function escanearCameraAdmin(campoCodigo = document.getElementById('formProdCodigo')) {
+    if (!campoCodigo || typeof campoCodigo.dispatchEvent !== 'function') {
+        throw new Error('O campo de código do produto não está disponível.');
+    }
+
+    capturaCodigoCallback = codigo => {
+        campoCodigo.value = codigo;
+        campoCodigo.dispatchEvent(new Event('input', { bubbles: true }));
+        campoCodigo.dispatchEvent(new Event('change', { bubbles: true }));
+    };
 
     await abrirLeitorCamera();
     if (!scanner?.isScanning) capturaCodigoCallback = null;
@@ -576,6 +573,7 @@ export async function pararCamera() {
     document.getElementById('camera-zoom-wrapper')?.classList.add('hidden');
     document.getElementById(READER_ID)?.removeAttribute('onclick');
     modal?.classList.add('hidden');
+    if (modal) modal.style.display = 'none';
 }
 
 export async function fecharLeitorCamera() {
