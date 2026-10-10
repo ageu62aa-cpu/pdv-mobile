@@ -10,7 +10,7 @@ import {
     produtosCache, setEmpresaAtualId, setUsuarioAtual, setCargoUsuarioAtual,
     setDadosEmpresaAtual
 } from '../../core/state.js';  
-import { carregarProdutosCache } from '../../services/produtos.js';
+import { adicionarItemVendaDireto, carregarProdutosCache, tratarAdicaoProduto } from '../../services/produtos.js';
 import { supabase } from '../../../core/config.js'; // Correção definitiva do import do Supabase
 
 let valorTrocoAbertura = 0;
@@ -617,29 +617,26 @@ function atualizarSelecaoSugestoes(painel, indexAtual) {
 }
 
 window.adicionarProdutoAoCarrinho = function(produto, quantidade = 1) {
-    if (!produto || !produto.id) return;
-
-    const qtd = Number.isFinite(Number(quantidade)) && Number(quantidade) > 0 ? Number(quantidade) : 1;
-    const produtoParaAdicionar = { ...produto, qtd, isPeso: Boolean(produto.isPeso || produto.por_peso || produto.unidade === 'KG') };
-
-    if (produtoParaAdicionar.isPeso) {
-        if (typeof window.abrirModalPesagemManual === 'function') {
-            window.abrirModalPesagemManual(produtoParaAdicionar);
-        } else if (typeof window.abrirModalPesagem === 'function') {
-            window.abrirModalPesagem(produtoParaAdicionar);
-        }
+    if (!produto || produto.id == null) {
+        console.error('PDV-VS: Não foi possível adicionar um produto inválido ao carrinho.', produto);
         return;
     }
 
-    const itemExistente = itensVenda.find(item => item.id === produto.id && !item.isPeso);
-    if (itemExistente) {
-        itemExistente.qtd += qtd;
-        setItensVenda([...itensVenda]);
-    } else {
-        setItensVenda([...itensVenda, produtoParaAdicionar]);
+    const qtd = Number(quantidade);
+    if (!Number.isFinite(qtd) || qtd <= 0) {
+        alert('PDV-VS: Informe uma quantidade válida para adicionar o produto.');
+        return;
     }
 
-    atualizarTabelaVenda();
+    if (qtd === 1) {
+        tratarAdicaoProduto(produto);
+    } else if (produto.unidade === 'KG' || produto.por_peso || produto.isPeso) {
+        tratarAdicaoProduto(produto);
+    } else {
+        adicionarItemVendaDireto(produto, qtd);
+    }
+
+    window.quantidadeMultiplicador = 1;
     ocultarPainelSugestoes();
     const inputBusca = document.getElementById('inputBusca');
     if (inputBusca) {
@@ -653,13 +650,13 @@ window.adicionarProdutoComQtd = function(produto, quantidade = 1) {
     window.adicionarProdutoAoCarrinho(produto, quantidade);
 };
 
-window.adicionarProdutoPorId = function(produtoId) {
+window.adicionarProdutoPorId = function(produtoId, quantidade = window.quantidadeMultiplicador || 1) {
     const produto = produtosCache.find(item => String(item.id) === String(produtoId));
     if (!produto) {
         alert('PDV-VS: Produto não encontrado para adicionar ao carrinho.');
         return;
     }
-    window.adicionarProdutoAoCarrinho(produto, 1);
+    window.adicionarProdutoAoCarrinho(produto, quantidade);
 };
 
 export function aoDigitarBusca(e) {
@@ -1169,37 +1166,80 @@ export function atualizarTabelaVenda() {
     const contador = document.getElementById('contadorItens');
     const txtSubtotal = document.getElementById('txtSubtotal');
     const txtTotal = document.getElementById('txtTotal');
+    const listaCarrinho = document.getElementById('listaCarrinhoItens');
+    const carrinhoVazio = document.getElementById('listaCarrinhoVazio');
+    const txtResumoSubtotal = document.getElementById('txtResumoSubtotal');
+    const txtResumoTotal = document.getElementById('txtResumoTotalGeral');
 
     if (contador) contador.innerText = `${itensVenda.length} itens`;
-    if (!tbody) return;
+    if (!tbody && !listaCarrinho) return;
 
-    if (itensVenda.length === 0) { 
-        tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-slate-400">Nenhum produto adicionado na venda.</td></tr>'; 
-        if (txtSubtotal) txtSubtotal.innerText = 'R$ 0,00'; 
-        if (txtTotal) txtTotal.innerText = 'R$ 0,00'; 
+    const totalVenda = itensVenda.reduce((acc, item) => {
+        const preco = Number(item.preco_venda ?? item.preco ?? 0);
+        return acc + (Number(item.qtd) || 0) * preco;
+    }, 0);
+
+    if (txtSubtotal) txtSubtotal.innerText = `R$ ${totalVenda.toFixed(2)}`;
+    if (txtTotal) txtTotal.innerText = `R$ ${totalVenda.toFixed(2)}`;
+    if (txtResumoSubtotal) txtResumoSubtotal.innerText = `R$ ${totalVenda.toFixed(2)}`;
+    if (txtResumoTotal) txtResumoTotal.innerText = `R$ ${totalVenda.toFixed(2)}`;
+
+    if (itensVenda.length === 0) {
+        if (tbody) tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-slate-400">Nenhum produto adicionado na venda.</td></tr>';
+        if (listaCarrinho) listaCarrinho.innerHTML = '';
+        carrinhoVazio?.classList.remove('hidden');
+        listaCarrinho?.classList.add('hidden');
         return; 
     }
     
-    let html = '', total = 0;
+    let tabelaHtml = '', carrinhoHtml = '', total = 0;
     itensVenda.forEach((item, i) => {
-        const subtotalItem = item.qtd * item.preco;
+        const preco = Number(item.preco_venda ?? item.preco ?? 0);
+        const qtd = Number(item.qtd) || 0;
+        const subtotalItem = qtd * preco;
         total += subtotalItem;
         
-        const qtdDisplay = item.isPeso 
-            ? `<span class="text-amber-700 font-bold text-xs bg-amber-50 px-2 py-0.5 rounded">${item.qtd.toFixed(3)} kg</span>` 
-            : `<input type="number" min="1" value="${item.qtd}" onchange="window.alterarQtd(${i}, this.value)" class="w-14 text-center border rounded">`;
+        const qtdDisplay = item.isPeso
+            ? `<span class="text-amber-300 font-bold">${qtd.toFixed(3)} kg</span>`
+            : `<input type="number" min="1" step="1" value="${qtd}" onchange="window.alterarQtd(${i}, this.value)" aria-label="Quantidade de ${item.nome}" class="w-20 text-center bg-gray-900 border border-gray-600 rounded px-2 py-1 text-white">`;
 
-        html += `<tr class="border-b">
-            <td class="p-2">${item.nome} ${item.isPeso ? '<span class="text-[10px] text-amber-600 block">Pesado (Baixa por Peso)</span>' : ''}</td>
-            <td class="p-2">${qtdDisplay}</td>
-            <td class="p-2">R$ ${Number(item.preco).toFixed(2)}${item.isPeso ? '/kg' : ''}</td>
-            <td class="p-2 font-bold">R$ ${subtotalItem.toFixed(2)}</td>
-            <td class="p-2 text-center"><button onclick="window.solicitarRemocaoItem(${i})" class="text-rose-500 hover:text-rose-700"><i class="fa-solid fa-trash"></i></button></td>
-        </tr>`;
+        if (tbody) {
+            tabelaHtml += `<tr class="border-b">
+                <td class="p-2">${item.nome} ${item.isPeso ? '<span class="text-[10px] text-amber-300 block">Pesado (Baixa por Peso)</span>' : ''}</td>
+                <td class="p-2">${qtdDisplay}</td>
+                <td class="p-2">R$ ${preco.toFixed(2)}${item.isPeso ? '/kg' : ''}</td>
+                <td class="p-2 font-bold">R$ ${subtotalItem.toFixed(2)}</td>
+                <td class="p-2 text-center"><button onclick="window.solicitarRemocaoItem(${i})" aria-label="Remover ${item.nome}" class="text-rose-400 hover:text-rose-300"><i class="fa-solid fa-trash"></i></button></td>
+            </tr>`;
+        }
+
+        if (listaCarrinho) {
+            carrinhoHtml += `<div class="grid grid-cols-12 items-center gap-2 p-3 text-sm text-gray-100">
+                <div class="col-span-6 min-w-0 font-medium">
+                    <span class="block truncate">${item.nome}</span>
+                    ${item.isPeso ? '<span class="text-[10px] text-amber-300">Pesado (Baixa por Peso)</span>' : ''}
+                </div>
+                <div class="col-span-3 flex flex-col items-center gap-1">
+                    ${qtdDisplay}
+                    <span class="text-[11px] text-gray-400">R$ ${preco.toFixed(2)}${item.isPeso ? '/kg' : ''}</span>
+                </div>
+                <div class="col-span-3 flex items-center justify-end gap-2">
+                    <span class="font-bold text-right">R$ ${subtotalItem.toFixed(2)}</span>
+                    <button onclick="window.solicitarRemocaoItem(${i})" aria-label="Remover ${item.nome}" class="text-rose-400 hover:text-rose-300 px-1"><i class="fa-solid fa-trash"></i></button>
+                </div>
+            </div>`;
+        }
     });
-    tbody.innerHTML = html;
+    if (tbody) tbody.innerHTML = tabelaHtml;
+    if (listaCarrinho) {
+        listaCarrinho.innerHTML = carrinhoHtml;
+        listaCarrinho.classList.remove('hidden');
+        carrinhoVazio?.classList.add('hidden');
+    }
     if (txtSubtotal) txtSubtotal.innerText = `R$ ${total.toFixed(2)}`;
     if (txtTotal) txtTotal.innerText = `R$ ${total.toFixed(2)}`;
+    if (txtResumoSubtotal) txtResumoSubtotal.innerText = `R$ ${total.toFixed(2)}`;
+    if (txtResumoTotal) txtResumoTotal.innerText = `R$ ${total.toFixed(2)}`;
 }
 
 export function alterarQtd(i, qtd) { 
