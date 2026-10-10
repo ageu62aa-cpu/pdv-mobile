@@ -494,7 +494,7 @@ export function renderizarHistoricoVendasPorJanelasDiarias() {
             htmlItensVendasDia += `
                 <div class="py-2 px-3 bg-white border-b flex justify-between items-center text-xs">
                     <div>
-                        <span class="font-bold text-slate-700">${horaVenda}</span> - <span class="text-slate-600">Op: ${v.operador}</span>
+                        <span class="font-bold text-slate-700">${horaVenda}</span> - <span class="text-slate-600">Op: ${escaparTextoHtml(v.operador_nome || v.operador || 'Não informado')}</span>
                         <p class="text-[11px] text-slate-500 mt-0.5">${itensDesc}</p>
                         <p class="text-[11px] text-slate-500">CPF: ${escaparTextoHtml(v.cliente_cpf || 'Não informado')} · Pagamento: ${escaparTextoHtml(v.forma_pagamento || 'Não informado')}</p>
                     </div>

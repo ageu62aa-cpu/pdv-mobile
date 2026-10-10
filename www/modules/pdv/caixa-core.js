@@ -388,13 +388,38 @@ window.salvarConsumidorEImprimir = () => {
 };
 
 window.acaoAtalhoF2 = () => {
-    const vendedor = prompt('F2 - Informe o nome ou código do Vendedor:', 'Balcão');
-    if (vendedor) {
-        window.vendedorAtualVenda = vendedor;
-        window.vendedorAtual = { nome: vendedor };
-        localStorage.setItem('operadorNome', vendedor);
+    const nomeAtual = window.vendedorAtual?.nome || localStorage.getItem(obterChaveNomeOperador()) || '';
+    const vendedor = prompt('F2 - Informe o nome do operador desta sessão:', nomeAtual);
+    if (vendedor === null) return;
+    const nome = vendedor.trim();
+    if (!nome) {
+        alert('PDV-VS: O nome do operador não pode ficar vazio.');
+        return;
     }
+    window.vendedorAtualVenda = nome;
+    window.vendedorAtual = { nome };
+    localStorage.setItem(obterChaveNomeOperador(), nome);
+    void salvarNomeOperadorNoCaixa(nome);
 };
+
+function obterChaveNomeOperador(empresaId = empresaAtualId, usuarioId = usuarioAtual?.id) {
+    return `pdvOperadorNome:${empresaId || 'empresa'}:${usuarioId || 'usuario'}`;
+}
+
+async function salvarNomeOperadorNoCaixa(nome) {
+    if (!empresaAtualId || !usuarioAtual) return;
+    try {
+        const { error } = await getSupabase().from('caixas')
+            .update({ operador_nome: nome, updated_at: new Date().toISOString() })
+            .eq('empresa_id', empresaAtualId)
+            .eq('user_id', usuarioAtual.id)
+            .eq('status', 'ABERTO');
+        if (error) throw error;
+    } catch (error) {
+        console.error('PDV-VS: Não foi possível salvar o nome do operador na sessão de caixa:', error);
+        alert(`PDV-VS: Nome guardado nesta sessão, mas não foi possível atualizar o caixa: ${error.message}`);
+    }
+}
 
 function obterSubtotalCarrinho() {
     const subtotal = itensVenda.reduce((total, item) => {
@@ -1004,7 +1029,10 @@ window.acionarAbrirCaixa = async function() {
             return;
         }
 
-        const nomeOperador = window.vendedorAtual?.nome || localStorage.getItem('operadorNome') || usuario.email || 'Operador Ativo';
+        const nomeOperador = window.vendedorAtual?.nome
+            || localStorage.getItem(obterChaveNomeOperador(empresaId, usuario.id))
+            || usuario.email
+            || 'Operador Ativo';
 
         // 2. Inserir abertura no banco (somente colunas padrão e seguras)
         const { error } = await db.from('caixas').insert([{
@@ -1013,6 +1041,7 @@ window.acionarAbrirCaixa = async function() {
             status: 'ABERTO',
             valor_abertura: valorAbertura,
             faturamento_dia: 0.00,
+            operador_nome: nomeOperador,
             created_at: new Date().toISOString()
         }]);
 
@@ -1070,7 +1099,11 @@ window.acionarFecharCaixa = async function() {
             return;
         }
 
-        const operadorNome = window.vendedorAtual?.nome || localStorage.getItem('operadorNome') || usuario.email || 'Operador Ativo';
+        const operadorNome = caixaAberto.operador_nome
+            || window.vendedorAtual?.nome
+            || localStorage.getItem(obterChaveNomeOperador(empresaId, usuario.id))
+            || usuario.email
+            || 'Operador Ativo';
         const trocoInicial = Number(caixaAberto.valor_abertura) || 0;
         const dataAbertura = caixaAberto.created_at;
 
@@ -1480,6 +1513,9 @@ export async function finalizarVenda(detalhesPagamento = {}) {
         const { error } = await db.from('vendas').insert([{
             empresa_id: empresaAtualId,
             operador: usuarioAtual.email,
+            operador_nome: window.vendedorAtual?.nome
+                || localStorage.getItem(obterChaveNomeOperador(empresaAtualId, usuarioAtual.id))
+                || usuarioAtual.email,
             valor_total: total,
             itens: itensFinalizados,
             forma_pagamento: formaPagamento,

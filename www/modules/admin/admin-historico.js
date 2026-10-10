@@ -77,7 +77,7 @@ async function carregarHistorico() {
         <tr class="hover:bg-gray-750 transition-colors">
             <td class="p-3 text-gray-300 text-xs">${item.created_at ? new Date(item.created_at).toLocaleString('pt-BR') : '--'}</td>
             <td class="p-3 font-medium text-white">
-                <div>Venda${item.operador ? ` - ${escaparTextoHtml(item.operador)}` : ''}</div>
+                <div>Venda${item.operador_nome || item.operador ? ` - ${escaparTextoHtml(item.operador_nome || item.operador)}` : ''}</div>
                 <div class="mt-1 text-[11px] font-normal text-gray-400">CPF: ${escaparTextoHtml(item.cliente_cpf || 'Não informado')}</div>
                 <div class="text-[11px] font-normal text-gray-400">Pagamento: ${escaparTextoHtml(item.forma_pagamento || 'Não informado')}</div>
             </td>

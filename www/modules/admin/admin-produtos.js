@@ -4,9 +4,12 @@
  */
 
 import { supabase } from '../../core/config.js';
-import '../../camera.js';
 
 let produtosCacheAdmin = [];
+let scannerProdutoAdmin = null;
+let scannerProdutoIniciando = false;
+let scannerProdutoCapturado = false;
+let scannerProdutoSessao = 0;
 
 async function garantirBibliotecaCamera() {
     if (window.Html5Qrcode) return;
@@ -22,11 +25,11 @@ async function garantirBibliotecaCamera() {
 }
 
 function garantirModalCameraAdmin() {
-    let modal = document.getElementById('modalCamera');
+    let modal = document.getElementById('modalCameraAdminProduto');
     if (modal) return modal;
 
     modal = document.createElement('div');
-    modal.id = 'modalCamera';
+    modal.id = 'modalCameraAdminProduto';
     modal.className = 'fixed inset-0 z-50 hidden flex items-center justify-center bg-black/80 p-3 backdrop-blur-sm sm:p-5';
     modal.innerHTML = `
         <section class="max-h-[94vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-slate-700 bg-slate-900 text-slate-100 shadow-2xl">
@@ -35,39 +38,25 @@ function garantirModalCameraAdmin() {
                     <p class="text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-400">Cadastro de produto</p>
                     <h2 class="text-base font-bold text-white">Escaneie o código de barras</h2>
                 </div>
-                <button type="button" onclick="window.fecharCameraWeb?.()" class="rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-slate-300 transition hover:border-emerald-500 hover:text-white" aria-label="Fechar leitor">
+                <button type="button" onclick="window.fecharScannerModalAdmin()" class="rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-slate-300 transition hover:border-emerald-500 hover:text-white" aria-label="Fechar leitor">
                     <i class="fa-solid fa-xmark"></i>
                 </button>
             </header>
             <div class="space-y-3 p-4">
-                <div id="reader" class="relative min-h-[300px] overflow-hidden rounded-xl border border-slate-700 bg-slate-950"></div>
-                <p id="camera-status" class="text-center text-xs text-slate-300">Solicitando permissão da câmera...</p>
-                <div class="flex items-center justify-between gap-2">
-                    <span class="text-[10px] text-slate-400">Toque na imagem para ajustar o foco.</span>
-                    <button id="camera-focus-button" type="button" onclick="window.ativarFocoAutomaticoScanner?.()" class="min-h-10 rounded-lg border border-slate-600 bg-slate-800 px-3 text-xs font-semibold text-slate-100 hover:border-emerald-500" aria-label="Ajustar foco da câmera">
-                        <i class="fa-solid fa-crosshairs mr-1" aria-hidden="true"></i>Foco auto
-                    </button>
-                </div>
-                <div id="camera-zoom-wrapper" class="hidden items-center gap-2 rounded-lg bg-slate-800 px-2.5 py-2">
-                    <button id="camera-zoom-out" type="button" class="flex h-10 w-10 items-center justify-center rounded-lg text-slate-200 hover:bg-slate-700 disabled:opacity-40" aria-label="Diminuir zoom" title="Diminuir zoom">
-                        <i class="fa-solid fa-magnifying-glass-minus" aria-hidden="true"></i>
-                    </button>
-                    <input id="camera-zoom" type="range" min="1" max="2" step="0.1" value="1" class="h-2 min-w-0 flex-1 accent-emerald-500" aria-label="Ajustar zoom da câmera">
-                    <button id="camera-zoom-in" type="button" class="flex h-10 w-10 items-center justify-center rounded-lg text-slate-200 hover:bg-slate-700 disabled:opacity-40" aria-label="Aumentar zoom" title="Aumentar zoom">
-                        <i class="fa-solid fa-magnifying-glass-plus" aria-hidden="true"></i>
-                    </button>
-                    <span id="camera-zoom-value" class="w-10 text-right text-xs text-slate-300">1.0×</span>
-                </div>
-                <div class="rounded-lg border border-slate-700 bg-slate-800/80 p-3">
-                    <label for="camera-codigo" class="block text-[9px] font-bold uppercase tracking-[0.18em] text-slate-400">Código capturado</label>
-                    <input id="camera-codigo" readonly value="Aguardando leitura..." class="mt-2 w-full bg-transparent text-center font-mono text-sm font-bold tracking-wider text-slate-100 outline-none">
-                    <p id="camera-leitura-status" class="mt-1 text-center text-[10px] text-slate-400">Aponte a câmera para o código de barras.</p>
-                </div>
+                <div id="readerAdminProduto" class="relative min-h-[260px] overflow-hidden rounded-xl border border-slate-700 bg-slate-950"></div>
+                <p id="cameraStatusAdminProduto" class="text-center text-xs text-slate-300" role="status">Solicitando permissão da câmera...</p>
+                <p class="text-center text-[10px] text-slate-400">Ao reconhecer um código, o leitor fecha e preenche Código de Barras / SKU automaticamente.</p>
             </div>
         </section>
     `;
 
     document.body.appendChild(modal);
+    modal.addEventListener('click', event => {
+        if (event.target === modal) void window.fecharScannerModalAdmin();
+    });
+    modal.addEventListener('keydown', event => {
+        if (event.key === 'Escape') void window.fecharScannerModalAdmin();
+    });
 
     return modal;
 }
@@ -384,18 +373,108 @@ window.ativarScannerAdmin = function() {
 };
 
 window.ativarScannerModal = async function() {
+    if (scannerProdutoIniciando) return;
+    scannerProdutoIniciando = true;
+    const sessaoAtual = ++scannerProdutoSessao;
+    let campoProduto;
     try {
         await garantirBibliotecaCamera();
-        garantirModalCameraAdmin();
-
-        const campoProduto = document.getElementById('formProdCodigo');
-        if (typeof window.escanearCameraAdmin !== 'function') {
-            throw new Error('O módulo de captura da câmera não foi inicializado.');
-        }
+        if (sessaoAtual !== scannerProdutoSessao) return;
+        const modal = garantirModalCameraAdmin();
+        campoProduto = document.getElementById('formProdCodigo');
         if (!campoProduto) throw new Error('O campo de código do produto não foi encontrado.');
-        await window.escanearCameraAdmin(campoProduto);
+        if (scannerProdutoAdmin) await window.fecharScannerModalAdmin();
+
+        const leitor = document.getElementById('readerAdminProduto');
+        const status = document.getElementById('cameraStatusAdminProduto');
+        if (!leitor || !status) throw new Error('A janela de captura do produto não foi inicializada.');
+        scannerProdutoCapturado = false;
+        status.textContent = 'Solicitando permissão da câmera...';
+        modal.style.display = 'flex';
+        modal.classList.remove('hidden');
+
+        const leitorCodigo = new window.Html5Qrcode('readerAdminProduto');
+        scannerProdutoAdmin = leitorCodigo;
+        await leitorCodigo.start(
+            { facingMode: 'environment' },
+            { fps: 10, qrbox: { width: 250, height: 150 } },
+            codigo => {
+                if (scannerProdutoCapturado || sessaoAtual !== scannerProdutoSessao) return;
+                scannerProdutoCapturado = true;
+                void concluirCapturaProduto(leitorCodigo, campoProduto, codigo);
+            }
+        );
+        if (sessaoAtual !== scannerProdutoSessao) {
+            await encerrarLeitorProdutoAdmin(leitorCodigo);
+            return;
+        }
+        if (scannerProdutoCapturado) return;
+        status.textContent = 'Aponte a câmera para um código de barras.';
     } catch (error) {
+        if (scannerProdutoAdmin) await encerrarLeitorProdutoAdmin(scannerProdutoAdmin);
+        if (sessaoAtual !== scannerProdutoSessao) return;
+        document.getElementById('cameraStatusAdminProduto')?.replaceChildren(
+            document.createTextNode(`Não foi possível iniciar a câmera: ${error.message || error}`)
+        );
+        document.getElementById('modalCameraAdminProduto')?.classList.add('hidden');
+        const modal = document.getElementById('modalCameraAdminProduto');
+        if (modal) modal.style.display = 'none';
         console.error('PDV-VS: Erro ao abrir o leitor de câmera do modal:', error);
         alert(`Não foi possível abrir o leitor de câmera: ${error.message || error}`);
+    } finally {
+        scannerProdutoIniciando = false;
     }
+};
+
+async function encerrarLeitorProdutoAdmin(leitor) {
+    let erroParada = null;
+    try {
+        if (leitor.isScanning) await leitor.stop();
+    } catch (error) {
+        erroParada = error;
+    }
+    try {
+        await leitor.clear();
+    } catch (error) {
+        if (!erroParada) erroParada = error;
+    }
+    if (scannerProdutoAdmin === leitor) scannerProdutoAdmin = null;
+    return erroParada;
+}
+
+async function concluirCapturaProduto(leitor, campoProduto, codigo) {
+    const modal = document.getElementById('modalCameraAdminProduto');
+    let erroParada;
+    try {
+        erroParada = await encerrarLeitorProdutoAdmin(leitor);
+    } finally {
+        campoProduto.value = String(codigo).trim();
+        campoProduto.dispatchEvent(new Event('input', { bubbles: true }));
+        campoProduto.dispatchEvent(new Event('change', { bubbles: true }));
+        modal?.classList.add('hidden');
+        if (modal) modal.style.display = 'none';
+        campoProduto.focus();
+    }
+    if (erroParada) {
+        console.error('PDV-VS: Código capturado, mas houve falha ao encerrar a câmera:', erroParada);
+        alert(`Código preenchido, mas não foi possível encerrar a câmera corretamente: ${erroParada.message || erroParada}`);
+    }
+}
+
+window.fecharScannerModalAdmin = async function() {
+    scannerProdutoCapturado = true;
+    const leitor = scannerProdutoAdmin;
+    const iniciando = scannerProdutoIniciando;
+    scannerProdutoSessao += 1;
+    if (leitor && !iniciando) {
+        const erro = await encerrarLeitorProdutoAdmin(leitor);
+        if (erro) {
+            console.error('PDV-VS: Falha ao encerrar o leitor do cadastro de produto:', erro);
+            alert(`Não foi possível encerrar a câmera: ${erro.message || erro}`);
+        }
+    }
+    const modal = document.getElementById('modalCameraAdminProduto');
+    modal?.classList.add('hidden');
+    if (modal) modal.style.display = 'none';
+    document.getElementById('formProdCodigo')?.focus();
 };
