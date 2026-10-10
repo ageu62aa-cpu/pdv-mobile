@@ -10,7 +10,7 @@ import {
     produtosCache, setEmpresaAtualId, setUsuarioAtual, setCargoUsuarioAtual,
     setDadosEmpresaAtual
 } from '../../core/state.js';  
-import { carregarProdutosCache } from '../../services/produtos.js';
+import { abrirModalPesagemManual, carregarProdutosCache } from '../../services/produtos.js';
 import { supabase } from '../../../core/config.js'; // Correção definitiva do import do Supabase
 
 let valorTrocoAbertura = 0;
@@ -628,15 +628,14 @@ window.adicionarProdutoAoCarrinho = function(produto, quantidade = 1) {
         return;
     }
 
-    const ehProdutoPesavel = produto.unidade === 'KG' || produto.por_peso || produto.isPeso;
+    const ehProdutoPesavel = String(produto.unidade || '').toUpperCase() === 'KG'
+        || produto.por_peso
+        || produto.isPeso;
     if (ehProdutoPesavel) {
-        const abrirPesagem = window.abrirModalPesagemManual;
-        if (typeof abrirPesagem !== 'function') {
-            console.error('PDV-VS: O fluxo de pesagem não está disponível para este produto.');
-            alert('PDV-VS: Não foi possível abrir a pesagem deste produto. Tente novamente.');
-            return;
-        }
-        abrirPesagem(produto);
+        abrirModalPesagemManual({
+            ...produto,
+            preco: Number(produto.preco ?? produto.preco_venda ?? 0)
+        });
     } else {
         const produtoVenda = {
             ...produto,
