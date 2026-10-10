@@ -4,8 +4,97 @@
  */
 
 import { supabase } from '../../core/config.js';
+import '../../camera.js';
 
 let produtosCacheAdmin = [];
+
+async function garantirBibliotecaCamera() {
+    if (window.Html5Qrcode) return;
+
+    await new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js';
+        script.async = true;
+        script.onload = resolve;
+        script.onerror = () => reject(new Error('Não foi possível carregar o leitor de código de barras da câmera.'));
+        document.head.appendChild(script);
+    });
+}
+
+function garantirModalCameraAdmin() {
+    let modal = document.getElementById('modalCamera');
+    if (modal) return modal;
+
+    modal = document.createElement('div');
+    modal.id = 'modalCamera';
+    modal.className = 'fixed inset-0 z-50 hidden items-center justify-center bg-black/80 p-3 backdrop-blur-sm sm:p-5';
+    modal.innerHTML = `
+        <div class="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl ring-1 ring-slate-800">
+            <div class="flex items-center justify-between border-b border-slate-700 px-4 py-3">
+                <div>
+                    <p class="text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-400">Leitor de código</p>
+                    <h4 class="text-base font-bold text-white">Escaneie o produto</h4>
+                </div>
+                <button type="button" onclick="window.fecharCameraWeb?.()" class="rounded-lg border border-slate-700 bg-slate-800 px-2 py-1 text-slate-300 transition hover:border-emerald-500 hover:text-white">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="space-y-3 p-4">
+                <div id="reader" class="relative overflow-hidden rounded-xl border border-slate-700 bg-slate-950"></div>
+                <div class="flex items-center justify-between gap-3 rounded-lg bg-slate-800/80 px-3 py-2 text-[10px] uppercase tracking-wide text-slate-300">
+                    <span id="camera-status">Aguardando permissão da câmera...</span>
+                    <button id="camera-focus-button" type="button" onclick="window.ativarFocoAutomaticoScanner?.()" class="rounded-md border border-slate-600 bg-slate-900 px-2.5 py-1 font-semibold text-slate-200 hover:border-emerald-500 hover:text-emerald-300">
+                        Foco
+                    </button>
+                </div>
+                <div id="camera-zoom-wrapper" class="hidden items-center gap-2 rounded-lg bg-slate-900/80 px-2.5 py-2">
+                    <button id="camera-zoom-out" type="button" class="rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-white disabled:cursor-not-allowed disabled:opacity-40" aria-label="Diminuir zoom" title="Diminuir zoom">−</button>
+                    <input id="camera-zoom" type="range" min="1" max="2" step="0.1" value="1" class="h-1.5 flex-1 accent-emerald-500" aria-label="Zoom da câmera">
+                    <button id="camera-zoom-in" type="button" class="rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-white disabled:cursor-not-allowed disabled:opacity-40" aria-label="Aumentar zoom" title="Aumentar zoom">+</button>
+                    <span id="camera-zoom-value" class="w-9 text-right text-[10px] text-slate-300">1.0×</span>
+                </div>
+                <div class="rounded-lg border border-slate-700 bg-slate-800/80 p-3">
+                    <label for="camera-codigo" class="block text-[9px] font-bold uppercase tracking-[0.18em] text-slate-400">Código lido</label>
+                    <input id="camera-codigo" readonly value="Aguardando leitura..." class="mt-2 w-full bg-transparent text-center font-mono text-sm font-bold tracking-wider text-slate-100 outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-3 text-[10px] text-slate-300">
+                    <div class="rounded-lg border border-slate-700 bg-slate-800/80 p-2">
+                        <p class="font-bold uppercase tracking-[0.18em] text-slate-400">Status</p>
+                        <p id="camera-leitura-status" class="mt-1 text-slate-200">Nenhum código capturado</p>
+                    </div>
+                    <div class="rounded-lg border border-slate-700 bg-slate-800/80 p-2">
+                        <p class="font-bold uppercase tracking-[0.18em] text-slate-400">Produto</p>
+                        <p id="camera-produto-status" class="mt-1 text-slate-200">Aguardando leitura</p>
+                    </div>
+                </div>
+                <div class="rounded-lg border border-slate-700 bg-slate-800/80 p-3 text-xs text-slate-300">
+                    <p id="camera-produto-nome" class="font-semibold text-slate-200">Leia um código para consultar o produto</p>
+                    <div class="mt-2 grid grid-cols-2 gap-2 text-[10px] text-slate-400">
+                        <span id="camera-produto-categoria">Categoria: —</span>
+                        <span id="camera-produto-estoque">Estoque: —</span>
+                        <span id="camera-produto-unidade">Unidade: —</span>
+                        <span id="camera-produto-preco">Preço: —</span>
+                    </div>
+                </div>
+                <div id="camera-integracao-status" class="rounded-lg border border-slate-700 bg-slate-800/80 px-3 py-2 text-[10px] uppercase tracking-[0.18em] text-slate-300">
+                    Aguardando leitura
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    const codigoInput = document.getElementById('camera-codigo');
+    const campoProduto = document.getElementById('formProdCodigo');
+    if (codigoInput && campoProduto) {
+        codigoInput.addEventListener('input', () => {
+            campoProduto.value = codigoInput.value;
+        });
+    }
+
+    return modal;
+}
 
 export async function initAdminProdutos(containerEl) {
     containerEl.innerHTML = `
@@ -226,7 +315,10 @@ window.abrirModalEditarProduto = function(p) {
 };
 
 window.fecharModalProdutoAdmin = function() {
-    document.getElementById('modalFormProdutoAdmin').classList.add('hidden');
+    document.getElementById('modalFormProdutoAdmin')?.classList.add('hidden');
+    if (window.pararCamera) {
+        window.pararCamera();
+    }
 };
 
 window.salvarProdutoAdmin = async function(e) {
@@ -292,6 +384,35 @@ window.ativarScannerAdmin = function() {
     }
 };
 
-window.ativarScannerModal = function() {
-    alert('Leitor da câmera do modal ativado.');
+window.ativarScannerModal = async function() {
+    try {
+        await garantirBibliotecaCamera();
+        garantirModalCameraAdmin();
+
+        if (window.abrirLeitorCamera) {
+            await window.abrirLeitorCamera();
+            const codigoInput = document.getElementById('camera-codigo');
+            const campoProduto = document.getElementById('formProdCodigo');
+            if (codigoInput && campoProduto) {
+                campoProduto.value = codigoInput.value;
+                campoProduto.focus();
+            }
+            return;
+        }
+
+        const campoProduto = document.getElementById('formProdCodigo');
+        if (campoProduto) {
+            campoProduto.focus();
+            campoProduto.select();
+        }
+        alert('Leitor da câmera não está disponível para este navegador. Digite o código manualmente.');
+    } catch (error) {
+        console.error('PDV-VS: Erro ao abrir o leitor de câmera do modal:', error);
+        const campoProduto = document.getElementById('formProdCodigo');
+        if (campoProduto) {
+            campoProduto.focus();
+            campoProduto.select();
+        }
+        alert(error.message || 'Não foi possível abrir a câmera. Digite o código manualmente.');
+    }
 };

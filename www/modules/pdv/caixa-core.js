@@ -568,6 +568,22 @@ export async function realizarLogout() {
 
 export function focarBusca() { document.getElementById('inputBusca')?.focus(); }
 
+function atualizarSelecaoSugestoes(painel, indexAtual) {
+    const itens = [...(painel?.querySelectorAll('.item-sugestao-busca') || [])];
+    if (!itens.length) return;
+
+    const valorSeguro = Number.isInteger(indexAtual) ? indexAtual : -1;
+    itens.forEach((item, index) => {
+        const selecionado = index === valorSeguro;
+        item.classList.toggle('bg-emerald-950/80', selecionado);
+        item.classList.toggle('border-emerald-700', selecionado);
+        item.classList.toggle('text-white', selecionado);
+        item.classList.toggle('shadow-md', selecionado);
+        item.setAttribute('aria-selected', String(selecionado));
+        if (selecionado) item.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    });
+}
+
 export function aoDigitarBusca(e) {
     if (!e || !e.target) return;
     
@@ -589,29 +605,63 @@ export function aoDigitarBusca(e) {
     );
 
     if (filtrados.length === 0) {
-        suggestionsBox.innerHTML = '<div class="p-2 text-slate-400 text-sm">Nenhum produto encontrado.</div>';
+        suggestionsBox.innerHTML = '<div class="p-3 text-sm text-slate-400">Nenhum produto encontrado.</div>';
         suggestionsBox.classList.remove('hidden');
+        suggestionsBox.classList.add('opacity-100');
+        suggestionsBox.style.display = 'block';
         return;
     }
 
     let html = '';
-    filtrados.slice(0, 10).forEach(prod => {
-        html += `<div class="p-2 hover:bg-slate-100 cursor-pointer border-b flex justify-between items-center" onclick="window.adicionarProdutoPorId('${prod.id}')">
-            <span class="font-medium text-slate-700">${prod.nome}</span>
-            <span class="text-xs text-emerald-600 font-bold">R$ ${Number(prod.preco_venda || prod.preco || 0).toFixed(2)}</span>
+    filtrados.slice(0, 10).forEach((prod, index) => {
+        const preco = Number(prod.preco_venda || prod.preco || 0).toFixed(2);
+        html += `<div data-index="${index}" class="item-sugestao-busca p-2.5 cursor-pointer border-b border-slate-700 flex justify-between items-center gap-3 text-sm transition-colors hover:bg-slate-700/80 ${index === 0 ? 'bg-emerald-950/80 border-emerald-700 text-white' : 'text-slate-200'}" onclick="window.adicionarProdutoPorId('${prod.id}')" role="option" aria-selected="${index === 0}">
+            <span class="font-medium truncate">${prod.nome}</span>
+            <span class="text-xs font-bold text-emerald-400">R$ ${preco}</span>
         </div>`;
     });
     
     suggestionsBox.innerHTML = html;
     suggestionsBox.classList.remove('hidden');
+    suggestionsBox.classList.add('opacity-100');
+    suggestionsBox.style.display = 'block';
+    suggestionsBox.style.visibility = 'visible';
+    suggestionsBox.style.pointerEvents = 'auto';
+    atualizarSelecaoSugestoes(suggestionsBox, 0);
 }
 
 export async function tratarEnterBuscaCaixa(e) {
+    if (!e || !e.target) return;
+
+    const suggestionsBox = document.getElementById('sugestoesBusca');
+    const itens = suggestionsBox ? [...suggestionsBox.querySelectorAll('.item-sugestao-busca')] : [];
+    const indiceAtual = Number(e.target.dataset?.indiceSelecionado || 0);
+
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (!itens.length) return;
+        let proximoIndice = indiceAtual;
+        if (e.key === 'ArrowDown') proximoIndice = proximoIndice >= itens.length - 1 ? 0 : proximoIndice + 1;
+        if (e.key === 'ArrowUp') proximoIndice = proximoIndice <= 0 ? itens.length - 1 : proximoIndice - 1;
+        e.target.dataset.indiceSelecionado = String(proximoIndice);
+        atualizarSelecaoSugestoes(suggestionsBox, proximoIndice);
+        return;
+    }
+
     if (e.key === 'Enter') {
         e.preventDefault();
         const input = document.getElementById('inputBusca');
         if (!input) return;
         let valor = input.value.trim();
+
+        if (itens.length > 0 && Number.isInteger(Number(input.dataset.indiceSelecionado))) {
+            const indiceSelecionado = Number(input.dataset.indiceSelecionado);
+            const itemSelecionado = itens[indiceSelecionado];
+            if (itemSelecionado) {
+                itemSelecionado.click();
+                return;
+            }
+        }
         
         let qtdDesejada = window.quantidadeMultiplicador || 1;
         
@@ -650,7 +700,8 @@ export async function tratarEnterBuscaCaixa(e) {
             
             window.quantidadeMultiplicador = 1;
             input.value = '';
-            document.getElementById('sugestoesBusca')?.classList.add('hidden');
+            input.dataset.indiceSelecionado = '0';
+            suggestionsBox?.classList.add('hidden');
         } else {
             alert('PDV-VS: Produto não encontrado pelo código digitado.');
         }

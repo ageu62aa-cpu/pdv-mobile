@@ -30,20 +30,19 @@ export async function carregarProdutosCache() {
 export function aoDigitarBusca(termo) {
     const painel = document.getElementById('painelSugestoes') || document.getElementById('sugestoesBusca');
     if (!painel) return;
-    indiceItemSelecionadoTeclado = -1; // Reseta a seleção ao digitar para manter a compatibilidade com o teclado
-    
-    if (!termo || termo.length < 1) { 
-        painel.classList.add('hidden'); 
-        return; 
+    indiceItemSelecionadoTeclado = -1;
+
+    const valor = String(termo || '').trim().toLowerCase();
+    if (!valor) {
+        painel.classList.add('hidden');
+        painel.innerHTML = '';
+        return;
     }
-  
-    const termoLower = termo.toLowerCase();
-    
-    // Filtro corrigido para contemplar código de barras, código e nome
+
     const filtrados = produtosCache.filter(p => {
-        const nomeMatch = p.nome && p.nome.toLowerCase().includes(termoLower);
-        const barraMatch = p.codigo_barras && p.codigo_barras.toLowerCase().includes(termoLower);
-        const codMatch = p.codigo && p.codigo.toLowerCase().includes(termoLower);
+        const nomeMatch = p.nome && p.nome.toLowerCase().includes(valor);
+        const barraMatch = p.codigo_barras && p.codigo_barras.toLowerCase().includes(valor);
+        const codMatch = p.codigo && p.codigo.toLowerCase().includes(valor);
         return nomeMatch || barraMatch || codMatch;
     });
 
@@ -51,13 +50,16 @@ export function aoDigitarBusca(termo) {
     if (filtrados.length === 0) {
         painel.innerHTML = '<div class="p-3 text-xs text-gray-400">Nenhum produto encontrado.</div>';
         painel.classList.remove('hidden');
+        painel.style.display = 'block';
+        painel.style.visibility = 'visible';
+        painel.style.pointerEvents = 'auto';
         return;
     }
 
-    filtrados.forEach((p, idx) => {
+    filtrados.slice(0, 10).forEach((p, idx) => {
         const prodString = JSON.stringify(p).replace(/"/g, '&quot;');
         html += `
-            <div id="sugestao-item-${idx}" onclick="window.adicionarItemVendaPorObjeto('${prodString}')" class="p-3 hover:bg-gray-700 cursor-pointer border-b border-gray-700 flex justify-between text-sm item-sugestao-busca text-gray-200">
+            <div id="sugestao-item-${idx}" onclick="window.adicionarItemVendaPorObjeto('${prodString}')" class="item-sugestao-busca p-3 hover:bg-gray-700 cursor-pointer border-b border-gray-700 flex justify-between text-sm ${idx === 0 ? 'bg-emerald-950/80 border-emerald-700 text-white' : 'text-gray-200'}">
                 <div>
                     <span class="font-semibold text-white">${p.nome}</span>
                     <span class="text-xs text-gray-400 block">Cód: ${p.codigo_barras || p.codigo || 'N/A'} | Estoque: ${p.estoque} un</span>
@@ -69,6 +71,9 @@ export function aoDigitarBusca(termo) {
 
     painel.innerHTML = html;
     painel.classList.remove('hidden');
+    painel.style.display = 'block';
+    painel.style.visibility = 'visible';
+    painel.style.pointerEvents = 'auto';
 }
 
 export function adicionarItemVendaPorObjeto(prodStr) {
@@ -202,21 +207,15 @@ export function adicionarItemVendaDireto(produto, qtd, isPeso = false) {
 
 // Navegação por Teclado nas Sugestões de Busca (Setas e Enter)
 export function tratarEnterBuscaCaixa(e) {
-    const painel = document.getElementById('painelSugestoes');
+    const painel = document.getElementById('painelSugestoes') || document.getElementById('sugestoesBusca');
     const itens = painel ? painel.querySelectorAll('.item-sugestao-busca') : [];
 
-    if (e.key === 'ArrowDown') {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
         e.preventDefault();
         if (itens.length === 0) return;
-        indiceItemSelecionadoTeclado = (indiceItemSelecionadoTeclado + 1) % itens.length;
-        atualizarDestaqueSugestoes(itens);
-        return;
-    }
-
-    if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        if (itens.length === 0) return;
-        indiceItemSelecionadoTeclado = (indiceItemSelecionadoTeclado - 1 + itens.length) % itens.length;
+        indiceItemSelecionadoTeclado = e.key === 'ArrowDown'
+            ? (indiceItemSelecionadoTeclado + 1) % itens.length
+            : (indiceItemSelecionadoTeclado - 1 + itens.length) % itens.length;
         atualizarDestaqueSugestoes(itens);
         return;
     }
