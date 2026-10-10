@@ -87,23 +87,28 @@
 
         #containerCaixaBusca {
             position: relative;
-            z-index: 40;
+            z-index: 100;
             isolation: isolate;
         }
 
         #sugestoesBusca {
             position: absolute;
-            inset: auto 0 0 0;
             top: calc(100% + 0.35rem);
+            right: 0;
+            left: 0;
+            bottom: auto;
             display: none;
             visibility: hidden;
             opacity: 0;
             pointer-events: none;
-            z-index: 100;
-            background: rgba(15, 23, 42, 0.98);
+            z-index: 1000;
+            background-color: #1f2937;
+            color: #f3f4f6;
             border: 1px solid rgba(51, 65, 85, 0.9);
             border-radius: 0.75rem;
             box-shadow: 0 20px 45px rgba(15, 23, 42, 0.8);
+            max-height: 15rem;
+            overflow-y: auto;
         }
 
         #sugestoesBusca:not(.hidden) {
@@ -167,7 +172,7 @@
     <main class="flex-1 p-6 grid grid-cols-1 lg:grid-cols-3 gap-6 overflow-hidden">
         
         <!-- Coluna Esquerda & Centro: Busca e Lista de Produtos -->
-        <section class="lg:col-span-2 flex flex-col gap-4 overflow-hidden">
+        <section class="lg:col-span-2 flex flex-col gap-4 min-h-0 overflow-visible">
             <!-- Única Barra de Busca Estável -->
             <div id="containerCaixaBusca" class="w-full bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-700 flex flex-col gap-2 relative">
                 <div class="flex items-center justify-between">
@@ -208,11 +213,11 @@
                     </svg>
                 </div>
                 <!-- Caixa de sugestões flutuante -->
-                <div id="sugestoesBusca" class="hidden absolute left-0 right-0 top-full mt-1 bg-gray-850 border border-gray-700 rounded-xl shadow-2xl max-h-60 overflow-y-auto z-50 divide-y divide-gray-750"></div>
+                <div id="sugestoesBusca" class="hidden absolute left-0 right-0 mt-1 rounded-xl divide-y divide-gray-700"></div>
             </div>
 
             <!-- Tabela de Produtos no Carrinho -->
-            <div class="flex-1 bg-gray-800 border border-gray-700 rounded-xl flex flex-col overflow-hidden shadow-sm relative">
+            <div class="flex-1 min-h-0 bg-gray-800 border border-gray-700 rounded-xl flex flex-col overflow-hidden shadow-sm relative">
                 
                 <div class="absolute inset-0 flex items-center justify-center pointer-events-none opacity-10 z-0">
                     <img src="../../assets/mascote.jpeg" alt="Mascote Marca d'água" class="w-48 h-48 rounded-full object-cover">
