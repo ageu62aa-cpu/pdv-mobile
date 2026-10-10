@@ -10,6 +10,8 @@ let scannerProdutoAdmin = null;
 let scannerProdutoIniciando = false;
 let scannerProdutoCapturado = false;
 let scannerProdutoSessao = 0;
+let scannerProdutoZoom = { min: 1, max: 1, step: 0.1, value: 1 };
+let scannerProdutoFocoModo = [];
 
 async function garantirBibliotecaCamera() {
     if (window.Html5Qrcode) return;
@@ -45,6 +47,22 @@ function garantirModalCameraAdmin() {
             <div class="space-y-3 p-4">
                 <div id="readerAdminProduto" class="relative min-h-[260px] overflow-hidden rounded-xl border border-slate-700 bg-slate-950"></div>
                 <p id="cameraStatusAdminProduto" class="text-center text-xs text-slate-300" role="status">Solicitando permissão da câmera...</p>
+                <div class="flex items-center justify-between gap-2">
+                    <span class="text-[10px] text-slate-400">Ajuste o foco ou o zoom para facilitar a leitura.</span>
+                    <button id="cameraFocusAdminProduto" type="button" onclick="window.ajustarFocoScannerProdutoAdmin()" class="min-h-10 shrink-0 rounded-lg border border-slate-600 bg-slate-800 px-3 text-xs font-semibold text-slate-100 hover:border-emerald-500" aria-label="Ativar foco automático">
+                        <i class="fa-solid fa-crosshairs mr-1" aria-hidden="true"></i>Foco auto
+                    </button>
+                </div>
+                <div id="cameraZoomAdminProduto" class="hidden items-center gap-2 rounded-lg bg-slate-800 px-2.5 py-2">
+                    <button id="cameraZoomOutAdminProduto" type="button" onclick="window.alterarZoomScannerProdutoAdmin(-1)" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-slate-200 hover:bg-slate-700 disabled:opacity-40" aria-label="Diminuir zoom" title="Diminuir zoom">
+                        <i class="fa-solid fa-magnifying-glass-minus" aria-hidden="true"></i>
+                    </button>
+                    <input id="cameraZoomRangeAdminProduto" type="range" min="1" max="2" step="0.1" value="1" oninput="window.alterarZoomScannerProdutoAdmin(0, this.value)" class="h-2 min-w-0 flex-1 accent-emerald-500" aria-label="Ajustar zoom da câmera">
+                    <button id="cameraZoomInAdminProduto" type="button" onclick="window.alterarZoomScannerProdutoAdmin(1)" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-slate-200 hover:bg-slate-700 disabled:opacity-40" aria-label="Aumentar zoom" title="Aumentar zoom">
+                        <i class="fa-solid fa-magnifying-glass-plus" aria-hidden="true"></i>
+                    </button>
+                    <span id="cameraZoomValueAdminProduto" class="w-10 text-right text-xs text-slate-300">1.0×</span>
+                </div>
                 <p class="text-center text-[10px] text-slate-400">Ao reconhecer um código, o leitor fecha e preenche Código de Barras / SKU automaticamente.</p>
             </div>
         </section>
@@ -409,6 +427,7 @@ window.ativarScannerModal = async function() {
             return;
         }
         if (scannerProdutoCapturado) return;
+        configurarAjustesCameraProdutoAdmin(leitorCodigo);
         status.textContent = 'Aponte a câmera para um código de barras.';
     } catch (error) {
         if (scannerProdutoAdmin) await encerrarLeitorProdutoAdmin(scannerProdutoAdmin);
@@ -439,8 +458,82 @@ async function encerrarLeitorProdutoAdmin(leitor) {
         if (!erroParada) erroParada = error;
     }
     if (scannerProdutoAdmin === leitor) scannerProdutoAdmin = null;
+    scannerProdutoFocoModo = [];
+    document.getElementById('cameraZoomAdminProduto')?.classList.add('hidden');
     return erroParada;
 }
+
+function configurarAjustesCameraProdutoAdmin(leitor) {
+    const wrapperZoom = document.getElementById('cameraZoomAdminProduto');
+    const faixaZoom = document.getElementById('cameraZoomRangeAdminProduto');
+    const valorZoom = document.getElementById('cameraZoomValueAdminProduto');
+    const botaoFoco = document.getElementById('cameraFocusAdminProduto');
+    try {
+        const capacidades = leitor.getRunningTrackCapabilities();
+        const settings = leitor.getRunningTrackSettings();
+        const zoom = capacidades.zoom;
+        scannerProdutoZoom = {
+            min: Number(zoom?.min) || 1,
+            max: Number(zoom?.max) || 1,
+            step: Number(zoom?.step) || 0.1,
+            value: Number(settings.zoom) || Number(zoom?.min) || 1
+        };
+        scannerProdutoFocoModo = Array.isArray(capacidades.focusMode) ? capacidades.focusMode : [];
+        if (botaoFoco) botaoFoco.disabled = !scannerProdutoFocoModo.includes('continuous');
+        if (zoom && scannerProdutoZoom.max > scannerProdutoZoom.min && wrapperZoom && faixaZoom) {
+            faixaZoom.min = String(scannerProdutoZoom.min);
+            faixaZoom.max = String(scannerProdutoZoom.max);
+            faixaZoom.step = String(scannerProdutoZoom.step);
+            faixaZoom.value = String(scannerProdutoZoom.value);
+            wrapperZoom.classList.remove('hidden');
+            wrapperZoom.classList.add('flex');
+            if (valorZoom) valorZoom.textContent = `${scannerProdutoZoom.value.toFixed(1)}×`;
+        } else {
+            wrapperZoom?.classList.add('hidden');
+        }
+    } catch (error) {
+        scannerProdutoFocoModo = [];
+        if (botaoFoco) botaoFoco.disabled = true;
+        wrapperZoom?.classList.add('hidden');
+        console.info('PDV-VS: Ajustes manuais de câmera indisponíveis neste dispositivo.', error);
+    }
+}
+
+window.ajustarFocoScannerProdutoAdmin = async function() {
+    const leitor = scannerProdutoAdmin;
+    if (!leitor?.isScanning) return;
+    if (!scannerProdutoFocoModo.includes('continuous')) {
+        alert('O foco automático não é controlável neste aparelho. Use o foco disponível na câmera.');
+        return;
+    }
+    try {
+        await leitor.applyVideoConstraints({ advanced: [{ focusMode: 'continuous' }] });
+    } catch (error) {
+        console.error('PDV-VS: Não foi possível ativar o foco automático da câmera:', error);
+        alert(`Não foi possível ativar o foco automático: ${error.message || error}`);
+    }
+};
+
+window.alterarZoomScannerProdutoAdmin = async function(delta = 0, valorSolicitado) {
+    const leitor = scannerProdutoAdmin;
+    if (!leitor?.isScanning) return;
+    const proximoZoom = Math.min(
+        scannerProdutoZoom.max,
+        Math.max(scannerProdutoZoom.min, Number(valorSolicitado ?? scannerProdutoZoom.value + delta * scannerProdutoZoom.step))
+    );
+    if (!Number.isFinite(proximoZoom)) return;
+    try {
+        await leitor.applyVideoConstraints({ advanced: [{ zoom: proximoZoom }] });
+        scannerProdutoZoom.value = proximoZoom;
+        const faixaZoom = document.getElementById('cameraZoomRangeAdminProduto');
+        const valorZoom = document.getElementById('cameraZoomValueAdminProduto');
+        if (faixaZoom) faixaZoom.value = String(proximoZoom);
+        if (valorZoom) valorZoom.textContent = `${proximoZoom.toFixed(1)}×`;
+    } catch (error) {
+        console.error('PDV-VS: Não foi possível ajustar o zoom da câmera:', error);
+        alert(`Não foi possível ajustar o zoom: ${error.message || error}`);
+    }
+};
 
 async function concluirCapturaProduto(leitor, campoProduto, codigo) {
     const modal = document.getElementById('modalCameraAdminProduto');
