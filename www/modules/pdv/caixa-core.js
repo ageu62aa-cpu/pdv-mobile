@@ -17,6 +17,7 @@ let valorTrocoAbertura = 0;
 let horaAberturaCaixa = null;
 let canalRealtimeCaixa = null;
 let canalRealtimeProdutos = null;
+let acaoAutorizacaoPendente = null;
 
 // --- UTILITÁRIO DE CLIENTE SUPABASE ---
 const getSupabase = () => window.supabaseClient || window.supabase || supabase;

@@ -264,6 +264,7 @@ function atualizarDestaqueSugestoes(itens) {
 window.carregarProdutosCache = carregarProdutosCache;
 window.aoDigitarBusca = aoDigitarBusca;
 window.adicionarItemVendaPorObjeto = adicionarItemVendaPorObjeto;
+window.abrirModalPesagemManual = abrirModalPesagemManual;
 window.fecharModalPesagemManual = fecharModalPesagemManual;
 window.calcularValorParcialPeso = calcularValorParcialPeso;
 window.tratarEnterModalPesagem = tratarEnterModalPesagem;
