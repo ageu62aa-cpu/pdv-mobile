@@ -90,6 +90,7 @@ async function processarLeitura(codigo) {
             atualizarStatusCamera('Código capturado. Fechando o leitor...');
             callback(codigo);
             await pararCamera();
+            document.getElementById('formProdCodigo')?.focus();
             return;
         }
 

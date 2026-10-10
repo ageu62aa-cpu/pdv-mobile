@@ -129,6 +129,24 @@
         }
 
         @media (max-width: 640px) {
+            #pdvMain {
+                overflow-y: auto;
+                padding: 0.5rem 0.5rem 4.5rem;
+            }
+
+            #pdvMain > section {
+                min-height: 0;
+            }
+
+            #cartPanel {
+                min-height: 12rem;
+                max-height: 48vh;
+            }
+
+            #listaCarrinhoItens {
+                max-height: calc(48vh - 3.25rem);
+            }
+
             #pdvHeader {
                 display: grid;
                 grid-template-columns: minmax(0, 1fr);
@@ -255,7 +273,7 @@
     </header>
 
     <!-- Corpo Principal -->
-    <main class="flex-1 p-6 grid grid-cols-1 lg:grid-cols-3 gap-6 overflow-hidden">
+    <main id="pdvMain" class="flex-1 p-6 grid grid-cols-1 lg:grid-cols-3 gap-6 overflow-hidden">
         
         <!-- Coluna Esquerda & Centro: Busca e Lista de Produtos -->
         <section class="lg:col-span-2 flex flex-col gap-4 min-h-0 overflow-visible">
@@ -303,16 +321,17 @@
             </div>
 
             <!-- Tabela de Produtos no Carrinho -->
-            <div class="flex-1 min-h-0 bg-gray-800 border border-gray-700 rounded-xl flex flex-col overflow-hidden shadow-sm relative">
+            <div id="cartPanel" class="flex-1 min-h-0 bg-gray-800 border border-gray-700 rounded-xl flex flex-col overflow-hidden shadow-sm relative">
                 
                 <div class="absolute inset-0 flex items-center justify-center pointer-events-none opacity-10 z-0">
                     <img src="../../assets/mascote.jpeg" alt="Mascote Marca d'água" class="w-48 h-48 rounded-full object-cover">
                 </div>
 
-                <div class="bg-gray-850 px-4 py-3 border-b border-gray-700 grid grid-cols-12 text-xs font-bold text-gray-400 uppercase tracking-wider relative z-10">
-                    <div class="col-span-6">Item / Produto</div>
+                <div class="bg-gray-850 px-2 py-2 border-b border-gray-700 grid grid-cols-12 gap-1 text-[9px] font-bold text-gray-400 uppercase tracking-wider relative z-10 sm:px-4 sm:py-3 sm:gap-2 sm:text-xs">
+                    <div class="col-span-5">Item / Produto</div>
                     <div class="col-span-3 text-center">Qtd / Preço</div>
                     <div class="col-span-3 text-right">Subtotal</div>
+                    <div class="col-span-1 text-center" title="F11">Ação</div>
                 </div>
                 
                 <div id="listaCarrinhoVazio" class="flex-1 flex flex-col items-center justify-center p-8 text-center text-gray-400 relative z-10">
@@ -570,6 +589,21 @@
         </section>
 
     </main>
+
+    <nav id="mobileFunctionBar" class="fixed inset-x-0 bottom-0 z-40 flex gap-2 overflow-x-auto border-t border-gray-700 bg-gray-950/95 px-2 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] shadow-[0_-8px_24px_rgba(0,0,0,0.4)] backdrop-blur lg:hidden" aria-label="Atalhos do caixa">
+        <button type="button" onclick="window.handleAction('F1')" title="Cadastro para nota" aria-label="F1 Cadastro para nota" class="min-w-12 rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-xs font-bold text-gray-100">F1</button>
+        <button type="button" onclick="window.handleAction('F2')" title="Selecionar operador" aria-label="F2 Operador" class="min-w-12 rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-xs font-bold text-gray-100">F2</button>
+        <button type="button" onclick="window.handleAction('F3')" title="Dinheiro ou Pix" aria-label="F3 Dinheiro ou Pix" class="min-w-12 rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-xs font-bold text-emerald-300">F3</button>
+        <button type="button" onclick="window.handleAction('F4')" title="Débito" aria-label="F4 Débito" class="min-w-12 rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-xs font-bold text-gray-100">F4</button>
+        <button type="button" onclick="window.handleAction('F5')" title="Buscar produto" aria-label="F5 Buscar produto" class="min-w-12 rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-xs font-bold text-gray-100">F5</button>
+        <button type="button" onclick="window.handleAction('F6')" title="Desconto" aria-label="F6 Desconto" class="min-w-12 rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-xs font-bold text-gray-100">F6</button>
+        <button type="button" onclick="window.handleAction('F7')" title="Finalizar pagamento" aria-label="F7 Finalizar pagamento" class="min-w-12 rounded-lg border border-emerald-700 bg-emerald-950 px-3 py-2 text-xs font-bold text-emerald-300">F7</button>
+        <button type="button" onclick="window.handleAction('F8')" title="Crédito" aria-label="F8 Crédito" class="min-w-12 rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-xs font-bold text-gray-100">F8</button>
+        <button type="button" onclick="window.handleAction('F9')" title="Sangria ou suprimento" aria-label="F9 Sangria ou suprimento" class="min-w-12 rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-xs font-bold text-gray-100">F9</button>
+        <button type="button" onclick="window.handleAction('F10')" title="Multiplicar quantidade" aria-label="F10 Multiplicar quantidade" class="min-w-12 rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-xs font-bold text-gray-100">F10</button>
+        <button type="button" onclick="window.handleAction('F11')" title="Cancelar item" aria-label="F11 Cancelar item" class="min-w-12 rounded-lg border border-rose-800 bg-rose-950 px-3 py-2 text-xs font-bold text-rose-300">F11</button>
+        <button type="button" onclick="window.handleAction('F12')" title="Cancelar venda" aria-label="F12 Cancelar venda" class="min-w-12 rounded-lg border border-rose-800 bg-rose-950 px-3 py-2 text-xs font-bold text-rose-300">F12</button>
+    </nav>
 
     <div id="modalCamera" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-3 backdrop-blur-sm sm:p-5 hidden">
       <section class="max-h-[94vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-slate-700 bg-slate-900 text-slate-100 shadow-2xl">
@@ -891,7 +925,11 @@
                     multiplicadorQuantidadeItem();
                     break;
                 case 'F11':
-                    cancelarItemCarrinhoPIN();
+                    if (typeof window.acaoAtalhoF11 === 'function') {
+                        window.acaoAtalhoF11();
+                    } else {
+                        cancelarItemCarrinhoPIN();
+                    }
                     break;
                 case 'F12':
                     cancelarVendaInteiraPIN();

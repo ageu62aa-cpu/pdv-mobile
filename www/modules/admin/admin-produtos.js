@@ -29,7 +29,7 @@ function garantirModalCameraAdmin() {
     modal.id = 'modalCamera';
     modal.className = 'fixed inset-0 z-50 hidden flex items-center justify-center bg-black/80 p-3 backdrop-blur-sm sm:p-5';
     modal.innerHTML = `
-        <section class="w-full max-w-lg rounded-2xl border border-slate-700 bg-slate-900 text-slate-100 shadow-2xl">
+        <section class="max-h-[94vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-slate-700 bg-slate-900 text-slate-100 shadow-2xl">
             <header class="flex items-center justify-between border-b border-slate-700 px-4 py-3">
                 <div>
                     <p class="text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-400">Cadastro de produto</p>
@@ -42,6 +42,22 @@ function garantirModalCameraAdmin() {
             <div class="space-y-3 p-4">
                 <div id="reader" class="relative min-h-[300px] overflow-hidden rounded-xl border border-slate-700 bg-slate-950"></div>
                 <p id="camera-status" class="text-center text-xs text-slate-300">Solicitando permissão da câmera...</p>
+                <div class="flex items-center justify-between gap-2">
+                    <span class="text-[10px] text-slate-400">Toque na imagem para ajustar o foco.</span>
+                    <button id="camera-focus-button" type="button" onclick="window.ativarFocoAutomaticoScanner?.()" class="min-h-10 rounded-lg border border-slate-600 bg-slate-800 px-3 text-xs font-semibold text-slate-100 hover:border-emerald-500" aria-label="Ajustar foco da câmera">
+                        <i class="fa-solid fa-crosshairs mr-1" aria-hidden="true"></i>Foco auto
+                    </button>
+                </div>
+                <div id="camera-zoom-wrapper" class="hidden items-center gap-2 rounded-lg bg-slate-800 px-2.5 py-2">
+                    <button id="camera-zoom-out" type="button" class="flex h-10 w-10 items-center justify-center rounded-lg text-slate-200 hover:bg-slate-700 disabled:opacity-40" aria-label="Diminuir zoom" title="Diminuir zoom">
+                        <i class="fa-solid fa-magnifying-glass-minus" aria-hidden="true"></i>
+                    </button>
+                    <input id="camera-zoom" type="range" min="1" max="2" step="0.1" value="1" class="h-2 min-w-0 flex-1 accent-emerald-500" aria-label="Ajustar zoom da câmera">
+                    <button id="camera-zoom-in" type="button" class="flex h-10 w-10 items-center justify-center rounded-lg text-slate-200 hover:bg-slate-700 disabled:opacity-40" aria-label="Aumentar zoom" title="Aumentar zoom">
+                        <i class="fa-solid fa-magnifying-glass-plus" aria-hidden="true"></i>
+                    </button>
+                    <span id="camera-zoom-value" class="w-10 text-right text-xs text-slate-300">1.0×</span>
+                </div>
                 <div class="rounded-lg border border-slate-700 bg-slate-800/80 p-3">
                     <label for="camera-codigo" class="block text-[9px] font-bold uppercase tracking-[0.18em] text-slate-400">Código capturado</label>
                     <input id="camera-codigo" readonly value="Aguardando leitura..." class="mt-2 w-full bg-transparent text-center font-mono text-sm font-bold tracking-wider text-slate-100 outline-none">
@@ -84,8 +100,8 @@ export async function initAdminProdutos(containerEl) {
                 </button>
             </div>
 
-            <!-- Tabela de Produtos -->
-            <div class="bg-gray-800 rounded-xl shadow-sm border border-gray-700 overflow-hidden">
+            <!-- Tabela de Produtos para telas maiores -->
+            <div class="hidden overflow-x-auto rounded-xl border border-gray-700 bg-gray-800 shadow-sm md:block">
                 <table class="w-full text-left border-collapse text-sm">
                     <thead>
                         <tr class="bg-gray-900 border-b border-gray-700 text-xs text-gray-400 uppercase">
@@ -102,6 +118,9 @@ export async function initAdminProdutos(containerEl) {
                     </tbody>
                 </table>
             </div>
+
+            <!-- Cartões com ações grandes e acessíveis no celular -->
+            <div id="listaProdutosAdminMobile" class="space-y-2 md:hidden" aria-label="Produtos cadastrados"></div>
         </div>
 
         <!-- Modal Personalizado de Cadastro / Edição -->
@@ -207,14 +226,16 @@ async function carregarProdutosAdmin() {
 
 function renderizarTabelaAdmin(lista) {
     const tbody = document.getElementById('tabela-produtos-corpo');
-    if (!tbody) return;
+    const listaMobile = document.getElementById('listaProdutosAdminMobile');
+    if (!tbody && !listaMobile) return;
 
     if (!lista || lista.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="text-center p-4 text-gray-400">Nenhum produto encontrado.</td></tr>`;
+        if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="text-center p-4 text-gray-400">Nenhum produto encontrado.</td></tr>`;
+        if (listaMobile) listaMobile.innerHTML = '<p class="rounded-xl border border-gray-700 bg-gray-800 p-4 text-center text-sm text-gray-400">Nenhum produto encontrado.</p>';
         return;
     }
 
-    tbody.innerHTML = lista.map(p => `
+    const linhaDesktop = p => `
         <tr class="hover:bg-gray-750 transition-colors">
             <td class="p-3 font-mono text-xs text-gray-300">${p.codigo_barras || p.codigo || '-'}</td>
             <td class="p-3 font-medium text-white">${p.nome} ${p.unidade === 'KG' ? '<span class="text-amber-400 text-[10px] font-bold">(KG)</span>' : ''}</td>
@@ -222,11 +243,29 @@ function renderizarTabelaAdmin(lista) {
             <td class="p-3 font-bold text-emerald-400">R$ ${Number(p.preco || 0).toFixed(2)}${p.unidade === 'KG' ? '/kg' : ''}</td>
             <td class="p-3 text-gray-300">${p.estoque} ${p.unidade || 'UN'}</td>
             <td class="p-3 text-right space-x-2">
-                <button onclick='window.abrirModalEditarProduto(${JSON.stringify(p).replace(/'/g, "&#39;")})' class="text-blue-400 hover:text-blue-300 transition" title="Editar"><i class="fa-solid fa-pen"></i></button>
+                <button onclick='window.abrirModalEditarProduto(${JSON.stringify(p).replace(/'/g, "&#39;")})' class="inline-flex h-10 w-10 items-center justify-center rounded-lg text-blue-400 transition hover:bg-blue-950 hover:text-blue-300" title="Editar" aria-label="Editar ${p.nome}"><i class="fa-solid fa-pen"></i></button>
                 <button onclick="window.excluirProdutoAdmin('${p.id}')" class="text-red-400 hover:text-red-300 transition" title="Excluir"><i class="fa-solid fa-trash"></i></button>
             </td>
         </tr>
-    `).join('');
+    `;
+    const cartaoMobile = p => `
+        <article class="rounded-xl border border-gray-700 bg-gray-800 p-3 text-sm">
+            <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                    <h3 class="break-words font-semibold text-white">${p.nome} ${p.unidade === 'KG' ? '<span class="text-amber-400 text-[10px] font-bold">(KG)</span>' : ''}</h3>
+                    <p class="mt-1 break-all font-mono text-[11px] text-gray-400">${p.codigo_barras || p.codigo || 'Sem código'}</p>
+                    <p class="mt-1 text-xs text-gray-400">${p.categoria || 'Geral'} · ${p.estoque} ${p.unidade || 'UN'}</p>
+                    <p class="mt-1 font-bold text-emerald-400">R$ ${Number(p.preco || 0).toFixed(2)}${p.unidade === 'KG' ? '/kg' : ''}</p>
+                </div>
+                <div class="flex shrink-0 gap-2">
+                    <button type="button" onclick='window.abrirModalEditarProduto(${JSON.stringify(p).replace(/'/g, "&#39;")})' class="flex h-11 w-11 items-center justify-center rounded-lg border border-blue-800 bg-blue-950/50 text-blue-300" title="Editar" aria-label="Editar ${p.nome}"><i class="fa-solid fa-pen" aria-hidden="true"></i></button>
+                    <button type="button" onclick="window.excluirProdutoAdmin('${p.id}')" class="flex h-11 w-11 items-center justify-center rounded-lg border border-red-800 bg-red-950/50 text-red-300" title="Excluir" aria-label="Excluir ${p.nome}"><i class="fa-solid fa-trash" aria-hidden="true"></i></button>
+                </div>
+            </div>
+        </article>
+    `;
+    if (tbody) tbody.innerHTML = lista.map(linhaDesktop).join('');
+    if (listaMobile) listaMobile.innerHTML = lista.map(cartaoMobile).join('');
 }
 
 window.filtrarProdutosAdmin = function(termo) {
@@ -356,6 +395,8 @@ window.ativarScannerModal = async function() {
         await window.escanearCameraAdmin(codigo => {
             if (!campoProduto) throw new Error('O campo de código do produto não foi encontrado.');
             campoProduto.value = codigo;
+            campoProduto.dispatchEvent(new Event('input', { bubbles: true }));
+            campoProduto.dispatchEvent(new Event('change', { bubbles: true }));
             campoProduto.focus();
         });
     } catch (error) {

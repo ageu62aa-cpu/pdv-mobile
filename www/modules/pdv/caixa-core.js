@@ -493,7 +493,13 @@ window.acaoAtalhoF10 = () => {
     if (qtd) { window.quantidadeMultiplicador = parseFloat(qtd) || 1; }
 };
 
-window.acaoAtalhoF11 = () => { abrirModalCancelarItem(); };
+window.acaoAtalhoF11 = indiceItem => {
+    if (Number.isInteger(indiceItem)) {
+        solicitarRemocaoItem(indiceItem);
+        return;
+    }
+    abrirModalCancelarItem();
+};
 window.acaoAtalhoF12 = () => { cancelarVenda(); };
 window.acaoAtalhoPix = () => { window.acaoAtalhoF3(); };
 window.acaoAtalhoParcelamento = () => { window.acaoAtalhoF8(); };
@@ -1372,20 +1378,24 @@ export function atualizarTabelaVenda() {
         }
 
         if (listaCarrinho) {
-            carrinhoHtml += `<div class="grid grid-cols-12 items-center gap-2 px-4 py-3 text-sm text-gray-100 hover:bg-gray-700/50">
-                <div class="col-span-6 flex min-w-0 items-center justify-between gap-2 font-medium">
+            carrinhoHtml += `<div class="grid grid-cols-12 items-center gap-1 px-2 py-2 text-sm text-gray-100 hover:bg-gray-700/50 sm:gap-2 sm:px-4 sm:py-3">
+                <div class="col-span-5 min-w-0 font-medium">
                     <div class="min-w-0">
                         <span class="block truncate">${item.nome}</span>
                         ${item.isPeso ? '<span class="text-[10px] text-amber-300">Pesado (Baixa por Peso)</span>' : ''}
                     </div>
-                    <button onclick="window.solicitarRemocaoItem(${i})" aria-label="Remover ${item.nome}" class="shrink-0 px-1 text-rose-400 hover:text-rose-300"><i class="fa-solid fa-trash"></i></button>
                 </div>
-                <div class="col-span-3 flex items-center justify-center gap-2">
+                <div class="col-span-3 flex min-w-0 flex-col items-center justify-center gap-1 sm:flex-row sm:gap-2">
                     ${qtdDisplay}
-                    <span class="whitespace-nowrap text-[11px] text-gray-300">R$ ${preco.toFixed(2)}${item.isPeso ? '/kg' : ''}</span>
+                    <span class="whitespace-nowrap text-[9px] text-gray-300 sm:text-[11px]">R$ ${preco.toFixed(2)}${item.isPeso ? '/kg' : ''}</span>
                 </div>
-                <div class="col-span-3 min-w-0 text-right">
+                <div class="col-span-3 min-w-0 text-right text-[10px] sm:text-sm">
                     <span data-subtotal-item="${i}" class="whitespace-nowrap font-bold">R$ ${subtotalItem.toFixed(2)}</span>
+                </div>
+                <div class="col-span-1 flex justify-center">
+                    <button type="button" onclick="window.acaoAtalhoF11(${i})" aria-label="Cancelar ${item.nome} (F11)" title="Cancelar item (F11)" class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-rose-800/70 bg-rose-950/50 text-rose-400 hover:border-rose-500 hover:bg-rose-900/70 hover:text-rose-200">
+                        <i class="fa-solid fa-trash" aria-hidden="true"></i>
+                    </button>
                 </div>
             </div>`;
         }
