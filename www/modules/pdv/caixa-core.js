@@ -761,30 +761,47 @@ window.acionarFecharCaixa = async function() {
         const dataAbertura = caixaAberto.created_at;
 
         // 2. BUSCAR VENDAS APENAS DESTE TURNO (A partir da abertura)
-        const { data: vendasRealizadas, error: erroVendas } = await db
+        let { data: vendasRealizadas, error: erroVendas } = await db
             .from('vendas')
             .select('valor_total, forma_pagamento')
             .eq('empresa_id', empresaId)
             .eq('operador', usuario.email || '')
             .gte('created_at', dataAbertura);
-        if (erroVendas) throw erroVendas;
+        let formasPagamentoDisponiveis = true;
+        if (erroVendas && /forma_pagamento/i.test(erroVendas.message || '')) {
+            console.warn('[PDV-VS] A coluna vendas.forma_pagamento ainda não existe. Consultando valores para permitir o fechamento; aplique a migration Supabase para guardar as formas de pagamento.', erroVendas);
+            const consultaSemFormaPagamento = await db
+                .from('vendas')
+                .select('valor_total')
+                .eq('empresa_id', empresaId)
+                .eq('operador', usuario.email || '')
+                .gte('created_at', dataAbertura);
+            if (consultaSemFormaPagamento.error) throw consultaSemFormaPagamento.error;
+            vendasRealizadas = consultaSemFormaPagamento.data;
+            formasPagamentoDisponiveis = false;
+        } else if (erroVendas) {
+            throw erroVendas;
+        }
 
         let fatDinheiro = 0;
         let fatPix = 0;
         let fatDebito = 0;
         let fatCredito = 0;
+        let fatNaoInformado = 0;
         let faturamentoGeral = 0;
 
         vendasRealizadas?.forEach(v => {
             const valor = Number(v.valor_total) || 0;
             faturamentoGeral += valor;
-            const forma = (v.forma_pagamento || 'dinheiro').toLowerCase();
+            const forma = formasPagamentoDisponiveis
+                ? String(v.forma_pagamento || '').trim().toLowerCase()
+                : '';
 
             if (forma.includes('dinheiro')) fatDinheiro += valor;
             else if (forma.includes('pix')) fatPix += valor;
             else if (forma.includes('debito') || forma.includes('débito')) fatDebito += valor;
             else if (forma.includes('credito') || forma.includes('crédito') || forma.includes('parcelado')) fatCredito += valor;
-            else fatDinheiro += valor;
+            else fatNaoInformado += valor;
         });
 
         // Dinheiro físico esperado na gaveta (Troco Inicial + Vendas em Dinheiro)
@@ -796,6 +813,7 @@ window.acionarFecharCaixa = async function() {
         if (fatPix > 0) blocoPagamentos += `  • PIX: R$ ${fatPix.toFixed(2)}\n`;
         if (fatDebito > 0) blocoPagamentos += `  • Cartão Débito: R$ ${fatDebito.toFixed(2)}\n`;
         if (fatCredito > 0) blocoPagamentos += `  • Cartão Crédito: R$ ${fatCredito.toFixed(2)}\n`;
+        if (fatNaoInformado > 0) blocoPagamentos += `  • Forma não informada: R$ ${fatNaoInformado.toFixed(2)}\n`;
         if (!blocoPagamentos) blocoPagamentos = `  (Nenhuma venda registrada neste turno)\n`;
 
         const resumoMensagem = 
@@ -816,16 +834,24 @@ window.acionarFecharCaixa = async function() {
         }
 
         // 3. Atualizar status para FECHADO no banco (usando apenas colunas nativas garantidas)
-        const { error: erroUpdate } = await db
+        const { data: caixaFechado, error: erroUpdate } = await db
             .from('caixas')
             .update({ 
                 status: 'FECHADO',
                 faturamento_dia: faturamentoGeral,
                 updated_at: new Date().toISOString()
             })
-            .eq('id', caixaAberto.id);
+            .eq('id', caixaAberto.id)
+            .eq('empresa_id', empresaId)
+            .eq('user_id', usuario.id)
+            .eq('status', 'ABERTO')
+            .select('id, status, faturamento_dia')
+            .maybeSingle();
 
         if (erroUpdate) throw erroUpdate;
+        if (!caixaFechado) {
+            throw new Error('O caixa não foi atualizado. Atualize a página e confira se ainda está aberto.');
+        }
 
         alert('Caixa fechado com sucesso! Painel administrativo atualizado.');
         
