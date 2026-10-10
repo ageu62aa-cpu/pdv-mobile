@@ -31,9 +31,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             .select('empresa_id, cargo')
             .eq('user_id', user.id)
             .maybeSingle();
-        if (vinculoError) console.error('PDV-VS: Erro ao buscar vínculo do administrador:', vinculoError);
+        if (vinculoError) throw vinculoError;
 
         let empresaId = vinculo ? vinculo.empresa_id : null;
+        let cargo = vinculo?.cargo || null;
         if (!empresaId && user.email) {
             const { data: empresaPorEmail, error: emailError } = await supabase
                 .from('empresas')
@@ -41,7 +42,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 .eq('email_admin', user.email)
                 .maybeSingle();
             if (emailError) console.error('PDV-VS: Erro ao buscar empresa pelo email do administrador:', emailError);
-            if (empresaPorEmail) empresaId = empresaPorEmail.id;
+            if (empresaPorEmail) {
+                empresaId = empresaPorEmail.id;
+                cargo = 'admin_mercado';
+            }
+        }
+        if (cargo !== 'admin_mercado') {
+            window.location.href = cargo === 'operador' ? '../pdv/caixa-core.html' : '../auth/auth.html';
+            return null;
         }
         if (!empresaId) throw new Error('Não foi encontrada uma empresa vinculada ao administrador autenticado.');
 
@@ -61,11 +69,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         setUsuarioAtual(user);
         setEmpresaAtualId(empresa.id);
-        setCargoUsuarioAtual(vinculo?.cargo || 'admin_mercado');
+        setCargoUsuarioAtual(cargo);
         setDadosEmpresaAtual(empresa);
         window.usuarioAtual = user;
         window.empresaAtualId = empresa.id;
-        window.cargoUsuarioAtual = vinculo?.cargo || 'admin_mercado';
+        window.cargoUsuarioAtual = cargo;
         window.dadosEmpresaAtual = empresa;
 
         return { user, empresa };
@@ -83,7 +91,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     function iniciarMonitoramentoRealtime(empresaId) {
         canaisAdminRealtime.forEach(canal => supabase.removeChannel(canal));
         canaisAdminRealtime = [
-            ['caixa_status', ['operadores']],
             ['caixas', ['operadores']],
             ['vendas', ['operadores', 'historico']],
             ['produtos', ['produtos']]
@@ -95,9 +102,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 table: tabela,
                 filter: `empresa_id=eq.${empresaId}`
             }, () => {
-                if (abasAfetadas.includes('operadores')) {
-                    window.adminStatusCaixasIniciais = null;
-                }
                 agendarAtualizacaoRealtime(abasAfetadas);
             })
             .subscribe((status, error) => {
@@ -127,33 +131,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     try {
         const contexto = await obterContextoAdmin();
-        if (!contexto) {
-            window.location.href = '../auth/auth.html';
-            return;
-        }
+        if (!contexto) return;
         const empresaId = contexto.empresa.id;
 
-        const [{ data: produtos, error: produtosError }, { data: statusCaixas, error: caixasError }] = await Promise.all([
-            supabase
-                .from('produtos')
-                .select('*')
-                .eq('empresa_id', empresaId)
-                .order('nome', { ascending: true }),
-            supabase
-                .from('caixas')
-                .select('*')
-                .eq('empresa_id', empresaId)
-        ]);
+        const { data: produtos, error: produtosError } = await supabase
+            .from('produtos')
+            .select('*')
+            .eq('empresa_id', empresaId)
+            .order('nome', { ascending: true });
 
         if (produtosError) throw produtosError;
         window.adminProdutosIniciais = produtos || [];
-        if (caixasError) {
-            window.adminErroStatusCaixas = caixasError.message;
-            console.error('PDV-VS: Erro ao carregar caixas:', caixasError);
-        } else {
-            window.adminStatusCaixasIniciais = statusCaixas || [];
-            window.adminErroStatusCaixas = null;
-        }
 
         iniciarMonitoramentoRealtime(empresaId);
 

@@ -353,12 +353,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 localStorage.setItem('operador_logado_id', vinculo.id);
                 localStorage.setItem('operador_logado_user_id', userId);
 
-                // Atualiza o status do caixa do operador para 'aberto' em tempo real
-                await supabase
-                    .from('usuarios_empresas')
-                    .update({ status_caixa: 'aberto' })
-                    .eq('id', vinculo.id);
-
                 showLoginFeedback('Login de Operador com Sucesso', 'success');
                 setTimeout(() => {
                     // [CORREÇÃO DO CAMINHO] Redireciona o Operador para a nova página exclusiva e segura

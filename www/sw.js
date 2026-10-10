@@ -1,10 +1,11 @@
-const CACHE_NAME = 'pdv-vs-v21';
+const CACHE_NAME = 'pdv-vs-v22';
 const urlsToCache = [
     '/',
     '/index.html',
     '/manifest.json',
     '/modules/auth/auth.html', // Adicionado para garantir a tela de login no cache
     '/modules/pdv/caixa-core.html',
+    '/modules/pdv/operador.html',
     '/modules/pdv/caixa-core.js',
     '/camera.js',
     '/core/config.js',

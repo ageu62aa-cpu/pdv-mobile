@@ -37,76 +37,62 @@ async function carregarGestaoOperadores() {
     if (!empresaId) throw new Error('Empresa não identificada para carregar o status dos caixas.');
 
     const [
-        { data: statusCaixas, error: erroStatusCaixas },
         { data: caixas, error: erroCaixas },
-        { data: operadoresLista, error: erroOperadores }
+        { data: perfis, error: erroPerfis }
     ] = await Promise.all([
-        Array.isArray(window.adminStatusCaixasIniciais)
-            ? Promise.resolve({ data: window.adminStatusCaixasIniciais, error: null })
-            : supabase.from('caixa_status').select('*').eq('empresa_id', empresaId),
         supabase.from('caixas').select('*').eq('empresa_id', empresaId).order('created_at', { ascending: false }),
         supabase.from('usuarios_empresas').select('user_id, cargo').eq('empresa_id', empresaId)
     ]);
-    window.adminStatusCaixasIniciais = null;
 
-    if (erroStatusCaixas) console.error('PDV-VS: Erro ao carregar caixa_status:', erroStatusCaixas);
     if (erroCaixas) console.error('PDV-VS: Erro ao carregar caixas:', erroCaixas);
-    if (erroOperadores) console.error('PDV-VS: Erro ao carregar operadores:', erroOperadores);
-    const registrosCaixa = [...(statusCaixas || []), ...(caixas || [])];
-    if (registrosCaixa.length === 0 && (erroCaixas || erroStatusCaixas)) {
-        const erro = erroStatusCaixas || erroCaixas;
+    if (erroPerfis) console.error('PDV-VS: Erro ao carregar perfis da empresa:', erroPerfis);
+    if (erroCaixas || erroPerfis) {
+        const erro = erroCaixas || erroPerfis;
         gridContainer.innerHTML = `<div class="col-span-2 text-center py-8 text-red-400 text-sm">Erro ao carregar status dos caixas. ${erro.message}</div>`;
         return;
     }
 
-    if (registrosCaixa.length === 0) {
+    const perfisDaEmpresa = (perfis || []).filter(perfil =>
+        perfil.cargo === 'admin_mercado' || perfil.cargo === 'operador'
+    );
+    const usuarioAtual = window.usuarioAtual;
+    if (usuarioAtual?.id
+        && !perfisDaEmpresa.some(perfil => perfil.user_id === usuarioAtual.id)
+        && window.cargoUsuarioAtual === 'admin_mercado') {
+        perfisDaEmpresa.push({ user_id: usuarioAtual.id, cargo: 'admin_mercado' });
+    }
+
+    if (perfisDaEmpresa.length === 0) {
         gridContainer.innerHTML = `
             <div class="col-span-2 bg-gray-900/60 border border-gray-800 rounded-2xl p-8 text-center text-gray-400">
-                <i class="fa-solid fa-cash-register text-3xl text-gray-600 mb-2"></i>
-                <p class="text-sm">Nenhum caixa registrado no sistema.</p>
+                <i class="fa-solid fa-users-slash text-3xl text-gray-600 mb-2"></i>
+                <p class="text-sm">Nenhum administrador ou operador vinculado a esta empresa.</p>
             </div>`;
         return;
     }
 
-    // Filtra para manter apenas a sessão mais recente por usuário
-    const unicosPorUsuario = {};
-    registrosCaixa.forEach(c => {
-        if (!unicosPorUsuario[c.user_id]) {
-            unicosPorUsuario[c.user_id] = c;
-        } else {
-            if (c.status === 'ABERTO' && unicosPorUsuario[c.user_id].status !== 'ABERTO') {
-                unicosPorUsuario[c.user_id] = c;
-            }
+    const caixaMaisRecentePorUsuario = new Map();
+    (caixas || []).forEach(caixa => {
+        if (caixa.user_id && !caixaMaisRecentePorUsuario.has(caixa.user_id)) {
+            caixaMaisRecentePorUsuario.set(caixa.user_id, caixa);
         }
     });
 
-    const listaUsuarios = Object.values(unicosPorUsuario);
-
-    const avisos = [
-        erroStatusCaixas && `Não foi possível consultar caixa_status: ${erroStatusCaixas.message}`,
-        erroCaixas && `Não foi possível consultar caixas: ${erroCaixas.message}`,
-        erroOperadores && `Não foi possível consultar os perfis dos operadores: ${erroOperadores.message}`
-    ].filter(Boolean);
-    const avisoStatus = avisos.length
-        ? `<div class="col-span-2 text-amber-400 text-xs">${avisos.join('<br>')}</div>`
-        : '';
-    gridContainer.innerHTML = avisoStatus + listaUsuarios.map((c, index) => {
-        const isOpen = String(c.status || '').toUpperCase() === 'ABERTO';
-        const faturamento = Number(c.faturamento_dia ?? c.total_faturado ?? 0).toFixed(2);
-        const valorTroco = Number(c.valor_abertura ?? c.valor_inicial ?? c.troco_inicial ?? 0).toFixed(2);
-        const sangrias = Number(c.sangrias ?? c.valor_sangria ?? c.total_sangrias ?? 0);
-        
-        // Define Terminais e Perfis Fixos (#01 Admin e #02 Operador)
-        const isAdmin = c.cargo === 'admin_mercado' || index === 0;
-        const terminalNumero = isAdmin ? '#01' : '#02';
+    perfisDaEmpresa.sort((a, b) => Number(b.cargo === 'admin_mercado') - Number(a.cargo === 'admin_mercado'));
+    let numeroOperadores = 1;
+    gridContainer.innerHTML = perfisDaEmpresa.map(perfil => {
+        const isAdmin = perfil.cargo === 'admin_mercado';
+        if (!isAdmin) numeroOperadores += 1;
+        const caixa = caixaMaisRecentePorUsuario.get(perfil.user_id);
+        const isOpen = String(caixa?.status || '').toUpperCase() === 'ABERTO';
+        const faturamento = Number(caixa?.faturamento_dia || 0).toFixed(2);
+        const valorTroco = Number(caixa?.valor_abertura || 0).toFixed(2);
+        const sangrias = Number(caixa?.sangrias || 0);
+        const terminalNumero = isAdmin ? '#01' : `#${String(numeroOperadores).padStart(2, '0')}`;
         const tipoPerfil = isAdmin ? 'Administrador' : 'Operador';
-
-        // Prioriza o nome informado pelo operador (F2 / Vendedor) ou da tabela de operadores
-        let nomeExibicao = c.vendedor_nome || c.nome_operador;
-        if (!nomeExibicao) {
-            const opEncontrado = operadoresLista?.find(op => op.user_id === c.user_id);
-            nomeExibicao = c.email || opEncontrado?.nome || (isAdmin ? 'Administrador' : 'Operador');
-        }
+        const nomeExibicao = isAdmin
+            ? (perfil.user_id === usuarioAtual?.id ? 'Administrador (você)' : 'Administrador')
+            : (caixa?.vendedor_nome || caixa?.nome_operador || 'Operador');
 
         const cardBorder = isOpen ? 'border-emerald-500/50 bg-gray-900/90 shadow-emerald-950/20' : 'border-gray-800 bg-gray-900/60';
         const statusBadge = isOpen 
@@ -139,7 +125,7 @@ async function carregarGestaoOperadores() {
 
                 <div class="flex items-center justify-between pt-2 border-t border-gray-800 text-xs text-gray-400">
                     <span>Terminal / Caixa: <strong class="text-emerald-400">${terminalNumero}</strong></span>
-                    <span class="text-[11px] text-gray-500">Tempo Real</span>
+                    <span class="text-[11px] text-gray-500">${caixa ? 'Tempo real' : 'Sem sessão registrada'}</span>
                 </div>
             </div>
         `;

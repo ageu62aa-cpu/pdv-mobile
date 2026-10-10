@@ -16,6 +16,7 @@ import { supabase } from '../../../core/config.js'; // Correção definitiva do 
 let valorTrocoAbertura = 0;
 let horaAberturaCaixa = null;
 let canalRealtimeCaixa = null;
+let canalRealtimeProdutos = null;
 
 // --- UTILITÁRIO DE CLIENTE SUPABASE ---
 const getSupabase = () => window.supabaseClient || window.supabase || supabase;
@@ -85,16 +86,35 @@ export async function obterContextoAutenticadoSupabase() {
         .maybeSingle();
     if (vinculoError) throw vinculoError;
 
-    const empresaId = vinculo?.empresa_id || user.id;
-    const { data: empresa, error: empresaError } = await db
+    let empresaId = vinculo?.empresa_id || user.id;
+    let { data: empresa, error: empresaError } = await db
         .from('empresas')
         .select('*')
         .eq('id', empresaId)
         .maybeSingle();
     if (empresaError) throw empresaError;
+    if (!empresa && !vinculo && user.email) {
+        const resultadoEmpresaEmail = await db
+            .from('empresas')
+            .select('*')
+            .eq('email_admin', user.email)
+            .maybeSingle();
+        if (resultadoEmpresaEmail.error) throw resultadoEmpresaEmail.error;
+        empresa = resultadoEmpresaEmail.data;
+        if (empresa) empresaId = empresa.id;
+    }
     if (!empresa) throw new Error('Não foi possível localizar a empresa vinculada à sessão.');
 
-    const cargo = vinculo?.cargo || 'admin_mercado';
+    const cargo = vinculo?.cargo || (
+        empresa.id === user.id || empresa.email_admin === user.email
+            ? 'admin_mercado'
+            : null
+    );
+    if (cargo !== 'admin_mercado' && cargo !== 'operador') {
+        window.location.href = '../auth/auth.html';
+        return null;
+    }
+
     setUsuarioAtual(user);
     setEmpresaAtualId(empresaId);
     setCargoUsuarioAtual(cargo);
@@ -108,8 +128,32 @@ export async function obterContextoAutenticadoSupabase() {
     localStorage.setItem('empresa_id', empresaId);
     localStorage.setItem('empresaAtualId', empresaId);
     localStorage.setItem('pdv_empresa_id', empresaId);
+    atualizarIdentidadeCaixa({ user, cargo });
 
     return { user, empresaId, cargo, empresa };
+}
+
+function atualizarIdentidadeCaixa({ user, cargo }) {
+    const nome = cargo === 'admin_mercado'
+        ? 'Administrador'
+        : user.user_metadata?.full_name || user.email?.split('@')[0] || 'Operador';
+    const terminal = cargo === 'admin_mercado' ? '#01' : '#02';
+    const infoOperador = document.getElementById('txtInfoOperador');
+    if (infoOperador) {
+        infoOperador.textContent = '';
+        const nomeEl = document.createElement('strong');
+        nomeEl.className = 'text-gray-200';
+        nomeEl.textContent = nome;
+        const terminalEl = document.createElement('strong');
+        terminalEl.className = 'text-gray-200';
+        terminalEl.textContent = terminal;
+        infoOperador.append('Perfil: ', nomeEl, ' | Caixa: ', terminalEl);
+    }
+
+    const botaoAdmin = document.getElementById('btnPainelAdmin');
+    if (botaoAdmin) {
+        botaoAdmin.style.display = cargo === 'admin_mercado' ? 'flex' : 'none';
+    }
 }
 
 async function inicializarCaixaDefinitivo() {
@@ -241,6 +285,9 @@ export async function iniciarRealtimeCaixa() {
     if (canalRealtimeCaixa) {
         await db.removeChannel(canalRealtimeCaixa);
     }
+    if (canalRealtimeProdutos) {
+        await db.removeChannel(canalRealtimeProdutos);
+    }
 
     canalRealtimeCaixa = db
         .channel(`caixa-core-${empresaAtualId}`)
@@ -274,6 +321,32 @@ export async function iniciarRealtimeCaixa() {
         .subscribe((status, error) => {
             if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
                 console.warn('PDV-VS: Aviso no canal Realtime do caixa:', error || status);
+            }
+        });
+
+    canalRealtimeProdutos = db
+        .channel(`pdv-produtos-${empresaAtualId}-${usuarioAtual?.id}`)
+        .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'produtos', filter: `empresa_id=eq.${empresaAtualId}` },
+            payload => {
+                const produtoId = payload.new?.id ?? payload.old?.id;
+                if (!produtoId) return;
+
+                const produtosAtualizados = produtosCache.filter(produto => produto.id !== produtoId);
+                if (payload.eventType !== 'DELETE' && payload.new) {
+                    produtosAtualizados.push(payload.new);
+                }
+                produtosAtualizados.sort((a, b) => String(a.nome || '').localeCompare(String(b.nome || '')));
+                setProdutosCache(produtosAtualizados);
+
+                const inputBusca = document.getElementById('inputBusca');
+                if (inputBusca?.value) aoDigitarBusca({ target: inputBusca });
+            }
+        )
+        .subscribe((status, error) => {
+            if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                console.warn('PDV-VS: Aviso no canal Realtime dos produtos:', error || status);
             }
         });
 }
@@ -692,7 +765,9 @@ window.acionarFecharCaixa = async function() {
             .from('vendas')
             .select('valor_total, forma_pagamento')
             .eq('empresa_id', empresaId)
+            .eq('operador', usuario.email || '')
             .gte('created_at', dataAbertura);
+        if (erroVendas) throw erroVendas;
 
         let fatDinheiro = 0;
         let fatPix = 0;
@@ -700,19 +775,17 @@ window.acionarFecharCaixa = async function() {
         let fatCredito = 0;
         let faturamentoGeral = 0;
 
-        if (!erroVendas && vendasRealizadas) {
-            vendasRealizadas.forEach(v => {
-                const valor = Number(v.valor_total) || 0;
-                faturamentoGeral += valor;
-                const forma = (v.forma_pagamento || 'dinheiro').toLowerCase();
+        vendasRealizadas?.forEach(v => {
+            const valor = Number(v.valor_total) || 0;
+            faturamentoGeral += valor;
+            const forma = (v.forma_pagamento || 'dinheiro').toLowerCase();
 
-                if (forma.includes('dinheiro')) fatDinheiro += valor;
-                else if (forma.includes('pix')) fatPix += valor;
-                else if (forma.includes('debito') || forma.includes('débito')) fatDebito += valor;
-                else if (forma.includes('credito') || forma.includes('crédito') || forma.includes('parcelado')) fatCredito += valor;
-                else fatDinheiro += valor; // Fallback para dinheiro
-            });
-        }
+            if (forma.includes('dinheiro')) fatDinheiro += valor;
+            else if (forma.includes('pix')) fatPix += valor;
+            else if (forma.includes('debito') || forma.includes('débito')) fatDebito += valor;
+            else if (forma.includes('credito') || forma.includes('crédito') || forma.includes('parcelado')) fatCredito += valor;
+            else fatDinheiro += valor;
+        });
 
         // Dinheiro físico esperado na gaveta (Troco Inicial + Vendas em Dinheiro)
         const dinheiroGaveta = trocoInicial + fatDinheiro;
@@ -852,13 +925,45 @@ export async function finalizarVenda() {
     
     if (error) { alert('PDV-VS: Erro ao registrar venda: ' + error.message); return; }
 
+    const db = getSupabase();
+    const errosSincronizacao = [];
     for (const item of itensVenda) {
-        const novoEstoque = Math.max(0, (item.estoque || 0) - item.qtd);
-        await getSupabase()
-            .from('produtos')
-            .update({ estoque: novoEstoque })
-            .eq('id', item.id)
-            .eq('empresa_id', empresaAtualId);
+        let estoqueBaixado = false;
+        let erroEstoque = null;
+        for (let tentativa = 0; tentativa < 3 && !estoqueBaixado; tentativa += 1) {
+            const { data: produtoAtual, error: erroConsultaEstoque } = await db
+                .from('produtos')
+                .select('estoque')
+                .eq('id', item.id)
+                .eq('empresa_id', empresaAtualId)
+                .maybeSingle();
+            if (erroConsultaEstoque || !produtoAtual) {
+                erroEstoque = erroConsultaEstoque?.message || 'produto não encontrado';
+                break;
+            }
+
+            const novoEstoque = Math.max(0, (Number(produtoAtual.estoque) || 0) - item.qtd);
+            let atualizacaoEstoque = db
+                .from('produtos')
+                .update({ estoque: novoEstoque })
+                .eq('id', item.id)
+                .eq('empresa_id', empresaAtualId);
+            atualizacaoEstoque = produtoAtual.estoque == null
+                ? atualizacaoEstoque.is('estoque', null)
+                : atualizacaoEstoque.eq('estoque', produtoAtual.estoque);
+            const { data: produtoAtualizado, error: erroBaixaEstoque } = await atualizacaoEstoque
+                .select('id')
+                .maybeSingle();
+            if (erroBaixaEstoque) {
+                erroEstoque = erroBaixaEstoque.message;
+                break;
+            }
+            estoqueBaixado = Boolean(produtoAtualizado);
+        }
+
+        if (!estoqueBaixado) {
+            errosSincronizacao.push(`estoque de ${item.nome}: ${erroEstoque || 'conflito simultâneo; confira o estoque'}`);
+        }
     }
 
     const novoFat = faturamentoDia + total;
@@ -867,14 +972,23 @@ export async function finalizarVenda() {
     if (txtFat) txtFat.innerText = `R$ ${novoFat.toFixed(2)}`;
 
     if (empresaAtualId && usuarioAtual) {
-        await getSupabase().from('caixas').update({ 
+        const { data: caixaAtualizado, error: erroAtualizacaoCaixa } = await db.from('caixas').update({
             faturamento_dia: novoFat, updated_at: new Date().toISOString()
-        }).eq('empresa_id', empresaAtualId).eq('user_id', usuarioAtual.id).eq('status', 'ABERTO');
+        }).eq('empresa_id', empresaAtualId).eq('user_id', usuarioAtual.id).eq('status', 'ABERTO')
+            .select('id')
+            .maybeSingle();
+        if (erroAtualizacaoCaixa || !caixaAtualizado) {
+            errosSincronizacao.push(`faturamento do caixa: ${erroAtualizacaoCaixa?.message || 'não há sessão de caixa aberta para atualizar'}`);
+        }
     }
 
     setItensVenda([]); 
     atualizarTabelaVenda(); 
     await carregarProdutosCache();
+    if (errosSincronizacao.length) {
+        console.error('PDV-VS: Venda registrada com falhas parciais de sincronização:', errosSincronizacao);
+        alert(`Venda registrada, mas há dados que precisam de conferência:\n${errosSincronizacao.join('\n')}`);
+    }
     
     if (cargoUsuarioAtual === 'admin_mercado') {
         if (typeof window.carregarOperadoresLoja === 'function') window.carregarOperadoresLoja();
