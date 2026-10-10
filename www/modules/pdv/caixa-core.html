@@ -87,13 +87,13 @@
 
         #containerCaixaBusca {
             position: relative;
-            z-index: 100;
+            z-index: 50;
             isolation: isolate;
         }
 
         #sugestoesBusca {
             position: absolute;
-            top: calc(100% + 0.35rem);
+            top: calc(100% + 0.25rem);
             right: 0;
             left: 0;
             bottom: auto;
@@ -101,7 +101,7 @@
             visibility: hidden;
             opacity: 0;
             pointer-events: none;
-            z-index: 1000;
+            z-index: 50;
             background-color: #1f2937;
             color: #f3f4f6;
             border: 1px solid rgba(51, 65, 85, 0.9);
@@ -198,7 +198,7 @@
                     </div>
                 </div>
 
-                <div class="relative flex items-center">
+                <div id="containerInputBusca" class="relative z-50 flex items-center">
                     <input 
                         type="text" 
                         id="inputBusca" 
@@ -211,9 +211,9 @@
                     <svg class="w-5 h-5 text-gray-400 absolute left-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                     </svg>
+                    <!-- Caixa de sugestões flutuante ancorada ao campo de busca -->
+                    <div id="sugestoesBusca" class="hidden rounded-xl divide-y divide-gray-700" role="listbox"></div>
                 </div>
-                <!-- Caixa de sugestões flutuante -->
-                <div id="sugestoesBusca" class="hidden absolute left-0 right-0 mt-1 rounded-xl divide-y divide-gray-700"></div>
             </div>
 
             <!-- Tabela de Produtos no Carrinho -->

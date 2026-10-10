@@ -10,7 +10,7 @@ import {
     produtosCache, setEmpresaAtualId, setUsuarioAtual, setCargoUsuarioAtual,
     setDadosEmpresaAtual
 } from '../../core/state.js';  
-import { adicionarItemVendaDireto, carregarProdutosCache, tratarAdicaoProduto } from '../../services/produtos.js';
+import { carregarProdutosCache } from '../../services/produtos.js';
 import { supabase } from '../../../core/config.js'; // Correção definitiva do import do Supabase
 
 let valorTrocoAbertura = 0;
@@ -628,12 +628,28 @@ window.adicionarProdutoAoCarrinho = function(produto, quantidade = 1) {
         return;
     }
 
-    if (qtd === 1) {
-        tratarAdicaoProduto(produto);
-    } else if (produto.unidade === 'KG' || produto.por_peso || produto.isPeso) {
-        tratarAdicaoProduto(produto);
+    const ehProdutoPesavel = produto.unidade === 'KG' || produto.por_peso || produto.isPeso;
+    if (ehProdutoPesavel) {
+        const abrirPesagem = window.abrirModalPesagemManual;
+        if (typeof abrirPesagem !== 'function') {
+            console.error('PDV-VS: O fluxo de pesagem não está disponível para este produto.');
+            alert('PDV-VS: Não foi possível abrir a pesagem deste produto. Tente novamente.');
+            return;
+        }
+        abrirPesagem(produto);
     } else {
-        adicionarItemVendaDireto(produto, qtd);
+        const produtoVenda = {
+            ...produto,
+            preco: Number(produto.preco ?? produto.preco_venda ?? 0)
+        };
+        const itemExistente = itensVenda.find(item => String(item.id) === String(produto.id) && !item.isPeso);
+        if (itemExistente) {
+            itemExistente.qtd = (Number(itemExistente.qtd) || 0) + qtd;
+            setItensVenda([...itensVenda]);
+        } else {
+            setItensVenda([...itensVenda, { ...produtoVenda, qtd, isPeso: false }]);
+        }
+        atualizarTabelaVenda();
     }
 
     window.quantidadeMultiplicador = 1;
@@ -659,6 +675,11 @@ window.adicionarProdutoPorId = function(produtoId, quantidade = window.quantidad
     window.adicionarProdutoAoCarrinho(produto, quantidade);
 };
 
+function selecionarSugestaoProduto(produtoId) {
+    if (produtoId == null || String(produtoId) === '') return;
+    window.adicionarProdutoPorId(produtoId);
+}
+
 export function aoDigitarBusca(e) {
     if (!e || !e.target) return;
     
@@ -666,6 +687,12 @@ export function aoDigitarBusca(e) {
     const suggestionsBox = document.getElementById('sugestoesBusca');
     
     if (!suggestionsBox) return;
+    suggestionsBox.onclick = event => {
+        const item = event.target.closest('[data-product-id]');
+        if (item && suggestionsBox.contains(item)) {
+            selecionarSugestaoProduto(item.dataset.productId);
+        }
+    };
 
     if (!termo) {
         ocultarPainelSugestoes();
@@ -689,7 +716,7 @@ export function aoDigitarBusca(e) {
     let html = '';
     filtrados.slice(0, 10).forEach((prod, index) => {
         const preco = Number(prod.preco_venda || prod.preco || 0).toFixed(2);
-        html += `<div data-index="${index}" class="item-sugestao-busca p-2.5 cursor-pointer border-b border-slate-700 flex justify-between items-center gap-3 text-sm transition-colors hover:bg-slate-700/80 ${index === 0 ? 'bg-emerald-950/80 border-emerald-700 text-white shadow-md ring-1 ring-emerald-500/80' : 'text-slate-200'}" onclick="window.adicionarProdutoPorId('${prod.id}')" role="option" aria-selected="${index === 0}">
+        html += `<div data-index="${index}" data-product-id="${String(prod.id)}" class="item-sugestao-busca p-2.5 cursor-pointer border-b border-slate-700 flex justify-between items-center gap-3 text-sm transition-colors hover:bg-slate-700/80 ${index === 0 ? 'bg-emerald-950/80 border-emerald-700 text-white shadow-md ring-1 ring-emerald-500/80' : 'text-slate-200'}" role="option" aria-selected="${index === 0}">
             <span class="font-medium truncate">${prod.nome}</span>
             <span class="text-xs font-bold text-emerald-400">R$ ${preco}</span>
         </div>`;
@@ -729,7 +756,7 @@ export async function tratarEnterBuscaCaixa(e) {
             const indiceSelecionado = Number(input.dataset.indiceSelecionado);
             const itemSelecionado = itens[indiceSelecionado];
             if (itemSelecionado) {
-                itemSelecionado.click();
+                selecionarSugestaoProduto(itemSelecionado.dataset.productId);
                 return;
             }
         }
