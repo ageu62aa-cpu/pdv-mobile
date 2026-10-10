@@ -3,7 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="manifest" href="../../manifest.json">
+    <meta name="theme-color" content="#111827">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <link rel="apple-touch-icon" href="../../assets/pwa-192.png">
     <title>Vancely Software - Frente de Caixa</title>
+    <script src="../../pwa.js" defer></script>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome para Ícones -->
@@ -604,66 +609,6 @@
 
     <!-- Script Unificado de Teclado (F1-F12) e Motor de Negócio PDV Refatorado -->
     <script>
-        // --- LÓGICA DE INSTALAÇÃO PWA ---
-        // Variável para guardar o evento de instalação do navegador
-        let deferredPrompt;
-
-        // Escuta o evento disparado pelo navegador quando o PWA pode ser instalado
-        window.addEventListener('beforeinstallprompt', (e) => {
-            // Impede o navegador de mostrar o mini-infobar automático (opcional, mas recomendado)
-            e.preventDefault();
-            
-            // Guarda o evento para ser acionado mais tarde pelo botão
-            deferredPrompt = e;
-            
-            // Encontra o botão no HTML e altera o estilo de 'none' para visível
-            const btnInstall = document.getElementById('btnPWAAction');
-            if (btnInstall) {
-                btnInstall.style.display = 'flex'; // ou 'block', dependendo do seu layout
-            }
-        });
-
-        // Configura o que acontece quando o usuário clica no botão de instalação
-        document.addEventListener('DOMContentLoaded', () => {
-            const btnInstall = document.getElementById('btnPWAAction');
-            
-            if (btnInstall) {
-                btnInstall.addEventListener('click', async () => {
-                    if (!deferredPrompt) {
-                        return;
-                    }
-                    
-                    // Mostra a janela nativa de instalação do navegador
-                    deferredPrompt.prompt();
-                    
-                    // Aguarda a escolha do usuário (instalar ou cancelar)
-                    const { outcome } = await deferredPrompt.userChoice;
-                    
-                    if (outcome === 'accepted') {
-                        console.log('Usuário aceitou instalar o PWA');
-                    } else {
-                        console.log('Usuário recusou instalar o PWA');
-                    }
-                    
-                    // O evento só pode ser usado uma vez, limpamos a variável e ocultamos o botão
-                    deferredPrompt = null;
-                    btnInstall.style.display = 'none';
-                });
-            }
-        });
-
-        // Opcional: Garante que se o app já estiver instalado, o botão continua oculto
-        window.addEventListener('appinstalled', () => {
-            const btnInstall = document.getElementById('btnPWAAction');
-            if (btnInstall) {
-                btnInstall.style.display = 'none';
-            }
-            deferredPrompt = null;
-            console.log('PWA foi instalado com sucesso.');
-        });
-        // --- FIM DA LÓGICA DE INSTALAÇÃO PWA ---
-
-
         // Variável de controle de estado do caixa
         let caixaAberto = false;
 

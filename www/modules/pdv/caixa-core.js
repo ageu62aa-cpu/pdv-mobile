@@ -1442,7 +1442,13 @@ export function alterarQtd(i, qtd, finalizarEdicao = false) {
 
 async function buscarProdutoPorCodigoScanner(codigo) {
     const codigoNormalizado = String(codigo || '').trim();
-    if (!codigoNormalizado || !empresaAtualId) return null;
+    if (!codigoNormalizado) return null;
+
+    const idEmpresa = empresaAtualId
+        || window.empresaAtualId;
+    if (!idEmpresa) {
+        throw new Error('Não foi possível identificar a empresa do caixa para consultar o estoque.');
+    }
 
     const db = getSupabase();
     if (!db) throw new Error('Cliente Supabase indisponível ao consultar o produto.');
@@ -1451,12 +1457,13 @@ async function buscarProdutoPorCodigoScanner(codigo) {
         const { data, error } = await db
             .from('produtos')
             .select('*')
-            .eq('empresa_id', empresaAtualId)
+            .eq('empresa_id', idEmpresa)
             .eq(campo, codigoNormalizado)
+            .limit(1)
             .maybeSingle();
         if (error) throw error;
         if (data) {
-            const cacheAtualizado = produtosCache.filter(produto => produto.id !== data.id);
+            const cacheAtualizado = produtosCache.filter(produto => String(produto.id) !== String(data.id));
             setProdutosCache([...cacheAtualizado, data]);
             return data;
         }
@@ -1469,12 +1476,13 @@ async function buscarProdutoPorCodigoScanner(codigo) {
         const { data, error } = await db
             .from('produtos')
             .select('*')
-            .eq('empresa_id', empresaAtualId)
+            .eq('empresa_id', idEmpresa)
             .eq('id', produtoEmCache.id)
+            .limit(1)
             .maybeSingle();
         if (error) throw error;
         if (data) {
-            const cacheAtualizado = produtosCache.filter(produto => produto.id !== data.id);
+            const cacheAtualizado = produtosCache.filter(produto => String(produto.id) !== String(data.id));
             setProdutosCache([...cacheAtualizado, data]);
             return data;
         }

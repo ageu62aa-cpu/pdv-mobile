@@ -1,8 +1,11 @@
-const CACHE_NAME = 'pdv-vs-v27';
+const CACHE_NAME = 'pdv-vs-v28';
 const urlsToCache = [
     '/',
     '/index.html',
     '/manifest.json',
+    '/pwa.js',
+    '/assets/pwa-192.png',
+    '/assets/pwa-512.png',
     '/modules/auth/auth.html', // Adicionado para garantir a tela de login no cache
     '/modules/pdv/caixa-core.html',
     '/modules/pdv/operador.html',
