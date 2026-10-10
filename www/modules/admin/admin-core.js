@@ -127,6 +127,70 @@ document.addEventListener('DOMContentLoaded', async () => {
         else if (tabName === 'operadores') await initAdminOperadores(container);
         else if (tabName === 'maquininhas') await initAdminMaquininhas(container);
         else if (tabName === 'historico') await initAdminHistorico(container);
+        else if (tabName === 'configuracoes') carregarConfiguracoesSeguranca(container);
+    }
+
+    function carregarConfiguracoesSeguranca(alvo) {
+        alvo.innerHTML = `
+            <div class="max-w-xl space-y-4">
+                <div>
+                    <h2 class="text-lg font-bold text-white">Segurança do caixa</h2>
+                    <p class="mt-1 text-sm text-gray-400">Configure o PIN solicitado para cancelar itens ou uma venda. Ele será compartilhado com os operadores desta empresa.</p>
+                </div>
+                <form id="formPinCancelamento" class="space-y-3 rounded-xl border border-gray-700 bg-gray-900/60 p-4">
+                    <label for="inputAdminPinConfig" class="block text-xs font-bold uppercase tracking-wide text-gray-300">Novo PIN gerencial</label>
+                    <input id="inputAdminPinConfig" type="password" inputmode="numeric" autocomplete="new-password" minlength="4" required class="w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="Mínimo de 4 caracteres">
+                    <p id="statusPinCancelamento" class="hidden text-sm" role="status"></p>
+                    <button type="submit" class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-500">Salvar PIN gerencial</button>
+                </form>
+            </div>`;
+
+        const form = alvo.querySelector('#formPinCancelamento');
+        const input = alvo.querySelector('#inputAdminPinConfig');
+        const status = alvo.querySelector('#statusPinCancelamento');
+        form?.addEventListener('submit', async event => {
+            event.preventDefault();
+            const pin = input?.value.trim() || '';
+            if (pin.length < 4) {
+                if (status) {
+                    status.textContent = 'O PIN precisa ter pelo menos 4 caracteres.';
+                    status.className = 'text-sm text-rose-400';
+                }
+                return;
+            }
+
+            const empresaId = window.empresaAtualId;
+            if (!empresaId) {
+                if (status) {
+                    status.textContent = 'Não foi possível identificar a empresa da sessão.';
+                    status.className = 'text-sm text-rose-400';
+                }
+                return;
+            }
+
+            const botao = form.querySelector('button[type="submit"]');
+            if (botao) botao.disabled = true;
+            try {
+                const { error } = await supabase.rpc('pdv_configurar_pin_cancelamento', {
+                    p_empresa_id: empresaId,
+                    p_pin: pin
+                });
+                if (error) throw error;
+                if (status) {
+                    status.textContent = 'PIN salvo. Os operadores já podem usá-lo para autorizar cancelamentos.';
+                    status.className = 'text-sm text-emerald-400';
+                }
+                if (input) input.value = '';
+            } catch (error) {
+                console.error('PDV-VS: Não foi possível salvar o PIN gerencial:', error);
+                if (status) {
+                    status.textContent = `Falha ao salvar o PIN: ${error.message}`;
+                    status.className = 'text-sm text-rose-400';
+                }
+            } finally {
+                if (botao) botao.disabled = false;
+            }
+        });
     }
 
     try {

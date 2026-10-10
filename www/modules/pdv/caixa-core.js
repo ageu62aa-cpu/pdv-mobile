@@ -1034,74 +1034,212 @@ window.acionarFecharCaixa = async function() {
     }
 };
 
-export function salvarPinAdmin() {
+export async function salvarPinAdmin() {
     const pin = document.getElementById('inputAdminPinConfig')?.value.trim() || '';
-    if (!pin || pin.length < 4) { alert('PDV-VS: Informe um PIN válido de pelo menos 4 dígitos.'); return; }
-    localStorage.setItem('pdv_admin_pin_' + empresaAtualId, pin); 
+    if (!pin || pin.length < 4) {
+        alert('PDV-VS: Informe um PIN válido de pelo menos 4 dígitos.');
+        return;
+    }
+    if (!empresaAtualId) {
+        alert('PDV-VS: Empresa não identificada para configurar o PIN.');
+        return;
+    }
+
+    const { error } = await getSupabase().rpc('pdv_configurar_pin_cancelamento', {
+        p_empresa_id: empresaAtualId,
+        p_pin: pin
+    });
+    if (error) {
+        console.error('PDV-VS: Não foi possível configurar o PIN gerencial:', error);
+        alert(`PDV-VS: Não foi possível configurar o PIN: ${error.message}`);
+        return;
+    }
     alert('PDV-VS: PIN gerencial atualizado com sucesso!');
 }
 
+function abrirModalAutorizacao(titulo, mensagem) {
+    let modal = document.getElementById('modalAutorizacaoAdmin');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'modalAutorizacaoAdmin';
+        modal.className = 'fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4';
+        modal.innerHTML = `
+            <section class="w-full max-w-sm rounded-xl border border-gray-700 bg-gray-800 p-5 text-gray-100 shadow-2xl">
+                <h2 id="tituloAutorizacaoAdmin" class="mb-2 text-lg font-bold text-white"></h2>
+                <p id="mensagemAutorizacaoAdmin" class="mb-4 text-sm text-gray-300"></p>
+                <label for="inputPinAutorizacion" class="mb-1 block text-xs font-bold uppercase text-gray-400">PIN do administrador</label>
+                <input id="inputPinAutorizacion" type="password" inputmode="numeric" autocomplete="current-password" class="w-full rounded-lg border border-gray-600 bg-gray-900 px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                <p id="erroAutorizacaoAdmin" class="mt-2 hidden text-xs text-rose-400" role="alert"></p>
+                <div class="mt-5 flex justify-end gap-2">
+                    <button id="cancelarAutorizacaoAdmin" type="button" class="rounded-lg bg-gray-700 px-4 py-2 text-sm font-semibold hover:bg-gray-600">Voltar</button>
+                    <button id="confirmarAutorizacaoAdmin" type="button" class="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-500">Autorizar</button>
+                </div>
+            </section>`;
+        document.body.appendChild(modal);
+        modal.querySelector('#cancelarAutorizacaoAdmin')?.addEventListener('click', fecharModalAutorizacao);
+        modal.querySelector('#confirmarAutorizacaoAdmin')?.addEventListener('click', () => {
+            void confirmarAutorizacaoPin();
+        });
+        modal.addEventListener('click', event => {
+            if (event.target === modal) fecharModalAutorizacao();
+        });
+    }
+
+    const inputPin = modal.querySelector('#inputPinAutorizacion');
+    modal.querySelector('#tituloAutorizacaoAdmin').textContent = titulo;
+    modal.querySelector('#mensagemAutorizacaoAdmin').textContent = mensagem;
+    modal.querySelector('#erroAutorizacaoAdmin').classList.add('hidden');
+    inputPin.value = '';
+    inputPin.onkeydown = tratarEnterModalAutorizacao;
+    modal.classList.remove('hidden');
+    setTimeout(() => inputPin.focus(), 50);
+}
+
 export function solicitarRemocaoItem(i) {
-    setIndiceItemParaRemover(i); 
-    const inputPinAuth = document.getElementById('inputPinAutorizacion');
-    if (inputPinAuth) inputPinAuth.value = '';
-    document.getElementById('modalAutorizacaoAdmin')?.classList.remove('hidden');
-    setTimeout(() => inputPinAuth?.focus(), 100);
+    if (!Number.isInteger(i) || i < 0 || i >= itensVenda.length) {
+        alert('PDV-VS: O item selecionado não está mais no carrinho.');
+        return;
+    }
+    setIndiceItemParaRemover(i);
+    acaoAutorizacaoPendente = 'remover-item';
+    abrirModalAutorizacao('Cancelar item', `Informe o PIN do administrador para remover "${itensVenda[i].nome}".`);
 }
 
 export function tratarEnterModalAutorizacao(e) {
-    if (e.key === 'Enter') { e.preventDefault(); confirmarAutorizacaoPin(); }
-}
-
-export function confirmarAutorizacaoPin() {
-    const inputPinAuth = document.getElementById('inputPinAutorizacion');
-    const pin = inputPinAuth?.value.trim() || '';
-    const pinSalvo = localStorage.getItem('pdv_admin_pin_' + empresaAtualId) || '123456';
-    
-    if (pin === pinSalvo) {
-        if (indiceItemParaRemover !== null) { 
-            itensVenda.splice(indiceItemParaRemover, 1); 
-            atualizarTabelaVenda(); 
-        }
-        fecharModalAutorizacao();
-    } else { 
-        alert('PDV-VS: PIN gerencial incorreto!'); 
-        if (inputPinAuth) { inputPinAuth.value = ''; inputPinAuth.focus(); }
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        void confirmarAutorizacaoPin();
     }
 }
 
-export function fecharModalAutorizacao() { 
-    document.getElementById('modalAutorizacaoAdmin')?.classList.add('hidden'); 
+export async function confirmarAutorizacaoPin() {
+    const inputPinAuth = document.getElementById('inputPinAutorizacion');
+    const pin = inputPinAuth?.value.trim() || '';
+    const erroEl = document.getElementById('erroAutorizacaoAdmin');
+    if (!pin) {
+        if (erroEl) {
+            erroEl.textContent = 'Digite o PIN gerencial para continuar.';
+            erroEl.classList.remove('hidden');
+        }
+        inputPinAuth?.focus();
+        return;
+    }
+    if (!empresaAtualId || !acaoAutorizacaoPendente) {
+        alert('PDV-VS: Não foi possível validar esta autorização. Feche e tente novamente.');
+        fecharModalAutorizacao();
+        return;
+    }
+
+    const botaoConfirmar = document.getElementById('confirmarAutorizacaoAdmin');
+    if (botaoConfirmar) botaoConfirmar.disabled = true;
+    try {
+        const { data: autorizado, error } = await getSupabase().rpc('pdv_validar_pin_cancelamento', {
+            p_empresa_id: empresaAtualId,
+            p_pin: pin
+        });
+        if (error) throw error;
+        if (!autorizado) {
+            if (erroEl) {
+                erroEl.textContent = 'PIN incorreto ou ainda não configurado pelo administrador.';
+                erroEl.classList.remove('hidden');
+            }
+            inputPinAuth.value = '';
+            inputPinAuth.focus();
+            return;
+        }
+
+        if (acaoAutorizacaoPendente === 'remover-item') {
+            if (indiceItemParaRemover === null || !itensVenda[indiceItemParaRemover]) {
+                throw new Error('O item selecionado não está mais no carrinho.');
+            }
+            setItensVenda(itensVenda.filter((_, index) => index !== indiceItemParaRemover));
+            atualizarTabelaVenda();
+        } else if (acaoAutorizacaoPendente === 'cancelar-venda') {
+            if (confirm('PDV-VS: PIN autorizado. Deseja cancelar toda a venda?')) {
+                setItensVenda([]);
+                atualizarTabelaVenda();
+            }
+        }
+        fecharModalAutorizacao();
+    } catch (error) {
+        console.error('PDV-VS: Erro ao validar o PIN gerencial:', error);
+        if (erroEl) {
+            erroEl.textContent = `Falha ao validar o PIN: ${error.message}`;
+            erroEl.classList.remove('hidden');
+        }
+    } finally {
+        if (botaoConfirmar) botaoConfirmar.disabled = false;
+    }
+}
+
+export function fecharModalAutorizacao() {
+    document.getElementById('modalAutorizacaoAdmin')?.classList.add('hidden');
+    setIndiceItemParaRemover(null);
+    acaoAutorizacaoPendente = null;
     focarBusca();
 }
 
 export function abrirModalCancelarItem() {
-    if (itensVenda.length === 0) { alert('PDV-VS: Não há itens na venda.'); return; }
-    let html = '';
+    if (itensVenda.length === 0) {
+        alert('PDV-VS: Não há itens na venda.');
+        return;
+    }
+
+    let modal = document.getElementById('modalCancelarItem');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'modalCancelarItem';
+        modal.className = 'fixed inset-0 z-[90] flex items-center justify-center bg-black/80 p-4';
+        modal.innerHTML = `
+            <section class="w-full max-w-lg rounded-xl border border-gray-700 bg-gray-800 p-5 text-gray-100 shadow-2xl">
+                <div class="mb-4 flex items-center justify-between">
+                    <h2 class="text-lg font-bold text-white">Cancelar item</h2>
+                    <button type="button" data-close-cancel-item class="px-2 text-xl text-gray-400 hover:text-white" aria-label="Fechar">&times;</button>
+                </div>
+                <div id="listaItensParaCancelar" class="max-h-80 space-y-2 overflow-y-auto"></div>
+            </section>`;
+        document.body.appendChild(modal);
+        modal.querySelector('[data-close-cancel-item]')?.addEventListener('click', fecharModalCancelarItem);
+        modal.addEventListener('click', event => {
+            if (event.target === modal) fecharModalCancelarItem();
+        });
+    }
+
+    const listaCancelar = modal.querySelector('#listaItensParaCancelar');
+    listaCancelar.replaceChildren();
     itensVenda.forEach((item, index) => {
-        html += `<div class="p-3 flex justify-between items-center hover:bg-slate-50 cursor-pointer border-b" onclick="fecharModalCancelarItem(); window.solicitarRemocaoItem(${index});"> <div><span class="font-semibold text-slate-800">${item.nome}</span></div> <button class="text-rose-600 text-xs border border-rose-200 rounded px-2 py-1">Remover</button> </div>`;
+        const botao = document.createElement('button');
+        botao.type = 'button';
+        botao.className = 'flex w-full items-center justify-between gap-3 rounded-lg border border-gray-700 bg-gray-900 px-3 py-3 text-left hover:border-rose-500 hover:bg-gray-700';
+        const nome = document.createElement('span');
+        nome.className = 'truncate font-semibold text-white';
+        nome.textContent = item.nome;
+        const detalhe = document.createElement('span');
+        detalhe.className = 'shrink-0 text-xs text-gray-400';
+        detalhe.textContent = `Qtd. ${item.qtd} · R$ ${(Number(item.preco) * Number(item.qtd)).toFixed(2)}`;
+        botao.append(nome, detalhe);
+        botao.addEventListener('click', () => {
+            fecharModalCancelarItem();
+            solicitarRemocaoItem(index);
+        });
+        listaCancelar.appendChild(botao);
     });
-    const listaCancelar = document.getElementById('listaItensParaCancelar');
-    if (listaCancelar) listaCancelar.innerHTML = html;
-    document.getElementById('modalCancelarItem')?.classList.remove('hidden');
+    modal.classList.remove('hidden');
 }
 
-export function fecharModalCancelarItem() { 
-    document.getElementById('modalCancelarItem')?.classList.add('hidden'); 
+export function fecharModalCancelarItem() {
+    document.getElementById('modalCancelarItem')?.classList.add('hidden');
     focarBusca();
 }
 
-export function cancelarVenda() { 
-    const pin = prompt('F12 - Cancelar Venda: Exige PIN de liberação do supervisor/admin:');
-    const pinSalvo = localStorage.getItem('pdv_admin_pin_' + empresaAtualId) || '123456';
-    if (pin === pinSalvo || pin === '1234') {
-        if (confirm('PDV-VS: Deseja realmente cancelar toda a compra?')) { 
-            setItensVenda([]); 
-            atualizarTabelaVenda(); 
-        } 
-    } else if (pin !== null) {
-        alert('PIN incorreto! Ação negada.');
+export function cancelarVenda() {
+    if (itensVenda.length === 0) {
+        alert('PDV-VS: Não há itens na venda.');
+        return;
     }
+    setIndiceItemParaRemover(null);
+    acaoAutorizacaoPendente = 'cancelar-venda';
+    abrirModalAutorizacao('Cancelar venda', 'Informe o PIN do administrador para cancelar todos os itens da venda.');
 }
 
 export async function finalizarVenda() {
