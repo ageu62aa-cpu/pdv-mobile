@@ -1,4 +1,5 @@
 ALTER TABLE public.empresas
+    ADD COLUMN IF NOT EXISTS nome_empresa text,
     ADD COLUMN IF NOT EXISTS cnpj text,
     ADD COLUMN IF NOT EXISTS email text,
     ADD COLUMN IF NOT EXISTS email_admin text,
