@@ -246,8 +246,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 }]);
 
                 if (dbError) {
-                    console.error('Erro ao gravar os dados da nova empresa:', dbError);
-                    const detalhe = [dbError.message, dbError.details, dbError.hint].filter(Boolean).join(' — ');
+                    const detalhe = [
+                        dbError.message,
+                        dbError.details,
+                        dbError.hint,
+                        dbError.code ? `Código: ${dbError.code}` : ''
+                    ].filter(Boolean).join(' — ');
+                    console.error(`Erro ao gravar os dados da nova empresa: ${detalhe}`, dbError);
                     showCadastroFeedback(`A conta de acesso foi criada, mas não foi possível salvar a empresa: ${detalhe}`, 'error');
                     return;
                 }
