@@ -1,83 +1,210 @@
 /**
- * Módulo: Admin Maquininhas (www/modules/admin/admin-maquininhas.js)
- * Configuração de taxas para cálculo correto no PDV.
+ * Configura taxas gerais e taxas específicas das maquininhas usadas no PDV.
  */
 
 import { supabase } from '../../core/config.js';
 
+const parcelasDisponiveis = Array.from({ length: 11 }, (_, indice) => indice + 2);
+
+function escaparTextoHtml(valor) {
+    return String(valor ?? '').replace(/[&<>"']/g, caractere => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+    })[caractere]);
+}
+
+function obterTaxasParcelamento(valor) {
+    if (valor && typeof valor === 'object' && !Array.isArray(valor)) return valor;
+    if (typeof valor === 'string') {
+        try {
+            const taxas = JSON.parse(valor);
+            return taxas && typeof taxas === 'object' && !Array.isArray(taxas) ? taxas : {};
+        } catch (error) {
+            console.error('PDV-VS: Configuração de parcelas da maquininha está inválida:', error);
+            return {};
+        }
+    }
+    return {};
+}
+
 export async function initAdminMaquininhas(containerEl) {
     const empresaId = window.empresaAtualId;
-    if (!empresaId) {
-        throw new Error('Empresa não identificada para carregar as taxas das maquininhas.');
-    }
+    if (!empresaId) throw new Error('Empresa não identificada para carregar as taxas das maquininhas.');
 
     containerEl.innerHTML = `
-    <div class="space-y-4 max-w-xl">
-        <div>
-            <h2 class="text-lg font-bold text-white">Taxas das Maquininhas de Cartão</h2>
-            <p class="text-xs text-gray-400">Defina os percentuais cobrados para que o PDV calcule os repasses e juros reais.</p>
+        <div class="space-y-6">
+            <div>
+                <h2 class="text-lg font-bold text-white">Taxas das Maquininhas de Cartão</h2>
+                <p class="text-xs text-gray-400">Cadastre cada máquina e as taxas percentuais por forma de pagamento. O PDV mostra o valor do juro em reais antes de concluir.</p>
+            </div>
+
+            <form id="form-taxas" class="max-w-xl bg-gray-800 p-5 rounded-xl shadow-sm border border-gray-700 space-y-4">
+                <h3 class="text-sm font-bold text-white">Taxas gerais da empresa</h3>
+                <p class="text-xs text-gray-400">Usadas somente quando nenhuma maquininha específica estiver cadastrada.</p>
+                <div>
+                    <label for="taxa-debito" class="text-xs font-bold text-gray-300">Taxa débito (%)</label>
+                    <input type="number" min="0" max="100" step="0.01" id="taxa-debito" class="w-full mt-1 px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-sm text-white" value="1.99">
+                </div>
+                <div>
+                    <label for="taxa-credito-vista" class="text-xs font-bold text-gray-300">Taxa crédito à vista (%)</label>
+                    <input type="number" min="0" max="100" step="0.01" id="taxa-credito-vista" class="w-full mt-1 px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-sm text-white" value="3.49">
+                </div>
+                <div>
+                    <label for="taxa-credito-parcelado" class="text-xs font-bold text-gray-300">Taxa média mensal de crédito parcelado (%)</label>
+                    <input type="number" min="0" max="100" step="0.01" id="taxa-credito-parcelado" class="w-full mt-1 px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-sm text-white" value="4.99">
+                </div>
+                <p id="status-taxas" class="hidden text-xs" role="status"></p>
+                <button type="submit" class="w-full bg-gray-700 hover:bg-gray-600 text-white font-bold py-2.5 rounded-lg text-sm">Salvar taxas gerais</button>
+            </form>
+
+            <section class="space-y-4">
+                <div class="flex flex-wrap items-center justify-between gap-3 border-t border-gray-700 pt-5">
+                    <div>
+                        <h3 class="text-base font-bold text-white">Minhas maquininhas</h3>
+                        <p class="text-xs text-gray-400">Configure os percentuais cobrados em cada modalidade. Para parcelas sem taxa preenchida, a opção não será oferecida no caixa.</p>
+                    </div>
+                    <button id="btn-cancelar-edicao-maquininha" type="button" class="hidden rounded-lg bg-gray-700 px-3 py-2 text-xs font-bold text-white">Cancelar edição</button>
+                </div>
+
+                <form id="form-maquininha" class="bg-gray-800 p-5 rounded-xl border border-gray-700 space-y-4">
+                    <input id="maquininha-id" type="hidden">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                            <label for="maquininha-nome" class="text-xs font-bold text-gray-300">Nome da maquininha</label>
+                            <input id="maquininha-nome" required maxlength="80" class="w-full mt-1 px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-sm text-white" placeholder="Ex.: Stone, Ton">
+                        </div>
+                        <div>
+                            <label for="maquininha-debito" class="text-xs font-bold text-gray-300">Débito (%)</label>
+                            <input id="maquininha-debito" type="number" min="0" max="100" step="0.01" required class="w-full mt-1 px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-sm text-white" value="0">
+                        </div>
+                        <div>
+                            <label for="maquininha-credito-vista" class="text-xs font-bold text-gray-300">Crédito à vista (%)</label>
+                            <input id="maquininha-credito-vista" type="number" min="0" max="100" step="0.01" required class="w-full mt-1 px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-sm text-white" value="0">
+                        </div>
+                    </div>
+                    <fieldset>
+                        <legend class="mb-2 text-xs font-bold text-gray-300">Taxa de crédito parcelado (%)</legend>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                            ${parcelasDisponiveis.map(parcela => `
+                                <label class="text-xs text-gray-400">
+                                    ${parcela}x
+                                    <input data-taxa-parcela="${parcela}" type="number" min="0" max="100" step="0.01" class="w-full mt-1 px-2 py-2 bg-gray-900 border border-gray-700 rounded-lg text-sm text-white" placeholder="Não configurada">
+                                </label>
+                            `).join('')}
+                        </div>
+                    </fieldset>
+                    <p id="status-maquininha" class="hidden text-xs" role="status"></p>
+                    <button type="submit" class="rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-500">Salvar maquininha</button>
+                </form>
+
+                <div id="lista-maquininhas" class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                    <p class="text-sm text-gray-400">Carregando maquininhas...</p>
+                </div>
+            </section>
         </div>
-        
-        <form id="form-taxas" class="bg-gray-800 p-5 rounded-xl shadow-sm border border-gray-700 space-y-4">
-            <div>
-                <label class="text-xs font-bold text-gray-300">Taxa Débito (%)</label>
-                <input type="number" min="0" max="100" step="0.01" id="taxa-debito" class="w-full mt-1 px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-sm text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none" value="1.99">
-            </div>
-            <div>
-                <label class="text-xs font-bold text-gray-300">Taxa Crédito à Vista (%)</label>
-                <input type="number" min="0" max="100" step="0.01" id="taxa-credito-vista" class="w-full mt-1 px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-sm text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none" value="3.49">
-            </div>
-            <div>
-                <label class="text-xs font-bold text-gray-300">Taxa Crédito Parcelado (Média ao mês / até 12x) (%)</label>
-                <input type="number" min="0" max="100" step="0.01" id="taxa-credito-parcelado" class="w-full mt-1 px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-sm text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none" value="4.99">
-            </div>
-            <p id="status-taxas" class="hidden text-xs" role="status"></p>
-            <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-lg text-sm transition-colors shadow">
-                Salvar Taxas
-            </button>
-        </form>
-    </div>
     `;
 
-    const form = containerEl.querySelector('#form-taxas');
-    const status = containerEl.querySelector('#status-taxas');
-    const campos = {
+    const taxaForm = containerEl.querySelector('#form-taxas');
+    const taxaStatus = containerEl.querySelector('#status-taxas');
+    const maquinaForm = containerEl.querySelector('#form-maquininha');
+    const maquinaStatus = containerEl.querySelector('#status-maquininha');
+    const listaMaquinas = containerEl.querySelector('#lista-maquininhas');
+    const botaoCancelarEdicao = containerEl.querySelector('#btn-cancelar-edicao-maquininha');
+
+    const camposTaxaGeral = {
         debito: containerEl.querySelector('#taxa-debito'),
         creditoVista: containerEl.querySelector('#taxa-credito-vista'),
         creditoParcelado: containerEl.querySelector('#taxa-credito-parcelado')
     };
 
-    const { data: configuracao, error: erroConsulta } = await supabase
+    const mostrarStatus = (elemento, texto, sucesso = false) => {
+        elemento.textContent = texto;
+        elemento.className = `text-xs ${sucesso ? 'text-emerald-400' : 'text-rose-400'}`;
+    };
+
+    async function carregarMaquininhas() {
+        const { data, error } = await supabase
+            .from('maquininhas_taxas')
+            .select('id, nome_maquina, taxa_debito, taxa_credito_avista, taxas_parcelamento')
+            .eq('empresa_id', empresaId)
+            .order('nome_maquina');
+        if (error) {
+            console.error('PDV-VS: Erro ao carregar maquininhas:', error);
+            listaMaquinas.innerHTML = `<p class="text-sm text-rose-400">Erro ao carregar maquininhas: ${escaparTextoHtml(error.message)}</p>`;
+            return;
+        }
+
+        if (!data?.length) {
+            listaMaquinas.innerHTML = '<p class="text-sm text-gray-400">Nenhuma maquininha específica cadastrada.</p>';
+            return;
+        }
+
+        listaMaquinas.innerHTML = data.map(maquina => {
+            const taxasParcelamento = obterTaxasParcelamento(maquina.taxas_parcelamento);
+            const resumoParcelas = parcelasDisponiveis
+                .filter(parcela => taxasParcelamento[parcela] !== undefined && taxasParcelamento[parcela] !== null && taxasParcelamento[parcela] !== '')
+                .map(parcela => `${parcela}x: ${Number(taxasParcelamento[parcela]).toFixed(2)}%`)
+                .join(' · ') || 'Sem parcelas configuradas';
+            return `
+                <article class="rounded-xl border border-gray-700 bg-gray-900/60 p-4">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="min-w-0">
+                            <h4 class="truncate font-bold text-white">${escaparTextoHtml(maquina.nome_maquina)}</h4>
+                            <p class="mt-1 text-xs text-gray-400">Débito: ${Number(maquina.taxa_debito).toFixed(2)}% · Crédito à vista: ${Number(maquina.taxa_credito_avista).toFixed(2)}%</p>
+                            <p class="mt-1 text-xs text-gray-400">${escaparTextoHtml(resumoParcelas)}</p>
+                        </div>
+                        <div class="flex shrink-0 gap-2">
+                            <button type="button" data-editar-maquininha="${maquina.id}" class="rounded bg-gray-700 px-2.5 py-1.5 text-xs font-bold text-white hover:bg-gray-600">Editar</button>
+                            <button type="button" data-excluir-maquininha="${maquina.id}" class="rounded bg-rose-900/70 px-2.5 py-1.5 text-xs font-bold text-rose-200 hover:bg-rose-800">Excluir</button>
+                        </div>
+                    </div>
+                </article>
+            `;
+        }).join('');
+
+        listaMaquinas._maquinas = data;
+    }
+
+    function limparEdicaoMaquininha() {
+        maquinaForm.reset();
+        containerEl.querySelector('#maquininha-id').value = '';
+        containerEl.querySelector('#maquininha-debito').value = '0';
+        containerEl.querySelector('#maquininha-credito-vista').value = '0';
+        botaoCancelarEdicao.classList.add('hidden');
+        maquinaForm.querySelector('button[type="submit"]').textContent = 'Salvar maquininha';
+        maquinaStatus.className = 'hidden text-xs';
+    }
+
+    const { data: configuracao, error: erroConsultaTaxas } = await supabase
         .from('empresas_config')
         .select('taxa_debito, taxa_credito_vista, taxa_credito_parcelado')
         .eq('empresa_id', empresaId)
         .maybeSingle();
-    if (erroConsulta) {
-        console.error('PDV-VS: Erro ao carregar taxas da empresa:', erroConsulta);
-        status.textContent = `Não foi possível carregar as taxas: ${erroConsulta.message}`;
-        status.className = 'text-xs text-rose-400';
-        status.classList.remove('hidden');
+    if (erroConsultaTaxas) {
+        console.error('PDV-VS: Erro ao carregar taxas gerais:', erroConsultaTaxas);
+        mostrarStatus(taxaStatus, `Não foi possível carregar as taxas gerais: ${erroConsultaTaxas.message}`);
     } else if (configuracao) {
-        campos.debito.value = String(configuracao.taxa_debito);
-        campos.creditoVista.value = String(configuracao.taxa_credito_vista);
-        campos.creditoParcelado.value = String(configuracao.taxa_credito_parcelado);
+        camposTaxaGeral.debito.value = String(configuracao.taxa_debito);
+        camposTaxaGeral.creditoVista.value = String(configuracao.taxa_credito_vista);
+        camposTaxaGeral.creditoParcelado.value = String(configuracao.taxa_credito_parcelado);
     }
 
-    form.addEventListener('submit', async e => {
-        e.preventDefault();
+    taxaForm.addEventListener('submit', async event => {
+        event.preventDefault();
         const taxas = {
-            taxa_debito: Number(campos.debito.value),
-            taxa_credito_vista: Number(campos.creditoVista.value),
-            taxa_credito_parcelado: Number(campos.creditoParcelado.value)
+            taxa_debito: Number(camposTaxaGeral.debito.value),
+            taxa_credito_vista: Number(camposTaxaGeral.creditoVista.value),
+            taxa_credito_parcelado: Number(camposTaxaGeral.creditoParcelado.value)
         };
         if (Object.values(taxas).some(taxa => !Number.isFinite(taxa) || taxa < 0 || taxa > 100)) {
-            status.textContent = 'Informe percentuais entre 0 e 100.';
-            status.className = 'text-xs text-rose-400';
-            status.classList.remove('hidden');
+            mostrarStatus(taxaStatus, 'Informe percentuais entre 0 e 100.');
             return;
         }
 
-        const botao = form.querySelector('button[type="submit"]');
+        const botao = taxaForm.querySelector('button[type="submit"]');
         botao.disabled = true;
         try {
             const { error } = await supabase.from('empresas_config').upsert({
@@ -85,16 +212,94 @@ export async function initAdminMaquininhas(containerEl) {
                 ...taxas
             }, { onConflict: 'empresa_id' });
             if (error) throw error;
-            status.textContent = 'Taxas atualizadas com sucesso.';
-            status.className = 'text-xs text-emerald-400';
-            status.classList.remove('hidden');
+            mostrarStatus(taxaStatus, 'Taxas gerais atualizadas.', true);
         } catch (error) {
-            console.error('PDV-VS: Erro ao salvar taxas da empresa:', error);
-            status.textContent = `Erro ao salvar taxas: ${error.message}`;
-            status.className = 'text-xs text-rose-400';
-            status.classList.remove('hidden');
+            console.error('PDV-VS: Erro ao salvar taxas gerais:', error);
+            mostrarStatus(taxaStatus, `Erro ao salvar taxas: ${error.message}`);
         } finally {
             botao.disabled = false;
         }
     });
+
+    maquinaForm.addEventListener('submit', async event => {
+        event.preventDefault();
+        const nome = containerEl.querySelector('#maquininha-nome').value.trim();
+        const taxaDebito = Number(containerEl.querySelector('#maquininha-debito').value);
+        const taxaCreditoVista = Number(containerEl.querySelector('#maquininha-credito-vista').value);
+        const taxasParcelamento = {};
+        maquinaForm.querySelectorAll('[data-taxa-parcela]').forEach(campo => {
+            if (campo.value.trim() !== '') taxasParcelamento[campo.dataset.taxaParcela] = Number(campo.value);
+        });
+        const taxas = [taxaDebito, taxaCreditoVista, ...Object.values(taxasParcelamento)];
+        if (!nome || taxas.some(taxa => !Number.isFinite(taxa) || taxa < 0 || taxa > 100)) {
+            mostrarStatus(maquinaStatus, 'Informe nome e percentuais válidos entre 0 e 100.');
+            return;
+        }
+
+        const maquinaId = containerEl.querySelector('#maquininha-id').value;
+        const registro = {
+            empresa_id: empresaId,
+            nome_maquina: nome,
+            taxa_debito: taxaDebito,
+            taxa_credito_avista: taxaCreditoVista,
+            taxas_parcelamento: taxasParcelamento
+        };
+        if (maquinaId) registro.id = Number(maquinaId);
+
+        const botao = maquinaForm.querySelector('button[type="submit"]');
+        botao.disabled = true;
+        try {
+            const { error } = await supabase.from('maquininhas_taxas').upsert(registro, { onConflict: 'id' });
+            if (error) throw error;
+            limparEdicaoMaquininha();
+            await carregarMaquininhas();
+            mostrarStatus(maquinaStatus, 'Maquininha salva. Ela já pode ser selecionada no caixa.', true);
+        } catch (error) {
+            console.error('PDV-VS: Erro ao salvar maquininha:', error);
+            mostrarStatus(maquinaStatus, `Erro ao salvar maquininha: ${error.message}`);
+        } finally {
+            botao.disabled = false;
+        }
+    });
+
+    botaoCancelarEdicao.addEventListener('click', limparEdicaoMaquininha);
+
+    listaMaquinas.addEventListener('click', async event => {
+        const botaoEditar = event.target.closest('[data-editar-maquininha]');
+        if (botaoEditar) {
+            const maquina = listaMaquinas._maquinas.find(item => String(item.id) === botaoEditar.dataset.editarMaquininha);
+            if (!maquina) return;
+            const taxasParcelamento = obterTaxasParcelamento(maquina.taxas_parcelamento);
+            containerEl.querySelector('#maquininha-id').value = String(maquina.id);
+            containerEl.querySelector('#maquininha-nome').value = maquina.nome_maquina;
+            containerEl.querySelector('#maquininha-debito').value = String(maquina.taxa_debito);
+            containerEl.querySelector('#maquininha-credito-vista').value = String(maquina.taxa_credito_avista);
+            maquinaForm.querySelectorAll('[data-taxa-parcela]').forEach(campo => {
+                campo.value = taxasParcelamento[campo.dataset.taxaParcela] ?? '';
+            });
+            botaoCancelarEdicao.classList.remove('hidden');
+            maquinaForm.querySelector('button[type="submit"]').textContent = 'Atualizar maquininha';
+            maquinaStatus.className = 'hidden text-xs';
+            maquinaForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            return;
+        }
+
+        const botaoExcluir = event.target.closest('[data-excluir-maquininha]');
+        if (!botaoExcluir || !confirm('Deseja excluir esta maquininha?')) return;
+        botaoExcluir.disabled = true;
+        try {
+            const { error } = await supabase.from('maquininhas_taxas')
+                .delete()
+                .eq('id', botaoExcluir.dataset.excluirMaquininha)
+                .eq('empresa_id', empresaId);
+            if (error) throw error;
+            await carregarMaquininhas();
+        } catch (error) {
+            console.error('PDV-VS: Erro ao excluir maquininha:', error);
+            mostrarStatus(maquinaStatus, `Erro ao excluir maquininha: ${error.message}`);
+            botaoExcluir.disabled = false;
+        }
+    });
+
+    await carregarMaquininhas();
 }

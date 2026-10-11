@@ -21,6 +21,8 @@ let acaoAutorizacaoPendente = null;
 let descontoVendaAtual = 0;
 let finalizandoVenda = false;
 let tipoPagamentoAtualF3 = 'Dinheiro';
+let maquininhasPagamento = [];
+let taxasGeraisPagamento = null;
 
 // --- UTILITÁRIO DE CLIENTE SUPABASE ---
 const getSupabase = () => window.supabaseClient || window.supabase || supabase;
@@ -446,7 +448,209 @@ function atualizarResumoPagamento() {
     const subtotal = obterSubtotalCarrinho();
     const descontoEl = document.getElementById('txtResumoDescontos');
     if (descontoEl) descontoEl.textContent = `R$ ${descontoVendaAtual.toFixed(2)}`;
+    window.atualizarSimulacaoDebito?.();
+    window.atualizarSimulacaoCredito?.();
 }
+
+function obterTaxasParcelamento(maquina) {
+    const taxas = maquina?.taxas_parcelamento;
+    if (taxas && typeof taxas === 'object' && !Array.isArray(taxas)) return taxas;
+    if (typeof taxas === 'string') {
+        try {
+            const resultado = JSON.parse(taxas);
+            return resultado && typeof resultado === 'object' && !Array.isArray(resultado) ? resultado : {};
+        } catch (error) {
+            console.error('PDV-VS: Taxas de parcelamento da maquininha estão em formato inválido:', error);
+            return {};
+        }
+    }
+    return {};
+}
+
+function obterMaquininhaSelecionada(tipo) {
+    const seletor = document.getElementById(tipo === 'debito' ? 'selectMaquininhaDebito' : 'selectMaquininhaCredito');
+    const valor = seletor?.value || '';
+    if (!valor) return null;
+    if (valor === 'geral') return taxasGeraisPagamento ? { ...taxasGeraisPagamento, isTaxaGeral: true } : null;
+    return maquininhasPagamento.find(maquina => String(maquina.id) === valor) || null;
+}
+
+function obterTaxaAplicada(tipo, maquina, parcelas = 1) {
+    if (!maquina) return null;
+    if (tipo === 'debito') return Number(maquina.taxa_debito);
+    if (parcelas === 1) return Number(maquina.taxa_credito_avista);
+
+    const taxasParcelamento = obterTaxasParcelamento(maquina);
+    if (Object.prototype.hasOwnProperty.call(taxasParcelamento, String(parcelas))) {
+        const taxa = Number(taxasParcelamento[String(parcelas)]);
+        return Number.isFinite(taxa) ? taxa : null;
+    }
+    if (maquina.isTaxaGeral) {
+        const vista = Number(maquina.taxa_credito_avista);
+        const mensal = Number(maquina.taxa_credito_parcelado);
+        return Number.isFinite(vista) && Number.isFinite(mensal)
+            ? vista + ((parcelas - 1) * mensal)
+            : null;
+    }
+    return null;
+}
+
+function obterResumoPagamentoCartao(tipo) {
+    const parcelas = tipo === 'credito'
+        ? Number(document.getElementById('selectParcelas')?.value || 1)
+        : 1;
+    const maquina = obterMaquininhaSelecionada(tipo);
+    const taxaPercentual = obterTaxaAplicada(tipo, maquina, parcelas);
+    if (!Number.isFinite(taxaPercentual) || taxaPercentual < 0) return null;
+
+    const totalBase = obterTotalVenda();
+    const valorJuros = arredondarValorMonetario(totalBase * taxaPercentual / 100);
+    return {
+        maquina,
+        parcelas,
+        taxaPercentual,
+        totalBase,
+        valorJuros,
+        totalFinal: arredondarValorMonetario(totalBase + valorJuros)
+    };
+}
+
+function renderizarOpcoesMaquininha(seletor, configuracaoGeral) {
+    if (!seletor) return;
+    const opcoes = ['<option value="">Selecione uma maquininha...</option>'];
+    maquininhasPagamento.forEach(maquina => {
+        opcoes.push(`<option value="${escaparHtml(maquina.id)}">${escaparHtml(maquina.nome_maquina)}</option>`);
+    });
+    if (maquininhasPagamento.length === 0 && configuracaoGeral) {
+        opcoes.push('<option value="geral">Taxas gerais da empresa</option>');
+    }
+    seletor.innerHTML = opcoes.join('');
+    if (maquininhasPagamento.length === 1) seletor.value = String(maquininhasPagamento[0].id);
+    else if (maquininhasPagamento.length === 0 && configuracaoGeral) seletor.value = 'geral';
+}
+
+async function carregarMaquininhasParaPagamento() {
+    const selectDebito = document.getElementById('selectMaquininhaDebito');
+    const selectCredito = document.getElementById('selectMaquininhaCredito');
+    const statusDebito = document.getElementById('txtTaxaDebitoInfo');
+    const statusCredito = document.getElementById('txtTaxaCreditoInfo');
+    const botoes = [
+        document.getElementById('btnConcluirDebito'),
+        document.getElementById('btnConcluirCredito')
+    ];
+    botoes.forEach(botao => { if (botao) botao.disabled = true; });
+    if (statusCredito) statusCredito.textContent = 'Carregando taxas cadastradas...';
+
+    try {
+        const db = getSupabase();
+        const { data: maquinas, error: erroMaquinas } = await db
+            .from('maquininhas_taxas')
+            .select('id, nome_maquina, taxa_debito, taxa_credito_avista, taxas_parcelamento')
+            .eq('empresa_id', empresaAtualId)
+            .order('nome_maquina');
+        if (erroMaquinas) throw erroMaquinas;
+        maquininhasPagamento = maquinas || [];
+
+        taxasGeraisPagamento = null;
+        if (maquininhasPagamento.length === 0) {
+            const { data: taxas, error: erroTaxas } = await db
+                .from('empresas_config')
+                .select('taxa_debito, taxa_credito_vista, taxa_credito_parcelado')
+                .eq('empresa_id', empresaAtualId)
+                .maybeSingle();
+            if (erroTaxas) throw erroTaxas;
+            taxasGeraisPagamento = taxas ? {
+                nome_maquina: 'Taxas gerais da empresa',
+                taxa_debito: taxas.taxa_debito,
+                taxa_credito_avista: taxas.taxa_credito_vista,
+                taxa_credito_parcelado: taxas.taxa_credito_parcelado
+            } : null;
+        }
+
+        renderizarOpcoesMaquininha(selectDebito, taxasGeraisPagamento);
+        renderizarOpcoesMaquininha(selectCredito, taxasGeraisPagamento);
+        window.atualizarOpcoesParcelamento?.();
+        window.atualizarSimulacaoDebito?.();
+        window.atualizarSimulacaoCredito?.();
+
+        if (!maquininhasPagamento.length && !taxasGeraisPagamento && statusCredito) {
+            statusCredito.textContent = 'Cadastre uma maquininha e suas taxas na aba Maquininhas para habilitar pagamentos com cartão.';
+        }
+        if (!maquininhasPagamento.length && !taxasGeraisPagamento && statusDebito) {
+            statusDebito.textContent = 'Cadastre uma maquininha na aba Maquininhas para habilitar o débito.';
+        }
+        return true;
+    } catch (error) {
+        console.error('PDV-VS: Não foi possível carregar as taxas das maquininhas:', error);
+        if (selectDebito) selectDebito.innerHTML = '<option value="">Erro ao carregar taxas</option>';
+        if (selectCredito) selectCredito.innerHTML = '<option value="">Erro ao carregar taxas</option>';
+        if (statusDebito) statusDebito.textContent = `Não foi possível carregar as taxas: ${error.message}`;
+        if (statusCredito) statusCredito.textContent = `Não foi possível carregar as taxas: ${error.message}`;
+        alert(`PDV-VS: Não foi possível carregar as taxas cadastradas. Confira a configuração da maquininha e a conexão: ${error.message}`);
+        return false;
+    }
+}
+
+window.atualizarOpcoesParcelamento = () => {
+    const seletor = document.getElementById('selectParcelas');
+    const maquina = obterMaquininhaSelecionada('credito');
+    if (!seletor) return;
+
+    const opcoesParcelas = [1];
+    if (maquina) {
+        if (maquina.isTaxaGeral) {
+            for (let parcela = 2; parcela <= 12; parcela += 1) opcoesParcelas.push(parcela);
+        } else {
+            const taxas = obterTaxasParcelamento(maquina);
+            for (let parcela = 2; parcela <= 12; parcela += 1) {
+                if (Object.prototype.hasOwnProperty.call(taxas, String(parcela))
+                    && Number.isFinite(Number(taxas[String(parcela)]))) {
+                    opcoesParcelas.push(parcela);
+                }
+            }
+        }
+    }
+
+    const parcelaAtual = Number(seletor.value);
+    seletor.innerHTML = opcoesParcelas.map(parcela => {
+        const rotulo = parcela === 1 ? '1x à vista' : `${parcela}x`;
+        return `<option value="${parcela}">${rotulo}</option>`;
+    }).join('');
+    seletor.value = opcoesParcelas.includes(parcelaAtual) ? String(parcelaAtual) : '1';
+    window.atualizarSimulacaoCredito?.();
+};
+
+window.atualizarSimulacaoDebito = () => {
+    const resumo = obterResumoPagamentoCartao('debito');
+    const juros = document.getElementById('txtJurosDebito');
+    const total = document.getElementById('txtTotalPagamentoF4');
+    const status = document.getElementById('txtTaxaDebitoInfo');
+    const botao = document.getElementById('btnConcluirDebito');
+    if (status) status.textContent = resumo
+        ? `${resumo.maquina.nome_maquina} · Taxa ${resumo.taxaPercentual.toFixed(2)}%`
+        : 'Selecione uma maquininha com taxa de débito cadastrada.';
+    if (juros) juros.textContent = resumo
+        ? `R$ ${resumo.valorJuros.toFixed(2)} (${resumo.taxaPercentual.toFixed(2)}%)`
+        : 'Selecione uma maquininha';
+    if (total) total.textContent = `R$ ${(resumo?.totalFinal ?? obterTotalVenda()).toFixed(2)}`;
+    if (botao) botao.disabled = !resumo;
+};
+
+window.atualizarSimulacaoCredito = () => {
+    const resumo = obterResumoPagamentoCartao('credito');
+    const juros = document.getElementById('txtJurosCredito');
+    const total = document.getElementById('txtTotalPagamentoF8');
+    const status = document.getElementById('txtTaxaCreditoInfo');
+    const botao = document.getElementById('btnConcluirCredito');
+    if (juros) juros.textContent = resumo
+        ? `R$ ${resumo.valorJuros.toFixed(2)} (${resumo.taxaPercentual.toFixed(2)}%)`
+        : 'Taxa não configurada';
+    if (total) total.textContent = `R$ ${(resumo?.totalFinal ?? obterTotalVenda()).toFixed(2)}`;
+    if (status) status.textContent = resumo
+        ? `${resumo.maquina.nome_maquina} · ${resumo.parcelas}x`
+        : 'Selecione uma maquininha com taxa cadastrada para esta condição.';
+    if (botao) botao.disabled = !resumo;
+};
 
 function definirModoPagamentoF3(tipo) {
     const pix = tipo === 'Pix';
@@ -492,6 +696,7 @@ window.acaoAtalhoF4 = () => {
         return;
     }
     atualizarResumoPagamento();
+    void carregarMaquininhasParaPagamento();
     window.abrirPainelLateral?.('blocoF4', 'F4 - Pagamento Débito');
 };
 
@@ -528,6 +733,7 @@ window.acaoAtalhoF8 = () => {
         return;
     }
     atualizarResumoPagamento();
+    void carregarMaquininhasParaPagamento();
     window.abrirPainelLateral?.('blocoF8', 'F8 - Pagamento Crédito');
     document.getElementById('selectParcelas')?.focus();
 };
@@ -592,18 +798,39 @@ window.concluirPagamentoDinheiroPix = () => {
 };
 
 window.concluirPagamentoDebito = () => {
-    void finalizarVenda({ formaPagamento: 'Cartão de Débito', recebido: obterTotalVenda(), troco: 0 });
-};
-
-window.atualizarSimulacaoCredito = () => atualizarResumoPagamento();
-window.concluirCreditoParcelado = () => {
-    const parcelas = Number(document.getElementById('selectParcelas')?.value || 1);
-    if (!Number.isInteger(parcelas) || parcelas < 1 || parcelas > 12) {
-        alert('PDV-VS: Selecione uma quantidade válida de parcelas (1 a 12).');
+    const resumo = obterResumoPagamentoCartao('debito');
+    if (!resumo) {
+        alert('PDV-VS: Selecione uma maquininha com taxa de débito configurada.');
         return;
     }
-    const forma = parcelas === 1 ? 'Cartão de Crédito à Vista' : `Cartão de Crédito ${parcelas}x`;
-    void finalizarVenda({ formaPagamento: forma, recebido: obterTotalVenda(), troco: 0 });
+    void finalizarVenda({
+        formaPagamento: 'Cartão de Débito',
+        recebido: resumo.totalFinal,
+        troco: 0,
+        valorJuros: resumo.valorJuros,
+        taxaAplicada: resumo.taxaPercentual,
+        maquininhaNome: resumo.maquina.nome_maquina
+    });
+};
+
+window.concluirCreditoParcelado = () => {
+    const resumo = obterResumoPagamentoCartao('credito');
+    if (!resumo) {
+        alert('PDV-VS: A taxa desta condição não está configurada para a maquininha selecionada.');
+        return;
+    }
+    const forma = resumo.parcelas === 1
+        ? 'Cartão de Crédito à Vista'
+        : `Cartão de Crédito ${resumo.parcelas}x`;
+    void finalizarVenda({
+        formaPagamento: forma,
+        recebido: resumo.totalFinal,
+        troco: 0,
+        valorJuros: resumo.valorJuros,
+        taxaAplicada: resumo.taxaPercentual,
+        maquininhaNome: resumo.maquina.nome_maquina,
+        parcelas: resumo.parcelas
+    });
 };
 
 async function registrarMovimentoCaixa(tipo, valor, motivo) {
@@ -1110,7 +1337,7 @@ window.acionarFecharCaixa = async function() {
         // 2. BUSCAR VENDAS APENAS DESTE TURNO (A partir da abertura)
         let { data: vendasRealizadas, error: erroVendas } = await db
             .from('vendas')
-            .select('valor_total, forma_pagamento')
+            .select('valor_total, forma_pagamento, valor_juros, maquininha_nome, parcelas')
             .eq('empresa_id', empresaId)
             .eq('operador', usuario.email || '')
             .gte('created_at', dataAbertura);
@@ -1148,10 +1375,13 @@ window.acionarFecharCaixa = async function() {
         let fatCredito = 0;
         let fatNaoInformado = 0;
         let faturamentoGeral = 0;
+        let jurosCartaoTotal = 0;
+        const totaisMaquininhas = new Map();
 
         vendasRealizadas?.forEach(v => {
             const valor = Number(v.valor_total) || 0;
             faturamentoGeral += valor;
+            jurosCartaoTotal += Number(v.valor_juros) || 0;
             const forma = formasPagamentoDisponiveis
                 ? String(v.forma_pagamento || '').trim().toLowerCase()
                 : '';
@@ -1161,6 +1391,11 @@ window.acionarFecharCaixa = async function() {
             else if (forma.includes('debito') || forma.includes('débito')) fatDebito += valor;
             else if (forma.includes('credito') || forma.includes('crédito') || forma.includes('parcelado')) fatCredito += valor;
             else fatNaoInformado += valor;
+
+            if (v.maquininha_nome) {
+                const nomeMaquininha = `${v.maquininha_nome}${v.parcelas ? ` (${v.parcelas}x)` : ''}`;
+                totaisMaquininhas.set(nomeMaquininha, (totaisMaquininhas.get(nomeMaquininha) || 0) + valor);
+            }
         });
 
         // Dinheiro físico esperado na gaveta (Troco Inicial + Vendas em Dinheiro)
@@ -1174,6 +1409,12 @@ window.acionarFecharCaixa = async function() {
         if (fatCredito > 0) blocoPagamentos += `  • Cartão Crédito: R$ ${fatCredito.toFixed(2)}\n`;
         if (fatNaoInformado > 0) blocoPagamentos += `  • Forma não informada: R$ ${fatNaoInformado.toFixed(2)}\n`;
         if (!blocoPagamentos) blocoPagamentos = `  (Nenhuma venda registrada neste turno)\n`;
+        if (totaisMaquininhas.size) {
+            blocoPagamentos += `\n[ VENDAS POR MAQUININHA ]\n`;
+            totaisMaquininhas.forEach((total, nome) => {
+                blocoPagamentos += `  • ${nome}: R$ ${total.toFixed(2)}\n`;
+            });
+        }
 
         const resumoMensagem = 
             `=== RELATÓRIO DE FECHAMENTO DE CAIXA ===\n` +
@@ -1183,6 +1424,7 @@ window.acionarFecharCaixa = async function() {
             blocoPagamentos +
             `----------------------------------------\n` +
             `(+) Faturamento Total Geral: R$ ${faturamentoGeral.toFixed(2)}\n` +
+            `(+) Juros de cartão incluídos no total: R$ ${jurosCartaoTotal.toFixed(2)}\n` +
             `(+) Troco Inicial (Fundo): R$ ${trocoInicial.toFixed(2)}\n` +
             `(+) Suprimentos: R$ ${totalSuprimentos.toFixed(2)}\n` +
             `(-) Sangrias: R$ ${totalSangrias.toFixed(2)}\n` +
@@ -1449,7 +1691,7 @@ function escaparHtml(texto) {
     })[caractere]);
 }
 
-function prepararCupomVenda({ itens, subtotal, desconto, total, formaPagamento, recebido, troco, cpf }) {
+function prepararCupomVenda({ itens, subtotal, desconto, total, juros, formaPagamento, recebido, troco, cpf }) {
     const formatar = valor => `R$ ${Number(valor || 0).toFixed(2).replace('.', ',')}`;
     const agora = new Date();
     const linhas = itens.map(item => {
@@ -1471,6 +1713,8 @@ function prepararCupomVenda({ itens, subtotal, desconto, total, formaPagamento, 
     document.getElementById('cupomItensLista').innerHTML = linhas;
     document.getElementById('cupomSubtotal').textContent = formatar(subtotal);
     document.getElementById('cupomDesconto').textContent = formatar(desconto);
+    const cupomJuros = document.getElementById('cupomJuros');
+    if (cupomJuros) cupomJuros.textContent = formatar(juros);
     document.getElementById('cupomTotal').textContent = formatar(total);
     document.getElementById('cupomPagamento').textContent = formaPagamento;
     document.getElementById('cupomRecebido').textContent = formatar(recebido);
@@ -1492,6 +1736,8 @@ export async function finalizarVenda(detalhesPagamento = {}) {
     }, 0));
     const desconto = arredondarValorMonetario(Math.min(descontoVendaAtual, subtotal));
     const total = arredondarValorMonetario(Math.max(0, subtotal - desconto));
+    const valorJuros = arredondarValorMonetario(Math.max(0, Number(detalhesPagamento.valorJuros) || 0));
+    const totalFinal = arredondarValorMonetario(total + valorJuros);
     const formaPagamento = String(detalhesPagamento.formaPagamento || '').trim();
     const recebido = arredondarValorMonetario(detalhesPagamento.recebido);
     const troco = arredondarValorMonetario(detalhesPagamento.troco);
@@ -1500,7 +1746,7 @@ export async function finalizarVenda(detalhesPagamento = {}) {
         alert('PDV-VS: Selecione uma forma de pagamento antes de concluir a venda.');
         return;
     }
-    if (!Number.isFinite(recebido) || recebido < total || !Number.isFinite(troco) || troco < 0) {
+    if (!Number.isFinite(recebido) || recebido < totalFinal || !Number.isFinite(troco) || troco < 0) {
         alert('PDV-VS: Os valores recebidos e de troco são inválidos.');
         return;
     }
@@ -1516,11 +1762,18 @@ export async function finalizarVenda(detalhesPagamento = {}) {
             operador_nome: window.vendedorAtual?.nome
                 || localStorage.getItem(obterChaveNomeOperador(empresaAtualId, usuarioAtual.id))
                 || usuarioAtual.email,
-            valor_total: total,
+            valor_total: totalFinal,
+            valor_subtotal: subtotal,
+            valor_juros: valorJuros,
             itens: itensFinalizados,
             forma_pagamento: formaPagamento,
             cliente_cpf: cpf || null,
-            desconto
+            desconto,
+            parcelas: detalhesPagamento.parcelas || null,
+            maquininha_nome: detalhesPagamento.maquininhaNome || null,
+            taxa_aplicada: Number.isFinite(Number(detalhesPagamento.taxaAplicada))
+                ? Number(detalhesPagamento.taxaAplicada)
+                : null
         }]);
         if (error) throw error;
     } catch (error) {
@@ -1535,7 +1788,8 @@ export async function finalizarVenda(detalhesPagamento = {}) {
         itens: itensFinalizados,
         subtotal,
         desconto,
-        total,
+        total: totalFinal,
+        juros: valorJuros,
         formaPagamento,
         recebido,
         troco,
@@ -1585,7 +1839,7 @@ export async function finalizarVenda(detalhesPagamento = {}) {
         }
     }
 
-    const novoFat = faturamentoDia + total;
+    const novoFat = faturamentoDia + totalFinal;
     setFaturamentoDia(novoFat); 
     const txtFat = document.getElementById('txtFaturamentoDia');
     if (txtFat) txtFat.innerText = `R$ ${novoFat.toFixed(2)}`;

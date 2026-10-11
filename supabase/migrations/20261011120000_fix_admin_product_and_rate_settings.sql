@@ -26,15 +26,15 @@ CREATE POLICY empresas_config_select_admin
         EXISTS (
             SELECT 1
             FROM public.usuarios_empresas ue
-            WHERE ue.user_id = auth.uid()
-              AND ue.empresa_id = empresas_config.empresa_id
+            WHERE ue.user_id::text = auth.uid()::text
+              AND ue.empresa_id::text = empresas_config.empresa_id::text
               AND ue.cargo = 'admin_mercado'
         )
         OR EXISTS (
             SELECT 1
             FROM public.empresas e
-            WHERE e.id = empresas_config.empresa_id
-              AND (e.id = auth.uid() OR e.email_admin = auth.jwt() ->> 'email')
+            WHERE e.id::text = empresas_config.empresa_id::text
+              AND (e.id::text = auth.uid()::text OR e.email_admin::text = auth.jwt() ->> 'email')
         )
     );
 
@@ -47,15 +47,15 @@ CREATE POLICY empresas_config_insert_admin
         EXISTS (
             SELECT 1
             FROM public.usuarios_empresas ue
-            WHERE ue.user_id = auth.uid()
-              AND ue.empresa_id = empresas_config.empresa_id
+            WHERE ue.user_id::text = auth.uid()::text
+              AND ue.empresa_id::text = empresas_config.empresa_id::text
               AND ue.cargo = 'admin_mercado'
         )
         OR EXISTS (
             SELECT 1
             FROM public.empresas e
-            WHERE e.id = empresas_config.empresa_id
-              AND (e.id = auth.uid() OR e.email_admin = auth.jwt() ->> 'email')
+            WHERE e.id::text = empresas_config.empresa_id::text
+              AND (e.id::text = auth.uid()::text OR e.email_admin::text = auth.jwt() ->> 'email')
         )
     );
 
@@ -68,30 +68,30 @@ CREATE POLICY empresas_config_update_admin
         EXISTS (
             SELECT 1
             FROM public.usuarios_empresas ue
-            WHERE ue.user_id = auth.uid()
-              AND ue.empresa_id = empresas_config.empresa_id
+            WHERE ue.user_id::text = auth.uid()::text
+              AND ue.empresa_id::text = empresas_config.empresa_id::text
               AND ue.cargo = 'admin_mercado'
         )
         OR EXISTS (
             SELECT 1
             FROM public.empresas e
-            WHERE e.id = empresas_config.empresa_id
-              AND (e.id = auth.uid() OR e.email_admin = auth.jwt() ->> 'email')
+            WHERE e.id::text = empresas_config.empresa_id::text
+              AND (e.id::text = auth.uid()::text OR e.email_admin::text = auth.jwt() ->> 'email')
         )
     )
     WITH CHECK (
         EXISTS (
             SELECT 1
             FROM public.usuarios_empresas ue
-            WHERE ue.user_id = auth.uid()
-              AND ue.empresa_id = empresas_config.empresa_id
+            WHERE ue.user_id::text = auth.uid()::text
+              AND ue.empresa_id::text = empresas_config.empresa_id::text
               AND ue.cargo = 'admin_mercado'
         )
         OR EXISTS (
             SELECT 1
             FROM public.empresas e
-            WHERE e.id = empresas_config.empresa_id
-              AND (e.id = auth.uid() OR e.email_admin = auth.jwt() ->> 'email')
+            WHERE e.id::text = empresas_config.empresa_id::text
+              AND (e.id::text = auth.uid()::text OR e.email_admin::text = auth.jwt() ->> 'email')
         )
     );
 
