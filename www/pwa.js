@@ -77,6 +77,13 @@
             }
         }
 
+        button.style.maxWidth = '2.25rem';
+        button.style.maxHeight = '2.25rem';
+        button.style.padding = '0';
+        button.style.gap = '0';
+        button.style.fontSize = '0';
+        button.style.lineHeight = '1';
+
         updateButton(button);
         button.addEventListener('click', async () => {
             if (isStandalone()) return;
