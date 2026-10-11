@@ -9,6 +9,7 @@ ALTER TABLE public.empresas
     ADD COLUMN IF NOT EXISTS numero text,
     ADD COLUMN IF NOT EXISTS cidade text,
     ADD COLUMN IF NOT EXISTS estado text,
+    ADD COLUMN IF NOT EXISTS responsavel text,
     ADD COLUMN IF NOT EXISTS nome_responsavel text,
     ADD COLUMN IF NOT EXISTS plano text DEFAULT 'comum_enterprise',
     ADD COLUMN IF NOT EXISTS limite_produtos integer DEFAULT 1000,

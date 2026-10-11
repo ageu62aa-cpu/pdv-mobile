@@ -237,6 +237,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     numero,
                     cidade,
                     estado,
+                    responsavel: responsavel.trim(),
                     nome_responsavel: responsavel.trim(),
                     email,
                     email_admin: email,
