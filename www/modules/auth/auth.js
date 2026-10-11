@@ -228,7 +228,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const { error: dbError } = await supabase.from('empresas').insert([{
                     id: authData.user.id,
-                    nome_empresa: nomeEmpresa.trim(),
+                    nome_mercado: nomeEmpresa.trim(),
                     cnpj,
                     whatsapp,
                     cep,
