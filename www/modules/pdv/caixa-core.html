@@ -297,7 +297,7 @@
 
                         <!-- BOTÃO DA CÂMERA -->
                         <button id="btn-ativar-camera" 
-                                onclick="window.abrirCameraScanner ? window.abrirCameraScanner() : console.warn('Funcao abrirCameraScanner nao definida')"
+                                onclick="window.abrirCameraScanner()"
                                 class="w-10 h-8 p-0 bg-white border border-emerald-500 hover:border-emerald-400 rounded-lg overflow-hidden flex items-center justify-center shadow transition transform hover:scale-105 focus:outline-none cursor-pointer" 
                                 title="Ativar leitor contínuo de câmera">
                             <img src="../../assets/botao-camera.jpg" 
@@ -322,6 +322,10 @@
                     </svg>
                     <!-- Caixa de sugestões flutuante ancorada ao campo de busca -->
                     <div id="sugestoesBusca" class="hidden rounded-xl divide-y divide-gray-700" role="listbox"></div>
+                </div>
+                <div id="statusEstoqueCaixa" class="hidden items-center justify-between gap-3 rounded-lg border border-rose-800 bg-rose-950/50 px-3 py-2 text-xs text-rose-200" role="status">
+                    <span id="mensagemStatusEstoqueCaixa"></span>
+                    <button type="button" onclick="window.atualizarEstoqueCaixa()" class="shrink-0 rounded bg-rose-900 px-2 py-1 font-bold text-white hover:bg-rose-800">Tentar novamente</button>
                 </div>
             </div>
 

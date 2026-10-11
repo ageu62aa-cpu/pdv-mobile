@@ -28,6 +28,7 @@ let taxasGeraisPagamento = null;
 const getSupabase = () => window.supabaseClient || window.supabase || supabase;
 window.supabaseClient = window.supabaseClient || supabase;
 window.supabase = window.supabase || supabase;
+window.abrirCameraScanner = abrirLeitorCamera;
 
 function isInvalidAuthSessionError(error) {
     const message = String(error?.message || '').toLowerCase();
@@ -111,11 +112,9 @@ export async function obterContextoAutenticadoSupabase() {
     }
     if (!empresa) throw new Error('Não foi possível localizar a empresa vinculada à sessão.');
 
-    const cargo = vinculo?.cargo || (
-        empresa.id === user.id || empresa.email_admin === user.email
-            ? 'admin_mercado'
-            : null
-    );
+    const donoDaEmpresa = empresa.id === user.id
+        || String(empresa.email_admin || '').trim().toLowerCase() === String(user.email || '').trim().toLowerCase();
+    const cargo = donoDaEmpresa ? 'admin_mercado' : vinculo?.cargo;
     if (cargo !== 'admin_mercado' && cargo !== 'operador') {
         window.location.href = '../auth/auth.html';
         return null;
@@ -179,15 +178,56 @@ async function inicializarCaixaDefinitivo() {
             return;
         }
 
-        await carregarProdutosCache();
+        await carregarProdutosParaCaixa();
         await verificarStatusCaixaServidor();
         await iniciarRealtimeCaixa();
         focarBusca();
     } catch (error) {
         if (await redirecionarSessaoInvalida(getSupabase(), error)) return;
         console.error('PDV-VS: Falha ao inicializar a sessão pelo Supabase:', error);
+        const status = document.getElementById('statusEstoqueCaixa');
+        const mensagem = document.getElementById('mensagemStatusEstoqueCaixa');
+        const botaoTentarNovamente = status?.querySelector('button');
+        if (mensagem) mensagem.textContent = `Não foi possível iniciar o caixa ou identificar a empresa: ${error.message}`;
+        if (botaoTentarNovamente) {
+            botaoTentarNovamente.textContent = 'Tentar iniciar novamente';
+            botaoTentarNovamente.onclick = () => { void inicializarCaixaDefinitivo(); };
+        }
+        status?.classList.remove('hidden');
+        status?.classList.add('flex');
     }
 }
+
+async function carregarProdutosParaCaixa() {
+    const status = document.getElementById('statusEstoqueCaixa');
+    const mensagem = document.getElementById('mensagemStatusEstoqueCaixa');
+    const botaoTentarNovamente = status?.querySelector('button');
+    if (botaoTentarNovamente) {
+        botaoTentarNovamente.textContent = 'Tentar novamente';
+        botaoTentarNovamente.onclick = () => { void window.atualizarEstoqueCaixa?.(); };
+    }
+    try {
+        await carregarProdutosCache();
+        status?.classList.add('hidden');
+        status?.classList.remove('flex');
+        return true;
+    } catch (error) {
+        console.error('PDV-VS: Não foi possível carregar os produtos do estoque:', error);
+        if (mensagem) mensagem.textContent = `Falha ao carregar produtos do estoque: ${error.message}`;
+        status?.classList.remove('hidden');
+        status?.classList.add('flex');
+        return false;
+    }
+}
+
+window.atualizarEstoqueCaixa = async () => {
+    const status = document.getElementById('statusEstoqueCaixa');
+    const mensagem = document.getElementById('mensagemStatusEstoqueCaixa');
+    if (mensagem) mensagem.textContent = 'Atualizando produtos do estoque...';
+    status?.classList.remove('hidden');
+    status?.classList.add('flex');
+    await carregarProdutosParaCaixa();
+};
 
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', inicializarCaixaDefinitivo, { once: true });
@@ -1214,36 +1254,35 @@ window.acionarAbrirCaixa = async function() {
         return;
     }
 
-    let empresaId = window.empresaAtualId || localStorage.getItem('empresaAtualId');
-    let usuario = window.usuarioAtual;
-
-    if (!usuario || !empresaId) {
-        const { data: { session } } = await db.auth.getSession();
-        if (session && session.user) {
-            usuario = session.user;
-            empresaId = empresaId || localStorage.getItem('empresaAtualId');
-        }
+    let contexto;
+    try {
+        contexto = await obterContextoAutenticadoSupabase();
+    } catch (error) {
+        console.error('PDV-VS: Não foi possível validar usuário e empresa antes de abrir o caixa:', error);
+        alert(`PDV-VS: Não foi possível confirmar a empresa e o usuário desta sessão: ${error.message}`);
+        return;
     }
-
-    if (!empresaId || !usuario) {
+    if (!contexto) {
         alert('PDV-VS: Sessão não encontrada. Faça login novamente.');
         window.location.href = '../auth/auth.html';
         return;
     }
+    const { empresaId, user: usuario } = contexto;
 
     try {
         // 1. Validar se já existe caixa aberto
-        const { data: caixaExistente } = await db
+        const { data: caixaExistente, error: erroCaixaExistente } = await db
             .from('caixas')
             .select('id, status')
             .eq('empresa_id', empresaId)
             .eq('user_id', usuario.id)
             .eq('status', 'ABERTO')
             .maybeSingle();
+        if (erroCaixaExistente) throw erroCaixaExistente;
 
         if (caixaExistente) {
             alert('PDV-VS: O seu caixa já está aberto!');
-            atualizarBadgesCaixaInterface(true, 0);
+            await verificarStatusCaixaServidor();
             return;
         }
 
@@ -1967,10 +2006,10 @@ export function atualizarTabelaVenda() {
         carrinhoVazio?.classList.add('hidden');
     }
     if (txtSubtotal) txtSubtotal.innerText = `R$ ${total.toFixed(2)}`;
-    const totalLiquido = Math.max(0, total - descontoVendaAtual);
-    if (txtTotal) txtTotal.innerText = `R$ ${totalLiquido.toFixed(2)}`;
+    const totalLiquidoAtualizado = Math.max(0, total - descontoVendaAtual);
+    if (txtTotal) txtTotal.innerText = `R$ ${totalLiquidoAtualizado.toFixed(2)}`;
     if (txtResumoSubtotal) txtResumoSubtotal.innerText = `R$ ${total.toFixed(2)}`;
-    if (txtResumoTotal) txtResumoTotal.innerText = `R$ ${totalLiquido.toFixed(2)}`;
+    if (txtResumoTotal) txtResumoTotal.innerText = `R$ ${totalLiquidoAtualizado.toFixed(2)}`;
 }
 
 export function alterarQtd(i, qtd, finalizarEdicao = false) {

@@ -314,52 +314,90 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             const email = inputEmail.value.trim();
             const senha = inputSenha.value.trim();
+            const botaoLogin = formLogin.querySelector('button[type="submit"]');
 
             if (authFeedback) authFeedback.classList.add('hidden');
+            if (botaoLogin) botaoLogin.disabled = true;
 
-            // 1. Autentica no Supabase Auth (válido tanto para Admin quanto para Operador)
-            const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password: senha });
-            
-            if (authError || !authData.user) {
-                showLoginFeedback('Login Inválido. Verifique e-mail e senha.', 'error');
-                return;
-            }
+            try {
+                const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password: senha });
+                if (authError || !authData.user) {
+                    showLoginFeedback('Login inválido. Verifique e-mail e senha.', 'error');
+                    return;
+                }
 
-            const userId = authData.user.id;
+                const user = authData.user;
+                const { data: vinculo, error: vinculoError } = await supabase
+                    .from('usuarios_empresas')
+                    .select('user_id, empresa_id, cargo')
+                    .eq('user_id', user.id)
+                    .maybeSingle();
+                if (vinculoError) {
+                    if (vinculoError.code === 'PGRST116') {
+                        throw new Error('Há mais de um vínculo de empresa para este usuário. Regularize o cadastro para definir uma empresa ativa.');
+                    }
+                    throw vinculoError;
+                }
 
-            // 2. Verifica na tabela usuarios_empresas qual é o cargo deste usuário
-            const { data: vinculo, error: vinculoError } = await supabase
-                .from('usuarios_empresas')
-                .select('*')
-                .eq('user_id', userId)
-                .single();
+                let empresaId = vinculo?.empresa_id || null;
+                let cargo = vinculo?.cargo || null;
+                if (empresaId) {
+                    const { data: empresaVinculada, error: erroEmpresaVinculada } = await supabase
+                        .from('empresas')
+                        .select('id, email_admin')
+                        .eq('id', empresaId)
+                        .maybeSingle();
+                    if (erroEmpresaVinculada) throw erroEmpresaVinculada;
+                    if (empresaVinculada
+                        && String(empresaVinculada.email_admin || '').trim().toLowerCase() === String(user.email || '').trim().toLowerCase()) {
+                        cargo = 'admin_mercado';
+                    }
+                }
+                if ((!empresaId || !cargo) && user.email) {
+                    const { data: empresa, error: erroEmpresa } = await supabase
+                        .from('empresas')
+                        .select('id, email_admin')
+                        .eq('email_admin', user.email)
+                        .maybeSingle();
+                    if (erroEmpresa) throw erroEmpresa;
+                    if (empresa) {
+                        empresaId = empresaId || empresa.id;
+                        cargo = cargo || 'admin_mercado';
+                    }
+                }
 
-            if (vinculoError || !vinculo) {
-                showLoginFeedback('Erro ao identificar o perfil da empresa.', 'error');
-                return;
-            }
+                if (!empresaId) {
+                    showLoginFeedback('Não foi possível localizar uma empresa vinculada a este usuário. Peça ao administrador para conferir o vínculo do operador.', 'error');
+                    return;
+                }
+                if (cargo !== 'admin_mercado' && cargo !== 'operador') {
+                    showLoginFeedback('Este usuário não tem um perfil autorizado para acessar o caixa.', 'error');
+                    return;
+                }
 
-            // 3. Direciona com base no cargo ('admin_mercado' ou 'operador')
-            const idEmpresaVinculada = vinculo.empresa_id || vinculo.id; // Garante o ID correto da empresa
-            localStorage.setItem('empresaAtualId', idEmpresaVinculada); // [CORREÇÃO SÊNIOR] Salva a empresa ativa
+                localStorage.setItem('empresa_id', empresaId);
+                localStorage.setItem('empresaAtualId', empresaId);
+                localStorage.setItem('pdv_empresa_id', empresaId);
+                localStorage.setItem('usuario', JSON.stringify(user));
 
-            if (vinculo.cargo === 'admin_mercado') {
-                showLoginFeedback('Login de Administrador com Sucesso', 'success');
-                setTimeout(() => {
-                    window.location.href = '../admin/admin.html';
-                }, 700);
-            } else if (vinculo.cargo === 'operador') {
-                // Salva os dados do operador na sessão local para uso no PDV
-                localStorage.setItem('operador_logado_id', vinculo.id);
-                localStorage.setItem('operador_logado_user_id', userId);
-
-                showLoginFeedback('Login de Operador com Sucesso', 'success');
-                setTimeout(() => {
-                    // [CORREÇÃO DO CAMINHO] Redireciona o Operador para a nova página exclusiva e segura
-                    window.location.href = '../pdv/operador.html';
-                }, 700);
-            } else {
-                showLoginFeedback('Cargo não autorizado.', 'error');
+                if (cargo === 'admin_mercado') {
+                    showLoginFeedback('Login de administrador realizado com sucesso.', 'success');
+                    setTimeout(() => {
+                        window.location.href = '../admin/admin.html';
+                    }, 700);
+                } else {
+                    localStorage.setItem('operador_logado_id', user.id);
+                    localStorage.setItem('operador_logado_user_id', user.id);
+                    showLoginFeedback('Login de operador realizado com sucesso.', 'success');
+                    setTimeout(() => {
+                        window.location.href = '../pdv/operador.html';
+                    }, 700);
+                }
+            } catch (error) {
+                console.error('PDV-VS: Erro ao validar usuário e empresa durante o login:', error);
+                showLoginFeedback(`Não foi possível validar o vínculo com a empresa: ${error.message}`, 'error');
+            } finally {
+                if (botaoLogin) botaoLogin.disabled = false;
             }
         });
     }
