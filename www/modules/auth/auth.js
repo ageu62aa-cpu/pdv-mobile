@@ -231,6 +231,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     nome_mercado: nomeEmpresa.trim(),
                     nome_empresa: nomeEmpresa.trim(),
                     cnpj,
+                    documento: cnpj,
                     whatsapp,
                     cep,
                     endereco,
