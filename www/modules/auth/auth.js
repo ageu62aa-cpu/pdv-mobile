@@ -234,7 +234,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     documento: cnpj,
                     whatsapp,
                     cep,
-                    endereco,aa
+                    endereco,
                     numero,
                     cidade,
                     estado,
