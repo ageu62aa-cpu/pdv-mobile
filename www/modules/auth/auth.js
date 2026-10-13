@@ -167,6 +167,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const nomeEmpresa = document.getElementById('cad-nome-empresa').value;
             const cnpj = document.getElementById('cad-cnpj').value;
+            const cnpjVal = cnpj;
             const whatsapp = document.getElementById('cad-whatsapp').value;
             const cep = document.getElementById('cad-cep').value;
             const endereco = document.getElementById('cad-endereco').value;
@@ -230,8 +231,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     id: authData.user.id,
                     nome_mercado: nomeEmpresa.trim(),
                     nome_empresa: nomeEmpresa.trim(),
-                    cnpj: cnpjValor,
-                    documento: cnpjValor,
+                    cnpj,
+                    documento: cnpj,
                     whatsapp,
                     cep,
                     endereco,
