@@ -231,7 +231,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     id: authData.user.id,
                     nome_mercado: nomeEmpresa.trim(),
                     nome_empresa: nomeEmpresa.trim(),
-                    cnpj,
+                    cnpj: cnpj,
                     documento: cnpj,
                     whatsapp,
                     cep,
