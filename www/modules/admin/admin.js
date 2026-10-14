@@ -15,16 +15,27 @@ async function resolverEmpresaIdAtual() {
     try {
         const { data: { session } } = await window.supabaseClient.auth.getSession();
         if (session && session.user) {
-            const { data: vincData } = await window.supabaseClient
-                .from('usuarios_empresas')
-                .select('empresa_id')
-                .eq('user_id', session.user.id)
+            // Se o usuário logado for o dono na tabela empresas, o ID da empresa é o ID dele próprio
+            const { data: empresaDono } = await window.supabaseClient
+                .from('empresas')
+                .select('id')
+                .eq('id', session.user.id)
                 .maybeSingle();
-            
-            if (vincData && vincData.empresa_id) {
-                idEmpresa = vincData.empresa_id;
-            } else if (!idEmpresa) {
+
+            if (empresaDono) {
                 idEmpresa = session.user.id;
+            } else {
+                const { data: vincData } = await window.supabaseClient
+                    .from('usuarios_empresas')
+                    .select('empresa_id')
+                    .eq('user_id', session.user.id)
+                    .maybeSingle();
+                
+                if (vincData && vincData.empresa_id) {
+                    idEmpresa = vincData.empresa_id;
+                } else if (!idEmpresa) {
+                    idEmpresa = session.user.id;
+                }
             }
             setEmpresaAtualId(idEmpresa);
             localStorage.setItem('empresa_id', idEmpresa);

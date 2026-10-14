@@ -255,8 +255,21 @@ async function verificarSessaoEAlternarTelas() {
                 .eq('user_id', session.user.id)  
                 .maybeSingle();  
 
-            const cargoFinal = opData?.cargo || 'admin_mercado';  
-            const empresaIdFinal = opData?.empresa_id || session.user.id;  
+            let cargoFinal = opData?.cargo || 'operador';  
+            let empresaIdFinal = opData?.empresa_id || session.user.id;  
+
+            // TRAVA DE SEGURANÇA SÊNIOR: Se o e-mail logado for o master da empresa ou se já estiver gravado 
+            // que ele é o admin_mercado, NUNCA perde o cargo por conflito de sessão em outro aparelho.
+            const { data: empresaDono } = await supabase
+                .from('empresas')
+                .select('id')
+                .eq('id', session.user.id)
+                .maybeSingle();
+
+            if (empresaDono || session.user.email === localStorage.getItem('pdv_admin_email')) {
+                cargoFinal = 'admin_mercado';
+                empresaIdFinal = session.user.id;
+            }
 
             setEmpresaAtualId(empresaIdFinal);  
             setCargoUsuarioAtual(cargoFinal);  
@@ -267,13 +280,17 @@ async function verificarSessaoEAlternarTelas() {
             if (empresaIdFinal) {  
                 const { data: dadosEmpresa } = await supabase  
                     .from('empresas')  
-                    .select('nome_mercado, documento')  
+                    .select('nome_mercado, documento, email')  
                     .eq('id', empresaIdFinal)  
                     .maybeSingle();  
 
                 if (dadosEmpresa) {  
                     nomeLojaExibicao = dadosEmpresa.nome_mercado || "Nome do Estabelecimento";  
                     cnpjLojaExibicao = dadosEmpresa.documento ? `CNPJ/CPF: ${dadosEmpresa.documento}` : "";  
+                    if (dadosEmpresa.email === session.user.email) {
+                        cargoFinal = 'admin_mercado';
+                        setCargoUsuarioAtual('admin_mercado');
+                    }
                 }  
             }  
 
