@@ -357,37 +357,72 @@ export async function excluirMaquininhaAdmin(id) {
 export async function carregarOperadoresLoja() {
     if (!empresaAtualId) return;
 
-    const [{ data: operadores }, { data: caixasAbertos }] = await Promise.all([
+    // Busca unificada: Traz os perfis da empresa, a tabela de operadores e os caixas em tempo real
+    const [{ data: operadoresPerfis }, { data: operadoresTabela }, { data: caixasEmpresa }] = await Promise.all([
         window.supabaseClient.from('usuarios_empresas').select('*').eq('empresa_id', empresaAtualId),
-        window.supabaseClient.from('caixas').select('user_id, status, faturamento_dia').eq('empresa_id', empresaAtualId).eq('status', 'ABERTO')
+        window.supabaseClient.from('operadores').select('*').eq('empresa_id', empresaAtualId),
+        window.supabaseClient.from('caixas').select('*').eq('empresa_id', empresaAtualId).order('created_at', { ascending: false })
     ]);
 
+    // Mescla os operadores de ambas as tabelas para garantir que nenhum fique de fora
+    const mapaOperadores = new Map();
+    
+    (operadoresPerfis || []).forEach(op => {
+        mapaOperadores.set(op.user_id, {
+            id: op.user_id,
+            cargo: op.cargo,
+            nome: op.nome || 'Operador'
+        });
+    });
+
+    (operadoresTabela || []).forEach(op => {
+        const opId = op.user_id || op.id;
+        if (opId && !mapaOperadores.has(opId)) {
+            mapaOperadores.set(opId, {
+                id: opId,
+                cargo: 'operador',
+                nome: op.nome || op.email || 'Operador'
+            });
+        }
+    });
+
+    // Mapeia o caixa mais recente de cada usuário
     const mapaCaixas = {};
-    (caixasAbertos || []).forEach(c => { mapaCaixas[c.user_id] = c; });
+    (caixasEmpresa || []).forEach(c => {
+        const chaveUsuario = c.user_id || c.operador_id;
+        if (chaveUsuario && !mapaCaixas[chaveUsuario]) {
+            mapaCaixas[chaveUsuario] = c;
+        }
+    });
 
     let html = '';
-    if (operadores && operadores.length > 0) {
-        operadores.forEach(op => {
-            const caixaInfo = mapaCaixas[op.user_id];
+    if (mapaOperadores.size > 0) {
+        mapaOperadores.forEach((op, opId) => {
+            const caixaInfo = mapaCaixas[opId];
+            const isOpen = String(caixaInfo?.status || '').toUpperCase() === 'ABERTO';
             const faturamentoAtual = caixaInfo ? Number(caixaInfo.faturamento_dia || 0) : 0;
-            const statusCaixaBadge = caixaInfo 
+            
+            const statusCaixaBadge = isOpen 
                 ? `<span class="bg-emerald-100 text-emerald-800 text-xs px-2.5 py-1 rounded-full font-bold">ABERTO (Fat: R$ ${faturamentoAtual.toFixed(2)})</span>` 
                 : '<span class="bg-amber-100 text-amber-800 text-xs px-2.5 py-1 rounded-full font-bold">FECHADO</span>';
             
-            const cargoNome = op.cargo === 'admin_mercado' ? 'Administrador' : 'Operador de Caixa';
+            const cargoNome = op.cargo === 'admin_mercado' ? 'Administrador' : `Operador (${op.nome || 'Caixa'})`;
 
             html += `<tr class="border-b">
-                <td class="p-3 text-xs font-mono">${op.user_id}</td>
+                <td class="p-3 text-xs font-mono">${opId}</td>
                 <td class="p-3 font-semibold text-slate-800">${cargoNome}</td>
                 <td class="p-3 text-center">${statusCaixaBadge}</td>
                 <td class="p-3 text-center">
-                    ${op.cargo !== 'admin_mercado' ? `<button onclick="window.excluirOperadorLoja('${op.user_id}')" class="text-rose-600 hover:text-rose-800 text-xs font-bold"><i class="fa-solid fa-trash mr-1"></i> Remover</button>` : '<span class="text-xs text-slate-400">Principal</span>'}
+                    ${op.cargo !== 'admin_mercado' ? `<button onclick="window.excluirOperadorLoja('${opId}')" class="text-rose-600 hover:text-rose-800 text-xs font-bold"><i class="fa-solid fa-trash mr-1"></i> Remover</button>` : '<span class="text-xs text-slate-400">Principal</span>'}
                 </td>
             </tr>`;
         });
     }
+
     const tabelaOps = document.getElementById('tabelaOperadoresLoja');
-    if (tabelaOps) tabelaOps.innerHTML = html || '<tr><td colspan="4" class="p-4 text-center text-slate-400">Nenhum operador cadastrado.</td></tr>';
+    if (tabelaOps) {
+        tabelaOps.innerHTML = html || '<tr><td colspan="4" class="p-4 text-center text-slate-400">Nenhum operador cadastrado.</td></tr>';
+    }
 }
 
 export async function excluirOperadorLoja(id) { 
