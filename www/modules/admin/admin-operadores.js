@@ -60,16 +60,21 @@ async function carregarGestaoOperadores() {
     const empresaId = window.empresaAtualId;
     if (!empresaId) throw new Error('Empresa não identificada para carregar o status dos caixas.');
 
+    // 1. Buscamos caixas, perfis e a tabela de operadores em paralelo
     const [
         { data: caixas, error: erroCaixas },
-        { data: perfis, error: erroPerfis }
+        { data: perfis, error: erroPerfis },
+        { data: operadoresTabela, error: erroOpTabela }
     ] = await Promise.all([
         supabase.from('caixas').select('*').eq('empresa_id', empresaId).order('created_at', { ascending: false }),
-        supabase.from('usuarios_empresas').select('user_id, cargo').eq('empresa_id', empresaId)
+        supabase.from('usuarios_empresas').select('user_id, cargo').eq('empresa_id', empresaId),
+        supabase.from('operadores').select('*').eq('empresa_id', empresaId)
     ]);
 
     if (erroCaixas) console.error('PDV-VS: Erro ao carregar caixas:', erroCaixas);
     if (erroPerfis) console.error('PDV-VS: Erro ao carregar perfis da empresa:', erroPerfis);
+    if (erroOpTabela) console.error('PDV-VS: Erro ao carregar operadores:', erroOpTabela);
+
     if (erroCaixas || erroPerfis) {
         const erro = erroCaixas || erroPerfis;
         gridContainer.innerHTML = `<div class="col-span-2 text-center py-8 text-red-400 text-sm">Erro ao carregar status dos caixas. ${escaparTextoHtml(erro.message)}</div>`;
@@ -87,6 +92,18 @@ async function carregarGestaoOperadores() {
         perfisDaEmpresa.push({ user_id: usuarioAtual.id, cargo: 'admin_mercado' });
     }
 
+    // 2. Garantimos que qualquer operador da tabela 'operadores' apareça no painel
+    const idsPerfis = new Set(perfisDaEmpresa.map(p => p.user_id));
+    (operadoresTabela || []).forEach(op => {
+        if ((op.id && !idsPerfis.has(op.id)) || (op.user_id && !idsPerfis.has(op.user_id))) {
+            perfisDaEmpresa.push({ 
+                user_id: op.id || op.user_id, 
+                cargo: 'operador', 
+                nome_extra: op.nome 
+            });
+        }
+    });
+
     if (perfisDaEmpresa.length === 0) {
         gridContainer.innerHTML = `
             <div class="col-span-2 bg-gray-900/60 border border-gray-800 rounded-2xl p-8 text-center text-gray-400">
@@ -102,13 +119,18 @@ async function carregarGestaoOperadores() {
         if (caixa.user_id && !caixaMaisRecentePorUsuario.has(caixa.user_id)) {
             caixaMaisRecentePorUsuario.set(caixa.user_id, caixa);
         }
+        if (caixa.operador_id && !caixaMaisRecentePorUsuario.has(caixa.operador_id)) {
+            caixaMaisRecentePorUsuario.set(caixa.operador_id, caixa);
+        }
     });
 
     perfisDaEmpresa.sort((a, b) => Number(b.cargo === 'admin_mercado') - Number(a.cargo === 'admin_mercado'));
     let numeroOperadores = 1;
+    
     gridContainer.innerHTML = perfisDaEmpresa.map(perfil => {
         const isAdmin = perfil.cargo === 'admin_mercado';
         if (!isAdmin) numeroOperadores += 1;
+        
         const caixa = caixaMaisRecentePorUsuario.get(perfil.user_id);
         const isOpen = String(caixa?.status || '').toUpperCase() === 'ABERTO';
         const faturamento = Number(caixa?.faturamento_dia || 0).toFixed(2);
@@ -116,9 +138,10 @@ async function carregarGestaoOperadores() {
         const sangrias = Number(caixa?.sangrias || 0);
         const terminalNumero = isAdmin ? '#01' : `#${String(numeroOperadores).padStart(2, '0')}`;
         const tipoPerfil = isAdmin ? 'Administrador' : 'Operador';
+        
         const nomeExibicao = isAdmin
             ? (perfil.user_id === usuarioAtual?.id ? 'Administrador (você)' : 'Administrador')
-            : (caixa?.operador_nome || caixa?.vendedor_nome || caixa?.nome_operador || 'Operador');
+            : (perfil.nome_extra || caixa?.operador_nome || caixa?.vendedor_nome || caixa?.nome_operador || 'Operador');
 
         const cardBorder = isOpen ? 'border-emerald-500/50 bg-gray-900/90 shadow-emerald-950/20' : 'border-gray-800 bg-gray-900/60';
         const statusBadge = isOpen 
@@ -211,16 +234,22 @@ async function carregarFaturamentoOperadoresHoje(empresaId) {
                 </span>
             </summary>
             <div class="space-y-2 border-t border-gray-700 p-3">
-                ${grupo.vendas.map(venda => `
-                    <article class="rounded-lg bg-gray-950/70 p-3 text-xs">
-                        <div class="flex flex-wrap justify-between gap-2">
-                            <span class="text-gray-400">${venda.created_at ? new Date(venda.created_at).toLocaleTimeString('pt-BR') : '--'}</span>
-                            <strong class="text-emerald-300">${formatarDinheiro(venda.valor_total)}</strong>
-                        </div>
-                        <p class="mt-1 text-gray-300">${escaparTextoHtml(venda.forma_pagamento || 'Forma não informada')}${venda.maquininha_nome ? ` · ${escaparTextoHtml(venda.maquininha_nome)}` : ''}${venda.parcelas ? ` · ${venda.parcelas}x` : ''}</p>
-                        <p class="mt-1 text-amber-300">Juros: ${formatarDinheiro(venda.valor_juros)}${venda.taxa_aplicada != null ? ` · ${Number(venda.taxa_aplicada).toFixed(2)}%` : ''}</p>
-                    </article>
-                `).join('')}
+                ${grupo.vendas.map(venda => {
+                    const infoMaquininha = venda.maquininha_nome ? ' · ' + escaparTextoHtml(venda.maquininha_nome) : '';
+                    const infoParcelas = venda.parcelas ? ' · ' + venda.parcelas + 'x' : '';
+                    const infoTaxa = venda.taxa_aplicada != null ? ' · ' + Number(venda.taxa_aplicada).toFixed(2) + '%' : '';
+
+                    return `
+                        <article class="rounded-lg bg-gray-950/70 p-3 text-xs">
+                            <div class="flex flex-wrap justify-between gap-2">
+                                <span class="text-gray-400">${venda.created_at ? new Date(venda.created_at).toLocaleTimeString('pt-BR') : '--'}</span>
+                                <strong class="text-emerald-300">${formatarDinheiro(venda.valor_total)}</strong>
+                            </div>
+                            <p class="mt-1 text-gray-300">${escaparTextoHtml(venda.forma_pagamento || 'Forma não informada')}${infoMaquininha}${infoParcelas}</p>
+                            <p class="mt-1 text-amber-300">Juros: ${formatarDinheiro(venda.valor_juros)}${infoTaxa}</p>
+                        </article>
+                    `;
+                }).join('')}
             </div>
         </details>
     `).join('');
