@@ -60,7 +60,6 @@ async function carregarGestaoOperadores() {
     const empresaId = window.empresaAtualId;
     if (!empresaId) throw new Error('Empresa não identificada para carregar o status dos caixas.');
 
-    // 1. Buscamos caixas, perfis e a tabela de operadores em paralelo
     const [
         { data: caixas, error: erroCaixas },
         { data: perfis, error: erroPerfis },
@@ -72,7 +71,7 @@ async function carregarGestaoOperadores() {
     ]);
 
     if (erroCaixas) console.error('PDV-VS: Erro ao carregar caixas:', erroCaixas);
-    if (erroPerfis) console.error('PDV-VS: Erro ao carregar perfis da empresa:', erroPerfis);
+    if (erroPerfis) console.error('PDV-VS: Erro ao carregar perfis:', erroPerfis);
     if (erroOpTabela) console.error('PDV-VS: Erro ao carregar operadores:', erroOpTabela);
 
     if (erroCaixas || erroPerfis) {
@@ -85,6 +84,7 @@ async function carregarGestaoOperadores() {
     const perfisDaEmpresa = (perfis || []).filter(perfil =>
         perfil.cargo === 'admin_mercado' || perfil.cargo === 'operador'
     );
+    
     const usuarioAtual = window.usuarioAtual;
     if (usuarioAtual?.id
         && !perfisDaEmpresa.some(perfil => perfil.user_id === usuarioAtual.id)
@@ -92,15 +92,17 @@ async function carregarGestaoOperadores() {
         perfisDaEmpresa.push({ user_id: usuarioAtual.id, cargo: 'admin_mercado' });
     }
 
-    // 2. Garantimos que qualquer operador da tabela 'operadores' apareça no painel
+    // Mapeamento robusto: injeta todos os operadores cadastrados independentemente de chaves soltas
     const idsPerfis = new Set(perfisDaEmpresa.map(p => p.user_id));
     (operadoresTabela || []).forEach(op => {
-        if ((op.id && !idsPerfis.has(op.id)) || (op.user_id && !idsPerfis.has(op.user_id))) {
+        const opId = op.user_id || op.id;
+        if (opId && !idsPerfis.has(opId)) {
             perfisDaEmpresa.push({ 
-                user_id: op.id || op.user_id, 
+                user_id: opId, 
                 cargo: 'operador', 
-                nome_extra: op.nome 
+                nome_extra: op.nome || op.email 
             });
+            idsPerfis.add(opId);
         }
     });
 
@@ -114,14 +116,11 @@ async function carregarGestaoOperadores() {
         return;
     }
 
+    // Mapeamento flexível de caixas por user_id, operador_id ou correspondência parcial
     const caixaMaisRecentePorUsuario = new Map();
     (caixas || []).forEach(caixa => {
-        if (caixa.user_id && !caixaMaisRecentePorUsuario.has(caixa.user_id)) {
-            caixaMaisRecentePorUsuario.set(caixa.user_id, caixa);
-        }
-        if (caixa.operador_id && !caixaMaisRecentePorUsuario.has(caixa.operador_id)) {
-            caixaMaisRecentePorUsuario.set(caixa.operador_id, caixa);
-        }
+        if (caixa.user_id) caixaMaisRecentePorUsuario.set(caixa.user_id, caixa);
+        if (caixa.operador_id) caixaMaisRecentePorUsuario.set(caixa.operador_id, caixa);
     });
 
     perfisDaEmpresa.sort((a, b) => Number(b.cargo === 'admin_mercado') - Number(a.cargo === 'admin_mercado'));
@@ -131,7 +130,13 @@ async function carregarGestaoOperadores() {
         const isAdmin = perfil.cargo === 'admin_mercado';
         if (!isAdmin) numeroOperadores += 1;
         
-        const caixa = caixaMaisRecentePorUsuario.get(perfil.user_id);
+        let caixa = caixaMaisRecentePorUsuario.get(perfil.user_id);
+        
+        // Se não achou exato, tenta varrer os caixas pelo nome ou email do operador
+        if (!caixa && !isAdmin) {
+            caixa = (caixas || []).find(c => c.operador_nome === perfil.nome_extra || c.vendedor_nome === perfil.nome_extra);
+        }
+
         const isOpen = String(caixa?.status || '').toUpperCase() === 'ABERTO';
         const faturamento = Number(caixa?.faturamento_dia || 0).toFixed(2);
         const valorTroco = Number(caixa?.valor_abertura || 0).toFixed(2);
