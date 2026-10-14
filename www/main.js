@@ -6,6 +6,7 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';  
 import { state, setUsuarioAtual, setEmpresaAtualId, setCargoUsuarioAtual } from './state.js';  
 import { abrirLeitorCamera, escanearCameraAdmin, fecharLeitorCamera } from './camera.js';  
+import { validarSessaoAtual } from './core/sessaoService.js';
 
 // --- IMPORTAÇÃO DOS MODAIS DINÂMICOS ---
 import { abrirModalCheckout, fecharModalFinalizarVenda } from './components/modalCheckout.js';
@@ -41,6 +42,11 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 window.supabaseClient = supabase; // Fallback para módulos legados
+
+// --- VALIDAÇÃO PERIÓDICA DA SESSÃO ---
+setInterval(() => {
+  validarSessaoAtual(window.supabaseClient || supabase); 
+}, 30000);
 
 // --- DECLARAÇÃO GLOBAL IMEDIATA ANTES DO DOMContentLoaded ---
 window.processarAutenticacao = processarAutenticacao;

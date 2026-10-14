@@ -1,4 +1,5 @@
 import { supabase } from '../../core/config.js';
+import { ativarSessaoUnica } from '../../core/sessaoService.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     const formLogin = document.getElementById('form-login');
@@ -375,6 +376,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 const user = authData.user;
+
+                // Chamada da ativação de sessão única imediatamente após o login bem-sucedido
+                const userIdObtido = user.id;
+                await ativarSessaoUnica(supabase, userIdObtido);
+
                 const { data: vinculo, error: vinculoError } = await supabase
                     .from('usuarios_empresas')
                     .select('user_id, empresa_id, cargo')
