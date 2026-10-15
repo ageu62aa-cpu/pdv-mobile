@@ -63,7 +63,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 });
 
 // ==========================================
-// SINCRONIZAÇÃO EM TEMPO REAL
+// SINCRONIZAÇÃO EM TEMPO REAL (ATUALIZADO)
 // ==========================================
 function iniciarSincronizacaoRealtime() {
     if (!empresaAtualId) return;
@@ -73,12 +73,19 @@ function iniciarSincronizacaoRealtime() {
     }
 
     canalRealtimeSupabase = supabaseClient
-        .channel('public:produtos_e_vendas')
+        .channel('public:painel_admin_global')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'produtos', filter: `empresa_id=eq.${empresaAtualId}` }, () => {
             if (typeof carregarProdutosDaLoja === 'function') carregarProdutosDaLoja();
         })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'caixas', filter: `empresa_id=eq.${empresaAtualId}` }, () => {
+            if (typeof carregarGestaoOperadores === 'function') carregarGestaoOperadores();
             if (typeof verificarStatusCaixaIndividual === 'function') verificarStatusCaixaIndividual();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'operadores', filter: `empresa_id=eq.${empresaAtualId}` }, () => {
+            if (typeof carregarGestaoOperadores === 'function') carregarGestaoOperadores();
+        })
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'vendas', filter: `empresa_id=eq.${empresaAtualId}` }, () => {
+            if (typeof carregarGestaoOperadores === 'function') carregarGestaoOperadores();
         })
         .subscribe();
 }
