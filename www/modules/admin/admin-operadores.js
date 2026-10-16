@@ -57,17 +57,19 @@ export async function initAdminOperadores(containerEl) {
 async function carregarGestaoOperadores() {
     const gridContainer = document.getElementById('grid-operadores-container');
     if (!gridContainer) return;
-    const empresaId = window.empresaAtualId;
-    if (!empresaId) throw new Error('Empresa não identificada para carregar o status dos caixas.');
+    
+    // Garantindo a referência correta da empresa do admin
+    const empresaIdDoAdmin = window.empresaAtualId;
+    if (!empresaIdDoAdmin) throw new Error('Empresa não identificada para carregar o status dos caixas.');
 
     const [
         { data: caixas, error: erroCaixas },
         { data: perfis, error: erroPerfis },
         { data: operadoresTabela, error: erroOpTabela }
     ] = await Promise.all([
-        supabase.from('caixas').select('*').eq('empresa_id', empresaId).order('created_at', { ascending: false }),
-        supabase.from('usuarios_empresas').select('user_id, cargo').eq('empresa_id', empresaId),
-        supabase.from('operadores').select('*').eq('empresa_id', empresaId)
+        supabase.from('caixas').select('*').eq('empresa_id', empresaIdDoAdmin).order('created_at', { ascending: false }),
+        supabase.from('usuarios_empresas').select('user_id, cargo').eq('empresa_id', empresaIdDoAdmin),
+        supabase.from('operadores').select('*').eq('empresa_id', empresaIdDoAdmin)
     ]);
 
     if (erroCaixas) console.error('PDV-VS: Erro ao carregar caixas:', erroCaixas);
@@ -77,7 +79,7 @@ async function carregarGestaoOperadores() {
     if (erroCaixas || erroPerfis) {
         const erro = erroCaixas || erroPerfis;
         gridContainer.innerHTML = `<div class="col-span-2 text-center py-8 text-red-400 text-sm">Erro ao carregar status dos caixas. ${escaparTextoHtml(erro.message)}</div>`;
-        await carregarFaturamentoOperadoresHoje(empresaId);
+        await carregarFaturamentoOperadoresHoje(empresaIdDoAdmin);
         return;
     }
 
@@ -112,7 +114,7 @@ async function carregarGestaoOperadores() {
                 <i class="fa-solid fa-users-slash text-3xl text-gray-600 mb-2"></i>
                 <p class="text-sm">Nenhum administrador ou operador vinculado a esta empresa.</p>
             </div>`;
-        await carregarFaturamentoOperadoresHoje(empresaId);
+        await carregarFaturamentoOperadoresHoje(empresaIdDoAdmin);
         return;
     }
 
@@ -185,7 +187,7 @@ async function carregarGestaoOperadores() {
         `;
     }).join('');
 
-    await carregarFaturamentoOperadoresHoje(empresaId);
+    await carregarFaturamentoOperadoresHoje(empresaIdDoAdmin);
 }
 
 async function carregarFaturamentoOperadoresHoje(empresaId) {
@@ -233,7 +235,7 @@ async function carregarFaturamentoOperadoresHoje(empresaId) {
                     <strong class="block truncate text-sm text-white">${escaparTextoHtml(nome)}</strong>
                     <span class="text-xs text-gray-400">${grupo.vendas.length} venda(s) no dia</span>
                 </span>
-                <span class="shrink-0 text-right">
+                <span class="text-right shrink-0">
                     <strong class="block text-sm text-emerald-300">${formatarDinheiro(grupo.total)}</strong>
                     <span class="text-[11px] text-amber-300">Juros ${formatarDinheiro(grupo.juros)}</span>
                 </span>
