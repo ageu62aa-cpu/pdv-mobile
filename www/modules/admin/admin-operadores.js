@@ -1,6 +1,6 @@
 /**
  * Módulo: Admin Operadores (www/modules/admin/admin-operadores.js)
- * Exibe o nome real do operador (comissões/F2) com terminais fixos #01 e #02.
+ * Corrigido para garantir persistência do Admin, isolamento SaaS e tempo real robusto.
  */
 import { supabase } from '../../core/config.js';
 
@@ -29,7 +29,7 @@ export async function initAdminOperadores(containerEl) {
                     </h2>
                     <p class="text-xs text-gray-400 mt-0.5">Acompanhe o status de abertura, faturamento diário e terminais em tempo real.</p>
                 </div>
-                <button onclick="window.carregarGestaoOperadores()" class="bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-bold px-3 py-2 rounded-lg border border-gray-700 transition flex items-center gap-1.5">
+                <button id="btn-atualizar-operadores" class="bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-bold px-3 py-2 rounded-lg border border-gray-700 transition flex items-center gap-1.5">
                     <i class="fa-solid fa-rotate-right"></i> Atualizar Dados
                 </button>
             </div>
@@ -50,17 +50,56 @@ export async function initAdminOperadores(containerEl) {
         </div>
     `;
 
-    window.carregarGestaoOperadores = carregarGestaoOperadores;
+    document.getElementById('btn-atualizar-operadores').addEventListener('click', () => carregarGestaoOperadores());
+    
     await carregarGestaoOperadores();
+    
+    // Ativa escuta em Tempo Real (Supabase Realtime) para caixas e operadores
+    configurarRealtimeAdmin();
+}
+
+async function obterEmpresaIdSeguro() {
+    // 1. Tenta a variável global se existir
+    if (window.empresaAtualId) return window.empresaAtualId;
+
+    // 2. Tenta recuperar da sessão isolada do Admin no localStorage
+    try {
+        const adminSessao = JSON.parse(localStorage.getItem('vancely_admin_session') || '{}');
+        if (adminSessao?.empresa_id) {
+            window.empresaAtualId = adminSessao.empresa_id;
+            return adminSessao.empresa_id;
+        }
+    } catch (e) {
+        console.error('Erro ao ler sessão admin:', e);
+    }
+
+    // 3. Fallback buscando pelo usuário logado no Supabase Auth
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+
+    const { data: vinculo } = await supabase
+        .from('usuarios_empresas')
+        .select('empresa_id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+    if (vinculo?.empresa_id) {
+        window.empresaAtualId = vinculo.empresa_id;
+        return vinculo.empresa_id;
+    }
+
+    return null;
 }
 
 async function carregarGestaoOperadores() {
     const gridContainer = document.getElementById('grid-operadores-container');
     if (!gridContainer) return;
     
-    // Garantindo a referência correta da empresa do admin
-    const empresaIdDoAdmin = window.empresaAtualId;
-    if (!empresaIdDoAdmin) throw new Error('Empresa não identificada para carregar o status dos caixas.');
+    const empresaIdDoAdmin = await obterEmpresaIdSeguro();
+    if (!empresaIdDoAdmin) {
+        gridContainer.innerHTML = `<div class="col-span-2 text-center py-8 text-red-400 text-sm">Erro crítico: Empresa não identificada para este Administrador. Faça login novamente.</div>`;
+        return;
+    }
 
     const [
         { data: caixas, error: erroCaixas },
@@ -89,12 +128,10 @@ async function carregarGestaoOperadores() {
     
     const usuarioAtual = window.usuarioAtual;
     if (usuarioAtual?.id
-        && !perfisDaEmpresa.some(perfil => perfil.user_id === usuarioAtual.id)
-        && window.cargoUsuarioAtual === 'admin_mercado') {
+        && !perfisDaEmpresa.some(perfil => perfil.user_id === usuarioAtual.id)) {
         perfisDaEmpresa.push({ user_id: usuarioAtual.id, cargo: 'admin_mercado' });
     }
 
-    // Mapeamento robusto: injeta todos os operadores cadastrados independentemente de chaves soltas
     const idsPerfis = new Set(perfisDaEmpresa.map(p => p.user_id));
     (operadoresTabela || []).forEach(op => {
         const opId = op.user_id || op.id;
@@ -118,7 +155,6 @@ async function carregarGestaoOperadores() {
         return;
     }
 
-    // Mapeamento flexível de caixas por user_id, operador_id ou correspondência parcial
     const caixaMaisRecentePorUsuario = new Map();
     (caixas || []).forEach(caixa => {
         if (caixa.user_id) caixaMaisRecentePorUsuario.set(caixa.user_id, caixa);
@@ -134,7 +170,6 @@ async function carregarGestaoOperadores() {
         
         let caixa = caixaMaisRecentePorUsuario.get(perfil.user_id);
         
-        // Se não achou exato, tenta varrer os caixas pelo nome ou email do operador
         if (!caixa && !isAdmin) {
             caixa = (caixas || []).find(c => c.operador_nome === perfil.nome_extra || c.vendedor_nome === perfil.nome_extra);
         }
@@ -147,7 +182,7 @@ async function carregarGestaoOperadores() {
         const tipoPerfil = isAdmin ? 'Administrador' : 'Operador';
         
         const nomeExibicao = isAdmin
-            ? (perfil.user_id === usuarioAtual?.id ? 'Administrador (você)' : 'Administrador')
+            ? 'Administrador (você)'
             : (perfil.nome_extra || caixa?.operador_nome || caixa?.vendedor_nome || caixa?.nome_operador || 'Operador');
 
         const cardBorder = isOpen ? 'border-emerald-500/50 bg-gray-900/90 shadow-emerald-950/20' : 'border-gray-800 bg-gray-900/60';
@@ -260,4 +295,19 @@ async function carregarFaturamentoOperadoresHoje(empresaId) {
             </div>
         </details>
     `).join('');
+}
+
+function configurarRealtimeAdmin() {
+    if (window._adminRealtimeChannelSubscribed) return;
+    window._adminRealtimeChannelSubscribed = true;
+
+    supabase
+        .channel('admin-dashboard-realtime')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'caixas' }, () => {
+            carregarGestaoOperadores();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'vendas' }, () => {
+            carregarGestaoOperadores();
+        })
+        .subscribe();
 }
