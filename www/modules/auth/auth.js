@@ -1,5 +1,9 @@
-import { supabase, adminSupabase } from '../../core/config.js';
-import { ativarSessaoUnica, isolarSessaoAdministrativa } from '../../core/sessaoService.js';
+import { supabase, adminSupabase, loginSupabase } from '../../core/config.js';
+import {
+    ativarSessaoUnica,
+    isolarSessaoAdministrativa,
+    transferirSessaoAutenticada
+} from '../../core/sessaoService.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     const formLogin = document.getElementById('form-login');
@@ -368,7 +372,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (botaoLogin) botaoLogin.disabled = true;
 
             try {
-                const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password: senha });
+                const { data: authData, error: authError } = await loginSupabase.auth.signInWithPassword({ email, password: senha });
                 if (authError || !authData.user) {
                     showLoginFeedback('Login inválido. Verifique e-mail e senha.', 'error');
                     return;
@@ -376,7 +380,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const user = authData.user;
 
-                const { data: vinculo, error: vinculoError } = await supabase
+                const { data: vinculo, error: vinculoError } = await loginSupabase
                     .from('usuarios_empresas')
                     .select('user_id, empresa_id, cargo')
                     .eq('user_id', user.id)
@@ -391,7 +395,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 let empresaId = vinculo?.empresa_id || null;
                 let cargo = vinculo?.cargo || null;
                 if (empresaId) {
-                    const { data: empresaVinculada, error: erroEmpresaVinculada } = await supabase
+                    const { data: empresaVinculada, error: erroEmpresaVinculada } = await loginSupabase
                         .from('empresas')
                         .select('id, email_admin')
                         .eq('id', empresaId)
@@ -403,7 +407,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
                 if ((!empresaId || !cargo) && user.email) {
-                    const { data: empresa, error: erroEmpresa } = await supabase
+                    const { data: empresa, error: erroEmpresa } = await loginSupabase
                         .from('empresas')
                         .select('id, email_admin')
                         .eq('email_admin', user.email)
@@ -424,18 +428,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
 
-                localStorage.setItem('empresa_id', empresaId);
-                localStorage.setItem('empresaAtualId', empresaId);
-                localStorage.setItem('pdv_empresa_id', empresaId);
-                localStorage.setItem('usuario', JSON.stringify(user));
-
                 if (cargo === 'admin_mercado') {
-                    await isolarSessaoAdministrativa(supabase, adminSupabase, user, empresaId);
+                    await isolarSessaoAdministrativa(loginSupabase, adminSupabase, user, empresaId);
                     showLoginFeedback('Login de administrador realizado com sucesso.', 'success');
                     setTimeout(() => {
                         window.location.href = '../admin/admin.html';
                     }, 700);
                 } else {
+                    await transferirSessaoAutenticada(loginSupabase, supabase, user);
+                    localStorage.setItem('empresa_id', empresaId);
+                    localStorage.setItem('empresaAtualId', empresaId);
+                    localStorage.setItem('pdv_empresa_id', empresaId);
+                    localStorage.setItem('usuario', JSON.stringify(user));
                     const tokenSessao = await ativarSessaoUnica(supabase, user.id);
                     if (!tokenSessao) {
                         throw new Error('Não foi possível registrar a sessão do operador.');

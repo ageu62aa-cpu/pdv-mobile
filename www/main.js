@@ -3,11 +3,14 @@
 // Arquitetura: ES6 Modules / Singleton Supabase
 // ==========================================  
 
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';  
+import { supabase, loginSupabase, adminSupabase } from './core/config.js';
 import { state, setUsuarioAtual, setEmpresaAtualId, setCargoUsuarioAtual } from './state.js';  
-import { adminSupabase } from './core/config.js';
 import { abrirLeitorCamera, escanearCameraAdmin, fecharLeitorCamera } from './camera.js';  
-import { isolarSessaoAdministrativa, validarSessaoAtual } from './core/sessaoService.js';
+import {
+    isolarSessaoAdministrativa,
+    transferirSessaoAutenticada,
+    validarSessaoAtual
+} from './core/sessaoService.js';
 
 // --- IMPORTAÇÃO DOS MODAIS DINÂMICOS ---
 import { abrirModalCheckout, fecharModalFinalizarVenda } from './components/modalCheckout.js';
@@ -41,7 +44,7 @@ import {
 const SUPABASE_URL = 'https://vbdglgmxaywntmjriccf.supabase.co';  
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiZGdsZ214YXl3bnRtanJpY2NmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk1ODgzOTEsImV4cCI6MjEwNTE2NDM5MX0.S_IUvajnn7Qk7yNtkfBru9xsOjUkKhkJ0J0doikrWSs';  
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+export { supabase };
 window.supabaseClient = supabase; // Fallback para módulos legados
 
 // --- VALIDAÇÃO PERIÓDICA DA SESSÃO ---
@@ -136,9 +139,11 @@ async function processarAutenticacao() {
     }  
 
     try {  
-        const { error } = await supabase.auth.signInWithPassword({ email, password: senha });  
+        const { error } = await loginSupabase.auth.signInWithPassword({ email, password: senha });
         if (error) throw error;  
-        await verificarSessaoEAlternarTelas();  
+        const { data: { session }, error: sessionError } = await loginSupabase.auth.getSession();
+        if (sessionError) throw sessionError;
+        await verificarSessaoEAlternarTelas(session, loginSupabase);
     } catch (e) {  
         alert("Erro ao autenticar: " + (e.message || e));  
     }  
@@ -229,10 +234,14 @@ document.addEventListener("DOMContentLoaded", () => {
 });  
 
 // --- SESSÃO E PERMISSÕES DO USUÁRIO ---  
-async function verificarSessaoEAlternarTelas() {  
+async function verificarSessaoEAlternarTelas(sessaoAutenticada = null, clienteAutenticacao = supabase) {
     try {  
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();  
-        if (sessionError) throw sessionError;
+        let session = sessaoAutenticada;
+        if (!session) {
+            const { data: { session: sessaoAtual }, error: sessionError } = await clienteAutenticacao.auth.getSession();
+            if (sessionError) throw sessionError;
+            session = sessaoAtual;
+        }
 
         const telaLogin = document.getElementById('telaLogin');  
         const appPrincipal = document.getElementById('appPrincipal');  
@@ -241,7 +250,7 @@ async function verificarSessaoEAlternarTelas() {
         if (session?.user) {  
             setUsuarioAtual(session.user);  
 
-            const { data: opData } = await supabase  
+            const { data: opData } = await clienteAutenticacao
                 .from('usuarios_empresas')  
                 .select('empresa_id, cargo')  
                 .eq('user_id', session.user.id)  
@@ -252,7 +261,7 @@ async function verificarSessaoEAlternarTelas() {
 
             // TRAVA DE SEGURANÇA SÊNIOR: Se o e-mail logado for o master da empresa ou se já estiver gravado 
             // que ele é o admin_mercado, NUNCA perde o cargo por conflito de sessão em outro aparelho.
-            const { data: empresaDono } = await supabase
+            const { data: empresaDono } = await clienteAutenticacao
                 .from('empresas')
                 .select('id')
                 .eq('id', session.user.id)
@@ -263,7 +272,7 @@ async function verificarSessaoEAlternarTelas() {
                 empresaIdFinal = session.user.id;
             }
             if (cargoFinal !== 'admin_mercado' && session.user.email) {
-                const { data: empresaPorEmail, error: erroEmpresaEmail } = await supabase
+                const { data: empresaPorEmail, error: erroEmpresaEmail } = await clienteAutenticacao
                     .from('empresas')
                     .select('id')
                     .eq('email_admin', session.user.email)
@@ -282,7 +291,7 @@ async function verificarSessaoEAlternarTelas() {
             let cnpjLojaExibicao = "";  
 
             if (empresaIdFinal) {  
-                const { data: dadosEmpresa } = await supabase  
+                const { data: dadosEmpresa } = await clienteAutenticacao
                     .from('empresas')  
                     .select('nome_mercado, documento, email')  
                     .eq('id', empresaIdFinal)  
@@ -308,9 +317,13 @@ async function verificarSessaoEAlternarTelas() {
             }  
 
             if (cargoFinal === 'admin_mercado') {
-                await isolarSessaoAdministrativa(supabase, adminSupabase, session.user, empresaIdFinal);
+                await isolarSessaoAdministrativa(clienteAutenticacao, adminSupabase, session.user, empresaIdFinal);
                 window.location.href = './modules/admin/admin.html';
                 return;
+            }
+
+            if (clienteAutenticacao !== supabase) {
+                await transferirSessaoAutenticada(clienteAutenticacao, supabase, session.user);
             }
 
             telaLogin?.classList.add('hidden');  

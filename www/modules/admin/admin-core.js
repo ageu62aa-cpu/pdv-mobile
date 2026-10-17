@@ -1,5 +1,5 @@
 import { initAdminProdutos } from './admin-produtos.js';
-import { initAdminOperadores } from './admin-operadores.js';
+import { initAdminOperadores, carregarGestaoOperadores } from './admin-operadores.js';
 import { initAdminMaquininhas } from './admin-maquininhas.js';
 import { initAdminHistorico } from './admin-historico.js';
 import { adminSupabase as supabase } from '../../core/config.js';
@@ -13,6 +13,8 @@ import {
 let canaisAdminRealtime = [];
 let abaAtiva = 'produtos';
 let temporizadorAtualizacaoRealtime = null;
+let statusRealtimePorTabela = new Map();
+let atualizacaoFallbackEmCurso = false;
 
 document.addEventListener('DOMContentLoaded', async () => {
     const container = document.getElementById('admin-conteudo-dinamico');
@@ -75,10 +77,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             throw new Error('Erro ao carregar os dados da empresa vinculada.');
         }
 
-        localStorage.setItem('empresa_id', empresa.id);
-        localStorage.setItem('empresa_dados', JSON.stringify(empresa));
-        localStorage.setItem('user_email', user.email || '');
-
         setUsuarioAtual(user);
         setEmpresaAtualId(empresa.id);
         setCargoUsuarioAtual(cargo);
@@ -102,6 +100,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function iniciarMonitoramentoRealtime(empresaId) {
         canaisAdminRealtime.forEach(canal => supabase.removeChannel(canal));
+        statusRealtimePorTabela = new Map();
         canaisAdminRealtime = [
             ['caixas', ['operadores']],
             ['vendas', ['operadores', 'historico']],
@@ -109,22 +108,39 @@ document.addEventListener('DOMContentLoaded', async () => {
             ['operadores', ['operadores']],
             ['usuarios_empresas', ['operadores']],
             ['produtos', ['produtos']]
-        ].map(([tabela, abasAfetadas]) => supabase
-            .channel(`admin-${tabela}-${empresaId}`)
-            .on('postgres_changes', {
-                event: '*',
-                schema: 'public',
-                table: tabela,
-                filter: `empresa_id=eq.${empresaId}`
-            }, () => {
-                agendarAtualizacaoRealtime(abasAfetadas);
-            })
-            .subscribe((status, error) => {
-                if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-                    console.error(`PDV-VS: Falha ao iniciar atualização Realtime de ${tabela}:`, error || status);
-                }
-            }));
+        ].map(([tabela, abasAfetadas]) => {
+            statusRealtimePorTabela.set(tabela, 'CONNECTING');
+            return supabase
+                .channel(`admin-${tabela}-${empresaId}`)
+                .on('postgres_changes', {
+                    event: '*',
+                    schema: 'public',
+                    table: tabela,
+                    filter: `empresa_id=eq.${empresaId}`
+                }, () => {
+                    agendarAtualizacaoRealtime(abasAfetadas);
+                })
+                .subscribe((status, error) => {
+                    statusRealtimePorTabela.set(tabela, status);
+                    if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                        console.error(`PDV-VS: Falha ao iniciar atualização Realtime de ${tabela}:`, error || status);
+                    }
+                });
+        });
     }
+
+    window.setInterval(() => {
+        const tabelasMonitoradas = ['caixas', 'vendas', 'cancelamentos_caixa', 'operadores', 'usuarios_empresas'];
+        const realtimeDisponivel = tabelasMonitoradas.every(tabela =>
+            statusRealtimePorTabela.get(tabela) === 'SUBSCRIBED'
+        );
+        if (abaAtiva !== 'operadores' || realtimeDisponivel || atualizacaoFallbackEmCurso) return;
+
+        atualizacaoFallbackEmCurso = true;
+        void carregarGestaoOperadores().finally(() => {
+            atualizacaoFallbackEmCurso = false;
+        });
+    }, 15000);
 
     document.querySelector('#adminHeaderActions a[aria-label="Sair"]')?.addEventListener('click', async event => {
         event.preventDefault();

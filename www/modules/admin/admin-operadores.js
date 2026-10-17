@@ -89,7 +89,7 @@ async function obterEmpresaIdSeguro() {
     return null;
 }
 
-async function carregarGestaoOperadores() {
+export async function carregarGestaoOperadores() {
     const gridContainer = document.getElementById('grid-operadores-container');
     if (!gridContainer) return;
     

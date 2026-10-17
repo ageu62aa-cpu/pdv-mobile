@@ -18,6 +18,16 @@ export const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY, {
 // Alias para compatibilidade com os módulos de auth
 export const supabase = supabaseClient;
 
+// The login screen authenticates in memory, then transfers the token to the
+// operator or administrator client after resolving the account's role.
+export const loginSupabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
+    auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false
+    }
+});
+
 // Mantém o painel administrativo autenticado independentemente da sessão do PDV.
 export const adminSupabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
     auth: {

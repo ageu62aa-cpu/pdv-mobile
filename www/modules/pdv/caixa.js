@@ -138,7 +138,7 @@ export async function realizarLogout() {
         return;
     }
     if (confirm('PDV-VS: Deseja realmente encerrar a sessão?')) {
-        await getSupabase().auth.signOut(); 
+        await getSupabase().auth.signOut({ scope: 'local' });
         location.reload(); 
     }
 }

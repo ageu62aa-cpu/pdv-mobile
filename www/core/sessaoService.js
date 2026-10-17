@@ -1,23 +1,24 @@
 // www/core/sessaoService.js
 
-export async function isolarSessaoAdministrativa(supabaseClient, adminClient, user, empresaId) {
+export async function transferirSessaoAutenticada(supabaseClient, destinationClient, user) {
   const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
   if (sessionError) throw sessionError;
   if (!session || session.user.id !== user.id) {
-    throw new Error('Não foi possível obter a sessão administrativa autenticada.');
+    throw new Error('Não foi possível obter a sessão autenticada para este usuário.');
   }
 
-  const { error: adminSessionError } = await adminClient.auth.setSession({
+  const { error: transferError } = await destinationClient.auth.setSession({
     access_token: session.access_token,
     refresh_token: session.refresh_token
   });
-  if (adminSessionError) throw adminSessionError;
+  if (transferError) throw transferError;
 
-  const { error: logoutError } = await supabaseClient.auth.signOut({ scope: 'local' });
-  if (logoutError) throw logoutError;
+  return session;
+}
 
-  localStorage.removeItem('token_sessao_ativo');
-  localStorage.removeItem('user_id_ativo');
+export async function isolarSessaoAdministrativa(supabaseClient, adminClient, user, empresaId) {
+  await transferirSessaoAutenticada(supabaseClient, adminClient, user);
+
   localStorage.setItem('vancely_admin_session', JSON.stringify({
     user_id: user.id,
     empresa_id: empresaId,
