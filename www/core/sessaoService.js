@@ -53,7 +53,7 @@ export async function ativarSessaoUnica(supabaseClient, userId, escopo = 'operad
 
   if (error) {
     console.error('Erro ao gravar sessão ativa:', error);
-    return null;
+    throw new Error(`Não foi possível registrar a sessão ativa: ${error.message}`);
   }
 
   const chaves = obterChavesSessao(escopo);

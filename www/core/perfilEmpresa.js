@@ -3,13 +3,6 @@ function normalizarEmail(email) {
 }
 
 export async function obterPerfilEmpresa(supabaseClient, user) {
-    const { data: vinculo, error: erroVinculo } = await supabaseClient
-        .from('usuarios_empresas')
-        .select('empresa_id, cargo')
-        .eq('user_id', user.id)
-        .maybeSingle();
-    if (erroVinculo) throw erroVinculo;
-
     const { data: empresaPropria, error: erroEmpresaPropria } = await supabaseClient
         .from('empresas')
         .select('*')
@@ -19,6 +12,42 @@ export async function obterPerfilEmpresa(supabaseClient, user) {
     if (empresaPropria) {
         return { empresa: empresaPropria, empresaId: empresaPropria.id, cargo: 'admin_mercado' };
     }
+
+    if (user.email) {
+        const empresasAdministradas = new Map();
+        for (const coluna of ['email_admin', 'email']) {
+            const { data: empresas, error } = await supabaseClient
+                .from('empresas')
+                .select('*')
+                .ilike(coluna, user.email.trim())
+                .limit(2);
+            if (error) throw error;
+            for (const empresa of empresas || []) empresasAdministradas.set(empresa.id, empresa);
+        }
+        if (empresasAdministradas.size > 1) {
+            throw new Error('O e-mail administrativo está vinculado a mais de uma empresa. Corrija os dados antes de entrar.');
+        }
+        const empresaAdministrada = empresasAdministradas.values().next().value;
+        if (empresaAdministrada) {
+            return {
+                empresa: empresaAdministrada,
+                empresaId: empresaAdministrada.id,
+                cargo: 'admin_mercado'
+            };
+        }
+    }
+
+    const { data: vinculos, error: erroVinculo } = await supabaseClient
+        .from('usuarios_empresas')
+        .select('empresa_id, cargo')
+        .eq('user_id', user.id)
+        .limit(2);
+    if (erroVinculo) throw erroVinculo;
+
+    if (vinculos?.length > 1) {
+        throw new Error('Este usuário está vinculado a mais de uma empresa e não possui um e-mail administrativo único.');
+    }
+    const vinculo = vinculos?.[0];
 
     if (vinculo?.empresa_id) {
         const { data: empresaVinculada, error: erroEmpresaVinculada } = await supabaseClient
@@ -42,23 +71,6 @@ export async function obterPerfilEmpresa(supabaseClient, user) {
         }
         if (empresaVinculada && vinculo.cargo === 'operador') {
             return { empresa: empresaVinculada, empresaId: empresaVinculada.id, cargo: 'operador' };
-        }
-    }
-
-    if (user.email) {
-        for (const coluna of ['email_admin', 'email']) {
-            const { data: empresas, error } = await supabaseClient
-                .from('empresas')
-                .select('*')
-                .ilike(coluna, user.email.trim())
-                .limit(2);
-            if (error) throw error;
-            if (empresas?.length > 1) {
-                throw new Error('O e-mail administrativo está vinculado a mais de uma empresa. Corrija os dados antes de entrar.');
-            }
-            if (empresas?.[0]) {
-                return { empresa: empresas[0], empresaId: empresas[0].id, cargo: 'admin_mercado' };
-            }
         }
     }
 
