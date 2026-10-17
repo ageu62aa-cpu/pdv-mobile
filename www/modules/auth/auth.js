@@ -4,6 +4,7 @@ import {
     isolarSessaoAdministrativa,
     transferirSessaoAutenticada
 } from '../../core/sessaoService.js';
+import { obterPerfilEmpresa } from '../../core/perfilEmpresa.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     const formLogin = document.getElementById('form-login');
@@ -380,49 +381,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const user = authData.user;
 
-                const { data: vinculo, error: vinculoError } = await loginSupabase
-                    .from('usuarios_empresas')
-                    .select('user_id, empresa_id, cargo')
-                    .eq('user_id', user.id)
-                    .maybeSingle();
-                if (vinculoError) {
-                    if (vinculoError.code === 'PGRST116') {
-                        throw new Error('Há mais de um vínculo de empresa para este usuário. Regularize o cadastro para definir uma empresa ativa.');
-                    }
-                    throw vinculoError;
-                }
-
-                let empresaId = vinculo?.empresa_id || null;
-                let cargo = vinculo?.cargo || null;
-                if (empresaId) {
-                    const { data: empresaVinculada, error: erroEmpresaVinculada } = await loginSupabase
-                        .from('empresas')
-                        .select('id, email_admin')
-                        .eq('id', empresaId)
-                        .maybeSingle();
-                    if (erroEmpresaVinculada) throw erroEmpresaVinculada;
-                    if (empresaVinculada
-                        && String(empresaVinculada.email_admin || '').trim().toLowerCase() === String(user.email || '').trim().toLowerCase()) {
-                        cargo = 'admin_mercado';
-                    }
-                }
-                if ((!empresaId || !cargo) && user.email) {
-                    const { data: empresa, error: erroEmpresa } = await loginSupabase
-                        .from('empresas')
-                        .select('id, email_admin')
-                        .eq('email_admin', user.email)
-                        .maybeSingle();
-                    if (erroEmpresa) throw erroEmpresa;
-                    if (empresa) {
-                        empresaId = empresaId || empresa.id;
-                        cargo = cargo || 'admin_mercado';
-                    }
-                }
-
-                if (!empresaId) {
-                    showLoginFeedback('Não foi possível localizar uma empresa vinculada a este usuário. Peça ao administrador para conferir o vínculo do operador.', 'error');
-                    return;
-                }
+                const { empresaId, cargo } = await obterPerfilEmpresa(loginSupabase, user);
                 if (cargo !== 'admin_mercado' && cargo !== 'operador') {
                     showLoginFeedback('Este usuário não tem um perfil autorizado para acessar o caixa.', 'error');
                     return;

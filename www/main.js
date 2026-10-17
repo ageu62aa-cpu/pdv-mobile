@@ -9,8 +9,10 @@ import { abrirLeitorCamera, escanearCameraAdmin, fecharLeitorCamera } from './ca
 import {
     isolarSessaoAdministrativa,
     transferirSessaoAutenticada,
+    ativarSessaoUnica,
     validarSessaoAtual
 } from './core/sessaoService.js';
+import { obterPerfilEmpresa } from './core/perfilEmpresa.js';
 
 // --- IMPORTAÇÃO DOS MODAIS DINÂMICOS ---
 import { abrirModalCheckout, fecharModalFinalizarVenda } from './components/modalCheckout.js';
@@ -49,7 +51,7 @@ window.supabaseClient = supabase; // Fallback para módulos legados
 
 // --- VALIDAÇÃO PERIÓDICA DA SESSÃO ---
 setInterval(() => {
-  validarSessaoAtual(window.supabaseClient || supabase); 
+  void validarSessaoAtual(window.supabaseClient || supabase, 'operador');
 }, 30000);
 
 // --- DECLARAÇÃO GLOBAL IMEDIATA ANTES DO DOMContentLoaded ---
@@ -250,62 +252,14 @@ async function verificarSessaoEAlternarTelas(sessaoAutenticada = null, clienteAu
         if (session?.user) {  
             setUsuarioAtual(session.user);  
 
-            const { data: opData } = await clienteAutenticacao
-                .from('usuarios_empresas')  
-                .select('empresa_id, cargo')  
-                .eq('user_id', session.user.id)  
-                .maybeSingle();  
-
-            let cargoFinal = opData?.cargo || 'operador';  
-            let empresaIdFinal = opData?.empresa_id || session.user.id;  
-
-            // TRAVA DE SEGURANÇA SÊNIOR: Se o e-mail logado for o master da empresa ou se já estiver gravado 
-            // que ele é o admin_mercado, NUNCA perde o cargo por conflito de sessão em outro aparelho.
-            const { data: empresaDono } = await clienteAutenticacao
-                .from('empresas')
-                .select('id')
-                .eq('id', session.user.id)
-                .maybeSingle();
-
-            if (empresaDono || session.user.email === localStorage.getItem('pdv_admin_email')) {
-                cargoFinal = 'admin_mercado';
-                empresaIdFinal = session.user.id;
-            }
-            if (cargoFinal !== 'admin_mercado' && session.user.email) {
-                const { data: empresaPorEmail, error: erroEmpresaEmail } = await clienteAutenticacao
-                    .from('empresas')
-                    .select('id')
-                    .eq('email_admin', session.user.email)
-                    .maybeSingle();
-                if (erroEmpresaEmail) throw erroEmpresaEmail;
-                if (empresaPorEmail) {
-                    cargoFinal = 'admin_mercado';
-                    empresaIdFinal = empresaPorEmail.id;
-                }
-            }
+            const { empresaId: empresaIdFinal, cargo: cargoFinal, empresa: empresaDoUsuario } =
+                await obterPerfilEmpresa(clienteAutenticacao, session.user);
 
             setEmpresaAtualId(empresaIdFinal);  
             setCargoUsuarioAtual(cargoFinal);  
 
-            let nomeLojaExibicao = "Nome do Estabelecimento";  
-            let cnpjLojaExibicao = "";  
-
-            if (empresaIdFinal) {  
-                const { data: dadosEmpresa } = await clienteAutenticacao
-                    .from('empresas')  
-                    .select('nome_mercado, documento, email')  
-                    .eq('id', empresaIdFinal)  
-                    .maybeSingle();  
-
-                if (dadosEmpresa) {  
-                    nomeLojaExibicao = dadosEmpresa.nome_mercado || "Nome do Estabelecimento";  
-                    cnpjLojaExibicao = dadosEmpresa.documento ? `CNPJ/CPF: ${dadosEmpresa.documento}` : "";  
-                    if (dadosEmpresa.email === session.user.email) {
-                        cargoFinal = 'admin_mercado';
-                        setCargoUsuarioAtual('admin_mercado');
-                    }
-                }  
-            }  
+            const nomeLojaExibicao = empresaDoUsuario.nome_mercado || "Nome do Estabelecimento";
+            const cnpjLojaExibicao = empresaDoUsuario.documento ? `CNPJ/CPF: ${empresaDoUsuario.documento}` : "";
 
             const elTituloApp = document.getElementById('tituloAppEmpresa');  
             const elBadgeCnpj = document.getElementById('badgeEmpresaLogada');  
@@ -324,6 +278,8 @@ async function verificarSessaoEAlternarTelas(sessaoAutenticada = null, clienteAu
 
             if (clienteAutenticacao !== supabase) {
                 await transferirSessaoAutenticada(clienteAutenticacao, supabase, session.user);
+                const tokenSessao = await ativarSessaoUnica(supabase, session.user.id, 'operador');
+                if (!tokenSessao) throw new Error('Não foi possível registrar a sessão única do operador.');
             }
 
             telaLogin?.classList.add('hidden');  

@@ -8,3 +8,4 @@ Sistema de Ponto de Vêrgas / Vendas (PDV) moderno, responsivo e integrado em te
 - **Gestão Completa de Estoque:** Painel dedicado para consultar, editar valores/quantidades e excluir produtos sem sair do app.
 - **Baixa Automática:** Atualização instantânea no banco de dados do Supabase ao finalizar a venda.
 - **Painel Administrativo Multi-dispositivo:** Sessão administrativa separada do login do operador, com status Realtime dos caixas cadastrados e indicadores diários de vendas e cancelamentos. Aplique as migrations do Supabase para persistir os itens cancelados.
+- **Sessões independentes com login único por usuário:** O administrador e os operadores têm autenticações separadas e cada usuário mantém somente o login mais recente; aplique também `20261017180000_add_per_user_active_sessions.sql` para ativar a validação por dispositivo.

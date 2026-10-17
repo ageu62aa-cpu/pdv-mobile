@@ -9,6 +9,8 @@ import {
     setCargoUsuarioAtual,
     setDadosEmpresaAtual
 } from '../../core/state.js';
+import { obterPerfilEmpresa } from '../../core/perfilEmpresa.js';
+import { validarSessaoAtual } from '../../core/sessaoService.js';
 
 let canaisAdminRealtime = [];
 let abaAtiva = 'produtos';
@@ -21,6 +23,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     const botoesTab = document.querySelectorAll('.tab-btn');
 
     async function obterContextoAdmin() {
+        const sessaoValida = await validarSessaoAtual(supabase, 'admin', {
+            exigirSessao: true,
+            rotaLogin: '../auth/auth.html'
+        });
+        if (!sessaoValida) return null;
+
         const { data: { user }, error: userError } = await supabase.auth.getUser();
         if (userError || !user) {
             if (userError) console.error('PDV-VS: Falha ao validar a sessão administrativa:', userError);
@@ -28,44 +36,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             return null;
         }
 
-        const { data: vinculo, error: vinculoError } = await supabase
-            .from('usuarios_empresas')
-            .select('empresa_id, cargo')
-            .eq('user_id', user.id)
-            .maybeSingle();
-        if (vinculoError) throw vinculoError;
-
-        let empresaId = vinculo ? vinculo.empresa_id : null;
-        let cargo = vinculo?.cargo || null;
-        if (empresaId && user.email) {
-            const { data: empresaVinculada, error: empresaVinculadaError } = await supabase
-                .from('empresas')
-                .select('id, email_admin')
-                .eq('id', empresaId)
-                .maybeSingle();
-            if (empresaVinculadaError) throw empresaVinculadaError;
-            if (empresaVinculada
-                && String(empresaVinculada.email_admin || '').trim().toLowerCase() === String(user.email).trim().toLowerCase()) {
-                cargo = 'admin_mercado';
-            }
-        }
-        if (!empresaId && user.email) {
-            const { data: empresaPorEmail, error: emailError } = await supabase
-                .from('empresas')
-                .select('id')
-                .eq('email_admin', user.email)
-                .maybeSingle();
-            if (emailError) console.error('PDV-VS: Erro ao buscar empresa pelo email do administrador:', emailError);
-            if (empresaPorEmail) {
-                empresaId = empresaPorEmail.id;
-                cargo = 'admin_mercado';
-            }
-        }
+        const { empresaId, cargo } = await obterPerfilEmpresa(supabase, user);
         if (cargo !== 'admin_mercado') {
-            window.location.href = cargo === 'operador' ? '../pdv/caixa-core.html' : '../auth/auth.html';
+            window.location.href = '../auth/auth.html';
             return null;
         }
-        if (!empresaId) throw new Error('Não foi encontrada uma empresa vinculada ao administrador autenticado.');
 
         const { data: empresa, error: empresaError } = await supabase
             .from('empresas')
@@ -130,16 +105,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     window.setInterval(() => {
-        const tabelasMonitoradas = ['caixas', 'vendas', 'cancelamentos_caixa', 'operadores', 'usuarios_empresas'];
-        const realtimeDisponivel = tabelasMonitoradas.every(tabela =>
-            statusRealtimePorTabela.get(tabela) === 'SUBSCRIBED'
-        );
-        if (abaAtiva !== 'operadores' || realtimeDisponivel || atualizacaoFallbackEmCurso) return;
+        if (abaAtiva !== 'operadores' || atualizacaoFallbackEmCurso) return;
 
         atualizacaoFallbackEmCurso = true;
-        void carregarGestaoOperadores().finally(() => {
-            atualizacaoFallbackEmCurso = false;
-        });
+        void carregarGestaoOperadores()
+            .catch(error => console.error('PDV-VS: Falha ao atualizar o monitoramento dos caixas:', error))
+            .finally(() => { atualizacaoFallbackEmCurso = false; });
     }, 15000);
 
     document.querySelector('#adminHeaderActions a[aria-label="Sair"]')?.addEventListener('click', async event => {
@@ -151,6 +122,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
         localStorage.removeItem('vancely_admin_session');
+        sessionStorage.removeItem('vancely_sessao_admin_token');
+        sessionStorage.removeItem('vancely_sessao_admin_user');
         window.location.href = '../auth/auth.html';
     });
 
@@ -239,6 +212,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
         const contexto = await obterContextoAdmin();
         if (!contexto) return;
+        window.setInterval(() => {
+            void validarSessaoAtual(supabase, 'admin', {
+                exigirSessao: true,
+                rotaLogin: '../auth/auth.html'
+            });
+        }, 15000);
         const empresaId = contexto.empresa.id;
 
         const { data: produtos, error: produtosError } = await supabase

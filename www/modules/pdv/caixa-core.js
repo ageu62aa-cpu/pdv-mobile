@@ -11,8 +11,8 @@ import {
     setDadosEmpresaAtual
 } from '../../core/state.js';  
 import { abrirModalPesagemManual, carregarProdutosCache } from '../../services/produtos.js';
-import { supabase, adminSupabase } from '../../../core/config.js'; // Correção definitiva do import do Supabase
-import { isolarSessaoAdministrativa } from '../../core/sessaoService.js';
+import { supabase, adminSupabase } from '../../core/config.js';
+import { isolarSessaoAdministrativa, validarSessaoAtual } from '../../core/sessaoService.js';
 
 let valorTrocoAbertura = 0;
 let horaAberturaCaixa = null;
@@ -37,18 +37,10 @@ function isInvalidAuthSessionError(error) {
         || /jwt|invalid token|token is expired|refresh token|auth session missing|session_not_found/.test(message);
 }
 
-async function redirecionarSessaoInvalida(db, error) {
+function redirecionarSessaoInvalida(error) {
     if (!isInvalidAuthSessionError(error)) return false;
 
-    console.warn('PDV-VS: Sessão inválida ou expirada. Encerrando a sessão local e redirecionando para autenticação.', error);
-    try {
-        const { error: signOutError } = await db.auth.signOut({ scope: 'local' });
-        if (signOutError) {
-            console.error('PDV-VS: Não foi possível limpar a sessão local inválida:', signOutError);
-        }
-    } catch (signOutError) {
-        console.error('PDV-VS: Falha ao limpar a sessão local inválida:', signOutError);
-    }
+    console.warn('PDV-VS: Sessão inválida ou expirada. Redirecionando para autenticação sem afetar outros perfis ativos.', error);
     window.location.href = '../auth/auth.html';
     return true;
 }
@@ -174,7 +166,7 @@ async function inicializarCaixaDefinitivo() {
 
         const { data: { session }, error: sessionError } = await db.auth.getSession();
         if (sessionError) {
-            if (await redirecionarSessaoInvalida(db, sessionError)) return;
+            if (redirecionarSessaoInvalida(sessionError)) return;
             throw sessionError;
         }
         if (!session?.user) {
@@ -182,6 +174,12 @@ async function inicializarCaixaDefinitivo() {
             window.location.href = '../auth/auth.html';
             return;
         }
+
+        const sessaoValida = await validarSessaoAtual(db, 'operador', {
+            exigirSessao: true,
+            rotaLogin: '../auth/auth.html'
+        });
+        if (!sessaoValida) return;
 
         const contexto = await obterContextoAutenticadoSupabase();
         if (!contexto) {
@@ -193,9 +191,15 @@ async function inicializarCaixaDefinitivo() {
         await carregarProdutosParaCaixa();
         await verificarStatusCaixaServidor();
         await iniciarRealtimeCaixa();
+        window.setInterval(() => {
+            void validarSessaoAtual(db, 'operador', {
+                exigirSessao: true,
+                rotaLogin: '../auth/auth.html'
+            });
+        }, 15000);
         focarBusca();
     } catch (error) {
-        if (await redirecionarSessaoInvalida(getSupabase(), error)) return;
+        if (redirecionarSessaoInvalida(error)) return;
         console.error('PDV-VS: Falha ao inicializar a sessão pelo Supabase:', error);
         const status = document.getElementById('statusEstoqueCaixa');
         const mensagem = document.getElementById('mensagemStatusEstoqueCaixa');
@@ -1014,8 +1018,15 @@ export async function realizarLogout() {
         return;
     }
     if (confirm('PDV-VS: Deseja realmente encerrar a sessão?')) {
-        await getSupabase().auth.signOut({ scope: 'local' });
-        location.reload(); 
+        const { error } = await getSupabase().auth.signOut({ scope: 'local' });
+        if (error) {
+            console.error('PDV-VS: Não foi possível encerrar a sessão do operador:', error);
+            alert(`Não foi possível encerrar a sessão: ${error.message}`);
+            return;
+        }
+        sessionStorage.removeItem('vancely_sessao_operador_token');
+        sessionStorage.removeItem('vancely_sessao_operador_user');
+        location.reload();
     }
 }
 
