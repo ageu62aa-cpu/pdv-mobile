@@ -1,5 +1,5 @@
-import { supabase } from '../../core/config.js';
-import { ativarSessaoUnica } from '../../core/sessaoService.js';
+import { supabase, adminSupabase } from '../../core/config.js';
+import { ativarSessaoUnica, isolarSessaoAdministrativa } from '../../core/sessaoService.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     const formLogin = document.getElementById('form-login');
@@ -83,7 +83,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Mascote Hard Refresh
     if (mascote) {
         mascote.addEventListener('click', () => {
-            localStorage.clear();
             sessionStorage.clear();
             window.location.reload(true);
         });
@@ -377,10 +376,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const user = authData.user;
 
-                // Chamada da ativação de sessão única imediatamente após o login bem-sucedido
-                const userIdObtido = user.id;
-                await ativarSessaoUnica(supabase, userIdObtido);
-
                 const { data: vinculo, error: vinculoError } = await supabase
                     .from('usuarios_empresas')
                     .select('user_id, empresa_id, cargo')
@@ -435,11 +430,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 localStorage.setItem('usuario', JSON.stringify(user));
 
                 if (cargo === 'admin_mercado') {
+                    await isolarSessaoAdministrativa(supabase, adminSupabase, user, empresaId);
                     showLoginFeedback('Login de administrador realizado com sucesso.', 'success');
                     setTimeout(() => {
                         window.location.href = '../admin/admin.html';
                     }, 700);
                 } else {
+                    const tokenSessao = await ativarSessaoUnica(supabase, user.id);
+                    if (!tokenSessao) {
+                        throw new Error('Não foi possível registrar a sessão do operador.');
+                    }
                     localStorage.setItem('operador_logado_id', user.id);
                     localStorage.setItem('operador_logado_user_id', user.id);
                     showLoginFeedback('Login de operador realizado com sucesso.', 'success');

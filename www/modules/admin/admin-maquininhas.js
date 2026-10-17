@@ -2,7 +2,7 @@
  * Configura taxas gerais e taxas específicas das maquininhas usadas no PDV.
  */
 
-import { supabase } from '../../core/config.js';
+import { adminSupabase as supabase } from '../../core/config.js';
 
 const parcelasDisponiveis = Array.from({ length: 11 }, (_, indice) => indice + 2);
 

@@ -1,5 +1,30 @@
 // www/core/sessaoService.js
 
+export async function isolarSessaoAdministrativa(supabaseClient, adminClient, user, empresaId) {
+  const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
+  if (sessionError) throw sessionError;
+  if (!session || session.user.id !== user.id) {
+    throw new Error('Não foi possível obter a sessão administrativa autenticada.');
+  }
+
+  const { error: adminSessionError } = await adminClient.auth.setSession({
+    access_token: session.access_token,
+    refresh_token: session.refresh_token
+  });
+  if (adminSessionError) throw adminSessionError;
+
+  const { error: logoutError } = await supabaseClient.auth.signOut({ scope: 'local' });
+  if (logoutError) throw logoutError;
+
+  localStorage.removeItem('token_sessao_ativo');
+  localStorage.removeItem('user_id_ativo');
+  localStorage.setItem('vancely_admin_session', JSON.stringify({
+    user_id: user.id,
+    empresa_id: empresaId,
+    email: user.email || ''
+  }));
+}
+
 // Função para registar ou atualizar a sessão ativa no login
 export async function ativarSessaoUnica(supabaseClient, userId) {
   const tokenUnico = 'sessao_' + Date.now() + '_' + Math.random().toString(36).substring(2);
@@ -44,7 +69,10 @@ export async function validarSessaoAtual(supabaseClient) {
   if (error || !data || data.token_sessao !== tokenLocal) {
     // Alguém fez login noutro lugar! O token mudou na base de dados.
     alert('Sessão encerrada: esta conta foi aberta noutra máquina ou caixa.');
-    localStorage.clear();
+    const { error: logoutError } = await supabaseClient.auth.signOut({ scope: 'local' });
+    if (logoutError) console.error('Não foi possível encerrar a sessão local do operador:', logoutError);
+    localStorage.removeItem('token_sessao_ativo');
+    localStorage.removeItem('user_id_ativo');
     window.location.href = '/modules/auth/auth.html'; // Redireciona para o login
     return false;
   }

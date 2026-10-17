@@ -18,6 +18,16 @@ export const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY, {
 // Alias para compatibilidade com os módulos de auth
 export const supabase = supabaseClient;
 
+// Mantém o painel administrativo autenticado independentemente da sessão do PDV.
+export const adminSupabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
+    auth: {
+        storageKey: 'vancely-admin-auth',
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: false
+    }
+});
+
 let usuarioAtual = null, empresaAtualId = null, dadosEmpresaAtual = null, cargoUsuarioAtual = null;
 let modoTelaAuth = 'login', caixaAberto = false, faturamentoDia = 0, itensVenda = [], produtosCache = [];
 let historicoVendasCache = [], html5QrcodeInstance = null, origemLeitor = 'busca';
