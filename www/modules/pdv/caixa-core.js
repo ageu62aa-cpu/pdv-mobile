@@ -11,7 +11,8 @@ import {
     setDadosEmpresaAtual
 } from '../../core/state.js';  
 import { abrirModalPesagemManual, carregarProdutosCache } from '../../services/produtos.js';
-import { supabase } from '../../../core/config.js'; // Correção definitiva do import do Supabase
+import { supabase, adminSupabase } from '../../../core/config.js'; // Correção definitiva do import do Supabase
+import { isolarSessaoAdministrativa } from '../../core/sessaoService.js';
 
 let valorTrocoAbertura = 0;
 let horaAberturaCaixa = null;
@@ -152,6 +153,17 @@ function atualizarIdentidadeCaixa({ user, cargo }) {
     const botaoAdmin = document.getElementById('btnPainelAdmin');
     if (botaoAdmin) {
         botaoAdmin.style.display = cargo === 'admin_mercado' ? 'flex' : 'none';
+    }
+}
+
+async function abrirPainelAdminIndependente() {
+    if (cargoUsuarioAtual !== 'admin_mercado' || !usuarioAtual || !empresaAtualId) return;
+    try {
+        await isolarSessaoAdministrativa(getSupabase(), adminSupabase, usuarioAtual, empresaAtualId);
+        window.location.href = '../admin/admin.html';
+    } catch (error) {
+        console.error('PDV-VS: Não foi possível abrir o painel administrativo isolado:', error);
+        alert(`Não foi possível abrir o painel administrativo: ${error.message}`);
     }
 }
 
@@ -1582,6 +1594,34 @@ export function solicitarRemocaoItem(i) {
     abrirModalAutorizacao('Cancelar item', `Informe o PIN do administrador para remover "${itensVenda[i].nome}".`);
 }
 
+async function registrarItensCancelados(quantidade) {
+    if (!Number.isFinite(quantidade) || quantidade < 0) {
+        throw new Error('A quantidade de itens cancelados é inválida.');
+    }
+    if (quantidade === 0) return;
+    if (!empresaAtualId || !usuarioAtual) {
+        throw new Error('Não foi possível identificar os itens ou o caixa para registrar o cancelamento.');
+    }
+
+    const db = getSupabase();
+    const { data: caixa, error: erroCaixa } = await db.from('caixas')
+        .select('id')
+        .eq('empresa_id', empresaAtualId)
+        .eq('user_id', usuarioAtual.id)
+        .eq('status', 'ABERTO')
+        .maybeSingle();
+    if (erroCaixa) throw erroCaixa;
+    if (!caixa) throw new Error('Não existe caixa aberto para registrar os itens cancelados.');
+
+    const { error } = await db.from('cancelamentos_caixa').insert([{
+        empresa_id: empresaAtualId,
+        caixa_id: caixa.id,
+        user_id: usuarioAtual.id,
+        quantidade
+    }]);
+    if (error) throw error;
+}
+
 export function tratarEnterModalAutorizacao(e) {
     if (e.key === 'Enter') {
         e.preventDefault();
@@ -1629,10 +1669,14 @@ export async function confirmarAutorizacaoPin() {
             if (indiceItemParaRemover === null || !itensVenda[indiceItemParaRemover]) {
                 throw new Error('O item selecionado não está mais no carrinho.');
             }
+            const item = itensVenda[indiceItemParaRemover];
+            await registrarItensCancelados(Math.max(0, Number(item.qtd) || 0));
             setItensVenda(itensVenda.filter((_, index) => index !== indiceItemParaRemover));
             atualizarTabelaVenda();
         } else if (acaoAutorizacaoPendente === 'cancelar-venda') {
             if (confirm('PDV-VS: PIN autorizado. Deseja cancelar toda a venda?')) {
+                const quantidadeCancelada = itensVenda.reduce((total, item) => total + Math.max(0, Number(item.qtd) || 0), 0);
+                await registrarItensCancelados(quantidadeCancelada);
                 setItensVenda([]);
                 descontoVendaAtual = 0;
                 atualizarTabelaVenda();
@@ -2094,6 +2138,7 @@ async function buscarProdutoPorCodigoScanner(codigo) {
 // ==========================================
 Object.assign(window, {
     buscarProdutoPorCodigoScanner,
+    abrirPainelAdminIndependente,
     verificarStatusCaixaServidor, iniciarRealtimeCaixa, atualizarPaginaCompleta,
     realizarLogout, focarBusca, aoDigitarBusca, tratarEnterBuscaCaixa,
     atualizarBadgesCaixaInterface, salvarPinAdmin, solicitarRemocaoItem,

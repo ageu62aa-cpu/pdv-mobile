@@ -2,7 +2,7 @@ import { initAdminProdutos } from './admin-produtos.js';
 import { initAdminOperadores } from './admin-operadores.js';
 import { initAdminMaquininhas } from './admin-maquininhas.js';
 import { initAdminHistorico } from './admin-historico.js';
-import { supabase } from '../../core/config.js';
+import { adminSupabase as supabase } from '../../core/config.js';
 import {
     setUsuarioAtual,
     setEmpresaAtualId,
@@ -35,6 +35,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         let empresaId = vinculo ? vinculo.empresa_id : null;
         let cargo = vinculo?.cargo || null;
+        if (empresaId && user.email) {
+            const { data: empresaVinculada, error: empresaVinculadaError } = await supabase
+                .from('empresas')
+                .select('id, email_admin')
+                .eq('id', empresaId)
+                .maybeSingle();
+            if (empresaVinculadaError) throw empresaVinculadaError;
+            if (empresaVinculada
+                && String(empresaVinculada.email_admin || '').trim().toLowerCase() === String(user.email).trim().toLowerCase()) {
+                cargo = 'admin_mercado';
+            }
+        }
         if (!empresaId && user.email) {
             const { data: empresaPorEmail, error: emailError } = await supabase
                 .from('empresas')
@@ -93,6 +105,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         canaisAdminRealtime = [
             ['caixas', ['operadores']],
             ['vendas', ['operadores', 'historico']],
+            ['cancelamentos_caixa', ['operadores']],
+            ['operadores', ['operadores']],
+            ['usuarios_empresas', ['operadores']],
             ['produtos', ['produtos']]
         ].map(([tabela, abasAfetadas]) => supabase
             .channel(`admin-${tabela}-${empresaId}`)
@@ -110,6 +125,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             }));
     }
+
+    document.querySelector('#adminHeaderActions a[aria-label="Sair"]')?.addEventListener('click', async event => {
+        event.preventDefault();
+        const { error } = await supabase.auth.signOut({ scope: 'local' });
+        if (error) {
+            console.error('PDV-VS: Não foi possível encerrar a sessão administrativa:', error);
+            alert(`Não foi possível encerrar a sessão administrativa: ${error.message}`);
+            return;
+        }
+        localStorage.removeItem('vancely_admin_session');
+        window.location.href = '../auth/auth.html';
+    });
 
     async function carregarAba(tabName) {
         abaAtiva = tabName;

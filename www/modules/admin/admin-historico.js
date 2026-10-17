@@ -2,7 +2,7 @@
  * Histórico detalhado de vendas e resumo diário exclusivo do painel administrativo.
  */
 
-import { supabase } from '../../core/config.js';
+import { adminSupabase as supabase } from '../../core/config.js';
 
 function escaparTextoHtml(valor) {
     return String(valor ?? '').replace(/[&<>"']/g, caractere => ({

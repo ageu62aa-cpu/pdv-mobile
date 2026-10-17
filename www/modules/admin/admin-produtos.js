@@ -3,7 +3,7 @@
  * Cadastro, controle de estoque, busca, scanner e verificação de limite do plano (1.000 produtos).
  */
 
-import { supabase } from '../../core/config.js';
+import { adminSupabase as supabase } from '../../core/config.js';
 
 let produtosCacheAdmin = [];
 let scannerProdutoAdmin = null;

@@ -2,7 +2,7 @@
  * Módulo: Admin Operadores (www/modules/admin/admin-operadores.js)
  * Corrigido para garantir persistência do Admin, isolamento SaaS e tempo real robusto.
  */
-import { supabase } from '../../core/config.js';
+import { adminSupabase as supabase } from '../../core/config.js';
 
 function escaparTextoHtml(valor) {
     return String(valor ?? '').replace(/[&<>"']/g, caractere => ({
@@ -25,9 +25,9 @@ export async function initAdminOperadores(containerEl) {
                 <div>
                     <h2 class="text-xl font-bold text-white flex items-center gap-2">
                         <i class="fa-solid fa-users-gear text-emerald-500"></i>
-                        <span>Gestão de Operadores e Caixas</span>
+                        <span>Terminais e Caixas</span>
                     </h2>
-                    <p class="text-xs text-gray-400 mt-0.5">Acompanhe o status de abertura, faturamento diário e terminais em tempo real.</p>
+                    <p class="text-xs text-gray-400 mt-0.5">Terminais associados a operadores cadastrados, mesmo sem sessão ativa. Status e movimentos atualizados em tempo real.</p>
                 </div>
                 <button id="btn-atualizar-operadores" class="bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-bold px-3 py-2 rounded-lg border border-gray-700 transition flex items-center gap-1.5">
                     <i class="fa-solid fa-rotate-right"></i> Atualizar Dados
@@ -54,8 +54,6 @@ export async function initAdminOperadores(containerEl) {
     
     await carregarGestaoOperadores();
     
-    // Ativa escuta em Tempo Real (Supabase Realtime) para caixas e operadores
-    configurarRealtimeAdmin();
 }
 
 async function obterEmpresaIdSeguro() {
@@ -101,36 +99,61 @@ async function carregarGestaoOperadores() {
         return;
     }
 
+    const inicio = new Date();
+    inicio.setHours(0, 0, 0, 0);
+    const fim = new Date(inicio);
+    fim.setDate(fim.getDate() + 1);
+
     const [
         { data: caixas, error: erroCaixas },
         { data: perfis, error: erroPerfis },
-        { data: operadoresTabela, error: erroOpTabela }
+        { data: operadoresTabela, error: erroOpTabela },
+        { data: vendas, error: erroVendas },
+        { data: cancelamentos, error: erroCancelamentos }
     ] = await Promise.all([
         supabase.from('caixas').select('*').eq('empresa_id', empresaIdDoAdmin).order('created_at', { ascending: false }),
         supabase.from('usuarios_empresas').select('user_id, cargo').eq('empresa_id', empresaIdDoAdmin),
-        supabase.from('operadores').select('*').eq('empresa_id', empresaIdDoAdmin)
+        supabase.from('operadores').select('*').eq('empresa_id', empresaIdDoAdmin),
+        supabase.from('vendas').select('operador, operador_nome, itens, valor_total, created_at')
+            .eq('empresa_id', empresaIdDoAdmin)
+            .gte('created_at', inicio.toISOString())
+            .lt('created_at', fim.toISOString()),
+        supabase.from('cancelamentos_caixa').select('user_id, quantidade')
+            .eq('empresa_id', empresaIdDoAdmin)
+            .gte('created_at', inicio.toISOString())
+            .lt('created_at', fim.toISOString())
     ]);
 
     if (erroCaixas) console.error('PDV-VS: Erro ao carregar caixas:', erroCaixas);
     if (erroPerfis) console.error('PDV-VS: Erro ao carregar perfis:', erroPerfis);
     if (erroOpTabela) console.error('PDV-VS: Erro ao carregar operadores:', erroOpTabela);
+    if (erroVendas) console.error('PDV-VS: Erro ao carregar vendas dos terminais:', erroVendas);
+    if (erroCancelamentos) console.error('PDV-VS: Erro ao carregar cancelamentos dos terminais:', erroCancelamentos);
 
-    if (erroCaixas || erroPerfis) {
-        const erro = erroCaixas || erroPerfis;
+    if (erroCaixas || erroPerfis || erroOpTabela || erroVendas || erroCancelamentos) {
+        const erro = erroCaixas || erroPerfis || erroOpTabela || erroVendas || erroCancelamentos;
         gridContainer.innerHTML = `<div class="col-span-2 text-center py-8 text-red-400 text-sm">Erro ao carregar status dos caixas. ${escaparTextoHtml(erro.message)}</div>`;
         await carregarFaturamentoOperadoresHoje(empresaIdDoAdmin);
         return;
     }
 
-    const perfisDaEmpresa = (perfis || []).filter(perfil =>
-        perfil.cargo === 'admin_mercado' || perfil.cargo === 'operador'
-    );
-    
-    const usuarioAtual = window.usuarioAtual;
-    if (usuarioAtual?.id
-        && !perfisDaEmpresa.some(perfil => perfil.user_id === usuarioAtual.id)) {
-        perfisDaEmpresa.push({ user_id: usuarioAtual.id, cargo: 'admin_mercado' });
-    }
+    const operadoresPorId = new Map((operadoresTabela || []).map(op => [op.user_id || op.id, op]));
+    const perfisDaEmpresa = (perfis || [])
+        .filter(perfil => perfil.cargo === 'operador')
+        .map(perfil => ({
+            ...perfil,
+            ...(operadoresPorId.get(perfil.user_id) || {}),
+            user_id: perfil.user_id
+        }));
+
+    const primeiroCaixaPorUsuario = new Map();
+    (caixas || []).forEach(caixa => {
+        if (!caixa.user_id) return;
+        const existente = primeiroCaixaPorUsuario.get(caixa.user_id);
+        if (!existente || String(caixa.created_at || '') < String(existente.created_at || '')) {
+            primeiroCaixaPorUsuario.set(caixa.user_id, caixa);
+        }
+    });
 
     const idsPerfis = new Set(perfisDaEmpresa.map(p => p.user_id));
     (operadoresTabela || []).forEach(op => {
@@ -139,9 +162,23 @@ async function carregarGestaoOperadores() {
             perfisDaEmpresa.push({ 
                 user_id: opId, 
                 cargo: 'operador', 
-                nome_extra: op.nome || op.email 
+                nome_extra: op.nome || op.email,
+                email: op.email,
+                created_at: op.created_at
             });
             idsPerfis.add(opId);
+        }
+    });
+
+    (caixas || []).forEach(caixa => {
+        if (caixa.user_id && !idsPerfis.has(caixa.user_id)) {
+            perfisDaEmpresa.push({
+                user_id: caixa.user_id,
+                cargo: 'operador',
+                nome_extra: caixa.operador_nome,
+                created_at: primeiroCaixaPorUsuario.get(caixa.user_id)?.created_at
+            });
+            idsPerfis.add(caixa.user_id);
         }
     });
 
@@ -149,7 +186,7 @@ async function carregarGestaoOperadores() {
         gridContainer.innerHTML = `
             <div class="col-span-2 bg-gray-900/60 border border-gray-800 rounded-2xl p-8 text-center text-gray-400">
                 <i class="fa-solid fa-users-slash text-3xl text-gray-600 mb-2"></i>
-                <p class="text-sm">Nenhum administrador ou operador vinculado a esta empresa.</p>
+                <p class="text-sm">Nenhum terminal ou operador cadastrado para esta empresa.</p>
             </div>`;
         await carregarFaturamentoOperadoresHoje(empresaIdDoAdmin);
         return;
@@ -157,33 +194,68 @@ async function carregarGestaoOperadores() {
 
     const caixaMaisRecentePorUsuario = new Map();
     (caixas || []).forEach(caixa => {
-        if (caixa.user_id) caixaMaisRecentePorUsuario.set(caixa.user_id, caixa);
-        if (caixa.operador_id) caixaMaisRecentePorUsuario.set(caixa.operador_id, caixa);
+        if (caixa.user_id && !caixaMaisRecentePorUsuario.has(caixa.user_id)) {
+            caixaMaisRecentePorUsuario.set(caixa.user_id, caixa);
+        }
+        if (caixa.operador_id && !caixaMaisRecentePorUsuario.has(caixa.operador_id)) {
+            caixaMaisRecentePorUsuario.set(caixa.operador_id, caixa);
+        }
     });
 
-    perfisDaEmpresa.sort((a, b) => Number(b.cargo === 'admin_mercado') - Number(a.cargo === 'admin_mercado'));
-    let numeroOperadores = 1;
+    const cancelamentosPorUsuario = new Map();
+    (cancelamentos || []).forEach(cancelamento => {
+        const total = cancelamentosPorUsuario.get(cancelamento.user_id) || 0;
+        cancelamentosPorUsuario.set(
+            cancelamento.user_id,
+            total + (Number(cancelamento.quantidade) || 0)
+        );
+    });
+
+    const resumoVendasPorOperador = new Map();
+    (vendas || []).forEach(venda => {
+        const nome = String(venda.operador_nome || venda.operador || '').trim().toLocaleLowerCase();
+        if (!nome) return;
+        const resumo = resumoVendasPorOperador.get(nome) || { vendidos: 0, faturamento: 0 };
+        const itens = Array.isArray(venda.itens) ? venda.itens : [];
+        resumo.vendidos += itens.reduce((soma, item) => soma + Math.max(0, Number(item.qtd) || 0), 0);
+        resumo.faturamento += Number(venda.valor_total) || 0;
+        [venda.operador_nome, venda.operador]
+            .filter(Boolean)
+            .forEach(identificador => resumoVendasPorOperador.set(String(identificador).trim().toLocaleLowerCase(), resumo));
+    });
+
+    const obterResumoOperador = perfil => {
+        const operador = operadoresPorId.get(perfil.user_id) || {};
+        const identificadores = [perfil.email, operador.email, perfil.nome_extra, operador.nome]
+            .filter(Boolean)
+            .map(valor => String(valor).trim().toLocaleLowerCase());
+        return identificadores.map(chave => resumoVendasPorOperador.get(chave)).find(Boolean)
+            || { vendidos: 0, faturamento: 0 };
+    };
+
+    perfisDaEmpresa.sort((a, b) => {
+        const operadorA = operadoresPorId.get(a.user_id) || {};
+        const operadorB = operadoresPorId.get(b.user_id) || {};
+        const dataA = a.created_at || operadorA.created_at || primeiroCaixaPorUsuario.get(a.user_id)?.created_at || '';
+        const dataB = b.created_at || operadorB.created_at || primeiroCaixaPorUsuario.get(b.user_id)?.created_at || '';
+        return String(dataA).localeCompare(String(dataB)) || String(a.user_id).localeCompare(String(b.user_id));
+    });
     
-    gridContainer.innerHTML = perfisDaEmpresa.map(perfil => {
-        const isAdmin = perfil.cargo === 'admin_mercado';
-        if (!isAdmin) numeroOperadores += 1;
-        
-        let caixa = caixaMaisRecentePorUsuario.get(perfil.user_id);
-        
-        if (!caixa && !isAdmin) {
-            caixa = (caixas || []).find(c => c.operador_nome === perfil.nome_extra || c.vendedor_nome === perfil.nome_extra);
-        }
+    gridContainer.innerHTML = perfisDaEmpresa.map((perfil, index) => {
+        const operador = operadoresPorId.get(perfil.user_id) || {};
+        const caixa = caixaMaisRecentePorUsuario.get(perfil.user_id)
+            || (caixas || []).find(c => c.operador_nome === perfil.nome_extra || c.vendedor_nome === perfil.nome_extra);
+        const resumoHoje = obterResumoOperador(perfil);
 
         const isOpen = String(caixa?.status || '').toUpperCase() === 'ABERTO';
-        const faturamento = Number(caixa?.faturamento_dia || 0).toFixed(2);
+        const faturamento = Number(resumoHoje.faturamento || 0).toFixed(2);
         const valorTroco = Number(caixa?.valor_abertura || 0).toFixed(2);
         const sangrias = Number(caixa?.sangrias || 0);
-        const terminalNumero = isAdmin ? '#01' : `#${String(numeroOperadores).padStart(2, '0')}`;
-        const tipoPerfil = isAdmin ? 'Administrador' : 'Operador';
-        
-        const nomeExibicao = isAdmin
-            ? 'Administrador (você)'
-            : (perfil.nome_extra || caixa?.operador_nome || caixa?.vendedor_nome || caixa?.nome_operador || 'Operador');
+        const terminalNumero = `#${String(index + 1).padStart(2, '0')}`;
+        const tipoPerfil = 'Operador / Caixa';
+        const nomeExibicao = perfil.nome_extra || operador.nome || operador.email
+            || caixa?.operador_nome || caixa?.vendedor_nome || caixa?.nome_operador || 'Operador';
+        const itensCancelados = cancelamentosPorUsuario.get(perfil.user_id) || 0;
 
         const cardBorder = isOpen ? 'border-emerald-500/50 bg-gray-900/90 shadow-emerald-950/20' : 'border-gray-800 bg-gray-900/60';
         const statusBadge = isOpen 
@@ -211,6 +283,14 @@ async function carregarGestaoOperadores() {
                         <span class="text-[11px] text-gray-400 block font-medium">Troco Inicial</span>
                         <span class="text-sm font-bold text-gray-200 font-mono">R$ ${valorTroco}</span>
                         ${sangrias ? `<span class="text-[10px] text-amber-400 block">Sangrias: R$ ${sangrias.toFixed(2)}</span>` : ''}
+                    </div>
+                    <div>
+                        <span class="text-[11px] text-gray-400 block font-medium">Itens vendidos hoje</span>
+                        <span class="text-sm font-bold text-gray-200">${Number(resumoHoje.vendidos).toLocaleString('pt-BR', { maximumFractionDigits: 3 })}</span>
+                    </div>
+                    <div>
+                        <span class="text-[11px] text-gray-400 block font-medium">Itens cancelados hoje</span>
+                        <span class="text-sm font-bold text-amber-300">${Number(itensCancelados).toLocaleString('pt-BR', { maximumFractionDigits: 3 })}</span>
                     </div>
                 </div>
 
@@ -295,19 +375,4 @@ async function carregarFaturamentoOperadoresHoje(empresaId) {
             </div>
         </details>
     `).join('');
-}
-
-function configurarRealtimeAdmin() {
-    if (window._adminRealtimeChannelSubscribed) return;
-    window._adminRealtimeChannelSubscribed = true;
-
-    supabase
-        .channel('admin-dashboard-realtime')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'caixas' }, () => {
-            carregarGestaoOperadores();
-        })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'vendas' }, () => {
-            carregarGestaoOperadores();
-        })
-        .subscribe();
 }

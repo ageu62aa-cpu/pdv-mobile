@@ -5,8 +5,9 @@
 
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';  
 import { state, setUsuarioAtual, setEmpresaAtualId, setCargoUsuarioAtual } from './state.js';  
+import { adminSupabase } from './core/config.js';
 import { abrirLeitorCamera, escanearCameraAdmin, fecharLeitorCamera } from './camera.js';  
-import { validarSessaoAtual } from './core/sessaoService.js';
+import { isolarSessaoAdministrativa, validarSessaoAtual } from './core/sessaoService.js';
 
 // --- IMPORTAÇÃO DOS MODAIS DINÂMICOS ---
 import { abrirModalCheckout, fecharModalFinalizarVenda } from './components/modalCheckout.js';
@@ -204,16 +205,7 @@ window.fecharSuperAdminMaster = function() {
 };  
 
 window.abrirPainelAdmin = function() {
-    const modal = document.getElementById('modalAdmin');
-    if (modal) {
-        modal.classList.remove('hidden');
-        if (typeof window.carregarHistoricoAdmin === 'function') {
-            window.carregarHistoricoAdmin();
-        }
-    } else {
-        console.error("[UI Error]: O elemento 'modalAdmin' não foi encontrado no HTML.");
-        alert("Erro: O Painel Administrativo não foi encontrado na página.");
-    }
+    window.location.href = './modules/admin/admin.html';
 };
 
 window.fecharPainelAdmin = function() {
@@ -270,6 +262,18 @@ async function verificarSessaoEAlternarTelas() {
                 cargoFinal = 'admin_mercado';
                 empresaIdFinal = session.user.id;
             }
+            if (cargoFinal !== 'admin_mercado' && session.user.email) {
+                const { data: empresaPorEmail, error: erroEmpresaEmail } = await supabase
+                    .from('empresas')
+                    .select('id')
+                    .eq('email_admin', session.user.email)
+                    .maybeSingle();
+                if (erroEmpresaEmail) throw erroEmpresaEmail;
+                if (empresaPorEmail) {
+                    cargoFinal = 'admin_mercado';
+                    empresaIdFinal = empresaPorEmail.id;
+                }
+            }
 
             setEmpresaAtualId(empresaIdFinal);  
             setCargoUsuarioAtual(cargoFinal);  
@@ -302,6 +306,12 @@ async function verificarSessaoEAlternarTelas() {
                 elBadgeCnpj.textContent = cnpjLojaExibicao;  
                 elBadgeCnpj.classList.toggle('hidden', !cnpjLojaExibicao);  
             }  
+
+            if (cargoFinal === 'admin_mercado') {
+                await isolarSessaoAdministrativa(supabase, adminSupabase, session.user, empresaIdFinal);
+                window.location.href = './modules/admin/admin.html';
+                return;
+            }
 
             telaLogin?.classList.add('hidden');  
             appPrincipal?.classList.remove('hidden');  
