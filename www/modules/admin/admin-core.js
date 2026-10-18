@@ -22,6 +22,13 @@ let atualizacaoFallbackEmCurso = false;
 document.addEventListener('DOMContentLoaded', async () => {
     const container = document.getElementById('admin-conteudo-dinamico');
     const botoesTab = document.querySelectorAll('.tab-btn');
+    document.addEventListener('click', event => {
+        const target = event.target instanceof Element ? event.target : null;
+        const abrirPlanos = target?.closest('[data-open-plans-tab]');
+        if (!abrirPlanos) return;
+        event.preventDefault();
+        document.querySelector('.tab-btn[data-tab="planos"]')?.click();
+    });
 
     async function obterContextoAdmin() {
         const sessaoValida = await validarSessaoAtual(supabase, 'admin', {
@@ -151,6 +158,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     function carregarConfiguracoesSeguranca(alvo) {
         alvo.innerHTML = `
             <div class="max-w-xl space-y-4">
+                <section class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-800/70 bg-amber-950/20 p-4">
+                    <div>
+                        <h2 class="text-sm font-bold text-white">Plano e assinatura</h2>
+                        <p class="mt-1 text-xs text-gray-400">Confira seus limites e as opções de upgrade.</p>
+                    </div>
+                    <button type="button" data-open-plans-tab class="rounded-lg bg-amber-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-amber-500">Planos &amp; Assinatura</button>
+                </section>
                 <div>
                     <h2 class="text-lg font-bold text-white">Segurança do caixa</h2>
                     <p class="mt-1 text-sm text-gray-400">Configure o PIN solicitado para cancelar itens ou uma venda. Ele será compartilhado com os operadores desta empresa.</p>
