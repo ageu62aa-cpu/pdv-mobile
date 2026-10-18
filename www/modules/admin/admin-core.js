@@ -1,7 +1,8 @@
 import { initAdminProdutos } from './admin-produtos.js';
-import { initAdminOperadores } from './admin-operadores.js';
+import { initAdminOperadores, carregarGestaoOperadores } from './admin-operadores.js';
 import { initAdminMaquininhas } from './admin-maquininhas.js';
 import { initAdminHistorico } from './admin-historico.js';
+import { initAdminPlanos } from './admin-planos.js';
 import { adminSupabase as supabase } from '../../core/config.js';
 import {
     setUsuarioAtual,
@@ -9,16 +10,26 @@ import {
     setCargoUsuarioAtual,
     setDadosEmpresaAtual
 } from '../../core/state.js';
+import { obterPerfilEmpresa } from '../../core/perfilEmpresa.js';
+import { monitorarSessaoUnica, validarSessaoAtual } from '../../core/sessaoService.js';
 
 let canaisAdminRealtime = [];
 let abaAtiva = 'produtos';
 let temporizadorAtualizacaoRealtime = null;
+let statusRealtimePorTabela = new Map();
+let atualizacaoFallbackEmCurso = false;
 
 document.addEventListener('DOMContentLoaded', async () => {
     const container = document.getElementById('admin-conteudo-dinamico');
     const botoesTab = document.querySelectorAll('.tab-btn');
 
     async function obterContextoAdmin() {
+        const sessaoValida = await validarSessaoAtual(supabase, 'admin', {
+            exigirSessao: true,
+            rotaLogin: '../auth/auth.html'
+        });
+        if (!sessaoValida) return null;
+
         const { data: { user }, error: userError } = await supabase.auth.getUser();
         if (userError || !user) {
             if (userError) console.error('PDV-VS: Falha ao validar a sessão administrativa:', userError);
@@ -26,44 +37,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             return null;
         }
 
-        const { data: vinculo, error: vinculoError } = await supabase
-            .from('usuarios_empresas')
-            .select('empresa_id, cargo')
-            .eq('user_id', user.id)
-            .maybeSingle();
-        if (vinculoError) throw vinculoError;
-
-        let empresaId = vinculo ? vinculo.empresa_id : null;
-        let cargo = vinculo?.cargo || null;
-        if (empresaId && user.email) {
-            const { data: empresaVinculada, error: empresaVinculadaError } = await supabase
-                .from('empresas')
-                .select('id, email_admin')
-                .eq('id', empresaId)
-                .maybeSingle();
-            if (empresaVinculadaError) throw empresaVinculadaError;
-            if (empresaVinculada
-                && String(empresaVinculada.email_admin || '').trim().toLowerCase() === String(user.email).trim().toLowerCase()) {
-                cargo = 'admin_mercado';
-            }
-        }
-        if (!empresaId && user.email) {
-            const { data: empresaPorEmail, error: emailError } = await supabase
-                .from('empresas')
-                .select('id')
-                .eq('email_admin', user.email)
-                .maybeSingle();
-            if (emailError) console.error('PDV-VS: Erro ao buscar empresa pelo email do administrador:', emailError);
-            if (empresaPorEmail) {
-                empresaId = empresaPorEmail.id;
-                cargo = 'admin_mercado';
-            }
-        }
+        const { empresaId, cargo } = await obterPerfilEmpresa(supabase, user);
         if (cargo !== 'admin_mercado') {
-            window.location.href = cargo === 'operador' ? '../pdv/caixa-core.html' : '../auth/auth.html';
+            window.location.href = '../auth/auth.html';
             return null;
         }
-        if (!empresaId) throw new Error('Não foi encontrada uma empresa vinculada ao administrador autenticado.');
 
         const { data: empresa, error: empresaError } = await supabase
             .from('empresas')
@@ -74,10 +52,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.error('PDV-VS: Erro ao carregar a empresa vinculada:', empresaError);
             throw new Error('Erro ao carregar os dados da empresa vinculada.');
         }
-
-        localStorage.setItem('empresa_id', empresa.id);
-        localStorage.setItem('empresa_dados', JSON.stringify(empresa));
-        localStorage.setItem('user_email', user.email || '');
 
         setUsuarioAtual(user);
         setEmpresaAtualId(empresa.id);
@@ -102,6 +76,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function iniciarMonitoramentoRealtime(empresaId) {
         canaisAdminRealtime.forEach(canal => supabase.removeChannel(canal));
+        statusRealtimePorTabela = new Map();
         canaisAdminRealtime = [
             ['caixas', ['operadores']],
             ['vendas', ['operadores', 'historico']],
@@ -109,22 +84,35 @@ document.addEventListener('DOMContentLoaded', async () => {
             ['operadores', ['operadores']],
             ['usuarios_empresas', ['operadores']],
             ['produtos', ['produtos']]
-        ].map(([tabela, abasAfetadas]) => supabase
-            .channel(`admin-${tabela}-${empresaId}`)
-            .on('postgres_changes', {
-                event: '*',
-                schema: 'public',
-                table: tabela,
-                filter: `empresa_id=eq.${empresaId}`
-            }, () => {
-                agendarAtualizacaoRealtime(abasAfetadas);
-            })
-            .subscribe((status, error) => {
-                if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-                    console.error(`PDV-VS: Falha ao iniciar atualização Realtime de ${tabela}:`, error || status);
-                }
-            }));
+        ].map(([tabela, abasAfetadas]) => {
+            statusRealtimePorTabela.set(tabela, 'CONNECTING');
+            return supabase
+                .channel(`admin-${tabela}-${empresaId}`)
+                .on('postgres_changes', {
+                    event: '*',
+                    schema: 'public',
+                    table: tabela,
+                    filter: `empresa_id=eq.${empresaId}`
+                }, () => {
+                    agendarAtualizacaoRealtime(abasAfetadas);
+                })
+                .subscribe((status, error) => {
+                    statusRealtimePorTabela.set(tabela, status);
+                    if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                        console.error(`PDV-VS: Falha ao iniciar atualização Realtime de ${tabela}:`, error || status);
+                    }
+                });
+        });
     }
+
+    window.setInterval(() => {
+        if (abaAtiva !== 'operadores' || atualizacaoFallbackEmCurso) return;
+
+        atualizacaoFallbackEmCurso = true;
+        void carregarGestaoOperadores()
+            .catch(error => console.error('PDV-VS: Falha ao atualizar o monitoramento dos caixas:', error))
+            .finally(() => { atualizacaoFallbackEmCurso = false; });
+    }, 15000);
 
     document.querySelector('#adminHeaderActions a[aria-label="Sair"]')?.addEventListener('click', async event => {
         event.preventDefault();
@@ -135,6 +123,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
         localStorage.removeItem('vancely_admin_session');
+        sessionStorage.removeItem('vancely_sessao_admin_token');
+        sessionStorage.removeItem('vancely_sessao_admin_user');
         window.location.href = '../auth/auth.html';
     });
 
@@ -154,6 +144,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         else if (tabName === 'operadores') await initAdminOperadores(container);
         else if (tabName === 'maquininhas') await initAdminMaquininhas(container);
         else if (tabName === 'historico') await initAdminHistorico(container);
+        else if (tabName === 'planos') await initAdminPlanos(container);
         else if (tabName === 'configuracoes') carregarConfiguracoesSeguranca(container);
     }
 
@@ -223,6 +214,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
         const contexto = await obterContextoAdmin();
         if (!contexto) return;
+        monitorarSessaoUnica(supabase, 'admin', { rotaLogin: '../auth/auth.html' });
+        window.setInterval(() => {
+            void validarSessaoAtual(supabase, 'admin', {
+                exigirSessao: true,
+                rotaLogin: '../auth/auth.html'
+            });
+        }, 15000);
         const empresaId = contexto.empresa.id;
 
         const { data: produtos, error: produtosError } = await supabase

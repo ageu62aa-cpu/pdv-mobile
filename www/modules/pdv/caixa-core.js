@@ -11,8 +11,12 @@ import {
     setDadosEmpresaAtual
 } from '../../core/state.js';  
 import { abrirModalPesagemManual, carregarProdutosCache } from '../../services/produtos.js';
-import { supabase, adminSupabase } from '../../../core/config.js'; // Correção definitiva do import do Supabase
-import { isolarSessaoAdministrativa } from '../../core/sessaoService.js';
+import { supabase, adminSupabase } from '../../core/config.js';
+import {
+    isolarSessaoAdministrativa,
+    monitorarSessaoUnica,
+    validarSessaoAtual
+} from '../../core/sessaoService.js';
 
 let valorTrocoAbertura = 0;
 let horaAberturaCaixa = null;
@@ -37,18 +41,10 @@ function isInvalidAuthSessionError(error) {
         || /jwt|invalid token|token is expired|refresh token|auth session missing|session_not_found/.test(message);
 }
 
-async function redirecionarSessaoInvalida(db, error) {
+function redirecionarSessaoInvalida(error) {
     if (!isInvalidAuthSessionError(error)) return false;
 
-    console.warn('PDV-VS: Sessão inválida ou expirada. Encerrando a sessão local e redirecionando para autenticação.', error);
-    try {
-        const { error: signOutError } = await db.auth.signOut({ scope: 'local' });
-        if (signOutError) {
-            console.error('PDV-VS: Não foi possível limpar a sessão local inválida:', signOutError);
-        }
-    } catch (signOutError) {
-        console.error('PDV-VS: Falha ao limpar a sessão local inválida:', signOutError);
-    }
+    console.warn('PDV-VS: Sessão inválida ou expirada. Redirecionando para autenticação sem afetar outros perfis ativos.', error);
     window.location.href = '../auth/auth.html';
     return true;
 }
@@ -174,7 +170,7 @@ async function inicializarCaixaDefinitivo() {
 
         const { data: { session }, error: sessionError } = await db.auth.getSession();
         if (sessionError) {
-            if (await redirecionarSessaoInvalida(db, sessionError)) return;
+            if (redirecionarSessaoInvalida(sessionError)) return;
             throw sessionError;
         }
         if (!session?.user) {
@@ -183,6 +179,12 @@ async function inicializarCaixaDefinitivo() {
             return;
         }
 
+        const sessaoValida = await validarSessaoAtual(db, 'operador', {
+            exigirSessao: true,
+            rotaLogin: '../auth/auth.html'
+        });
+        if (!sessaoValida) return;
+
         const contexto = await obterContextoAutenticadoSupabase();
         if (!contexto) {
             console.warn('PDV-VS: Sessão expirada. Redirecionando para autenticação...');
@@ -190,12 +192,20 @@ async function inicializarCaixaDefinitivo() {
             return;
         }
 
+        monitorarSessaoUnica(db, 'operador', { rotaLogin: '../auth/auth.html' });
+        inicializarLeitorTecladoPistola();
         await carregarProdutosParaCaixa();
         await verificarStatusCaixaServidor();
         await iniciarRealtimeCaixa();
+        window.setInterval(() => {
+            void validarSessaoAtual(db, 'operador', {
+                exigirSessao: true,
+                rotaLogin: '../auth/auth.html'
+            });
+        }, 15000);
         focarBusca();
     } catch (error) {
-        if (await redirecionarSessaoInvalida(getSupabase(), error)) return;
+        if (redirecionarSessaoInvalida(error)) return;
         console.error('PDV-VS: Falha ao inicializar a sessão pelo Supabase:', error);
         const status = document.getElementById('statusEstoqueCaixa');
         const mensagem = document.getElementById('mensagemStatusEstoqueCaixa');
@@ -1014,8 +1024,15 @@ export async function realizarLogout() {
         return;
     }
     if (confirm('PDV-VS: Deseja realmente encerrar a sessão?')) {
-        await getSupabase().auth.signOut(); 
-        location.reload(); 
+        const { error } = await getSupabase().auth.signOut({ scope: 'local' });
+        if (error) {
+            console.error('PDV-VS: Não foi possível encerrar a sessão do operador:', error);
+            alert(`Não foi possível encerrar a sessão: ${error.message}`);
+            return;
+        }
+        sessionStorage.removeItem('vancely_sessao_operador_token');
+        sessionStorage.removeItem('vancely_sessao_operador_user');
+        location.reload();
     }
 }
 
@@ -1203,6 +1220,34 @@ export async function tratarEnterBuscaCaixa(e) {
         e.preventDefault();
         if (!input) return;
         let valor = input.value.trim();
+        const valorNormalizado = valor.toLocaleLowerCase();
+        const codigoExato = produtosCache.find(produto =>
+            String(produto.codigo_barras || '').trim().toLocaleLowerCase() === valorNormalizado
+            || String(produto.codigo || '').trim().toLocaleLowerCase() === valorNormalizado
+        );
+        if (codigoExato) {
+            window.adicionarProdutoComQtd?.(codigoExato, window.quantidadeMultiplicador || 1);
+            window.quantidadeMultiplicador = 1;
+            return;
+        }
+        if (/^(?=.*\d)[A-Za-z0-9-]{6,}$/.test(valor)) {
+            try {
+                const produtoLido = await buscarProdutoPorCodigoScanner(valor);
+                if (produtoLido) {
+                    window.adicionarProdutoComQtd?.(produtoLido, window.quantidadeMultiplicador || 1);
+                } else {
+                    alert('PDV-VS: Produto não encontrado pelo código de barras.');
+                    input.value = '';
+                    ocultarPainelSugestoes();
+                    focarBusca();
+                }
+            } catch (error) {
+                console.error('PDV-VS: Erro ao consultar código de barras no Supabase:', error);
+                alert(`PDV-VS: Não foi possível consultar o produto no servidor: ${error.message}`);
+            }
+            window.quantidadeMultiplicador = 1;
+            return;
+        }
 
         if (itens.length > 0 && Number.isInteger(Number(input.dataset.indiceSelecionado))) {
             const indiceSelecionado = Number(input.dataset.indiceSelecionado);
@@ -1224,7 +1269,6 @@ export async function tratarEnterBuscaCaixa(e) {
             }
         }
 
-        const valorNormalizado = valor.toLowerCase();
         let encontrado = produtosCache.find(p =>
             String(p.codigo_barras || '').trim().toLowerCase() === valorNormalizado ||
             String(p.codigo || '').trim().toLowerCase() === valorNormalizado ||

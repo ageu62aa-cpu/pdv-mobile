@@ -2,7 +2,7 @@
  * Módulo: Admin Operadores (www/modules/admin/admin-operadores.js)
  * Corrigido para garantir persistência do Admin, isolamento SaaS e tempo real robusto.
  */
-import { adminSupabase as supabase } from '../../core/config.js';
+import { adminSupabase as supabase, loginSupabase } from '../../core/config.js';
 
 function escaparTextoHtml(valor) {
     return String(valor ?? '').replace(/[&<>"']/g, caractere => ({
@@ -29,9 +29,41 @@ export async function initAdminOperadores(containerEl) {
                     </h2>
                     <p class="text-xs text-gray-400 mt-0.5">Terminais associados a operadores cadastrados, mesmo sem sessão ativa. Status e movimentos atualizados em tempo real.</p>
                 </div>
-                <button id="btn-atualizar-operadores" class="bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-bold px-3 py-2 rounded-lg border border-gray-700 transition flex items-center gap-1.5">
-                    <i class="fa-solid fa-rotate-right"></i> Atualizar Dados
-                </button>
+                <div class="flex flex-wrap items-center gap-2">
+                    <button id="btn-cadastrar-operador" type="button" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-user-plus"></i> Cadastrar novo operador
+                    </button>
+                    <button id="btn-atualizar-operadores" type="button" class="bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-bold px-3 py-2 rounded-lg border border-gray-700 transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-rotate-right"></i> Atualizar Dados
+                    </button>
+                </div>
+            </div>
+
+            <div id="modal-cadastro-operador" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 p-4">
+                <form id="form-cadastro-operador" class="w-full max-w-md space-y-4 rounded-2xl border border-gray-700 bg-gray-800 p-6 shadow-2xl">
+                    <div class="flex items-center justify-between border-b border-gray-700 pb-3">
+                        <h3 class="text-base font-bold text-white">Cadastrar operador desta empresa</h3>
+                        <button id="btn-fechar-cadastro-operador" type="button" class="text-gray-400 hover:text-white" aria-label="Fechar">&times;</button>
+                    </div>
+                    <p class="text-xs text-gray-400">A conta será vinculada exclusivamente à empresa deste administrador.</p>
+                    <label class="block text-xs font-bold text-gray-300">
+                        Nome do operador
+                        <input id="novo-operador-nome" type="text" required autocomplete="name" class="mt-1 w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2.5 text-sm text-white">
+                    </label>
+                    <label class="block text-xs font-bold text-gray-300">
+                        E-mail de acesso
+                        <input id="novo-operador-email" type="email" required autocomplete="email" class="mt-1 w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2.5 text-sm text-white">
+                    </label>
+                    <label class="block text-xs font-bold text-gray-300">
+                        Senha inicial
+                        <input id="novo-operador-senha" type="password" required minlength="6" autocomplete="new-password" class="mt-1 w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2.5 text-sm text-white">
+                    </label>
+                    <p id="status-cadastro-operador" class="hidden text-xs" role="status"></p>
+                    <div class="flex gap-2">
+                        <button id="btn-cancelar-cadastro-operador" type="button" class="w-1/2 rounded-lg bg-gray-700 py-2.5 text-xs font-bold text-gray-200 hover:bg-gray-600">Cancelar</button>
+                        <button type="submit" class="w-1/2 rounded-lg bg-emerald-600 py-2.5 text-xs font-bold text-white hover:bg-emerald-700">Criar conta</button>
+                    </div>
+                </form>
             </div>
 
             <div id="grid-operadores-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -51,9 +83,111 @@ export async function initAdminOperadores(containerEl) {
     `;
 
     document.getElementById('btn-atualizar-operadores').addEventListener('click', () => carregarGestaoOperadores());
+    document.getElementById('btn-cadastrar-operador').addEventListener('click', () => {
+        void abrirCadastroOperador();
+    });
+    document.getElementById('btn-fechar-cadastro-operador').addEventListener('click', fecharCadastroOperador);
+    document.getElementById('btn-cancelar-cadastro-operador').addEventListener('click', fecharCadastroOperador);
+    document.getElementById('form-cadastro-operador').addEventListener('submit', salvarNovoOperador);
     
     await carregarGestaoOperadores();
     
+}
+
+function fecharCadastroOperador() {
+    const modal = document.getElementById('modal-cadastro-operador');
+    modal?.classList.add('hidden');
+    modal?.classList.remove('flex');
+}
+
+async function abrirCadastroOperador() {
+    try {
+        const empresaId = await obterEmpresaIdSeguro();
+        if (!empresaId) throw new Error('Não foi possível identificar a empresa deste administrador.');
+
+        const [{ data: plano, error: erroPlano }, { count, error: erroContagem }] = await Promise.all([
+            supabase.rpc('vancely_get_tenant_entitlements', { p_empresa_id: empresaId }).maybeSingle(),
+            supabase.from('usuarios_empresas').select('user_id', { count: 'exact', head: true })
+                .eq('empresa_id', empresaId)
+                .eq('cargo', 'operador')
+        ]);
+        if (erroPlano || erroContagem) throw erroPlano || erroContagem;
+
+        const limite = Math.max(0, Number(plano?.limite_operadores ?? 0));
+        if ((count || 0) >= limite) {
+            alert(`O limite do plano ${plano?.nome || ''} foi atingido: ${count || 0} de ${limite} operador(es). Faça upgrade para adicionar operadores.`);
+            return;
+        }
+
+        document.getElementById('status-cadastro-operador')?.classList.add('hidden');
+        const modal = document.getElementById('modal-cadastro-operador');
+        modal?.classList.remove('hidden');
+        modal?.classList.add('flex');
+        document.getElementById('novo-operador-nome')?.focus();
+    } catch (error) {
+        const detail = error instanceof Error ? error.message : String(error);
+        console.error('PDV-VS: Não foi possível abrir o cadastro de operadores:', error);
+        alert(`Não foi possível abrir o cadastro de operadores: ${detail}`);
+    }
+}
+
+async function salvarNovoOperador(event) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const botao = form.querySelector('button[type="submit"]');
+    const status = document.getElementById('status-cadastro-operador');
+    const nome = document.getElementById('novo-operador-nome').value.trim();
+    const email = document.getElementById('novo-operador-email').value.trim();
+    const password = document.getElementById('novo-operador-senha').value;
+    if (!form.reportValidity()) return;
+    if (!nome) {
+        alert('Informe o nome do operador.');
+        return;
+    }
+
+    botao.disabled = true;
+    try {
+        const empresaId = await obterEmpresaIdSeguro();
+        if (!empresaId) throw new Error('Não foi possível identificar a empresa deste administrador.');
+
+        const { data, error: erroCadastro } = await loginSupabase.auth.signUp({
+            email,
+            password,
+            options: { data: { full_name: nome } }
+        });
+        if (erroCadastro) throw erroCadastro;
+        if (!data.user) throw new Error('O Supabase não retornou o usuário criado.');
+        if (data.user.identities?.length === 0) {
+            throw new Error('Este e-mail já possui uma conta. Use outro e-mail para cadastrar um operador.');
+        }
+
+        const { error: erroVinculo } = await supabase.from('usuarios_empresas').insert([{
+            user_id: data.user.id,
+            empresa_id: empresaId,
+            cargo: 'operador'
+        }]);
+        if (erroVinculo) {
+            console.error('PDV-VS: Conta criada, mas não foi possível vinculá-la à empresa:', erroVinculo);
+            throw new Error(`A conta foi criada, mas não foi possível vinculá-la a esta empresa: ${erroVinculo.message}`);
+        }
+
+        fecharCadastroOperador();
+        form.reset();
+        await carregarGestaoOperadores();
+        alert(data.session
+            ? 'Operador cadastrado e vinculado a esta empresa com sucesso.'
+            : 'Operador cadastrado. Se a confirmação por e-mail estiver ativa no Supabase, confirme o endereço antes do primeiro login.');
+    } catch (error) {
+        const detail = error instanceof Error ? error.message : String(error);
+        console.error('PDV-VS: Erro ao cadastrar operador:', error);
+        if (status) {
+            status.textContent = detail;
+            status.className = 'text-xs text-rose-400';
+        }
+        alert(`Não foi possível cadastrar o operador: ${detail}`);
+    } finally {
+        botao.disabled = false;
+    }
 }
 
 async function obterEmpresaIdSeguro() {
@@ -89,7 +223,7 @@ async function obterEmpresaIdSeguro() {
     return null;
 }
 
-async function carregarGestaoOperadores() {
+export async function carregarGestaoOperadores() {
     const gridContainer = document.getElementById('grid-operadores-container');
     if (!gridContainer) return;
     

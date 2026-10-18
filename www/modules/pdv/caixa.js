@@ -138,8 +138,15 @@ export async function realizarLogout() {
         return;
     }
     if (confirm('PDV-VS: Deseja realmente encerrar a sessão?')) {
-        await getSupabase().auth.signOut(); 
-        location.reload(); 
+        const { error } = await getSupabase().auth.signOut({ scope: 'local' });
+        if (error) {
+            console.error('PDV-VS: Não foi possível encerrar a sessão do operador:', error);
+            alert(`Não foi possível encerrar a sessão: ${error.message}`);
+            return;
+        }
+        sessionStorage.removeItem('vancely_sessao_operador_token');
+        sessionStorage.removeItem('vancely_sessao_operador_user');
+        location.reload();
     }
 }
 

@@ -1,5 +1,10 @@
-import { supabase, adminSupabase } from '../../core/config.js';
-import { ativarSessaoUnica, isolarSessaoAdministrativa } from '../../core/sessaoService.js';
+import { supabase, adminSupabase, loginSupabase } from '../../core/config.js';
+import {
+    ativarSessaoUnica,
+    isolarSessaoAdministrativa,
+    transferirSessaoAutenticada
+} from '../../core/sessaoService.js';
+import { obterPerfilEmpresa } from '../../core/perfilEmpresa.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     const formLogin = document.getElementById('form-login');
@@ -132,7 +137,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Limpa bordas vermelhas do cadastro conforme o usuário interage
     if (formCadastro) {
-        const inputsCadastro = formCadastro.querySelectorAll('input');
+        const inputsCadastro = formCadastro.querySelectorAll('input:not([type="checkbox"])');
         inputsCadastro.forEach(input => {
             input.addEventListener('input', () => {
                 if (input.value.trim()) {
@@ -160,6 +165,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!formValido) {
                 showCadastroFeedback('Preencha todos os campos destacados em vermelho.', 'error');
                 if (primeiroCampoComErro) primeiroCampoComErro.focus();
+                return;
+            }
+            if (!document.getElementById('cad-aceite-termos')?.checked) {
+                showCadastroFeedback('Você precisa aceitar os Termos de Uso e a Política de Privacidade para continuar.', 'error');
+                document.getElementById('cad-aceite-termos')?.focus();
                 return;
             }
 
@@ -192,47 +202,13 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             try {
-                let { data: authData, error: authError } = await supabase.auth.signUp({ email, password: senha });
-                const contaExistente = authError && (
-                    authError.code === 'user_already_exists'
-                    || /already registered|already exists/i.test(authError.message || '')
-                );
-
-                if (contaExistente) {
-                    const recuperacao = await supabase.auth.signInWithPassword({ email, password: senha });
-                    authData = recuperacao.data;
-                    authError = recuperacao.error;
-                    if (authError) {
-                        showCadastroFeedback('Este e-mail já possui uma conta. Entre com a senha dessa conta ou use a recuperação de senha.', 'error');
-                        return;
-                    }
-                }
-
-                if (authError) {
-                    let msgErro = `Erro ao criar acesso: ${authError.message}`;
-                    if (authError.message.includes('Password should be at least')) {
-                        msgErro = 'A senha precisa ter pelo menos 6 caracteres.';
-                        const inputSenhaCad = document.getElementById('cad-senha');
-                        if (inputSenhaCad) inputSenhaCad.classList.add('border-red-500');
-                    } else if (authError.message.includes('Invalid email')) {
-                        msgErro = 'E-mail inválido. Verifique o formato.';
-                        const inputEmailCad = document.getElementById('cad-email');
-                        if (inputEmailCad) inputEmailCad.classList.add('border-red-500');
-                    }
-                    showCadastroFeedback(msgErro, 'error');
-                    return;
-                }
-
-                if (!authData?.user) {
-                    throw new Error('O Supabase não retornou o usuário criado.');
-                }
-
-                const { error: dbError } = await supabase.from('empresas').insert([{
-                    id: authData.user.id,
+                const { error: cadastroError } = await supabase.functions.invoke('empresa-signup', {
+                    body: {
+                    acceptTerms: true,
+                    termsVersion: '2026-10-18',
                     nome_mercado: nomeEmpresa.trim(),
-                    nome_empresa: nomeEmpresa.trim(),
-                    cnpj: cnpj,
-                    documento: cnpj,
+                    nomeEmpresa: nomeEmpresa.trim(),
+                    cnpj,
                     whatsapp,
                     cep,
                     endereco,
@@ -240,28 +216,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     cidade,
                     estado,
                     responsavel: responsavel.trim(),
-                    nome_responsavel: responsavel.trim(),
                     email,
-                    email_admin: email,
-                    plano: 'comum_enterprise',
-                    limite_produtos: 1000,
-                    limite_operadores: 1,
-                    dias_restantes: 30
-                }]);
+                    password: senha
+                    }
+                });
 
-                if (dbError) {
-                    const detalhe = [
-                        dbError.message,
-                        dbError.details,
-                        dbError.hint,
-                        dbError.code ? `Código: ${dbError.code}` : ''
-                    ].filter(Boolean).join(' — ');
-                    console.error(`Erro ao gravar os dados da nova empresa: ${detalhe}`, dbError);
-                    showCadastroFeedback(`A conta de acesso foi criada, mas não foi possível salvar a empresa: ${detalhe}`, 'error');
+                if (cadastroError) {
+                    console.error('Erro ao cadastrar a empresa:', cadastroError);
+                    showCadastroFeedback(`Não foi possível concluir o cadastro: ${cadastroError.message}`, 'error');
                     return;
                 }
 
-                showCadastroFeedback('Empresa cadastrada com sucesso! Faça login.', 'success');
+                showCadastroFeedback('Empresa cadastrada no plano Grátis. Confirme o e-mail antes de entrar.', 'success');
                 setTimeout(() => {
                     modalCadastro.classList.add('hidden');
                     formCadastro.reset();
@@ -273,7 +239,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } finally {
                 if (botaoCadastro) {
                     botaoCadastro.disabled = false;
-                    botaoCadastro.textContent = 'Concluir Cadastro (30 dias Teste Grátis)';
+                    botaoCadastro.textContent = 'Cadastrar no plano Grátis';
                 }
             }
         });
@@ -368,7 +334,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (botaoLogin) botaoLogin.disabled = true;
 
             try {
-                const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password: senha });
+                const { data: authData, error: authError } = await loginSupabase.auth.signInWithPassword({ email, password: senha });
                 if (authError || !authData.user) {
                     showLoginFeedback('Login inválido. Verifique e-mail e senha.', 'error');
                     return;
@@ -376,66 +342,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const user = authData.user;
 
-                const { data: vinculo, error: vinculoError } = await supabase
-                    .from('usuarios_empresas')
-                    .select('user_id, empresa_id, cargo')
-                    .eq('user_id', user.id)
-                    .maybeSingle();
-                if (vinculoError) {
-                    if (vinculoError.code === 'PGRST116') {
-                        throw new Error('Há mais de um vínculo de empresa para este usuário. Regularize o cadastro para definir uma empresa ativa.');
-                    }
-                    throw vinculoError;
-                }
-
-                let empresaId = vinculo?.empresa_id || null;
-                let cargo = vinculo?.cargo || null;
-                if (empresaId) {
-                    const { data: empresaVinculada, error: erroEmpresaVinculada } = await supabase
-                        .from('empresas')
-                        .select('id, email_admin')
-                        .eq('id', empresaId)
-                        .maybeSingle();
-                    if (erroEmpresaVinculada) throw erroEmpresaVinculada;
-                    if (empresaVinculada
-                        && String(empresaVinculada.email_admin || '').trim().toLowerCase() === String(user.email || '').trim().toLowerCase()) {
-                        cargo = 'admin_mercado';
-                    }
-                }
-                if ((!empresaId || !cargo) && user.email) {
-                    const { data: empresa, error: erroEmpresa } = await supabase
-                        .from('empresas')
-                        .select('id, email_admin')
-                        .eq('email_admin', user.email)
-                        .maybeSingle();
-                    if (erroEmpresa) throw erroEmpresa;
-                    if (empresa) {
-                        empresaId = empresaId || empresa.id;
-                        cargo = cargo || 'admin_mercado';
-                    }
-                }
-
-                if (!empresaId) {
-                    showLoginFeedback('Não foi possível localizar uma empresa vinculada a este usuário. Peça ao administrador para conferir o vínculo do operador.', 'error');
-                    return;
-                }
+                const { empresaId, cargo } = await obterPerfilEmpresa(loginSupabase, user);
                 if (cargo !== 'admin_mercado' && cargo !== 'operador') {
                     showLoginFeedback('Este usuário não tem um perfil autorizado para acessar o caixa.', 'error');
                     return;
                 }
 
-                localStorage.setItem('empresa_id', empresaId);
-                localStorage.setItem('empresaAtualId', empresaId);
-                localStorage.setItem('pdv_empresa_id', empresaId);
-                localStorage.setItem('usuario', JSON.stringify(user));
-
                 if (cargo === 'admin_mercado') {
-                    await isolarSessaoAdministrativa(supabase, adminSupabase, user, empresaId);
+                    await isolarSessaoAdministrativa(loginSupabase, adminSupabase, user, empresaId);
                     showLoginFeedback('Login de administrador realizado com sucesso.', 'success');
                     setTimeout(() => {
                         window.location.href = '../admin/admin.html';
                     }, 700);
                 } else {
+                    await transferirSessaoAutenticada(loginSupabase, supabase, user);
+                    localStorage.setItem('empresa_id', empresaId);
+                    localStorage.setItem('empresaAtualId', empresaId);
+                    localStorage.setItem('pdv_empresa_id', empresaId);
+                    localStorage.setItem('usuario', JSON.stringify(user));
                     const tokenSessao = await ativarSessaoUnica(supabase, user.id);
                     if (!tokenSessao) {
                         throw new Error('Não foi possível registrar a sessão do operador.');
