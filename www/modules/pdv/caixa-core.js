@@ -12,7 +12,11 @@ import {
 } from '../../core/state.js';  
 import { abrirModalPesagemManual, carregarProdutosCache } from '../../services/produtos.js';
 import { supabase, adminSupabase } from '../../core/config.js';
-import { isolarSessaoAdministrativa, validarSessaoAtual } from '../../core/sessaoService.js';
+import {
+    isolarSessaoAdministrativa,
+    monitorarSessaoUnica,
+    validarSessaoAtual
+} from '../../core/sessaoService.js';
 
 let valorTrocoAbertura = 0;
 let horaAberturaCaixa = null;
@@ -188,6 +192,8 @@ async function inicializarCaixaDefinitivo() {
             return;
         }
 
+        monitorarSessaoUnica(db, 'operador', { rotaLogin: '../auth/auth.html' });
+        inicializarLeitorTecladoPistola();
         await carregarProdutosParaCaixa();
         await verificarStatusCaixaServidor();
         await iniciarRealtimeCaixa();
@@ -1214,6 +1220,34 @@ export async function tratarEnterBuscaCaixa(e) {
         e.preventDefault();
         if (!input) return;
         let valor = input.value.trim();
+        const valorNormalizado = valor.toLocaleLowerCase();
+        const codigoExato = produtosCache.find(produto =>
+            String(produto.codigo_barras || '').trim().toLocaleLowerCase() === valorNormalizado
+            || String(produto.codigo || '').trim().toLocaleLowerCase() === valorNormalizado
+        );
+        if (codigoExato) {
+            window.adicionarProdutoComQtd?.(codigoExato, window.quantidadeMultiplicador || 1);
+            window.quantidadeMultiplicador = 1;
+            return;
+        }
+        if (/^(?=.*\d)[A-Za-z0-9-]{6,}$/.test(valor)) {
+            try {
+                const produtoLido = await buscarProdutoPorCodigoScanner(valor);
+                if (produtoLido) {
+                    window.adicionarProdutoComQtd?.(produtoLido, window.quantidadeMultiplicador || 1);
+                } else {
+                    alert('PDV-VS: Produto não encontrado pelo código de barras.');
+                    input.value = '';
+                    ocultarPainelSugestoes();
+                    focarBusca();
+                }
+            } catch (error) {
+                console.error('PDV-VS: Erro ao consultar código de barras no Supabase:', error);
+                alert(`PDV-VS: Não foi possível consultar o produto no servidor: ${error.message}`);
+            }
+            window.quantidadeMultiplicador = 1;
+            return;
+        }
 
         if (itens.length > 0 && Number.isInteger(Number(input.dataset.indiceSelecionado))) {
             const indiceSelecionado = Number(input.dataset.indiceSelecionado);
@@ -1235,7 +1269,6 @@ export async function tratarEnterBuscaCaixa(e) {
             }
         }
 
-        const valorNormalizado = valor.toLowerCase();
         let encontrado = produtosCache.find(p =>
             String(p.codigo_barras || '').trim().toLowerCase() === valorNormalizado ||
             String(p.codigo || '').trim().toLowerCase() === valorNormalizado ||

@@ -146,14 +146,23 @@
                     <input type="password" id="cad-senha" required class="w-full mt-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none" placeholder="Mínimo 6 caracteres">
                 </div>
 
+                <label class="flex items-start gap-2 rounded-lg border border-gray-700 bg-gray-900 p-3 text-xs text-gray-300">
+                    <input type="checkbox" id="cad-aceite-termos" required class="mt-0.5 accent-emerald-500">
+                    <span>Li e aceito os <a href="../../termos.html" target="_blank" rel="noopener noreferrer" class="font-bold text-emerald-400 underline">Termos de Uso e a Política de Privacidade</a>.</span>
+                </label>
+
                 <div class="pt-3">
                     <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-lg text-sm transition-colors shadow-lg">
-                        Concluir Cadastro (30 dias Teste Grátis)
+                        Cadastrar no plano Grátis
                     </button>
                 </div>
             </form>
         </div>
     </div>
+
+    <footer class="fixed bottom-3 text-center text-[11px] text-gray-500">
+        <a href="../../termos.html" class="underline hover:text-emerald-400">Termos de Uso e Política de Privacidade</a>
+    </footer>
 
     <script type="module" src="auth.js"></script>
 </body>

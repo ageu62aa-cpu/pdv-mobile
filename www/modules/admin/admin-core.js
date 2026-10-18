@@ -2,6 +2,7 @@ import { initAdminProdutos } from './admin-produtos.js';
 import { initAdminOperadores, carregarGestaoOperadores } from './admin-operadores.js';
 import { initAdminMaquininhas } from './admin-maquininhas.js';
 import { initAdminHistorico } from './admin-historico.js';
+import { initAdminPlanos } from './admin-planos.js';
 import { adminSupabase as supabase } from '../../core/config.js';
 import {
     setUsuarioAtual,
@@ -10,7 +11,7 @@ import {
     setDadosEmpresaAtual
 } from '../../core/state.js';
 import { obterPerfilEmpresa } from '../../core/perfilEmpresa.js';
-import { validarSessaoAtual } from '../../core/sessaoService.js';
+import { monitorarSessaoUnica, validarSessaoAtual } from '../../core/sessaoService.js';
 
 let canaisAdminRealtime = [];
 let abaAtiva = 'produtos';
@@ -143,6 +144,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         else if (tabName === 'operadores') await initAdminOperadores(container);
         else if (tabName === 'maquininhas') await initAdminMaquininhas(container);
         else if (tabName === 'historico') await initAdminHistorico(container);
+        else if (tabName === 'planos') await initAdminPlanos(container);
         else if (tabName === 'configuracoes') carregarConfiguracoesSeguranca(container);
     }
 
@@ -212,6 +214,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
         const contexto = await obterContextoAdmin();
         if (!contexto) return;
+        monitorarSessaoUnica(supabase, 'admin', { rotaLogin: '../auth/auth.html' });
         window.setInterval(() => {
             void validarSessaoAtual(supabase, 'admin', {
                 exigirSessao: true,

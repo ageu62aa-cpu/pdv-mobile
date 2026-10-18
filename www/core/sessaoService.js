@@ -23,6 +23,15 @@ function obterChavesSessao(escopo) {
   };
 }
 
+function obterIdDispositivo() {
+  let deviceId = localStorage.getItem('vancely_device_id');
+  if (!deviceId) {
+    deviceId = crypto.randomUUID();
+    localStorage.setItem('vancely_device_id', deviceId);
+  }
+  return deviceId;
+}
+
 export async function isolarSessaoAdministrativa(supabaseClient, adminClient, user, empresaId) {
   await transferirSessaoAutenticada(supabaseClient, adminClient, user);
   const token = await ativarSessaoUnica(adminClient, user.id, 'admin');
@@ -37,23 +46,18 @@ export async function isolarSessaoAdministrativa(supabaseClient, adminClient, us
 
 // Função para registar ou atualizar a sessão ativa no login
 export async function ativarSessaoUnica(supabaseClient, userId, escopo = 'operador') {
-  const tokenUnico = 'sessao_' + Date.now() + '_' + Math.random().toString(36).substring(2);
+  const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+  if (userError) throw userError;
+  if (!user || user.id !== userId) {
+    throw new Error('A conta autenticada não corresponde ao usuário que está iniciando a sessão.');
+  }
 
-  // Insere ou atualiza a tabela sessoes_ativas com base no ID do utilizador
-  const { error } = await supabaseClient
-    .from('sessoes_ativas')
-    .upsert(
-      { 
-        user_id: userId, 
-        token_sessao: tokenUnico, 
-        updated_at: new Date().toISOString() 
-      },
-      { onConflict: 'user_id' }
-    );
-
-  if (error) {
+  const { data: tokenUnico, error } = await supabaseClient.rpc('pdv_register_active_session', {
+    p_device_id: obterIdDispositivo()
+  });
+  if (error || !tokenUnico) {
     console.error('Erro ao gravar sessão ativa:', error);
-    throw new Error(`Não foi possível registrar a sessão ativa: ${error.message}`);
+    throw new Error(`Não foi possível iniciar a sessão neste dispositivo: ${error?.message || 'resposta vazia do servidor'}`);
   }
 
   const chaves = obterChavesSessao(escopo);
@@ -66,6 +70,53 @@ export async function ativarSessaoUnica(supabaseClient, userId, escopo = 'operad
   }
 
   return tokenUnico;
+}
+
+export function monitorarSessaoUnica(
+  supabaseClient,
+  escopo = 'operador',
+  { rotaLogin = '/modules/auth/auth.html' } = {}
+) {
+  const chaves = obterChavesSessao(escopo);
+  const userId = sessionStorage.getItem(chaves.user);
+  const tokenLocal = sessionStorage.getItem(chaves.token);
+  if (!userId || !tokenLocal) return null;
+
+  const validar = () => {
+    if (document.visibilityState === 'visible') {
+      void validarSessaoAtual(supabaseClient, escopo, { exigirSessao: true, rotaLogin });
+    }
+  };
+
+  window.addEventListener('focus', validar);
+  document.addEventListener('visibilitychange', validar);
+  window.setInterval(() => {
+    if (document.visibilityState !== 'visible') return;
+    void supabaseClient.rpc('pdv_heartbeat_active_session', { p_token: tokenLocal })
+      .then(({ data, error }) => {
+        if (error) {
+          console.error(`Não foi possível renovar a sessão ${escopo}:`, error);
+        } else if (!data) {
+          validar();
+        }
+      });
+  }, 60000);
+
+  return supabaseClient
+    .channel(`sessao-unica-${escopo}-${userId}-${tokenLocal}`)
+    .on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'sessoes_ativas',
+      filter: `user_id=eq.${userId}`
+    }, payload => {
+      if (payload.new?.token_sessao !== tokenLocal) validar();
+    })
+    .subscribe((status, error) => {
+      if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+        console.error(`Não foi possível monitorar a sessão ${escopo} em tempo real:`, error || status);
+      }
+    });
 }
 
 // Função para verificar periodicamente se a sessão continua válida
@@ -122,6 +173,22 @@ export async function validarSessaoAtual(
 
   if (!data || data.token_sessao !== tokenLocal) {
     alert(`Sessão encerrada: este ${escopo === 'admin' ? 'administrador' : 'operador'} entrou em outro dispositivo.`);
+    sessionStorage.removeItem(chaves.token);
+    sessionStorage.removeItem(chaves.user);
+    if (escopo === 'admin') localStorage.removeItem('vancely_admin_session');
+    window.location.href = rotaLogin;
+    return false;
+  }
+
+  const { data: heartbeatOk, error: heartbeatError } = await supabaseClient.rpc(
+    'pdv_heartbeat_active_session',
+    { p_token: tokenLocal }
+  );
+  if (heartbeatError) {
+    console.error(`Não foi possível renovar a sessão ${escopo}:`, heartbeatError);
+    return true;
+  }
+  if (!heartbeatOk) {
     sessionStorage.removeItem(chaves.token);
     sessionStorage.removeItem(chaves.user);
     if (escopo === 'admin') localStorage.removeItem('vancely_admin_session');

@@ -94,6 +94,7 @@ export async function initAdminHistorico(containerEl) {
 
             <section class="space-y-3">
                 <h3 class="text-sm font-bold text-white">Histórico completo</h3>
+                <p id="aviso-limite-historico" class="hidden text-xs text-amber-300"></p>
                 <div class="overflow-x-auto rounded-xl border border-gray-700 bg-gray-800">
                     <table class="w-full min-w-[760px] text-left border-collapse text-sm">
                         <thead>
@@ -109,6 +110,13 @@ export async function initAdminHistorico(containerEl) {
                             <tr><td colspan="5" class="text-center p-6 text-gray-400">Carregando histórico...</td></tr>
                         </tbody>
                     </table>
+                </div>
+                <div id="paywall-historico" class="hidden rounded-xl border border-amber-500/40 bg-amber-950/30 p-5 text-center">
+                    <p class="text-sm font-bold text-amber-200">Parte do histórico está bloqueada pelo seu plano.</p>
+                    <p id="total-historico-bloqueado" class="mt-1 text-xs text-amber-100/70"></p>
+                    <button id="btn-upgrade-historico" type="button" class="mt-3 rounded-lg bg-amber-500 px-4 py-2 text-xs font-bold text-gray-950 hover:bg-amber-400">
+                        Faça Upgrade para desbloquear o histórico completo
+                    </button>
                 </div>
             </section>
         </div>
@@ -126,12 +134,22 @@ async function carregarHistorico() {
     const empresaId = window.empresaAtualId;
     if (!empresaId) throw new Error('Empresa não identificada para carregar o histórico.');
 
-    const { data, error } = await supabase
+    const { data: plano, error: erroPlano } = await supabase
+        .rpc('vancely_get_tenant_entitlements', { p_empresa_id: empresaId })
+        .maybeSingle();
+    if (erroPlano) throw erroPlano;
+
+    const corte = plano?.dias_historico == null
+        ? null
+        : new Date(Date.now() - Number(plano.dias_historico) * 24 * 60 * 60 * 1000);
+    let consultaVendas = supabase
         .from('vendas')
         .select('id, created_at, operador, operador_nome, valor_total, valor_subtotal, valor_juros, desconto, forma_pagamento, parcelas, maquininha_nome, taxa_aplicada, cliente_cpf, itens')
         .eq('empresa_id', empresaId)
         .order('created_at', { ascending: false });
+    if (corte) consultaVendas = consultaVendas.gte('created_at', corte.toISOString());
 
+    const { data, error } = await consultaVendas;
     if (error) {
         console.error('PDV-VS: Erro ao carregar vendas da empresa:', error);
         const mensagem = escaparTextoHtml(error.message);
@@ -143,6 +161,45 @@ async function carregarHistorico() {
     }
 
     const vendas = data || [];
+    let vendasBloqueadas = 0;
+    if (corte) {
+        const { count, error: erroBloqueadas } = await supabase
+            .from('vendas')
+            .select('id', { count: 'exact', head: true })
+            .eq('empresa_id', empresaId)
+            .lt('created_at', corte.toISOString());
+        if (erroBloqueadas) throw erroBloqueadas;
+        vendasBloqueadas = count || 0;
+    }
+    const avisoLimite = document.getElementById('aviso-limite-historico');
+    if (corte && avisoLimite) {
+        avisoLimite.textContent = `O plano ${plano?.nome || ''} permite visualizar os últimos ${plano.dias_historico} dias.`;
+        avisoLimite.classList.remove('hidden');
+    }
+    const paywall = document.getElementById('paywall-historico');
+    let registrosBloqueadosHtml = '';
+    if (vendasBloqueadas > 0) {
+        const registrosFoscos = Math.min(vendasBloqueadas, 5);
+        registrosBloqueadosHtml = Array.from({ length: registrosFoscos }, () => `
+            <tr aria-hidden="true" class="select-none">
+                <td colspan="5" class="p-3">
+                    <div class="pointer-events-none blur-sm opacity-50">
+                        <div class="h-3 w-1/3 rounded bg-gray-500"></div>
+                        <div class="mt-2 h-3 w-2/3 rounded bg-gray-600"></div>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+        document.getElementById('total-historico-bloqueado').textContent =
+            `${vendasBloqueadas.toLocaleString('pt-BR')} venda(s) anterior(es) ao período incluído.`;
+        paywall.classList.remove('hidden');
+        document.getElementById('btn-upgrade-historico').onclick = () => {
+            document.querySelector('[data-tab="planos"]')?.click();
+        };
+    } else {
+        paywall.classList.add('hidden');
+    }
+
     const hoje = new Date();
     const vendasHoje = vendas.filter(venda => venda.created_at && mesmoDiaLocal(new Date(venda.created_at), hoje));
     const totalDia = vendasHoje.reduce((total, venda) => total + (Number(venda.valor_total) || 0), 0);
@@ -196,7 +253,9 @@ async function carregarHistorico() {
         : '<p class="text-sm text-gray-500">Nenhum operador registrou vendas hoje.</p>';
 
     if (vendas.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center p-6 text-gray-400">Nenhuma venda registrada.</td></tr>';
+        tbody.innerHTML = vendasBloqueadas > 0
+            ? registrosBloqueadosHtml
+            : '<tr><td colspan="5" class="text-center p-6 text-gray-400">Nenhuma venda registrada.</td></tr>';
         return;
     }
 
@@ -216,5 +275,5 @@ async function carregarHistorico() {
                 </details>
             </td>
         </tr>
-    `).join('');
+    `).join('') + registrosBloqueadosHtml;
 }

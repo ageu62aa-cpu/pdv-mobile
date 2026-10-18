@@ -137,7 +137,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Limpa bordas vermelhas do cadastro conforme o usuário interage
     if (formCadastro) {
-        const inputsCadastro = formCadastro.querySelectorAll('input');
+        const inputsCadastro = formCadastro.querySelectorAll('input:not([type="checkbox"])');
         inputsCadastro.forEach(input => {
             input.addEventListener('input', () => {
                 if (input.value.trim()) {
@@ -165,6 +165,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!formValido) {
                 showCadastroFeedback('Preencha todos os campos destacados em vermelho.', 'error');
                 if (primeiroCampoComErro) primeiroCampoComErro.focus();
+                return;
+            }
+            if (!document.getElementById('cad-aceite-termos')?.checked) {
+                showCadastroFeedback('Você precisa aceitar os Termos de Uso e a Política de Privacidade para continuar.', 'error');
+                document.getElementById('cad-aceite-termos')?.focus();
                 return;
             }
 
@@ -197,47 +202,13 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             try {
-                let { data: authData, error: authError } = await supabase.auth.signUp({ email, password: senha });
-                const contaExistente = authError && (
-                    authError.code === 'user_already_exists'
-                    || /already registered|already exists/i.test(authError.message || '')
-                );
-
-                if (contaExistente) {
-                    const recuperacao = await supabase.auth.signInWithPassword({ email, password: senha });
-                    authData = recuperacao.data;
-                    authError = recuperacao.error;
-                    if (authError) {
-                        showCadastroFeedback('Este e-mail já possui uma conta. Entre com a senha dessa conta ou use a recuperação de senha.', 'error');
-                        return;
-                    }
-                }
-
-                if (authError) {
-                    let msgErro = `Erro ao criar acesso: ${authError.message}`;
-                    if (authError.message.includes('Password should be at least')) {
-                        msgErro = 'A senha precisa ter pelo menos 6 caracteres.';
-                        const inputSenhaCad = document.getElementById('cad-senha');
-                        if (inputSenhaCad) inputSenhaCad.classList.add('border-red-500');
-                    } else if (authError.message.includes('Invalid email')) {
-                        msgErro = 'E-mail inválido. Verifique o formato.';
-                        const inputEmailCad = document.getElementById('cad-email');
-                        if (inputEmailCad) inputEmailCad.classList.add('border-red-500');
-                    }
-                    showCadastroFeedback(msgErro, 'error');
-                    return;
-                }
-
-                if (!authData?.user) {
-                    throw new Error('O Supabase não retornou o usuário criado.');
-                }
-
-                const { error: dbError } = await supabase.from('empresas').insert([{
-                    id: authData.user.id,
+                const { error: cadastroError } = await supabase.functions.invoke('empresa-signup', {
+                    body: {
+                    acceptTerms: true,
+                    termsVersion: '2026-10-18',
                     nome_mercado: nomeEmpresa.trim(),
-                    nome_empresa: nomeEmpresa.trim(),
-                    cnpj: cnpj,
-                    documento: cnpj,
+                    nomeEmpresa: nomeEmpresa.trim(),
+                    cnpj,
                     whatsapp,
                     cep,
                     endereco,
@@ -245,28 +216,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     cidade,
                     estado,
                     responsavel: responsavel.trim(),
-                    nome_responsavel: responsavel.trim(),
                     email,
-                    email_admin: email,
-                    plano: 'comum_enterprise',
-                    limite_produtos: 1000,
-                    limite_operadores: 1,
-                    dias_restantes: 30
-                }]);
+                    password: senha
+                    }
+                });
 
-                if (dbError) {
-                    const detalhe = [
-                        dbError.message,
-                        dbError.details,
-                        dbError.hint,
-                        dbError.code ? `Código: ${dbError.code}` : ''
-                    ].filter(Boolean).join(' — ');
-                    console.error(`Erro ao gravar os dados da nova empresa: ${detalhe}`, dbError);
-                    showCadastroFeedback(`A conta de acesso foi criada, mas não foi possível salvar a empresa: ${detalhe}`, 'error');
+                if (cadastroError) {
+                    console.error('Erro ao cadastrar a empresa:', cadastroError);
+                    showCadastroFeedback(`Não foi possível concluir o cadastro: ${cadastroError.message}`, 'error');
                     return;
                 }
 
-                showCadastroFeedback('Empresa cadastrada com sucesso! Faça login.', 'success');
+                showCadastroFeedback('Empresa cadastrada no plano Grátis. Confirme o e-mail antes de entrar.', 'success');
                 setTimeout(() => {
                     modalCadastro.classList.add('hidden');
                     formCadastro.reset();
@@ -278,7 +239,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } finally {
                 if (botaoCadastro) {
                     botaoCadastro.disabled = false;
-                    botaoCadastro.textContent = 'Concluir Cadastro (30 dias Teste Grátis)';
+                    botaoCadastro.textContent = 'Cadastrar no plano Grátis';
                 }
             }
         });

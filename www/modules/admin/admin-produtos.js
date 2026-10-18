@@ -12,6 +12,8 @@ let scannerProdutoCapturado = false;
 let scannerProdutoSessao = 0;
 let scannerProdutoZoom = { min: 1, max: 1, step: 0.1, value: 1 };
 let scannerProdutoFocoModo = [];
+let limiteProdutosPlano = 1000;
+let quantidadeProdutosPlano = 0;
 
 async function garantirBibliotecaCamera() {
     if (window.Html5Qrcode) return;
@@ -192,6 +194,12 @@ export async function initAdminProdutos(containerEl) {
         </div>
     `;
 
+    document.getElementById('formProdCodigo')?.addEventListener('keydown', event => {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+        }
+    });
+
     await carregarProdutosAdmin();
 }
 
@@ -202,9 +210,15 @@ async function carregarProdutosAdmin() {
 
     if (!empresaId) throw new Error('Empresa não identificada para carregar o estoque.');
 
+    const { data: plano, error: erroPlano } = await supabase.rpc('vancely_get_tenant_entitlements', {
+        p_empresa_id: empresaId
+    }).maybeSingle();
+    if (erroPlano) throw erroPlano;
+    limiteProdutosPlano = Number(plano?.limite_produtos) || 100;
+
     const produtosIniciais = window.adminProdutosIniciais;
     let produtos = produtosIniciais;
-    let count = produtosIniciais?.length;
+    let count = null;
     let error = null;
     window.adminProdutosIniciais = null;
 
@@ -217,6 +231,13 @@ async function carregarProdutosAdmin() {
         produtos = resposta.data;
         count = resposta.count;
         error = resposta.error;
+    } else {
+        const resposta = await supabase
+            .from('produtos')
+            .select('id', { count: 'exact', head: true })
+            .eq('empresa_id', empresaId);
+        count = resposta.count;
+        error = resposta.error;
     }
 
     if (error) {
@@ -226,7 +247,8 @@ async function carregarProdutosAdmin() {
     }
 
     produtosCacheAdmin = produtos || [];
-    txtLimite.textContent = `Utilizando ${count || 0} de 1.000 produtos permitidos no plano Comum.`;
+    quantidadeProdutosPlano = count || 0;
+    txtLimite.textContent = `Plano ${plano?.nome || 'Grátis'}: utilizando ${count || 0} de ${limiteProdutosPlano.toLocaleString('pt-BR')} produtos.`;
 
     renderizarTabelaAdmin(produtosCacheAdmin);
 }
@@ -287,8 +309,8 @@ window.filtrarProdutosAdmin = function(termo) {
 };
 
 window.abrirModalNovoProduto = async function() {
-    if (produtosCacheAdmin.length >= 1000) {
-        alert('Limite máximo de 1.000 produtos atingido para o plano Comum.');
+    if (quantidadeProdutosPlano >= limiteProdutosPlano) {
+        alert(`Limite de ${limiteProdutosPlano.toLocaleString('pt-BR')} produtos do plano atingido. Faça upgrade para cadastrar mais.`);
         return;
     }
 
@@ -351,8 +373,8 @@ window.salvarProdutoAdmin = async function(e) {
         }
         alert('Produto atualizado com sucesso!');
     } else {
-        if (produtosCacheAdmin.length >= 1000) {
-            alert('Limite máximo de 1.000 produtos atingido.');
+        if (quantidadeProdutosPlano >= limiteProdutosPlano) {
+            alert(`Limite máximo de ${limiteProdutosPlano.toLocaleString('pt-BR')} produtos do plano atingido.`);
             return;
         }
         const { error } = await supabase.from('produtos').insert([{
@@ -363,6 +385,7 @@ window.salvarProdutoAdmin = async function(e) {
             alert('Erro ao cadastrar produto: ' + error.message);
             return;
         }
+        quantidadeProdutosPlano += 1;
         alert('Produto cadastrado com sucesso!');
     }
 
