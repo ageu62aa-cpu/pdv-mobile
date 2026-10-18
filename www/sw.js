@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pdv-vs-v38';
+const CACHE_NAME = 'pdv-vs-v39';
 const urlsToCache = [
     '/',
     '/index.html',
@@ -23,6 +23,7 @@ const urlsToCache = [
     '/core/config.js',
     '/core/perfilEmpresa.js',
     '/core/sessaoService.js',
+    '/core/termosModal.js',
     '/core/state.js',
     '/services/produtos.js'
 ];

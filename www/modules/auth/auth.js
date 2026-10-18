@@ -5,8 +5,10 @@ import {
     transferirSessaoAutenticada
 } from '../../core/sessaoService.js';
 import { obterPerfilEmpresa } from '../../core/perfilEmpresa.js';
+import { inicializarModalTermos } from '../../core/termosModal.js';
 
 document.addEventListener('DOMContentLoaded', () => {
+    inicializarModalTermos();
     const formLogin = document.getElementById('form-login');
     const inputEmail = document.getElementById('login-email');
     const inputSenha = document.getElementById('login-senha');
