@@ -32,6 +32,22 @@ const palettes = {
 };
 
 const shadeNames = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900];
+const opacitySteps = [5, 10, 15, 20, 25, 30, 40, 50, 60, 70, 75, 80, 90, 95];
+const darkSurface = '#111827';
+const softBackgroundClasses = [
+    'bg-emerald-950',
+    'bg-emerald-950/10',
+    'bg-emerald-950/15',
+    'bg-emerald-950/20',
+    'bg-emerald-950/30',
+    'bg-emerald-950/40',
+    'bg-emerald-950/50',
+    'bg-emerald-950/60',
+    'bg-emerald-950/70',
+    'bg-emerald-950/75',
+    'bg-emerald-950/80',
+    'bg-emerald-950/90'
+];
 const mascotUrls = [
     new URL('../assets/caixa.registradora.jpeg', import.meta.url).href,
     new URL('../assets/botao-admin.jpeg', import.meta.url).href
@@ -41,7 +57,14 @@ function ensureThemeStyles() {
     if (document.getElementById('tenant-brand-theme-styles')) return;
 
     const rules = [
-        '.brand-mascot-tint{filter:var(--brand-mascot-filter,none);transition:filter 180ms ease}'
+        '.brand-mascot-tint{filter:var(--brand-mascot-filter,none);transition:filter 180ms ease}',
+        '.brand-theme-option{border-color:var(--preview-border);background-color:var(--preview-surface);box-shadow:0 8px 24px -18px var(--preview-glow);transition:background-color 180ms ease,border-color 180ms ease,box-shadow 180ms ease,transform 180ms ease}',
+        '.brand-theme-option:hover{border-color:var(--preview-primary);box-shadow:0 10px 26px -14px var(--preview-glow);transform:translateY(-1px)}',
+        '.brand-theme-option[aria-pressed="true"]{border-color:var(--preview-primary);box-shadow:0 0 0 1px var(--preview-primary),0 10px 28px -14px var(--preview-glow)}',
+        '.brand-theme-option [data-theme-check]{color:var(--preview-primary)}',
+        '.brand-theme-preview{border-color:var(--preview-border);background:var(--preview-background);box-shadow:inset 0 0 28px -18px var(--preview-glow)}',
+        '.brand-theme-preview img{filter:var(--preview-mascot-filter,none)}',
+        '.brand-theme-option:disabled{cursor:wait;opacity:.72}'
     ];
     const utilityTypes = [
         ['bg', 'background-color'],
@@ -53,9 +76,17 @@ function ensureThemeStyles() {
     for (const [utility, property] of utilityTypes) {
         shadeNames.forEach((shade, index) => {
             const selector = `.${utility}-emerald-${shade}`;
-            rules.push(`${selector}{${property}:var(--brand-${shade})!important}`);
+            const colorVariable = utility === 'bg' && shade === 600
+                ? '--theme-primary'
+                : utility === 'border' && shade === 600
+                    ? '--theme-border'
+                    : `--brand-${shade}`;
+            rules.push(`${selector}{${property}:var(${colorVariable})!important}`);
             if (utility === 'bg') {
                 rules.push(`.hover\\:bg-emerald-${shade}:hover{background-color:var(--brand-${shade})!important}`);
+                opacitySteps.forEach(opacity => {
+                    rules.push(`:root[data-brand-theme]:not([data-brand-theme="green"]) [class~="bg-emerald-${shade}/${opacity}"]{background-color:color-mix(in srgb,var(--brand-${shade}) ${opacity}%,transparent)!important}`);
+                });
                 rules.push(`.from-emerald-${shade}{--tw-gradient-from:var(--brand-${shade})!important;--tw-gradient-to:rgb(16 185 129 / 0)!important}`);
                 rules.push(`.to-emerald-${shade}{--tw-gradient-to:var(--brand-${shade}) var(--tw-gradient-to-position)!important}`);
             }
@@ -65,16 +96,27 @@ function ensureThemeStyles() {
             }
             if (utility === 'border') {
                 rules.push(`.hover\\:border-emerald-${shade}:hover{border-color:var(--brand-${shade})!important}`);
+                opacitySteps.forEach(opacity => {
+                    rules.push(`:root[data-brand-theme]:not([data-brand-theme="green"]) [class~="border-emerald-${shade}/${opacity}"]{border-color:color-mix(in srgb,var(--brand-${shade}) ${opacity}%,transparent)!important}`);
+                });
             }
             if (utility === 'ring') {
                 rules.push(`.focus\\:ring-emerald-${shade}:focus{--tw-ring-color:var(--brand-${shade})!important}`);
+                opacitySteps.forEach(opacity => {
+                    rules.push(`:root[data-brand-theme]:not([data-brand-theme="green"]) [class~="ring-emerald-${shade}/${opacity}"]{--tw-ring-color:color-mix(in srgb,var(--brand-${shade}) ${opacity}%,transparent)!important}`);
+                });
             }
         });
     }
 
+    softBackgroundClasses.forEach(className => {
+        rules.push(`:root[data-brand-theme]:not([data-brand-theme="green"]) [class~="${className}"]{background-color:var(--theme-bg-subtle)!important}`);
+    });
+    rules.push(':root[data-brand-theme]:not([data-brand-theme="green"]) [class~="shadow-emerald-950/20"]{--tw-shadow-color:color-mix(in srgb,var(--theme-primary) 20%,transparent)!important}');
+
     const style = document.createElement('style');
     style.id = 'tenant-brand-theme-styles';
-    style.textContent = `:root{${shadeNames.map((shade, index) => `--brand-${shade}:${palettes.green.shades[index]}`).join(';')};--brand-mascot-filter:none}${rules.join('\n')}`;
+    style.textContent = `:root{${shadeNames.map((shade, index) => `--brand-${shade}:${palettes.green.shades[index]}`).join(';')};--theme-primary:${palettes.green.shades[6]};--theme-bg-subtle:rgba(2,44,34,.3);--theme-border:${palettes.green.shades[6]};--brand-mascot-filter:none}${rules.join('\n')}`;
     document.head.append(style);
 }
 
@@ -85,7 +127,14 @@ function applyTheme(themeColor) {
     shadeNames.forEach((shade, index) => {
         root.style.setProperty(`--brand-${shade}`, palette.shades[index]);
     });
+    root.style.setProperty('--theme-primary', palette.shades[6]);
+    root.style.setProperty('--theme-bg-subtle', selected === 'green'
+        ? 'rgba(2,44,34,.3)'
+        : `color-mix(in srgb, ${palette.shades[6]} 18%, ${darkSurface})`);
+    root.style.setProperty('--theme-border', palette.shades[6]);
     root.style.setProperty('--brand-mascot-filter', palette.filter);
+    root.dataset.brandTheme = selected;
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', palette.shades[7]);
     document.querySelectorAll('[data-brand-mascot]').forEach(image => {
         image.classList.add('brand-mascot-tint');
     });
@@ -116,16 +165,16 @@ function createModal(client, empresaId, initialTheme) {
             </header>
             <div class="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3 sm:p-5">
                 ${Object.entries(palettes).map(([key, palette]) => `
-                    <button type="button" data-theme-color="${key}" class="group rounded-xl border ${key === initialTheme ? 'border-emerald-500 ring-1 ring-emerald-500/40' : 'border-gray-700'} bg-gray-800/70 p-3 text-left transition hover:border-gray-500 hover:bg-gray-800" aria-pressed="${key === initialTheme}">
+                    <button type="button" data-theme-color="${key}" class="brand-theme-option group rounded-xl border p-3 text-left" style="--preview-primary:${palette.shades[6]};--preview-border:color-mix(in srgb, ${palette.shades[6]} 62%, #374151);--preview-surface:color-mix(in srgb, ${palette.shades[6]} 8%, #1f2937);--preview-background:color-mix(in srgb, ${palette.shades[6]} 17%, #111827);--preview-glow:${palette.shades[5]};--preview-mascot-filter:${palette.filter}" aria-pressed="${key === initialTheme}">
                         <span class="flex items-center justify-between gap-2">
                             <span class="flex items-center gap-2 text-sm font-semibold text-white">
-                                <span class="h-3.5 w-3.5 rounded-full ring-2 ring-white/10" style="background:${palette.shades[5]}"></span>
+                                <span class="h-3.5 w-3.5 rounded-full ring-2 ring-white/10" style="background:${palette.shades[6]}"></span>
                                 ${palette.label}
                             </span>
-                            <i data-theme-check class="fa-solid fa-check text-xs text-gray-500 ${key === initialTheme ? 'text-emerald-400' : ''}" aria-hidden="true"></i>
+                            <i data-theme-check class="fa-solid fa-check text-xs ${key === initialTheme ? '' : 'opacity-0'}" aria-hidden="true"></i>
                         </span>
-                        <span class="mt-3 flex h-20 items-center justify-center overflow-hidden rounded-lg border border-gray-700/80 bg-gray-950/70">
-                            <img src="${mascotUrls[1]}" alt="Mascote com tema ${palette.label}" class="h-16 w-16 object-cover brand-mascot-tint" style="filter:${palette.filter}">
+                        <span class="brand-theme-preview mt-3 flex h-20 items-center justify-center overflow-hidden rounded-lg border">
+                            <img src="${mascotUrls[1]}" alt="Mascote com tema ${palette.label}" class="h-16 w-16 object-cover">
                         </span>
                     </button>
                 `).join('')}
@@ -149,11 +198,7 @@ function createModal(client, empresaId, initialTheme) {
         modal.querySelectorAll('[data-theme-color]').forEach(button => {
             button.disabled = true;
             button.setAttribute('aria-pressed', String(button === option));
-            button.classList.toggle('border-emerald-500', button === option);
-            button.classList.toggle('ring-1', button === option);
-            button.classList.toggle('ring-emerald-500/40', button === option);
-            button.classList.toggle('border-gray-700', button !== option);
-            button.querySelector('[data-theme-check]')?.classList.toggle('text-emerald-400', button === option);
+            button.querySelector('[data-theme-check]')?.classList.toggle('opacity-0', button !== option);
         });
         applyTheme(selected);
         status.textContent = 'Salvando a preferência da empresa...';
@@ -175,11 +220,7 @@ function createModal(client, empresaId, initialTheme) {
             modal.querySelectorAll('[data-theme-color]').forEach(button => {
                 const isPrevious = button.dataset.themeColor === previous;
                 button.setAttribute('aria-pressed', String(isPrevious));
-                button.classList.toggle('border-emerald-500', isPrevious);
-                button.classList.toggle('ring-1', isPrevious);
-                button.classList.toggle('ring-emerald-500/40', isPrevious);
-                button.classList.toggle('border-gray-700', !isPrevious);
-                button.querySelector('[data-theme-check]')?.classList.toggle('text-emerald-400', isPrevious);
+                button.querySelector('[data-theme-check]')?.classList.toggle('opacity-0', !isPrevious);
             });
             status.textContent = `Não foi possível salvar a cor: ${error.message || error}`;
             status.className = 'min-h-10 border-t border-gray-800 px-5 py-3 text-xs text-rose-300';

@@ -65,7 +65,7 @@
         }
 
         #reader #qr-shaded-region {
-            --scanner-corner-color: #10b981;
+            --scanner-corner-color: var(--theme-primary, #059669);
             border: none !important;
             background: transparent !important;
             transition: border-color 120ms ease;
@@ -89,11 +89,11 @@
         }
 
         #reader.barcode-detected #qr-shaded-region {
-            --scanner-corner-color: #34d399;
+            --scanner-corner-color: var(--brand-500, #10b981);
         }
 
         #reader.barcode-detected #qr-shaded-region::after {
-            filter: drop-shadow(0 0 5px #10b981);
+            filter: drop-shadow(0 0 5px var(--theme-primary, #059669));
         }
 
         #containerCaixaBusca {
@@ -282,7 +282,7 @@
             <span id="txtInfoOperador" class="text-xs text-gray-300 bg-gray-900 border border-gray-700 rounded-lg px-2 py-1" title="Operador do caixa">Operador · #01</span>
             
             <button id="btnPainelAdmin" style="display: none;" onclick="window.abrirPainelAdminIndependente()" class="w-9 h-9 rounded-lg overflow-hidden border border-emerald-600 hover:border-emerald-400 shadow-md transition flex items-center justify-center bg-white ml-1 focus:outline-none" title="Painel administrativo" aria-label="Abrir painel administrativo">
-                <img src="../../assets/botao-admin.jpeg" alt="Admin" class="w-12 h-12 object-cover scale-125">
+                <img data-brand-mascot src="../../assets/botao-admin.jpeg" alt="Admin" class="w-12 h-12 object-cover scale-125">
             </button>
             <button id="btnSairCaixa" onclick="window.location.href='../auth/auth.html'" class="bg-red-900/50 hover:bg-red-900 text-red-200 w-9 h-9 rounded-lg text-xs font-bold transition border border-red-800 flex items-center justify-center" title="Sair" aria-label="Sair"><i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i></button>
         </div>
