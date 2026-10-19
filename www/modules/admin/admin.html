@@ -15,30 +15,47 @@
     <!-- FontAwesome para Ícones -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        #adminHeaderActions {
-            flex: 0 0 auto;
-            white-space: nowrap;
-        }
+        @media (min-width: 641px) {
+            #adminHeaderActions {
+                flex: 0 0 auto;
+                gap: 0.5rem;
+                white-space: nowrap;
+            }
 
-        #adminHeaderActions [data-open-plans-tab],
-        #adminHeaderActions #btnPWAAction {
-            width: auto;
-            min-width: 2.5rem;
-            height: 2.5rem;
-            padding: 0 0.75rem;
-            flex: 0 0 auto;
-            white-space: nowrap;
-        }
+            #adminHeaderActions [data-open-plans-tab],
+            #adminHeaderActions #btnPWAAction {
+                width: max-content;
+                min-width: 2.5rem;
+                height: 2.5rem;
+                padding: 0 0.75rem;
+                flex: 0 0 auto;
+                white-space: nowrap;
+            }
 
-        #adminHeaderActions [data-return-to-cash-register] {
-            width: 2.25rem;
-            height: 2.25rem;
-            padding: 0;
-            flex: 0 0 2.25rem;
-        }
+            #adminHeaderActions [data-open-plans-tab] .action-label,
+            #adminHeaderActions #btnPWAAction .action-label {
+                display: inline;
+                white-space: nowrap;
+            }
 
-        #adminHeaderActions [data-return-to-cash-register] .action-label {
-            display: none;
+            #adminHeaderActions [data-return-to-cash-register] {
+                width: 2.25rem;
+                min-width: 2.25rem;
+                height: 2.25rem;
+                padding: 0;
+                flex: 0 0 2.25rem;
+            }
+
+            #adminHeaderActions [data-return-to-cash-register] .action-label {
+                display: none;
+            }
+
+            #adminHeaderActions > a[aria-label="Sair"] {
+                width: 2.25rem;
+                min-width: 2.25rem;
+                height: 2.25rem;
+                flex: 0 0 2.25rem;
+            }
         }
 
         @media (max-width: 640px) {
