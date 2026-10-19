@@ -24,16 +24,17 @@ const palettes = {
         shades: ['#faf5ff', '#f3e8ff', '#e9d5ff', '#d8b4fe', '#c084fc', '#a855f7', '#9333ea', '#7e22ce', '#6b21a8', '#581c87'],
         filter: 'hue-rotate(145deg) saturate(1.2)'
     },
-    gray: {
-        label: 'Cinza',
-        shades: ['#f9fafb', '#f3f4f6', '#e5e7eb', '#d1d5db', '#9ca3af', '#6b7280', '#4b5563', '#374151', '#1f2937', '#111827'],
-        filter: 'grayscale(1)'
+    coffee: {
+        label: 'Marrom-Café',
+        shades: ['#faf3e8', '#f2e2c9', '#e5c9a0', '#d4aa76', '#bd8954', '#a66b3f', '#8b5633', '#70432b', '#563322', '#3d251a'],
+        filter: 'sepia(.55) saturate(1.2)'
     }
 };
 
 const shadeNames = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900];
 const opacitySteps = [5, 10, 15, 20, 25, 30, 40, 50, 60, 70, 75, 80, 90, 95];
 const themeArtwork = new URL('../assets/icones-card.jpeg', import.meta.url).href;
+const coffeeThemeArtwork = new URL('../assets/icone-carde.jpeg', import.meta.url).href;
 
 function ensureThemeStyles() {
     if (document.getElementById('tenant-brand-theme-styles')) return;
@@ -46,6 +47,7 @@ function ensureThemeStyles() {
         '.brand-theme-option [data-theme-check]{color:var(--preview-primary)}',
         '.brand-theme-preview{border-color:var(--preview-border);background:var(--preview-background);box-shadow:inset 0 0 28px -18px var(--preview-glow)}',
         '.brand-theme-art{width:4.5rem;height:4.5rem;border-radius:.8rem;background-image:var(--theme-artwork);background-color:var(--preview-background);background-size:490% 267%;background-position:var(--art-position);background-repeat:no-repeat;box-shadow:0 4px 14px color-mix(in srgb,var(--preview-primary) 20%,transparent);transition:transform 180ms ease,box-shadow 180ms ease}',
+        '.brand-theme-option[data-theme-color="coffee"] .brand-theme-art{background-image:var(--coffee-theme-artwork);background-size:230% auto;background-position:center 44%}',
         '.brand-theme-option:hover .brand-theme-art,.brand-theme-option[aria-pressed="true"] .brand-theme-art{transform:translateY(-1px);box-shadow:0 6px 18px color-mix(in srgb,var(--preview-primary) 30%,transparent)}',
         '.brand-theme-option:disabled{cursor:wait;opacity:.72}'
     ];
@@ -145,7 +147,8 @@ function ensureThemeStyles() {
 }
 
 function applyTheme(themeColor) {
-    const selected = palettes[themeColor] ? themeColor : 'green';
+    const selectedTheme = themeColor === 'gray' ? 'coffee' : themeColor;
+    const selected = palettes[selectedTheme] ? selectedTheme : 'green';
     const palette = palettes[selected];
     const root = document.documentElement;
     shadeNames.forEach((shade, index) => {
@@ -211,7 +214,7 @@ function createModal(client, empresaId, initialTheme) {
                         pink: '50% 14%',
                         orange: '85% 14%',
                         purple: '14% 85%',
-                        gray: '50% 85%'
+                        coffee: '50% 85%'
                     }[key];
                     const previewSurface = key === 'green'
                         ? 'color-mix(in srgb, #059669 12%, #1f2937)'
@@ -221,7 +224,7 @@ function createModal(client, empresaId, initialTheme) {
                         : `color-mix(in srgb, ${palette.shades[2]} 80%, white)`;
                     const labelClass = key === 'green' ? 'text-white' : 'text-slate-900';
                     return `
-                    <button type="button" data-theme-color="${key}" class="brand-theme-option group rounded-xl border p-3 text-left" style="--preview-primary:${palette.shades[6]};--preview-border:color-mix(in srgb, ${palette.shades[6]} 58%, ${key === 'green' ? '#374151' : '#ffffff'});--preview-surface:${previewSurface};--preview-background:${previewBackground};--preview-glow:${palette.shades[5]};--art-position:${imagePosition}" aria-pressed="${key === initialTheme}">
+                    <button type="button" data-theme-color="${key}" class="brand-theme-option group rounded-xl border p-3 text-left" style="--preview-primary:${palette.shades[6]};--preview-border:color-mix(in srgb, ${palette.shades[6]} 58%, ${key === 'green' ? '#374151' : '#ffffff'});--preview-surface:${previewSurface};--preview-background:${previewBackground};--preview-glow:${palette.shades[5]};--art-position:${imagePosition};--coffee-theme-artwork:url('${coffeeThemeArtwork}') " aria-pressed="${key === initialTheme}">
                         <span class="flex items-center justify-between gap-2">
                             <span class="flex items-center gap-2 text-sm font-semibold ${labelClass}">
                                 <span class="h-3.5 w-3.5 rounded-full ring-2 ring-white/10" style="background:${palette.shades[6]}"></span>

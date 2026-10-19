@@ -8,7 +8,7 @@
         pink: ['#fdf2f8', '#fce7f3', '#fbcfe8', '#f9a8d4', '#f472b6', '#ec4899', '#db2777', '#be185d', '#9d174d', '#831843'],
         orange: ['#fff7ed', '#ffedd5', '#fed7aa', '#fdba74', '#fb923c', '#f97316', '#ea580c', '#c2410c', '#9a3412', '#7c2d12'],
         purple: ['#faf5ff', '#f3e8ff', '#e9d5ff', '#d8b4fe', '#c084fc', '#a855f7', '#9333ea', '#7e22ce', '#6b21a8', '#581c87'],
-        gray: ['#f9fafb', '#f3f4f6', '#e5e7eb', '#d1d5db', '#9ca3af', '#6b7280', '#4b5563', '#374151', '#1f2937', '#111827']
+        coffee: ['#faf3e8', '#f2e2c9', '#e5c9a0', '#d4aa76', '#bd8954', '#a66b3f', '#8b5633', '#70432b', '#563322', '#3d251a']
     };
 
     let selected;
@@ -19,6 +19,7 @@
         return;
     }
 
+    if (selected === 'gray') selected = 'coffee';
     if (!Object.prototype.hasOwnProperty.call(palettes, selected)) return;
 
     const root = document.documentElement;
