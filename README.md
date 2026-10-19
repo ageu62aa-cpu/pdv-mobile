@@ -29,6 +29,8 @@ As migrations `20261019192000_add_company_gateway_and_plan_fields.sql`, `2026102
 
 A migration `20261020160000_default_legacy_companies_to_free.sql` coloca no plano Grátis as empresas legadas que não tenham uma assinatura paga `ACTIVE`/`TRIALING`. Os cadastros novos também iniciam explicitamente no Grátis; produtos existentes são preservados, mas a cota gratuita de novos cadastros é aplicada até o upgrade.
 
+A migration `20261020170000_repair_plan_catalog.sql` completa o esquema público de `planos`, popula o catálogo Grátis/Iniciante/Profissional/Ouro/Diamante, mapeia as antigas referências Bronze/Prata e habilita leitura pública via RLS.
+
 A migration SaaS instala os cinco planos, as assinaturas, os registros de aceite, os limites de produtos/operadores/dispositivos e as funções de sessão e entitlement. Ela remove sessões legadas sem tenant associado, pois elas não podem ser usadas como sessões válidas. Faça backup e valide em homologação antes de aplicar em produção.
 
 ## Edge Functions e Asaas
