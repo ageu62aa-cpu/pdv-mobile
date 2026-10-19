@@ -4,11 +4,11 @@ const formatarMoeda = valor => Number(valor).toLocaleString('pt-BR', {
     style: 'currency',
     currency: 'BRL'
 });
-const ordemPlanos = ['gratis', 'bronze', 'prata', 'ouro', 'diamante'];
+const ordemPlanos = ['gratis', 'iniciante', 'profissional', 'ouro', 'diamante'];
 const catalogoPlanos = [
     { id: 'gratis', nome: 'Grátis', preco_mensal: 0, limite_operadores: 0, limite_dispositivos: 1, limite_produtos: 100, dias_historico: 7, limite_notas_mensais: 0, icone: 'fa-gift', borda: 'border-gray-700' },
-    { id: 'bronze', nome: 'Bronze', preco_mensal: 29.99, limite_operadores: 1, limite_dispositivos: 2, limite_produtos: 1000, dias_historico: 30, limite_notas_mensais: 50, icone: 'fa-medal', borda: 'border-amber-700' },
-    { id: 'prata', nome: 'Prata', preco_mensal: 49.99, limite_operadores: 3, limite_dispositivos: 4, limite_produtos: 3000, dias_historico: 90, limite_notas_mensais: 200, icone: 'fa-medal', borda: 'border-slate-500' },
+    { id: 'iniciante', nome: 'Iniciante', preco_mensal: 29.99, limite_operadores: 1, limite_dispositivos: 2, limite_produtos: 1000, dias_historico: 30, limite_notas_mensais: 50, icone: 'fa-medal', borda: 'border-amber-700' },
+    { id: 'profissional', nome: 'Profissional', preco_mensal: 49.99, limite_operadores: 3, limite_dispositivos: 4, limite_produtos: 3000, dias_historico: 90, limite_notas_mensais: 200, icone: 'fa-medal', borda: 'border-slate-500' },
     { id: 'ouro', nome: 'Ouro', preco_mensal: 59.99, limite_operadores: 5, limite_dispositivos: 6, limite_produtos: 5000, dias_historico: 365, limite_notas_mensais: 500, icone: 'fa-medal', borda: 'border-yellow-700' },
     { id: 'diamante', nome: 'Diamante', preco_mensal: 99.99, limite_operadores: 10, limite_dispositivos: 12, limite_produtos: 10000, dias_historico: null, limite_notas_mensais: null, icone: 'fa-gem', borda: 'border-cyan-700' }
 ];

@@ -113,6 +113,7 @@ Deno.serve(async request => {
       .from('planos')
       .select('id, nome, preco_mensal')
       .eq('id', planId)
+      .eq('ativo', true)
       .maybeSingle();
     if (planError) throw planError;
     if (!plan || Number(plan.preco_mensal) <= 0) {
