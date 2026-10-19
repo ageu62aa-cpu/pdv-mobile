@@ -180,6 +180,11 @@ Deno.serve(async request => {
           minutesToExpire: 1440,
           externalReference: pendingSubscription.id,
           customer: customerId,
+          callback: {
+            successUrl: 'https://pdv-mobile.vercel.app/modules/admin/admin.html',
+            cancelUrl: 'https://pdv-mobile.vercel.app/modules/admin/admin.html',
+            expiredUrl: 'https://pdv-mobile.vercel.app/modules/admin/admin.html',
+          },
           items: [{
             name: `PDV ${plan.nome}`,
             description: `Assinatura mensal do plano ${plan.nome}`,

@@ -108,6 +108,8 @@ Deno.serve(async request => {
       email_admin: email,
       plano: 'gratis',
       plano_id: 'gratis',
+      plano_atual: 'GRATUITO',
+      plano_status: 'ATIVO',
       status_assinatura: 'ATIVO',
       termos_versao_aceite: termsVersion,
       termos_aceitos_em: acceptedAt,

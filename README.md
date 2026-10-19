@@ -27,6 +27,8 @@ A migration `20261020120000_add_pix_gateway_sales.sql` adiciona a configuração
 
 As migrations `20261019192000_add_company_gateway_and_plan_fields.sql`, `20261020130000_migrate_legacy_asaas_gateway_accounts.sql`, `20261020140000_sync_asaas_subscription_plan_fields.sql` e `20261020150000_add_asaas_recurring_checkout.sql` adicionam os campos canônicos de modo de gateway, aceite do onboarding, credenciais criptografadas e plano, preservam subcontas já cadastradas, sincronizam plano/status após confirmação e permitem o checkout hospedado recorrente por cartão.
 
+A migration `20261020160000_default_legacy_companies_to_free.sql` coloca no plano Grátis as empresas legadas que não tenham uma assinatura paga `ACTIVE`/`TRIALING`. Os cadastros novos também iniciam explicitamente no Grátis; produtos existentes são preservados, mas a cota gratuita de novos cadastros é aplicada até o upgrade.
+
 A migration SaaS instala os cinco planos, as assinaturas, os registros de aceite, os limites de produtos/operadores/dispositivos e as funções de sessão e entitlement. Ela remove sessões legadas sem tenant associado, pois elas não podem ser usadas como sessões válidas. Faça backup e valide em homologação antes de aplicar em produção.
 
 ## Edge Functions e Asaas
