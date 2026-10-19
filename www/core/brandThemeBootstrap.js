@@ -30,12 +30,12 @@
     root.style.setProperty('--theme-primary', shades[6]);
     root.style.setProperty('--theme-bg-subtle', selected === 'green'
         ? 'rgba(2,44,34,.3)'
-        : `color-mix(in srgb, ${shades[1]} 72%, white)`);
-    root.style.setProperty('--theme-canvas', selected === 'green' ? '#111827' : shades[0]);
-    root.style.setProperty('--theme-surface', selected === 'green' ? '#1f2937' : `color-mix(in srgb, ${shades[0]} 76%, white)`);
-    root.style.setProperty('--theme-control', selected === 'green' ? '#111827' : `color-mix(in srgb, ${shades[1]} 70%, white)`);
-    root.style.setProperty('--theme-control-hover', selected === 'green' ? '#1f2937' : `color-mix(in srgb, ${shades[2]} 60%, white)`);
-    root.style.setProperty('--theme-accent-soft', selected === 'green' ? 'rgba(2,44,34,.3)' : `color-mix(in srgb, ${shades[1]} 72%, white)`);
+        : `color-mix(in srgb, ${shades[2]} 52%, white)`);
+    root.style.setProperty('--theme-canvas', selected === 'green' ? '#111827' : `color-mix(in srgb, ${shades[2]} 55%, white)`);
+    root.style.setProperty('--theme-surface', selected === 'green' ? '#1f2937' : `color-mix(in srgb, ${shades[1]} 48%, white)`);
+    root.style.setProperty('--theme-control', selected === 'green' ? '#111827' : `color-mix(in srgb, ${shades[1]} 62%, white)`);
+    root.style.setProperty('--theme-control-hover', selected === 'green' ? '#1f2937' : `color-mix(in srgb, ${shades[2]} 42%, white)`);
+    root.style.setProperty('--theme-accent-soft', selected === 'green' ? 'rgba(2,44,34,.3)' : `color-mix(in srgb, ${shades[2]} 42%, white)`);
     root.style.setProperty('--theme-accent-ink', selected === 'green' ? '#a7f3d0' : shades[7]);
     root.style.setProperty('--theme-border-soft', selected === 'green' ? '#374151' : `color-mix(in srgb, ${shades[6]} 20%, #e2e8f0)`);
     root.style.setProperty('--theme-border', shades[6]);
@@ -118,6 +118,7 @@
     rules.push(':root[data-brand-theme]:not([data-brand-theme="green"]) body.bg-gray-900{background-color:var(--theme-canvas,#f8fafc)!important;color:#334155!important}');
     rules.push(':root[data-brand-theme]:not([data-brand-theme="green"]) #pdvHeader,:root[data-brand-theme]:not([data-brand-theme="green"]) #adminHeader{background-color:var(--theme-surface,#fff)!important;border-color:var(--theme-border-soft,#e2e8f0)!important}');
     rules.push(':root[data-brand-theme]:not([data-brand-theme="green"]) #pdvMain,:root[data-brand-theme]:not([data-brand-theme="green"]) #adminLayout{background-color:var(--theme-canvas,#f8fafc)!important}');
+    rules.push(':root[data-brand-theme]:not([data-brand-theme="green"]) .theme-commission-description{color:#334155!important;font-weight:600}');
     [500, 600, 700].forEach(shade => {
         const selector = `:root[data-brand-theme="yellow"] button[class~="bg-emerald-${shade}"]`;
         rules.push(`${selector}{color:#1e293b!important}`);
