@@ -50,7 +50,7 @@ function renderizarDetalhesVenda(venda) {
         : '';
 
     return `
-        <div class="rounded-lg bg-gray-950/70 p-3">
+        <div class="sale-detail-summary rounded-lg bg-gray-950/70 p-3">
             <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs sm:grid-cols-4">
                 <span class="text-gray-400">Subtotal: <strong class="text-gray-200">${formatarDinheiro(subtotal)}</strong></span>
                 <span class="text-gray-400">Desconto: <strong class="text-gray-200">${formatarDinheiro(desconto)}</strong></span>
