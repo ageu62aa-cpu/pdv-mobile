@@ -156,7 +156,9 @@ async function assinar(planId, billingType) {
                 break;
             }
             const detalhe = await lerErroFuncao(resultado.error);
-            if (detalhe.code !== 'CUSTOMER_DOCUMENT_REQUIRED' || tentativa > 0) throw resultado.error;
+            const exigeDocumento = detalhe.code === 'CUSTOMER_DOCUMENT_REQUIRED'
+                || /cpf|cnpj|documento/i.test(detalhe.message);
+            if (!exigeDocumento || tentativa > 0) throw resultado.error;
             const documentoInformado = window.prompt(
                 'Para gerar a cobrança da assinatura, informe o CPF (11 dígitos) ou CNPJ (14 dígitos) do titular cadastrado.'
             );
@@ -188,11 +190,18 @@ async function lerErroFuncao(error) {
                 code: typeof corpo?.code === 'string' ? corpo.code : '',
                 message: typeof corpo?.error === 'string'
                     ? corpo.error
-                    : typeof corpo?.message === 'string' ? corpo.message : '',
+                    : typeof corpo?.message === 'string'
+                        ? corpo.message
+                        : typeof corpo?.msg === 'string' ? corpo.msg : '',
                 status: resposta.status
             };
         } catch {
-            return { code: '', message: '', status: resposta.status };
+            try {
+                const message = await resposta.clone().text();
+                return { code: '', message, status: resposta.status };
+            } catch {
+                return { code: '', message: '', status: resposta.status };
+            }
         }
     }
     return { code: '', message: error?.message || '', status: null };
