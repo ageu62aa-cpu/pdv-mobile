@@ -481,6 +481,7 @@ export async function carregarHistoricoAdmin() {
     const { data } = await window.supabaseClient.from('vendas')
         .select('*')
         .eq('empresa_id', empresaAtualId)
+        .eq('status_pagamento', 'PAGO')
         .gte('created_at', dataLimite.toISOString())
         .order('created_at', { ascending: false });
 

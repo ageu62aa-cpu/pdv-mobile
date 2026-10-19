@@ -232,6 +232,16 @@ export async function confirmarConclusaoVenda() {
         return;
     }
 
+    if (formaPagamentoAtual === 'pix') {
+        window.fecharModalFinalizarVenda?.();
+        if (typeof window.setTipoPagamentoF3 !== 'function') {
+            alert('PDV-VS: Não foi possível iniciar o fluxo de confirmação Pix.');
+            return;
+        }
+        window.setTipoPagamentoF3('Pix');
+        return;
+    }
+
     const supabase = window.supabaseClient;
     if (!supabase) {
         alert('PDV-VS: Erro de conexão com o banco de dados.');

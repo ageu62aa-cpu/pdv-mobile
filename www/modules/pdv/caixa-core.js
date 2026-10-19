@@ -26,6 +26,7 @@ let canalRealtimeProdutos = null;
 let acaoAutorizacaoPendente = null;
 let descontoVendaAtual = 0;
 let finalizandoVenda = false;
+let processamentoPix = false;
 let tipoPagamentoAtualF3 = 'Dinheiro';
 let maquininhasPagamento = [];
 let taxasGeraisPagamento = null;
@@ -802,6 +803,174 @@ window.acaoAtalhoF8 = () => {
     document.getElementById('selectParcelas')?.focus();
 };
 
+function criarModalPix(titulo, conteudo, minimizavel = true) {
+    let wrapper = document.getElementById('containerModaisDinamicos');
+    if (!wrapper) {
+        wrapper = document.createElement('div');
+        wrapper.id = 'containerModaisDinamicos';
+        document.body.appendChild(wrapper);
+    }
+    wrapper.innerHTML = `
+        <div class="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 p-4" role="dialog" aria-modal="true" aria-labelledby="titulo-modal-pix">
+            <section class="w-full max-w-md space-y-4 rounded-2xl border border-gray-700 bg-gray-900 p-5 text-white shadow-2xl">
+                <div class="flex items-center justify-between gap-3">
+                    <h2 id="titulo-modal-pix" class="text-lg font-bold">${titulo}</h2>
+                    ${minimizavel ? '<button type="button" data-fechar-modal-pix class="rounded-lg bg-gray-700 px-3 py-1.5 text-xs font-bold text-white">Fechar</button>' : ''}
+                </div>
+                <div data-conteudo-modal-pix class="space-y-3">${conteudo}</div>
+            </section>
+        </div>`;
+    wrapper.querySelector('[data-fechar-modal-pix]')?.addEventListener('click', () => {
+        wrapper.replaceChildren();
+    });
+    return wrapper.querySelector('[data-conteudo-modal-pix]');
+}
+
+async function iniciarPagamentoPix() {
+    if (processamentoPix || !empresaAtualId || !usuarioAtual || itensVenda.length === 0) return;
+    processamentoPix = true;
+    const bloquearAtalhosPagamento = event => {
+        if (/^F\d{1,2}$/.test(event.key)) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+        }
+    };
+    document.addEventListener('keydown', bloquearAtalhosPagamento, true);
+    const db = getSupabase();
+    try {
+        const { data: settingsResult, error: settingsError } = await db.rpc('pdv_get_pix_settings', {
+            p_empresa_id: empresaAtualId,
+        });
+        if (settingsError) throw settingsError;
+        const settings = Array.isArray(settingsResult) ? settingsResult[0] : settingsResult;
+        if (!settings) throw new Error('Não foi possível carregar as configurações Pix da empresa.');
+
+        if (settings.payment_mode === 'manual') {
+            if (!settings.qr_code) throw new Error('O administrador ainda não configurou o QR Pix próprio da empresa.');
+            const content = criarModalPix('Pagamento com Pix próprio', `
+                <p class="text-sm text-gray-300">Peça ao cliente para pagar pelo QR abaixo. A venda só será registrada após a confirmação manual do operador.</p>
+                <img data-pix-qr alt="QR Pix da empresa" class="mx-auto max-h-64 rounded-lg bg-white p-2">
+                <button type="button" data-confirmar-pix class="w-full rounded-lg bg-emerald-600 px-4 py-3 text-sm font-bold text-white hover:bg-emerald-500">Confirmar recebimento e finalizar venda</button>`);
+            const image = content?.querySelector('[data-pix-qr]');
+            if (image) image.src = settings.qr_code;
+            content?.querySelector('[data-confirmar-pix]')?.addEventListener('click', () => {
+                document.getElementById('containerModaisDinamicos')?.replaceChildren();
+                const total = obterTotalVenda();
+                void finalizarVenda({ formaPagamento: 'Pix próprio', recebido: total, troco: 0 });
+            }, { once: true });
+            return;
+        }
+
+        if (settings.payment_mode !== 'asaas') throw new Error('A forma de recebimento Pix configurada é inválida.');
+        const customerName = prompt('Nome do pagador para gerar a cobrança Pix:');
+        if (customerName === null) return;
+        const customerCpf = prompt('CPF ou CNPJ do pagador (somente números):');
+        if (customerCpf === null) return;
+        const { data: payment, error: paymentError } = await db.functions.invoke('pdv-asaas', {
+            body: {
+                action: 'create_pix_sale',
+                empresaId: empresaAtualId,
+                customerName,
+                customerCpf,
+                operatorName: window.vendedorAtual?.nome || usuarioAtual.email || 'Operador',
+                discount: descontoVendaAtual,
+                items: itensVenda.map(item => ({ id: String(item.id), qtd: Number(item.qtd) })),
+            },
+        });
+        if (paymentError) throw paymentError;
+        if (!payment?.saleId) throw new Error(payment?.error || 'O Asaas não retornou a cobrança Pix.');
+
+        const content = criarModalPix('Aguardando confirmação do Pix', `
+            <p class="text-center text-sm text-gray-300">Venda pendente. Ela só será concluída quando o Asaas confirmar o pagamento.</p>
+            <p data-pix-status class="text-center text-sm font-semibold text-amber-300">Aguardando pagamento...</p>
+            <img data-pix-qr alt="QR Pix da cobrança" class="mx-auto hidden max-h-64 rounded-lg bg-white p-2">
+            <textarea data-pix-copy readonly aria-label="Pix copia e cola" class="hidden w-full rounded-lg border border-gray-700 bg-gray-800 p-2 text-xs text-gray-200"></textarea>
+            <button type="button" data-copiar-pix class="hidden w-full rounded-lg bg-gray-700 px-4 py-2 text-xs font-bold text-white">Copiar Pix copia e cola</button>
+            <a data-pix-link target="_blank" rel="noopener noreferrer" class="hidden block text-center text-sm font-bold text-sky-300 underline">Abrir cobrança Asaas</a>
+            <p class="text-center text-xs text-gray-400">Mantenha esta janela aberta até confirmar ou sair do PDV. O webhook atualizará a venda mesmo se a sessão for encerrada.</p>`, false);
+        const qrImage = content?.querySelector('[data-pix-qr]');
+        if (payment.encodedImage && qrImage) {
+            qrImage.src = `data:image/png;base64,${payment.encodedImage}`;
+            qrImage.classList.remove('hidden');
+        }
+        const copyField = content?.querySelector('[data-pix-copy]');
+        const copyButton = content?.querySelector('[data-copiar-pix]');
+        if (payment.payload && copyField && copyButton) {
+            copyField.value = payment.payload;
+            copyField.classList.remove('hidden');
+            copyButton.classList.remove('hidden');
+            copyButton.addEventListener('click', async () => {
+                try {
+                    await navigator.clipboard.writeText(payment.payload);
+                    copyButton.textContent = 'Pix copia e cola copiado';
+                } catch (error) {
+                    console.error('PDV-VS: Não foi possível copiar o código Pix:', error);
+                    copyField.focus();
+                    copyField.select();
+                }
+            });
+        }
+        const paymentLink = content?.querySelector('[data-pix-link]');
+        if (payment.paymentUrl && paymentLink) {
+            paymentLink.href = payment.paymentUrl;
+            paymentLink.classList.remove('hidden');
+        }
+        if (!payment.encodedImage && !payment.payload && !payment.paymentUrl) {
+            const status = content?.querySelector('[data-pix-status]');
+            if (status) status.textContent = 'A cobrança foi criada, mas o QR não foi disponibilizado. Não gere outra cobrança; consulte o pagamento no Asaas.';
+        }
+
+        let pago = false;
+        for (let tentativa = 0; tentativa < 180; tentativa += 1) {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            const { data: venda, error: statusError } = await db.from('vendas')
+                .select('status_pagamento')
+                .eq('id', payment.saleId)
+                .maybeSingle();
+            if (statusError) {
+                console.error('PDV-VS: Erro ao consultar o status do pagamento Pix:', statusError);
+                continue;
+            }
+            if (venda?.status_pagamento === 'PAGO') {
+                pago = true;
+                break;
+            }
+            if (venda?.status_pagamento === 'FALHOU' || venda?.status_pagamento === 'CANCELADO') {
+                const status = content?.querySelector('[data-pix-status]');
+                if (status) status.textContent = 'A cobrança não foi concluída. Verifique o status diretamente no Asaas.';
+                return;
+            }
+        }
+        if (!pago) {
+            const status = content?.querySelector('[data-pix-status]');
+            if (status) status.textContent = 'O pagamento ainda está pendente. A venda será atualizada quando o webhook confirmar.';
+            return;
+        }
+
+        const status = content?.querySelector('[data-pix-status]');
+        if (status) status.textContent = 'Pagamento confirmado pelo Asaas. Finalizando venda...';
+        document.getElementById('containerModaisDinamicos')?.replaceChildren();
+        const inputCpf = document.getElementById('inputCpfNota');
+        if (inputCpf) inputCpf.value = customerCpf;
+        await finalizarVenda({
+            formaPagamento: 'Pix Asaas',
+            recebido: Number(payment.amount),
+            troco: 0,
+            vendaConfirmadaNoBackend: true,
+            gatewayAmount: Number(payment.amount),
+            gatewaySubtotal: Number(payment.subtotal),
+            gatewayDiscount: Number(payment.discount),
+            itensConfirmados: payment.items,
+        });
+    } catch (error) {
+        console.error('PDV-VS: Erro ao iniciar ou acompanhar pagamento Pix:', error);
+        alert(`PDV-VS: ${error.message || 'Não foi possível iniciar o pagamento Pix.'}`);
+    } finally {
+        document.removeEventListener('keydown', bloquearAtalhosPagamento, true);
+        processamentoPix = false;
+    }
+}
+
 window.acaoAtalhoF9 = () => {
     const tipo = prompt('F9 - Digite 1 para Suprimento (entrada) ou 2 para Sangria (retirada):', '1');
     if (tipo === null) return;
@@ -831,8 +1000,7 @@ window.setTipoPagamentoF3 = tipo => {
     if (tipo !== 'Dinheiro' && tipo !== 'Pix') return;
     if (tipo === 'Pix') {
         tipoPagamentoAtualF3 = 'Pix';
-        const total = obterTotalVenda();
-        void finalizarVenda({ formaPagamento: 'Pix', recebido: total, troco: 0 });
+        void iniciarPagamentoPix();
         return;
     }
     tipoPagamentoAtualF3 = tipo;
@@ -849,7 +1017,7 @@ window.calcularTrocoPainel = () => {
 window.concluirPagamentoDinheiroPix = () => {
     const total = obterTotalVenda();
     if (tipoPagamentoAtualF3 === 'Pix') {
-        void finalizarVenda({ formaPagamento: 'Pix', recebido: total, troco: 0 });
+        void iniciarPagamentoPix();
         return;
     }
     const recebido = Number(document.getElementById('inputValorRecebido')?.value);
@@ -1434,18 +1602,20 @@ window.acionarFecharCaixa = async function() {
         // 2. BUSCAR VENDAS APENAS DESTE TURNO (A partir da abertura)
         let { data: vendasRealizadas, error: erroVendas } = await db
             .from('vendas')
-            .select('valor_total, forma_pagamento, valor_juros, maquininha_nome, parcelas')
+            .select('valor_total, forma_pagamento, valor_juros, maquininha_nome, parcelas, status_pagamento')
             .eq('empresa_id', empresaId)
             .eq('operador', usuario.email || '')
+            .eq('status_pagamento', 'PAGO')
             .gte('created_at', dataAbertura);
         let formasPagamentoDisponiveis = true;
         if (erroVendas && /forma_pagamento/i.test(erroVendas.message || '')) {
             console.warn('[PDV-VS] A coluna vendas.forma_pagamento ainda não existe. Consultando valores para permitir o fechamento; aplique a migration Supabase para guardar as formas de pagamento.', erroVendas);
             const consultaSemFormaPagamento = await db
                 .from('vendas')
-                .select('valor_total')
+                .select('valor_total, status_pagamento')
                 .eq('empresa_id', empresaId)
                 .eq('operador', usuario.email || '')
+                .eq('status_pagamento', 'PAGO')
                 .gte('created_at', dataAbertura);
             if (consultaSemFormaPagamento.error) throw consultaSemFormaPagamento.error;
             vendasRealizadas = consultaSemFormaPagamento.data;
@@ -1852,21 +2022,34 @@ function prepararCupomVenda({ itens, subtotal, desconto, total, juros, formaPaga
 
 export async function finalizarVenda(detalhesPagamento = {}) {
     if (finalizandoVenda) return;
-    if (!caixaAberto) { alert('PDV-VS: O caixa individual precisa estar aberto!'); return; }
+    if (!caixaAberto && detalhesPagamento.vendaConfirmadaNoBackend !== true) {
+        alert('PDV-VS: O caixa individual precisa estar aberto!');
+        return;
+    }
     if (itensVenda.length === 0) { alert('PDV-VS: Adicione produtos antes de finalizar.'); return; }
     if (!empresaAtualId || !usuarioAtual) {
         alert('PDV-VS: Não foi possível identificar o operador ou a empresa para registrar a venda.');
         return;
     }
 
-    const itensFinalizados = itensVenda.map(item => ({ ...item }));
-    const subtotal = arredondarValorMonetario(itensFinalizados.reduce((acc, item) => {
+    const vendaConfirmadaNoBackend = detalhesPagamento.vendaConfirmadaNoBackend === true;
+    const itensFinalizados = Array.isArray(detalhesPagamento.itensConfirmados)
+        ? detalhesPagamento.itensConfirmados.map(item => ({ ...item }))
+        : itensVenda.map(item => ({ ...item }));
+    const subtotalCarrinho = arredondarValorMonetario(itensFinalizados.reduce((acc, item) => {
         return acc + (Number(item.qtd) || 0) * Number(item.preco_venda ?? item.preco ?? 0);
     }, 0));
-    const desconto = arredondarValorMonetario(Math.min(descontoVendaAtual, subtotal));
-    const total = arredondarValorMonetario(Math.max(0, subtotal - desconto));
+    const subtotal = vendaConfirmadaNoBackend
+        ? arredondarValorMonetario(detalhesPagamento.gatewaySubtotal)
+        : subtotalCarrinho;
+    const desconto = vendaConfirmadaNoBackend
+        ? arredondarValorMonetario(detalhesPagamento.gatewayDiscount)
+        : arredondarValorMonetario(Math.min(descontoVendaAtual, subtotal));
+    const total = vendaConfirmadaNoBackend
+        ? arredondarValorMonetario(detalhesPagamento.gatewayAmount)
+        : arredondarValorMonetario(Math.max(0, subtotal - desconto));
     const valorJuros = arredondarValorMonetario(Math.max(0, Number(detalhesPagamento.valorJuros) || 0));
-    const totalFinal = arredondarValorMonetario(total + valorJuros);
+    const totalFinal = vendaConfirmadaNoBackend ? total : arredondarValorMonetario(total + valorJuros);
     const formaPagamento = String(detalhesPagamento.formaPagamento || '').trim();
     const recebido = arredondarValorMonetario(detalhesPagamento.recebido);
     const troco = arredondarValorMonetario(detalhesPagamento.troco);
@@ -1884,33 +2067,35 @@ export async function finalizarVenda(detalhesPagamento = {}) {
     const botaoPagamento = document.querySelector('#painelInterativoLateral button[onclick*="concluirPagamento"], #painelInterativoLateral button[onclick*="concluirCredito"]');
     if (botaoPagamento) botaoPagamento.disabled = true;
     const db = getSupabase();
-    try {
-        const { error } = await db.from('vendas').insert([{
-            empresa_id: empresaAtualId,
-            operador: usuarioAtual.email,
-            operador_nome: window.vendedorAtual?.nome
-                || localStorage.getItem(obterChaveNomeOperador(empresaAtualId, usuarioAtual.id))
-                || usuarioAtual.email,
-            valor_total: totalFinal,
-            valor_subtotal: subtotal,
-            valor_juros: valorJuros,
-            itens: itensFinalizados,
-            forma_pagamento: formaPagamento,
-            cliente_cpf: cpf || null,
-            desconto,
-            parcelas: detalhesPagamento.parcelas || null,
-            maquininha_nome: detalhesPagamento.maquininhaNome || null,
-            taxa_aplicada: Number.isFinite(Number(detalhesPagamento.taxaAplicada))
-                ? Number(detalhesPagamento.taxaAplicada)
-                : null
-        }]);
-        if (error) throw error;
-    } catch (error) {
-        console.error('PDV-VS: Erro ao registrar venda:', error);
-        alert(`PDV-VS: Erro ao registrar venda: ${error.message}`);
-        finalizandoVenda = false;
-        if (botaoPagamento) botaoPagamento.disabled = false;
-        return;
+    if (!vendaConfirmadaNoBackend) {
+        try {
+            const { error } = await db.from('vendas').insert([{
+                empresa_id: empresaAtualId,
+                operador: usuarioAtual.email,
+                operador_nome: window.vendedorAtual?.nome
+                    || localStorage.getItem(obterChaveNomeOperador(empresaAtualId, usuarioAtual.id))
+                    || usuarioAtual.email,
+                valor_total: totalFinal,
+                valor_subtotal: subtotal,
+                valor_juros: valorJuros,
+                itens: itensFinalizados,
+                forma_pagamento: formaPagamento,
+                cliente_cpf: cpf || null,
+                desconto,
+                parcelas: detalhesPagamento.parcelas || null,
+                maquininha_nome: detalhesPagamento.maquininhaNome || null,
+                taxa_aplicada: Number.isFinite(Number(detalhesPagamento.taxaAplicada))
+                    ? Number(detalhesPagamento.taxaAplicada)
+                    : null
+            }]);
+            if (error) throw error;
+        } catch (error) {
+            console.error('PDV-VS: Erro ao registrar venda:', error);
+            alert(`PDV-VS: Erro ao registrar venda: ${error.message}`);
+            finalizandoVenda = false;
+            if (botaoPagamento) botaoPagamento.disabled = false;
+            return;
+        }
     }
 
     prepararCupomVenda({
@@ -1925,7 +2110,7 @@ export async function finalizarVenda(detalhesPagamento = {}) {
         cpf
     });
     const errosSincronizacao = [];
-    for (const item of itensFinalizados) {
+    for (const item of (vendaConfirmadaNoBackend ? [] : itensFinalizados)) {
         try {
             let estoqueBaixado = false;
             let erroEstoque = null;
@@ -1968,22 +2153,26 @@ export async function finalizarVenda(detalhesPagamento = {}) {
         }
     }
 
-    const novoFat = faturamentoDia + totalFinal;
-    setFaturamentoDia(novoFat); 
-    const txtFat = document.getElementById('txtFaturamentoDia');
-    if (txtFat) txtFat.innerText = `R$ ${novoFat.toFixed(2)}`;
+    if (vendaConfirmadaNoBackend) {
+        await verificarStatusCaixaServidor();
+    } else {
+        const novoFat = faturamentoDia + totalFinal;
+        setFaturamentoDia(novoFat);
+        const txtFat = document.getElementById('txtFaturamentoDia');
+        if (txtFat) txtFat.innerText = `R$ ${novoFat.toFixed(2)}`;
 
-    try {
-        const { data: caixaAtualizado, error: erroAtualizacaoCaixa } = await db.from('caixas').update({
-            faturamento_dia: novoFat, updated_at: new Date().toISOString()
-        }).eq('empresa_id', empresaAtualId).eq('user_id', usuarioAtual.id).eq('status', 'ABERTO')
-            .select('id')
-            .maybeSingle();
-        if (erroAtualizacaoCaixa || !caixaAtualizado) {
-            errosSincronizacao.push(`faturamento do caixa: ${erroAtualizacaoCaixa?.message || 'não há sessão de caixa aberta para atualizar'}`);
+        try {
+            const { data: caixaAtualizado, error: erroAtualizacaoCaixa } = await db.from('caixas').update({
+                faturamento_dia: novoFat, updated_at: new Date().toISOString()
+            }).eq('empresa_id', empresaAtualId).eq('user_id', usuarioAtual.id).eq('status', 'ABERTO')
+                .select('id')
+                .maybeSingle();
+            if (erroAtualizacaoCaixa || !caixaAtualizado) {
+                errosSincronizacao.push(`faturamento do caixa: ${erroAtualizacaoCaixa?.message || 'não há sessão de caixa aberta para atualizar'}`);
+            }
+        } catch (error) {
+            errosSincronizacao.push(`faturamento do caixa: ${error.message}`);
         }
-    } catch (error) {
-        errosSincronizacao.push(`faturamento do caixa: ${error.message}`);
     }
 
     setItensVenda([]);

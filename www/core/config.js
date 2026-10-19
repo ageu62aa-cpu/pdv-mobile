@@ -104,7 +104,7 @@ function iniciarSincronizacaoRealtime() {
         .on('postgres_changes', { event: '*', schema: 'public', table: 'operadores', filter: `empresa_id=eq.${empresaAtualId}` }, () => {
             if (typeof carregarGestaoOperadores === 'function') carregarGestaoOperadores();
         })
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'vendas', filter: `empresa_id=eq.${empresaAtualId}` }, () => {
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'vendas', filter: `empresa_id=eq.${empresaAtualId}` }, () => {
             if (typeof carregarGestaoOperadores === 'function') carregarGestaoOperadores();
         })
         .subscribe();

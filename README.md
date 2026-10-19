@@ -23,11 +23,15 @@ Aplique as migrations até `20261018193000_backfill_terms_acceptance_for_existin
 
 A migration `20261019010000_add_tenant_brand_theme.sql` adiciona `empresas.theme_color` e a RPC protegida que valida o vínculo do usuário antes de atualizar a cor da empresa. Aplique-a para habilitar a persistência da personalização de marca.
 
+A migration `20261020120000_add_pix_gateway_sales.sql` adiciona a configuração de Pix por empresa, o estado pendente das cobranças, o armazenamento criptografado de credenciais de subcontas e a confirmação idempotente do webhook. Aplique-a antes de publicar `pdv-asaas` e `asaas-webhook`.
+
+As migrations `20261019192000_add_company_gateway_and_plan_fields.sql`, `20261020130000_migrate_legacy_asaas_gateway_accounts.sql` e `20261020140000_sync_asaas_subscription_plan_fields.sql` adicionam os campos canônicos de modo de gateway, aceite do onboarding, credenciais criptografadas e plano, preservam subcontas já cadastradas e sincronizam plano/status após confirmação da assinatura.
+
 A migration SaaS instala os cinco planos, as assinaturas, os registros de aceite, os limites de produtos/operadores/dispositivos e as funções de sessão e entitlement. Ela remove sessões legadas sem tenant associado, pois elas não podem ser usadas como sessões válidas. Faça backup e valide em homologação antes de aplicar em produção.
 
 ## Edge Functions e Asaas
 
-Este projeto é um PWA estático; a chave do Asaas deve permanecer exclusivamente nos secrets das Supabase Edge Functions. Nunca coloque `ASAAS_API_KEY` no código de `www/`, em arquivos publicados ou no repositório. Use `supabase/functions/.env.example` como referência e crie um arquivo local não versionado `supabase/functions/.env.local`, preenchendo `ASAAS_API_KEY`, `ASAAS_WEBHOOK_TOKEN` e, opcionalmente, `ASAAS_API_URL` (produção: `https://api.asaas.com/v3`; sandbox: `https://api-sandbox.asaas.com/v3`).
+Este projeto é um PWA estático; a chave master do Asaas deve permanecer exclusivamente nos Supabase Secrets e nunca em `www/`, arquivos publicados, `.env.example` ou no repositório. Configure `ASAAS_MASTER_API_KEY` diretamente no painel de secrets do projeto Supabase. Ela é usada exclusivamente para mensalidades do SaaS e criação de subcontas de lojistas; cobranças de venda usam a chave da subconta, armazenada criptografada. Use `supabase/functions/.env.example` para os outros secrets e, se necessário para desenvolvimento local, crie `supabase/functions/.env.local` (não versionado) com `ASAAS_WEBHOOK_TOKEN`, `ASAAS_CREDENTIALS_ENCRYPTION_KEY`, `SPLIT_WALLET_ID` e `ASAAS_API_URL` (produção: `https://api.asaas.com/v3`; sandbox: `https://api-sandbox.asaas.com/v3`). Gere `ASAAS_CREDENTIALS_ENCRYPTION_KEY` aleatoriamente com 32 bytes codificados em Base64 e mantenha-a estável: ela protege as chaves de API das subcontas gravadas no banco. Nunca use as credenciais de produção que foram compartilhadas em conversas; revogue-as e gere novas.
 
 Configure os secrets e publique as funções com a Supabase CLI:
 
@@ -36,9 +40,12 @@ supabase secrets set --env-file supabase/functions/.env.local
 supabase functions deploy empresa-signup
 supabase functions deploy asaas
 supabase functions deploy asaas-webhook
+supabase functions deploy pdv-asaas
 ```
 
-A função de webhook deve ser cadastrada no painel Asaas como `https://<PROJECT_REF>.supabase.co/functions/v1/asaas-webhook`, com o mesmo token configurado em `ASAAS_WEBHOOK_TOKEN`, para os eventos `PAYMENT_RECEIVED` e `PAYMENT_CONFIRMED`. A tela administrativa informa quando a chave da API não está configurada.
+A função de webhook deve estar acessível em `https://<PROJECT_REF>.supabase.co/functions/v1/asaas-webhook`, com o mesmo token configurado em `ASAAS_WEBHOOK_TOKEN`, para os eventos `PAYMENT_RECEIVED` e `PAYMENT_CONFIRMED`. Cadastre essa URL também na conta master para receber os pagamentos das assinaturas SaaS; a conexão de cada subconta do PDV registra automaticamente o webhook para as vendas daquela loja. A conta principal precisa ser uma pessoa jurídica habilitada pelo Asaas para criar subcontas; o titular da loja recebe o e-mail de ativação e cadastra os dados bancários diretamente no Asaas. Taxas de criação/uso de subconta dependem do contrato Asaas. O split de R$ 0,10 é enviado em cada cobrança Pix de venda para `SPLIT_WALLET_ID`; a assinatura do PDV permanece separada e é cobrada diretamente na conta master. A venda fica pendente até o webhook confirmar o pagamento e o estado operacional do caixa não é alterado para “PAGO”.
+
+O QR Pix próprio é uma opção independente: o operador exibe o QR/chave configurado e confirma manualmente o recebimento. Cobranças manuais não usam o gateway nem o split. A tela administrativa informa quando a conexão da loja com o Asaas não está configurada.
 
 PIX cria a assinatura e apresenta o link inicial de cobrança quando o Asaas o disponibiliza. O backend aceita token de cartão, mas a tela ainda não integra uma etapa de tokenização segura do SDK/fluxo oficial do Asaas; não envie número completo do cartão ou CVV ao PDV. Em produção, confirme com o Asaas a habilitação de tokenização antes de disponibilizar a opção de cartão.
 
