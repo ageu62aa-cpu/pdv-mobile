@@ -6,11 +6,11 @@ const formatarMoeda = valor => Number(valor).toLocaleString('pt-BR', {
 });
 const ordemPlanos = ['gratis', 'bronze', 'prata', 'ouro', 'diamante'];
 const catalogoPlanos = [
-    { id: 'gratis', nome: 'Grátis', preco_mensal: 0, limite_operadores: 0, limite_dispositivos: 1, limite_produtos: 100, dias_historico: 7, limite_notas_mensais: 0, icone: 'fa-gift', cor: 'text-gray-200', borda: 'border-gray-700' },
-    { id: 'bronze', nome: 'Bronze', preco_mensal: 29.99, limite_operadores: 1, limite_dispositivos: 2, limite_produtos: 1000, dias_historico: 30, limite_notas_mensais: 50, icone: 'fa-medal', cor: 'text-amber-600', borda: 'border-amber-700' },
-    { id: 'prata', nome: 'Prata', preco_mensal: 49.99, limite_operadores: 3, limite_dispositivos: 4, limite_produtos: 3000, dias_historico: 90, limite_notas_mensais: 200, icone: 'fa-medal', cor: 'text-slate-300', borda: 'border-slate-500' },
-    { id: 'ouro', nome: 'Ouro', preco_mensal: 59.99, limite_operadores: 5, limite_dispositivos: 6, limite_produtos: 5000, dias_historico: 365, limite_notas_mensais: 500, icone: 'fa-medal', cor: 'text-yellow-400', borda: 'border-yellow-700' },
-    { id: 'diamante', nome: 'Diamante', preco_mensal: 99.99, limite_operadores: 10, limite_dispositivos: 12, limite_produtos: 10000, dias_historico: null, limite_notas_mensais: null, icone: 'fa-gem', cor: 'text-cyan-300', borda: 'border-cyan-700' }
+    { id: 'gratis', nome: 'Grátis', preco_mensal: 0, limite_operadores: 0, limite_dispositivos: 1, limite_produtos: 100, dias_historico: 7, limite_notas_mensais: 0, icone: 'fa-gift', borda: 'border-gray-700' },
+    { id: 'bronze', nome: 'Bronze', preco_mensal: 29.99, limite_operadores: 1, limite_dispositivos: 2, limite_produtos: 1000, dias_historico: 30, limite_notas_mensais: 50, icone: 'fa-medal', borda: 'border-amber-700' },
+    { id: 'prata', nome: 'Prata', preco_mensal: 49.99, limite_operadores: 3, limite_dispositivos: 4, limite_produtos: 3000, dias_historico: 90, limite_notas_mensais: 200, icone: 'fa-medal', borda: 'border-slate-500' },
+    { id: 'ouro', nome: 'Ouro', preco_mensal: 59.99, limite_operadores: 5, limite_dispositivos: 6, limite_produtos: 5000, dias_historico: 365, limite_notas_mensais: 500, icone: 'fa-medal', borda: 'border-yellow-700' },
+    { id: 'diamante', nome: 'Diamante', preco_mensal: 99.99, limite_operadores: 10, limite_dispositivos: 12, limite_produtos: 10000, dias_historico: null, limite_notas_mensais: null, icone: 'fa-gem', borda: 'border-cyan-700' }
 ];
 
 export async function initAdminPlanos(container) {
@@ -98,10 +98,10 @@ export async function initAdminPlanos(container) {
         const atual = plan.id === planoAtualId;
         const superior = ordemPlanos.indexOf(plan.id) > indicePlanoAtual;
         return `
-            <article class="flex w-[84vw] max-w-[20rem] shrink-0 snap-start flex-col rounded-2xl border ${atual ? 'border-emerald-500 bg-gradient-to-b from-emerald-950/40 to-gray-900 ring-1 ring-emerald-500/30' : `${plan.borda} bg-gray-900/70`} p-4 shadow-lg shadow-black/10 transition hover:-translate-y-0.5 hover:bg-gray-800/90 sm:w-auto">
+            <article class="plan-card flex w-[84vw] max-w-[20rem] shrink-0 snap-start flex-col rounded-2xl border ${atual ? 'border-emerald-500 bg-gradient-to-b from-emerald-950/40 to-gray-900 ring-1 ring-emerald-500/30' : `${plan.borda} bg-gray-900/70`} p-4 shadow-lg shadow-black/10 transition hover:-translate-y-0.5 hover:bg-gray-800/90 sm:w-auto">
                 <div class="flex min-h-10 items-center justify-between gap-2">
                     <h3 class="flex min-w-0 items-center gap-2 text-base font-bold text-white">
-                        <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gray-800 ${plan.cor}" aria-hidden="true"><i class="fa-solid ${plan.icone}"></i></span>
+                        <span class="plan-tier-icon flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" data-plan-tier="${plan.id}" aria-hidden="true"><i class="fa-solid ${plan.icone}"></i></span>
                         <span>${plan.nome}</span>
                     </h3>
                     ${atual ? '<span class="shrink-0 rounded-full bg-emerald-900/80 px-2 py-1 text-[10px] font-bold text-emerald-300">Plano atual</span>' : ''}
