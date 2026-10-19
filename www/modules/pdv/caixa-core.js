@@ -2019,6 +2019,8 @@ export function atualizarTabelaVenda() {
     const txtTotal = document.getElementById('txtTotal');
     const listaCarrinho = document.getElementById('listaCarrinhoItens');
     const carrinhoVazio = document.getElementById('listaCarrinhoVazio');
+    const painelCarrinho = document.getElementById('cartPanel');
+    const marcaDaguaCarrinho = painelCarrinho?.querySelector('.cart-brand-watermark');
     const txtResumoSubtotal = document.getElementById('txtResumoSubtotal');
     const txtResumoTotal = document.getElementById('txtResumoTotalGeral');
 
@@ -2037,6 +2039,7 @@ export function atualizarTabelaVenda() {
     if (txtResumoSubtotal) txtResumoSubtotal.innerText = `R$ ${totalVenda.toFixed(2)}`;
     if (txtResumoTotal) txtResumoTotal.innerText = `R$ ${totalLiquido.toFixed(2)}`;
     atualizarResumoPagamento();
+    marcaDaguaCarrinho?.classList.toggle('hidden', itensVenda.length > 0);
 
     if (itensVenda.length === 0) {
         if (tbody) tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-slate-400">Nenhum produto adicionado na venda.</td></tr>';
