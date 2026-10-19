@@ -6,7 +6,7 @@ const palettes = {
     },
     yellow: {
         label: 'Amarelo',
-        shades: ['#fffbeb', '#fef3c7', '#fde68a', '#fcd34d', '#fbbf24', '#facc15', '#eab308', '#ca8a04', '#a16207', '#713f12'],
+        shades: ['#fffbeb', '#fef3c7', '#fde68a', '#fcd34d', '#fde047', '#facc15', '#facc15', '#eab308', '#a16207', '#713f12'],
         filter: 'hue-rotate(-62deg) saturate(1.25)'
     },
     pink: {
@@ -102,7 +102,10 @@ function ensureThemeStyles() {
     rules.push(':root[data-brand-theme]:not([data-brand-theme="green"]) #pdvMain button[class~="bg-gray-900"]:hover,:root[data-brand-theme]:not([data-brand-theme="green"]) #pdvMain button[class~="bg-gray-800"]:hover,:root[data-brand-theme]:not([data-brand-theme="green"]) #pdvMain button[class~="bg-gray-700"]:hover,:root[data-brand-theme]:not([data-brand-theme="green"]) #pdvMain button[class~="bg-gray-900/60"]:hover,:root[data-brand-theme]:not([data-brand-theme="green"]) #adminLayout button[class~="bg-gray-900"]:hover,:root[data-brand-theme]:not([data-brand-theme="green"]) #adminLayout button[class~="bg-gray-800"]:hover,:root[data-brand-theme]:not([data-brand-theme="green"]) #adminLayout button[class~="bg-gray-700"]:hover{background-color:var(--theme-control-hover)!important}');
     rules.push(':root[data-brand-theme]:not([data-brand-theme="green"]) #pdvMain #inputBusca{background-color:var(--theme-control)!important;border-color:var(--theme-border-soft)!important;color:#1f2937!important}');
     rules.push(':root[data-brand-theme]:not([data-brand-theme="green"]) #pdvMain #inputBusca::placeholder{color:#64748b!important}');
+    rules.push(':root[data-brand-theme]:not([data-brand-theme="green"]) #pdvMain input:not([type="checkbox"]):not([type="radio"]),:root[data-brand-theme]:not([data-brand-theme="green"]) #pdvMain select,:root[data-brand-theme]:not([data-brand-theme="green"]) #pdvMain textarea,:root[data-brand-theme]:not([data-brand-theme="green"]) #adminLayout input:not([type="checkbox"]):not([type="radio"]),:root[data-brand-theme]:not([data-brand-theme="green"]) #adminLayout select,:root[data-brand-theme]:not([data-brand-theme="green"]) #adminLayout textarea{background-color:var(--theme-control)!important;border-color:var(--theme-border-soft)!important;color:#1f2937!important}');
+    rules.push(':root[data-brand-theme]:not([data-brand-theme="green"]) #pdvMain input::placeholder,:root[data-brand-theme]:not([data-brand-theme="green"]) #pdvMain textarea::placeholder,:root[data-brand-theme]:not([data-brand-theme="green"]) #adminLayout input::placeholder,:root[data-brand-theme]:not([data-brand-theme="green"]) #adminLayout textarea::placeholder{color:#64748b!important}');
     rules.push(':root[data-brand-theme]:not([data-brand-theme="green"]) #pdvMain #containerInputBusca>svg{color:#64748b!important}');
+    rules.push(':root[data-brand-theme]:not([data-brand-theme="green"]) #pdvLegalFooter{background:var(--theme-surface)!important;color:#334155!important}');
     rules.push(':root[data-brand-theme]:not([data-brand-theme="green"]) #pdvMain [class~="bg-emerald-950"],:root[data-brand-theme]:not([data-brand-theme="green"]) #pdvMain [class~="bg-emerald-950/50"],:root[data-brand-theme]:not([data-brand-theme="green"]) #pdvMain [class~="bg-emerald-950/60"],:root[data-brand-theme]:not([data-brand-theme="green"]) #pdvMain [class~="bg-emerald-950/80"]{background-color:var(--theme-accent-soft)!important;border-color:var(--theme-border-soft)!important;color:var(--theme-accent-ink)!important}');
     rules.push(':root[data-brand-theme]:not([data-brand-theme="green"]) #pdvMain .text-gray-100:not(input):not(select):not(textarea),:root[data-brand-theme]:not([data-brand-theme="green"]) #pdvMain .text-gray-200:not(input):not(select):not(textarea),:root[data-brand-theme]:not([data-brand-theme="green"]) #pdvMain .text-gray-300:not(input):not(select):not(textarea),:root[data-brand-theme]:not([data-brand-theme="green"]) #pdvMain .text-gray-400:not(input):not(select):not(textarea),:root[data-brand-theme]:not([data-brand-theme="green"]) #adminLayout .text-gray-100:not(input):not(select):not(textarea),:root[data-brand-theme]:not([data-brand-theme="green"]) #adminLayout .text-gray-200:not(input):not(select):not(textarea),:root[data-brand-theme]:not([data-brand-theme="green"]) #adminLayout .text-gray-300:not(input):not(select):not(textarea),:root[data-brand-theme]:not([data-brand-theme="green"]) #adminLayout .text-gray-400:not(input):not(select):not(textarea){color:#334155!important}');
     rules.push(':root[data-brand-theme]:not([data-brand-theme="green"]) #pdvHeader .text-white:not(button),:root[data-brand-theme]:not([data-brand-theme="green"]) #adminHeader .text-white:not(button),:root[data-brand-theme]:not([data-brand-theme="green"]) #adminLayout .text-white:not(button):not(button *),:root[data-brand-theme]:not([data-brand-theme="green"]) #pdvMain .text-white:not(button):not(button *){color:#1f2937!important}');
@@ -130,11 +133,11 @@ function applyTheme(themeColor) {
     root.style.setProperty('--theme-bg-subtle', selected === 'green'
         ? 'rgba(2,44,34,.3)'
         : `color-mix(in srgb, ${palette.shades[1]} 72%, white)`);
-    root.style.setProperty('--theme-canvas', selected === 'green' ? '#111827' : `color-mix(in srgb, ${palette.shades[6]} 4%, #f8fafc)`);
-    root.style.setProperty('--theme-surface', selected === 'green' ? '#1f2937' : `color-mix(in srgb, ${palette.shades[6]} 6%, white)`);
-    root.style.setProperty('--theme-control', selected === 'green' ? '#111827' : `color-mix(in srgb, ${palette.shades[6]} 5%, white)`);
-    root.style.setProperty('--theme-control-hover', selected === 'green' ? '#1f2937' : `color-mix(in srgb, ${palette.shades[6]} 12%, white)`);
-    root.style.setProperty('--theme-accent-soft', selected === 'green' ? 'rgba(2,44,34,.3)' : `color-mix(in srgb, ${palette.shades[6]} 12%, white)`);
+    root.style.setProperty('--theme-canvas', selected === 'green' ? '#111827' : palette.shades[0]);
+    root.style.setProperty('--theme-surface', selected === 'green' ? '#1f2937' : `color-mix(in srgb, ${palette.shades[0]} 76%, white)`);
+    root.style.setProperty('--theme-control', selected === 'green' ? '#111827' : `color-mix(in srgb, ${palette.shades[1]} 70%, white)`);
+    root.style.setProperty('--theme-control-hover', selected === 'green' ? '#1f2937' : `color-mix(in srgb, ${palette.shades[2]} 60%, white)`);
+    root.style.setProperty('--theme-accent-soft', selected === 'green' ? 'rgba(2,44,34,.3)' : `color-mix(in srgb, ${palette.shades[1]} 72%, white)`);
     root.style.setProperty('--theme-accent-ink', selected === 'green' ? '#a7f3d0' : palette.shades[7]);
     root.style.setProperty('--theme-border-soft', selected === 'green' ? '#374151' : `color-mix(in srgb, ${palette.shades[6]} 20%, #e2e8f0)`);
     root.style.setProperty('--theme-border', palette.shades[6]);
