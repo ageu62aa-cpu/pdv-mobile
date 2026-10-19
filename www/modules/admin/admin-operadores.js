@@ -74,7 +74,7 @@ export async function initAdminOperadores(containerEl) {
             <section class="space-y-3 border-t border-gray-700 pt-5">
                 <div>
                     <h3 class="text-sm font-bold text-white">Vendas de hoje por nome de comissão (F2)</h3>
-                    <p class="text-xs text-gray-400">Abra cada janela para conferir pagamentos, juros e vendas do operador.</p>
+                    <p class="theme-commission-description text-xs text-gray-400">Abra cada janela para conferir pagamentos, juros e vendas do operador.</p>
                 </div>
                 <div id="resumo-comissao-operadores" class="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <p class="text-sm text-gray-400">Carregando faturamento dos operadores...</p>
@@ -273,7 +273,16 @@ export async function carregarGestaoOperadores() {
     }
 
     const usuarioAdministrador = window.usuarioAtual;
-    const administradorId = usuarioAdministrador?.id || empresaIdDoAdmin;
+    const perfilAdministrador = (perfis || []).find(perfil =>
+        perfil.cargo === 'admin_mercado' && perfil.user_id === usuarioAdministrador?.id
+    ) || (perfis || []).find(perfil => perfil.cargo === 'admin_mercado');
+    const administradorId = perfilAdministrador?.user_id || usuarioAdministrador?.id || empresaIdDoAdmin;
+    const idsAdministradores = new Set([
+        administradorId,
+        ...(perfis || [])
+            .filter(perfil => perfil.cargo === 'admin_mercado')
+            .map(perfil => perfil.user_id)
+    ]);
     const administradorCaixaMaisAntigo = (caixas || [])
         .filter(caixa => caixa.user_id === administradorId)
         .sort((a, b) => String(a.created_at || '').localeCompare(String(b.created_at || '')))[0];
@@ -285,10 +294,10 @@ export async function carregarGestaoOperadores() {
         created_at: administradorCaixaMaisAntigo?.created_at || ''
     };
     const operadoresPorId = new Map((operadoresTabela || [])
-        .filter(op => (op.user_id || op.id) !== administradorId)
+        .filter(op => !idsAdministradores.has(op.user_id || op.id))
         .map(op => [op.user_id || op.id, op]));
     const perfisDaEmpresa = (perfis || [])
-        .filter(perfil => perfil.cargo === 'operador' && perfil.user_id !== administradorId)
+        .filter(perfil => perfil.cargo === 'operador' && !idsAdministradores.has(perfil.user_id))
         .map(perfil => ({
             ...perfil,
             ...(operadoresPorId.get(perfil.user_id) || {}),
@@ -304,10 +313,10 @@ export async function carregarGestaoOperadores() {
         }
     });
 
-    const idsPerfis = new Set([administradorId, ...perfisDaEmpresa.map(p => p.user_id)]);
+    const idsPerfis = new Set([...idsAdministradores, ...perfisDaEmpresa.map(p => p.user_id)]);
     (operadoresTabela || []).forEach(op => {
         const opId = op.user_id || op.id;
-        if (opId && opId !== administradorId && !idsPerfis.has(opId)) {
+        if (opId && !idsAdministradores.has(opId) && !idsPerfis.has(opId)) {
             perfisDaEmpresa.push({ 
                 user_id: opId, 
                 cargo: 'operador', 
@@ -320,7 +329,7 @@ export async function carregarGestaoOperadores() {
     });
 
     (caixas || []).forEach(caixa => {
-        if (caixa.user_id && caixa.user_id !== administradorId && !idsPerfis.has(caixa.user_id)) {
+        if (caixa.user_id && !idsAdministradores.has(caixa.user_id) && !idsPerfis.has(caixa.user_id)) {
             perfisDaEmpresa.push({
                 user_id: caixa.user_id,
                 cargo: 'operador',
@@ -503,7 +512,7 @@ async function carregarFaturamentoOperadoresHoje(empresaId) {
             <summary class="flex cursor-pointer list-none items-center justify-between gap-3 p-4 hover:bg-gray-800/70">
                 <span class="min-w-0">
                     <strong class="block truncate text-sm text-white">${escaparTextoHtml(nome)}</strong>
-                    <span class="text-xs text-gray-400">${grupo.vendas.length} venda(s) no dia</span>
+                    <span class="theme-commission-description text-xs text-gray-400">${grupo.vendas.length} venda(s) no dia</span>
                 </span>
                 <span class="text-right shrink-0">
                     <strong class="block text-sm text-emerald-300">${formatarDinheiro(grupo.total)}</strong>

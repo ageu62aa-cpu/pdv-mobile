@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pdv-vs-v56';
+const CACHE_NAME = 'pdv-vs-v58';
 const urlsToCache = [
     '/',
     '/index.html',

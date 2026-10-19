@@ -96,6 +96,7 @@ function ensureThemeStyles() {
     rules.push(':root[data-brand-theme]:not([data-brand-theme="green"]) body.bg-gray-900{background-color:var(--theme-canvas)!important;color:#334155!important}');
     rules.push(':root[data-brand-theme]:not([data-brand-theme="green"]) #pdvHeader,:root[data-brand-theme]:not([data-brand-theme="green"]) #adminHeader{background-color:var(--theme-surface)!important;border-color:var(--theme-border-soft)!important}');
     rules.push(':root[data-brand-theme]:not([data-brand-theme="green"]) #pdvMain,:root[data-brand-theme]:not([data-brand-theme="green"]) #adminLayout{background-color:var(--theme-canvas)!important}');
+    rules.push(':root[data-brand-theme]:not([data-brand-theme="green"]) .theme-commission-description{color:#334155!important;font-weight:600}');
     rules.push(':root[data-brand-theme]:not([data-brand-theme="green"]) #pdvMain .bg-gray-800,:root[data-brand-theme]:not([data-brand-theme="green"]) #adminLayout .bg-gray-800{background-color:var(--theme-surface)!important;border-color:var(--theme-border-soft)!important;color:#334155}');
     rules.push(':root[data-brand-theme]:not([data-brand-theme="green"]) #pdvMain .bg-gray-900:not(input):not(select):not(textarea):not(button),:root[data-brand-theme]:not([data-brand-theme="green"]) #adminLayout .bg-gray-900:not(input):not(select):not(textarea):not(button){background-color:var(--theme-canvas)!important;color:#334155}');
     rules.push(':root[data-brand-theme]:not([data-brand-theme="green"]) #pdvMain button[class~="bg-gray-900"],:root[data-brand-theme]:not([data-brand-theme="green"]) #pdvMain button[class~="bg-gray-800"],:root[data-brand-theme]:not([data-brand-theme="green"]) #pdvMain button[class~="bg-gray-700"],:root[data-brand-theme]:not([data-brand-theme="green"]) #pdvMain button[class~="bg-gray-850"],:root[data-brand-theme]:not([data-brand-theme="green"]) #pdvMain button[class~="bg-gray-900/60"],:root[data-brand-theme]:not([data-brand-theme="green"]) #pdvMain button[class~="bg-gray-800/90"],:root[data-brand-theme]:not([data-brand-theme="green"]) #adminLayout button[class~="bg-gray-900"],:root[data-brand-theme]:not([data-brand-theme="green"]) #adminLayout button[class~="bg-gray-800"],:root[data-brand-theme]:not([data-brand-theme="green"]) #adminLayout button[class~="bg-gray-700"]{background-color:var(--theme-control)!important;border-color:var(--theme-border-soft)!important;color:#334155!important}');
@@ -153,12 +154,12 @@ function applyTheme(themeColor) {
     root.style.setProperty('--theme-primary', palette.shades[6]);
     root.style.setProperty('--theme-bg-subtle', selected === 'green'
         ? 'rgba(2,44,34,.3)'
-        : `color-mix(in srgb, ${palette.shades[1]} 72%, white)`);
-    root.style.setProperty('--theme-canvas', selected === 'green' ? '#111827' : palette.shades[0]);
-    root.style.setProperty('--theme-surface', selected === 'green' ? '#1f2937' : `color-mix(in srgb, ${palette.shades[0]} 76%, white)`);
-    root.style.setProperty('--theme-control', selected === 'green' ? '#111827' : `color-mix(in srgb, ${palette.shades[1]} 70%, white)`);
-    root.style.setProperty('--theme-control-hover', selected === 'green' ? '#1f2937' : `color-mix(in srgb, ${palette.shades[2]} 60%, white)`);
-    root.style.setProperty('--theme-accent-soft', selected === 'green' ? 'rgba(2,44,34,.3)' : `color-mix(in srgb, ${palette.shades[1]} 72%, white)`);
+        : `color-mix(in srgb, ${palette.shades[2]} 52%, white)`);
+    root.style.setProperty('--theme-canvas', selected === 'green' ? '#111827' : `color-mix(in srgb, ${palette.shades[2]} 55%, white)`);
+    root.style.setProperty('--theme-surface', selected === 'green' ? '#1f2937' : `color-mix(in srgb, ${palette.shades[1]} 48%, white)`);
+    root.style.setProperty('--theme-control', selected === 'green' ? '#111827' : `color-mix(in srgb, ${palette.shades[1]} 62%, white)`);
+    root.style.setProperty('--theme-control-hover', selected === 'green' ? '#1f2937' : `color-mix(in srgb, ${palette.shades[2]} 42%, white)`);
+    root.style.setProperty('--theme-accent-soft', selected === 'green' ? 'rgba(2,44,34,.3)' : `color-mix(in srgb, ${palette.shades[2]} 42%, white)`);
     root.style.setProperty('--theme-accent-ink', selected === 'green' ? '#a7f3d0' : palette.shades[7]);
     root.style.setProperty('--theme-border-soft', selected === 'green' ? '#374151' : `color-mix(in srgb, ${palette.shades[6]} 20%, #e2e8f0)`);
     root.style.setProperty('--theme-border', palette.shades[6]);

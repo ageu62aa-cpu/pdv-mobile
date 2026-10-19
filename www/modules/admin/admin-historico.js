@@ -70,7 +70,7 @@ export async function initAdminHistorico(containerEl) {
             <div class="flex flex-wrap items-center justify-between gap-3">
                 <div>
                     <h2 class="text-lg font-bold text-white">Faturamento e Histórico de Vendas</h2>
-                    <p class="text-xs text-gray-400">Resumo diário administrativo, vendas por operador/comissão e detalhes de cada pagamento.</p>
+                    <p class="theme-commission-description text-xs text-gray-400">Resumo diário administrativo, vendas por operador/comissão e detalhes de cada pagamento.</p>
                 </div>
                 <button id="btn-atualizar-historico" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition-colors shadow">
                     Atualizar dados
@@ -86,7 +86,7 @@ export async function initAdminHistorico(containerEl) {
             <section class="space-y-3">
                 <div>
                     <h3 class="text-sm font-bold text-white">Faturamento diário por operador / comissão (F2)</h3>
-                    <p class="text-xs text-gray-400">Clique em um operador para expandir as vendas do dia, formas de pagamento e juros.</p>
+                    <p class="theme-commission-description text-xs text-gray-400">Clique em um operador para expandir as vendas do dia, formas de pagamento e juros.</p>
                 </div>
                 <div id="resumo-operadores-dia" class="grid grid-cols-1 lg:grid-cols-2 gap-3">
                     <p class="text-sm text-gray-400">Carregando resumo dos operadores...</p>
@@ -247,7 +247,7 @@ async function carregarHistorico() {
                 <summary class="flex cursor-pointer list-none items-center justify-between gap-3 p-4 hover:bg-gray-800/70">
                     <span class="min-w-0">
                         <strong class="block truncate text-sm text-white">${escaparTextoHtml(nome)}</strong>
-                        <span class="text-xs text-gray-400">${grupo.vendas.length} venda(s) · Comissão identificada pelo F2</span>
+                        <span class="theme-commission-description text-xs text-gray-400">${grupo.vendas.length} venda(s) · Comissão identificada pelo F2</span>
                     </span>
                     <span class="shrink-0 text-right">
                         <strong class="block text-sm text-emerald-300">${formatarDinheiro(grupo.total)}</strong>
