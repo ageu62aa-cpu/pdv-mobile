@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pdv-vs-v59';
+const CACHE_NAME = 'pdv-vs-v60';
 const urlsToCache = [
     '/',
     '/index.html',
@@ -7,7 +7,7 @@ const urlsToCache = [
     '/assets/pwa-192.png',
     '/assets/pwa-512.png',
     '/assets/icones-card.jpeg',
-    '/assets/icone-carde.jpeg',
+    '/assets/icone-carde.png',
     '/modules/auth/auth.html', // Adicionado para garantir a tela de login no cache
     '/modules/auth/auth.js',
     '/modules/pdv/caixa-core.html',
