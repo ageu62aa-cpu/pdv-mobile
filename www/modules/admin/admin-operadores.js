@@ -272,9 +272,23 @@ export async function carregarGestaoOperadores() {
         return;
     }
 
-    const operadoresPorId = new Map((operadoresTabela || []).map(op => [op.user_id || op.id, op]));
+    const usuarioAdministrador = window.usuarioAtual;
+    const administradorId = usuarioAdministrador?.id || empresaIdDoAdmin;
+    const administradorCaixaMaisAntigo = (caixas || [])
+        .filter(caixa => caixa.user_id === administradorId)
+        .sort((a, b) => String(a.created_at || '').localeCompare(String(b.created_at || '')))[0];
+    const administrador = {
+        user_id: administradorId,
+        cargo: 'admin_mercado',
+        email: usuarioAdministrador?.email || window.dadosEmpresaAtual?.email_admin || '',
+        nome_conta: usuarioAdministrador?.user_metadata?.full_name || '',
+        created_at: administradorCaixaMaisAntigo?.created_at || ''
+    };
+    const operadoresPorId = new Map((operadoresTabela || [])
+        .filter(op => (op.user_id || op.id) !== administradorId)
+        .map(op => [op.user_id || op.id, op]));
     const perfisDaEmpresa = (perfis || [])
-        .filter(perfil => perfil.cargo === 'operador')
+        .filter(perfil => perfil.cargo === 'operador' && perfil.user_id !== administradorId)
         .map(perfil => ({
             ...perfil,
             ...(operadoresPorId.get(perfil.user_id) || {}),
@@ -290,10 +304,10 @@ export async function carregarGestaoOperadores() {
         }
     });
 
-    const idsPerfis = new Set(perfisDaEmpresa.map(p => p.user_id));
+    const idsPerfis = new Set([administradorId, ...perfisDaEmpresa.map(p => p.user_id)]);
     (operadoresTabela || []).forEach(op => {
         const opId = op.user_id || op.id;
-        if (opId && !idsPerfis.has(opId)) {
+        if (opId && opId !== administradorId && !idsPerfis.has(opId)) {
             perfisDaEmpresa.push({ 
                 user_id: opId, 
                 cargo: 'operador', 
@@ -306,7 +320,7 @@ export async function carregarGestaoOperadores() {
     });
 
     (caixas || []).forEach(caixa => {
-        if (caixa.user_id && !idsPerfis.has(caixa.user_id)) {
+        if (caixa.user_id && caixa.user_id !== administradorId && !idsPerfis.has(caixa.user_id)) {
             perfisDaEmpresa.push({
                 user_id: caixa.user_id,
                 cargo: 'operador',
@@ -317,7 +331,7 @@ export async function carregarGestaoOperadores() {
         }
     });
 
-    if (perfisDaEmpresa.length === 0) {
+    if (perfisDaEmpresa.length === 0 && !administradorId) {
         gridContainer.innerHTML = `
             <div class="col-span-2 bg-gray-900/60 border border-gray-800 rounded-2xl p-8 text-center text-gray-400">
                 <i class="fa-solid fa-users-slash text-3xl text-gray-600 mb-2"></i>
@@ -375,11 +389,15 @@ export async function carregarGestaoOperadores() {
         const dataB = b.created_at || operadorB.created_at || primeiroCaixaPorUsuario.get(b.user_id)?.created_at || '';
         return String(dataA).localeCompare(String(dataB)) || String(a.user_id).localeCompare(String(b.user_id));
     });
-    
-    gridContainer.innerHTML = perfisDaEmpresa.map((perfil, index) => {
+    const perfisExibidos = administradorId ? [administrador, ...perfisDaEmpresa] : perfisDaEmpresa;
+
+    gridContainer.innerHTML = perfisExibidos.map((perfil, index) => {
+        const isAdministrador = perfil.cargo === 'admin_mercado';
         const operador = operadoresPorId.get(perfil.user_id) || {};
         const caixa = caixaMaisRecentePorUsuario.get(perfil.user_id)
-            || (caixas || []).find(c => c.operador_nome === perfil.nome_extra || c.vendedor_nome === perfil.nome_extra);
+            || (!isAdministrador && perfil.nome_extra
+                ? (caixas || []).find(c => c.operador_nome === perfil.nome_extra || c.vendedor_nome === perfil.nome_extra)
+                : null);
         const resumoHoje = obterResumoOperador(perfil);
 
         const isOpen = String(caixa?.status || '').toUpperCase() === 'ABERTO';
@@ -387,9 +405,11 @@ export async function carregarGestaoOperadores() {
         const valorTroco = Number(caixa?.valor_abertura || 0).toFixed(2);
         const sangrias = Number(caixa?.sangrias || 0);
         const terminalNumero = `#${String(index + 1).padStart(2, '0')}`;
-        const tipoPerfil = 'Operador / Caixa';
-        const nomeExibicao = perfil.nome_extra || operador.nome || operador.email
-            || caixa?.operador_nome || caixa?.vendedor_nome || caixa?.nome_operador || 'Operador';
+        const tipoPerfil = isAdministrador ? 'Administrador' : 'Operador / Caixa';
+        const nomeExibicao = isAdministrador
+            ? caixa?.operador_nome || perfil.nome_conta || perfil.email || 'Administrador'
+            : perfil.nome_extra || operador.nome || operador.email
+                || caixa?.operador_nome || caixa?.vendedor_nome || caixa?.nome_operador || 'Operador';
         const itensCancelados = cancelamentosPorUsuario.get(perfil.user_id) || 0;
 
         const cardBorder = isOpen ? 'border-emerald-500/50 bg-gray-900/90 shadow-emerald-950/20' : 'border-gray-800 bg-gray-900/60';
