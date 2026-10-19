@@ -15,6 +15,49 @@
     <!-- FontAwesome para Ícones -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
+        @media (min-width: 641px) {
+            #adminHeaderActions {
+                flex: 0 0 auto;
+                gap: 0.5rem;
+                white-space: nowrap;
+            }
+
+            #adminHeaderActions [data-open-plans-tab],
+            #adminHeaderActions #btnPWAAction {
+                width: max-content;
+                min-width: 2.5rem;
+                height: 2.5rem;
+                padding: 0 0.75rem;
+                flex: 0 0 auto;
+                white-space: nowrap;
+            }
+
+            #adminHeaderActions [data-open-plans-tab] .action-label,
+            #adminHeaderActions #btnPWAAction .action-label {
+                display: inline;
+                white-space: nowrap;
+            }
+
+            #adminHeaderActions [data-return-to-cash-register] {
+                width: 2.25rem;
+                min-width: 2.25rem;
+                height: 2.25rem;
+                padding: 0;
+                flex: 0 0 2.25rem;
+            }
+
+            #adminHeaderActions [data-return-to-cash-register] .action-label {
+                display: none;
+            }
+
+            #adminHeaderActions > a[aria-label="Sair"] {
+                width: 2.25rem;
+                min-width: 2.25rem;
+                height: 2.25rem;
+                flex: 0 0 2.25rem;
+            }
+        }
+
         @media (max-width: 640px) {
             #adminHeader {
                 gap: 0.5rem;
@@ -44,14 +87,9 @@
                 gap: 0.3rem;
             }
 
-            #adminHeaderActions a {
-                width: 2rem;
-                height: 2rem;
-                padding: 0;
-                justify-content: center;
-            }
-
+            #adminHeaderActions a,
             #adminHeaderActions button {
+                flex: 0 0 2.25rem;
                 width: 2.25rem;
                 height: 2.25rem;
                 padding: 0;
@@ -60,6 +98,14 @@
 
             #adminHeaderActions .action-label {
                 display: none;
+            }
+
+            #adminHeaderActions [data-open-plans-tab],
+            #adminHeaderActions #btnPWAAction {
+                width: 2.25rem;
+                min-width: 2.25rem;
+                height: 2.25rem;
+                padding: 0;
             }
 
             #adminLayout {
@@ -100,13 +146,12 @@
             </div>
         </div>
         <div id="adminHeaderActions" class="flex items-center gap-3">
-            <button type="button" data-open-plans-tab aria-label="Planos e assinatura" title="Planos e assinatura" class="bg-amber-600 hover:bg-amber-500 text-white w-9 h-9 rounded-lg font-bold transition-colors shadow flex items-center justify-center">
+            <button type="button" data-open-plans-tab aria-label="Meu plano" title="Planos e assinatura" class="bg-amber-600 hover:bg-amber-500 text-white rounded-lg font-bold transition-colors shadow flex items-center justify-center gap-2">
                 <i class="fa-solid fa-crown" aria-hidden="true"></i>
-                <span class="action-label ml-2 text-xs">Meu Plano</span>
+                <span class="action-label text-xs">Meu plano</span>
             </button>
-            <button type="button" data-return-to-cash-register aria-label="Voltar ao caixa" title="Voltar ao caixa" class="flex h-10 items-center justify-center gap-2 rounded-lg border border-emerald-700 bg-emerald-600 px-3 font-bold text-white shadow-sm transition hover:border-emerald-500 hover:bg-emerald-500">
+            <button type="button" data-return-to-cash-register aria-label="Voltar ao caixa" title="Voltar ao caixa" class="flex items-center justify-center rounded-lg border border-gray-600 bg-gray-700 text-gray-200 transition hover:border-emerald-600 hover:bg-gray-600 hover:text-white">
                 <i class="fa-solid fa-arrow-left-long" aria-hidden="true"></i>
-                <span class="action-label text-xs">Voltar ao caixa</span>
             </button>
             <a href="../auth/auth.html" aria-label="Sair" title="Sair" class="bg-red-900/50 hover:bg-red-900 text-red-200 w-9 h-9 rounded-lg font-bold transition-colors border border-red-800 flex items-center justify-center">
                 <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>

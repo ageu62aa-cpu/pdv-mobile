@@ -5,13 +5,13 @@ const formatarMoeda = valor => Number(valor).toLocaleString('pt-BR', {
     currency: 'BRL'
 });
 const ordemPlanos = ['gratis', 'bronze', 'prata', 'ouro', 'diamante'];
-const iconesPlanos = {
-    gratis: '🎁',
-    bronze: '🥉',
-    prata: '🥈',
-    ouro: '🥇',
-    diamante: '💎'
-};
+const catalogoPlanos = [
+    { id: 'gratis', nome: 'Grátis', preco_mensal: 0, limite_operadores: 0, limite_dispositivos: 1, limite_produtos: 100, dias_historico: 7, limite_notas_mensais: 0, icone: 'fa-gift', cor: 'text-gray-200', borda: 'border-gray-700' },
+    { id: 'bronze', nome: 'Bronze', preco_mensal: 29.99, limite_operadores: 1, limite_dispositivos: 2, limite_produtos: 1000, dias_historico: 30, limite_notas_mensais: 50, icone: 'fa-medal', cor: 'text-amber-600', borda: 'border-amber-700' },
+    { id: 'prata', nome: 'Prata', preco_mensal: 49.99, limite_operadores: 3, limite_dispositivos: 4, limite_produtos: 3000, dias_historico: 90, limite_notas_mensais: 200, icone: 'fa-medal', cor: 'text-slate-300', borda: 'border-slate-500' },
+    { id: 'ouro', nome: 'Ouro', preco_mensal: 59.99, limite_operadores: 5, limite_dispositivos: 6, limite_produtos: 5000, dias_historico: 365, limite_notas_mensais: 500, icone: 'fa-medal', cor: 'text-yellow-400', borda: 'border-yellow-700' },
+    { id: 'diamante', nome: 'Diamante', preco_mensal: 99.99, limite_operadores: 10, limite_dispositivos: 12, limite_produtos: 10000, dias_historico: null, limite_notas_mensais: null, icone: 'fa-gem', cor: 'text-cyan-300', borda: 'border-cyan-700' }
+];
 
 export async function initAdminPlanos(container) {
     container.innerHTML = `
@@ -22,9 +22,12 @@ export async function initAdminPlanos(container) {
             </header>
             <p id="status-asaas" class="rounded-lg border border-gray-700 bg-gray-900 p-3 text-xs text-gray-300" role="status">Verificando configuração de pagamentos...</p>
             <div id="plano-atual" class="rounded-xl border border-emerald-800 bg-emerald-950/30 p-4 text-sm text-emerald-200">Carregando assinatura...</div>
-            <div id="lista-planos" class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
+            <p class="text-[11px] text-gray-500 sm:hidden">Deslize os cartões para comparar todos os planos.</p>
+            <div id="status-catalogo" class="hidden rounded-lg border border-amber-800 bg-amber-950/30 p-3 text-xs text-amber-200" role="status"></div>
+            <div id="lista-planos" class="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-3 sm:grid sm:w-full sm:grid-cols-2 sm:overflow-visible sm:pb-0 xl:grid-cols-3">
                 <p class="text-sm text-gray-400">Carregando planos...</p>
             </div>
+            <p class="text-[11px] leading-relaxed text-gray-500">* A emissão fiscal depende de integração fiscal ativa e da cota disponível na API contratada.</p>
             <p id="status-assinatura" class="hidden rounded-lg p-3 text-xs" role="status"></p>
         </div>
     `;
@@ -39,8 +42,12 @@ export async function initAdminPlanos(container) {
             supabase.functions.invoke('asaas', { body: { action: 'status' } })
         ]);
 
-    if (plansError) throw plansError;
-    if (entitlementError) throw entitlementError;
+    if (plansError) {
+        console.error('Não foi possível carregar os planos cadastrados:', plansError);
+    }
+    if (entitlementError) {
+        console.error('Não foi possível consultar o plano atual:', entitlementError);
+    }
 
     const statusAsaas = document.getElementById('status-asaas');
     if (paymentStatus.error) {
@@ -56,42 +63,63 @@ export async function initAdminPlanos(container) {
         statusAsaas.className = 'rounded-lg border border-emerald-800 bg-emerald-950/40 p-3 text-xs text-emerald-200';
     }
 
-    document.getElementById('plano-atual').textContent =
-        `Plano ${entitlement?.nome || 'Grátis'} · situação ${entitlement?.status_assinatura || 'ATIVO'}`;
+    const planoAtual = document.getElementById('plano-atual');
+    if (entitlementError) {
+        planoAtual.textContent = 'Não foi possível consultar o plano e a assinatura atuais.';
+        planoAtual.className = 'rounded-xl border border-rose-800 bg-rose-950/30 p-4 text-sm text-rose-200';
+    } else {
+        planoAtual.textContent =
+            `Plano ${entitlement?.nome || 'Grátis'} · situação ${entitlement?.status_assinatura || 'ATIVO'}`;
+    }
 
     const lista = document.getElementById('lista-planos');
-    const indicePlanoAtual = ordemPlanos.indexOf(entitlement?.plano_id);
-    lista.innerHTML = (plans || []).map(plan => {
+    const planoAtualId = entitlement?.plano_id || (entitlementError ? null : 'gratis');
+    const indicePlanoAtual = ordemPlanos.indexOf(planoAtualId);
+    const planosDoBanco = new Map((plans || []).map(plan => [plan.id, plan]));
+    const statusCatalogo = document.getElementById('status-catalogo');
+    if (plansError || entitlementError || catalogoPlanos.some(plan => !planosDoBanco.has(plan.id))) {
+        statusCatalogo.textContent = 'Os cinco planos estão visíveis. Para contratar, confirme se o catálogo foi aplicado no Supabase e se os pagamentos estão configurados.';
+        statusCatalogo.classList.remove('hidden');
+    }
+
+    const planosExibidos = catalogoPlanos.map(planoPadrao => ({
+        ...planoPadrao,
+        ...planosDoBanco.get(planoPadrao.id),
+        nome: planoPadrao.nome
+    }));
+    lista.innerHTML = planosExibidos.map(plan => {
         const limites = [
-            ['Operadores de caixa', `${plan.limite_operadores} extra(s) + 1 administrador`],
-            ['Produtos', Number(plan.limite_produtos).toLocaleString('pt-BR')],
-            ['Histórico', plan.dias_historico == null ? 'Ilimitado' : `${plan.dias_historico} dias`],
-            ['Notas fiscais', plan.limite_notas_mensais == null ? 'Conforme cota da API' : `${plan.limite_notas_mensais}/mês`],
-            ['Dispositivos conectados', String(plan.limite_dispositivos)]
+            ['fa-users', 'Operadores', `${plan.limite_operadores} extra(s) + 1 admin`],
+            ['fa-box', 'Produtos', Number(plan.limite_produtos).toLocaleString('pt-BR')],
+            ['fa-clock', 'Histórico', plan.dias_historico == null ? 'Ilimitado' : `${plan.dias_historico} dias`],
+            ['fa-file-invoice', 'Notas fiscais', plan.limite_notas_mensais == null ? 'Ilimitado*' : `${plan.limite_notas_mensais}/mês`],
+            ['fa-mobile-screen-button', 'Dispositivos', String(plan.limite_dispositivos)]
         ];
-        const atual = plan.id === entitlement?.plano_id;
+        const atual = plan.id === planoAtualId;
         const superior = ordemPlanos.indexOf(plan.id) > indicePlanoAtual;
-        const icone = iconesPlanos[plan.id] || '★';
         return `
-            <article class="flex min-w-0 flex-col rounded-xl border ${atual ? 'border-emerald-500 bg-emerald-950/20 ring-1 ring-emerald-500/30' : 'border-gray-700 bg-gray-900/60'} p-4">
-                <div class="flex items-start justify-between gap-2">
-                    <h3 class="text-base font-bold text-white"><span class="mr-1.5" aria-hidden="true">${icone}</span>${plan.nome}</h3>
-                    ${atual ? '<span class="shrink-0 rounded-full bg-emerald-900 px-2 py-1 text-[10px] font-bold text-emerald-300">Plano Atual</span>' : ''}
+            <article class="flex w-[84vw] max-w-[20rem] shrink-0 snap-start flex-col rounded-2xl border ${atual ? 'border-emerald-500 bg-gradient-to-b from-emerald-950/40 to-gray-900 ring-1 ring-emerald-500/30' : `${plan.borda} bg-gray-900/70`} p-4 shadow-lg shadow-black/10 transition hover:-translate-y-0.5 hover:bg-gray-800/90 sm:w-auto">
+                <div class="flex min-h-10 items-center justify-between gap-2">
+                    <h3 class="flex min-w-0 items-center gap-2 text-base font-bold text-white">
+                        <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gray-800 ${plan.cor}" aria-hidden="true"><i class="fa-solid ${plan.icone}"></i></span>
+                        <span>${plan.nome}</span>
+                    </h3>
+                    ${atual ? '<span class="shrink-0 rounded-full bg-emerald-900/80 px-2 py-1 text-[10px] font-bold text-emerald-300">Plano atual</span>' : ''}
                 </div>
-                <p class="mt-3 text-xl font-black text-emerald-300">${formatarMoeda(plan.preco_mensal)}<span class="text-xs font-medium text-gray-400">/mês</span></p>
-                <ul class="my-4 flex-1 space-y-3 text-xs text-gray-300">
-                    ${limites.map(([rotulo, valor]) => `<li><span class="block text-[10px] uppercase tracking-wide text-gray-500">${rotulo}</span><strong class="mt-0.5 block font-semibold text-gray-200">${valor}</strong></li>`).join('')}
+                <p class="mt-3 border-b border-gray-700/80 pb-3 text-2xl font-black tracking-tight text-emerald-300">${formatarMoeda(plan.preco_mensal)}<span class="ml-1 text-xs font-medium text-gray-400">/ mês</span></p>
+                <ul class="my-2 flex-1 divide-y divide-gray-700/60 text-xs text-gray-300">
+                    ${limites.map(([icone, rotulo, valor]) => `<li class="flex min-h-10 items-center justify-between gap-2 py-1.5"><span class="flex min-w-0 items-center gap-2 text-gray-400"><i class="fa-solid ${icone} w-4 shrink-0 text-center text-gray-500" aria-hidden="true"></i><span>${rotulo}</span></span><strong class="max-w-[58%] text-right font-semibold leading-tight text-gray-100">${valor}</strong></li>`).join('')}
                 </ul>
                 ${atual
-                    ? '<span class="rounded-lg bg-emerald-950/60 px-3 py-2.5 text-center text-xs font-bold text-emerald-300">Este é seu plano</span>'
+                    ? '<span class="mt-2 rounded-xl bg-emerald-950/60 px-3 py-2.5 text-center text-xs font-bold text-emerald-300">Você está neste plano</span>'
                     : superior
                         ? `<div class="space-y-2">
-                        <button data-plan="${plan.id}" data-method="PIX" type="button" class="btn-assinar w-full rounded-lg bg-emerald-600 px-3 py-2.5 text-xs font-bold text-white hover:bg-emerald-500">${Number(plan.preco_mensal) === 0 ? 'Selecionar plano' : 'Fazer Upgrade'}</button>
+                        <button data-plan="${plan.id}" data-method="PIX" type="button" class="btn-assinar w-full rounded-xl bg-emerald-600 px-3 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-emerald-500">${Number(plan.preco_mensal) === 0 ? 'Selecionar plano' : 'Fazer upgrade'}</button>
                         ${Number(plan.preco_mensal) > 0 ? `
-                        <button data-plan="${plan.id}" data-method="CREDIT_CARD" type="button" class="btn-assinar-cartao w-full rounded-lg border border-gray-600 px-3 py-2.5 text-xs font-bold text-gray-200 hover:border-emerald-500">Assinar com Cartão</button>
+                        <button data-plan="${plan.id}" data-method="CREDIT_CARD" type="button" class="btn-assinar-cartao w-full rounded-xl border border-gray-600 px-3 py-2.5 text-xs font-bold text-gray-200 transition hover:border-emerald-500">Assinar com cartão</button>
                         ` : ''}
                     </div>`
-                        : '<span class="rounded-lg border border-gray-700 px-3 py-2.5 text-center text-xs text-gray-500">Plano abaixo do atual</span>'}
+                        : '<span class="mt-2 rounded-xl border border-gray-700 px-3 py-2.5 text-center text-xs text-gray-500">Plano abaixo do atual</span>'}
             </article>
         `;
     }).join('');

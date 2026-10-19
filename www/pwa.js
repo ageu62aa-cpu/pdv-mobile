@@ -33,6 +33,11 @@
         button.title = instalado ? 'Aplicativo PDV-VS instalado' : 'Instalar o aplicativo PDV-VS';
         button.setAttribute('aria-label', button.title);
         if (adminAction) {
+            button.style.removeProperty('width');
+            button.style.removeProperty('height');
+            button.style.removeProperty('padding');
+            button.style.removeProperty('max-width');
+            button.style.removeProperty('max-height');
             button.className = instalado
                 ? 'flex h-10 items-center justify-center gap-2 rounded-lg border border-sky-800 bg-sky-950/60 px-3 text-sky-200 shadow-sm transition hover:border-sky-600 hover:bg-sky-900/60'
                 : 'flex h-10 items-center justify-center gap-2 rounded-lg border border-emerald-700 bg-emerald-950/50 px-3 text-emerald-200 shadow-sm transition hover:border-emerald-500 hover:bg-emerald-900/60';
