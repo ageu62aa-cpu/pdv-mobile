@@ -6,7 +6,7 @@ const palettes = {
     },
     yellow: {
         label: 'Amarelo',
-        shades: ['#fefce8', '#fef9c3', '#fef08a', '#fde047', '#facc15', '#eab308', '#ca8a04', '#a16207', '#854d0e', '#713f12'],
+        shades: ['#fffbeb', '#fef3c7', '#fde68a', '#fcd34d', '#fbbf24', '#facc15', '#eab308', '#ca8a04', '#a16207', '#713f12'],
         filter: 'hue-rotate(-62deg) saturate(1.25)'
     },
     pink: {
@@ -107,7 +107,11 @@ function ensureThemeStyles() {
     rules.push(':root[data-brand-theme]:not([data-brand-theme="green"]) #pdvMain .text-gray-100:not(input):not(select):not(textarea),:root[data-brand-theme]:not([data-brand-theme="green"]) #pdvMain .text-gray-200:not(input):not(select):not(textarea),:root[data-brand-theme]:not([data-brand-theme="green"]) #pdvMain .text-gray-300:not(input):not(select):not(textarea),:root[data-brand-theme]:not([data-brand-theme="green"]) #pdvMain .text-gray-400:not(input):not(select):not(textarea),:root[data-brand-theme]:not([data-brand-theme="green"]) #adminLayout .text-gray-100:not(input):not(select):not(textarea),:root[data-brand-theme]:not([data-brand-theme="green"]) #adminLayout .text-gray-200:not(input):not(select):not(textarea),:root[data-brand-theme]:not([data-brand-theme="green"]) #adminLayout .text-gray-300:not(input):not(select):not(textarea),:root[data-brand-theme]:not([data-brand-theme="green"]) #adminLayout .text-gray-400:not(input):not(select):not(textarea){color:#334155!important}');
     rules.push(':root[data-brand-theme]:not([data-brand-theme="green"]) #pdvHeader .text-white:not(button),:root[data-brand-theme]:not([data-brand-theme="green"]) #adminHeader .text-white:not(button),:root[data-brand-theme]:not([data-brand-theme="green"]) #adminLayout .text-white:not(button):not(button *),:root[data-brand-theme]:not([data-brand-theme="green"]) #pdvMain .text-white:not(button):not(button *){color:#1f2937!important}');
     rules.push(':root[data-brand-theme]:not([data-brand-theme="green"]) #pdvMain .text-emerald-300,:root[data-brand-theme]:not([data-brand-theme="green"]) #pdvMain .text-emerald-400,:root[data-brand-theme]:not([data-brand-theme="green"]) #adminLayout .text-emerald-300,:root[data-brand-theme]:not([data-brand-theme="green"]) #adminLayout .text-emerald-400{color:var(--brand-700)!important}');
-    rules.push(':root[data-brand-theme="yellow"] #pdvMain .bg-emerald-600.text-white,:root[data-brand-theme="yellow"] #adminLayout .bg-emerald-600.text-white{color:#422006!important}');
+    [500, 600, 700].forEach(shade => {
+        const selector = `:root[data-brand-theme="yellow"] button[class~="bg-emerald-${shade}"]`;
+        rules.push(`${selector}{color:#1e293b!important}`);
+        rules.push(`${selector} :is(i,svg,[class~="text-white"]){color:#1e293b!important}`);
+    });
 
     const style = document.createElement('style');
     style.id = 'tenant-brand-theme-styles';
@@ -134,6 +138,7 @@ function applyTheme(themeColor) {
     root.style.setProperty('--theme-accent-ink', selected === 'green' ? '#a7f3d0' : palette.shades[7]);
     root.style.setProperty('--theme-border-soft', selected === 'green' ? '#374151' : `color-mix(in srgb, ${palette.shades[6]} 20%, #e2e8f0)`);
     root.style.setProperty('--theme-border', palette.shades[6]);
+    root.style.setProperty('--theme-icon-ink', selected === 'yellow' ? '#1e293b' : '#ffffff');
     root.style.setProperty('--brand-mascot-filter', palette.filter);
     root.dataset.brandTheme = selected;
     document.querySelector('meta[name="theme-color"]')?.setAttribute('content', palette.shades[7]);
@@ -150,6 +155,14 @@ function applyTheme(themeColor) {
 function closeModal(modal) {
     document.removeEventListener('keydown', modal.escapeHandler);
     modal?.remove();
+}
+
+function persistThemeSelection(theme) {
+    try {
+        localStorage.setItem('vancely-brand-theme', theme);
+    } catch (error) {
+        console.warn('PDV-VS: Não foi possível persistir o tema neste dispositivo:', error);
+    }
 }
 
 function createModal(client, empresaId, initialTheme) {
@@ -219,6 +232,7 @@ function createModal(client, empresaId, initialTheme) {
             button.querySelector('[data-theme-check]')?.classList.toggle('opacity-0', button !== option);
         });
         applyTheme(selected);
+        persistThemeSelection(selected);
         status.textContent = 'Salvando a preferência da empresa...';
         status.className = 'min-h-10 border-t border-gray-800 px-5 py-3 text-xs text-gray-300';
 
@@ -234,6 +248,7 @@ function createModal(client, empresaId, initialTheme) {
         } catch (error) {
             console.error('PDV-VS: Não foi possível salvar a cor da marca:', error);
             applyTheme(previous);
+            persistThemeSelection(previous);
             document.documentElement.dataset.brandTheme = previous;
             modal.querySelectorAll('[data-theme-color]').forEach(button => {
                 const isPrevious = button.dataset.themeColor === previous;
@@ -260,6 +275,7 @@ export function initializeBrandTheme(client, empresa, { allowOperators = true } 
     }
     ensureThemeStyles();
     const current = applyTheme(empresa.theme_color || 'green');
+    persistThemeSelection(current);
     document.documentElement.dataset.brandTheme = current;
 
     if (document.documentElement.dataset.brandThemeInitialized === 'true') return;

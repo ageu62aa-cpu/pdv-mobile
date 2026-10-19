@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="manifest" href="../../manifest.json">
     <meta name="theme-color" content="#111827">
+    <script src="../../core/brandThemeBootstrap.js"></script>
     <meta name="apple-mobile-web-app-capable" content="yes">
     <link rel="apple-touch-icon" href="../../assets/pwa-192.png">
     <link rel="icon" type="image/png" sizes="192x192" href="../../assets/pwa-192.png">
@@ -45,6 +46,11 @@
             border: none !important;
             background: transparent !important;
             color: #e2e8f0 !important;
+        }
+
+        .scanner-theme-icon {
+            color: var(--theme-icon-ink, #ffffff);
+            stroke: currentColor;
         }
 
         #reader__scan_region,
@@ -307,13 +313,14 @@
                         </span>
 
                         <!-- BOTÃO DA CÂMERA -->
-                        <button id="btn-ativar-camera" 
+                        <button id="btn-ativar-camera"
                                 onclick="window.abrirCameraScanner()"
-                                class="w-10 h-8 p-0 bg-white border border-emerald-500 hover:border-emerald-400 rounded-lg overflow-hidden flex items-center justify-center shadow transition transform hover:scale-105 focus:outline-none cursor-pointer" 
+                                class="scanner-theme-button w-10 h-8 p-0 bg-emerald-600 hover:bg-emerald-700 border border-emerald-500 hover:border-emerald-400 rounded-lg overflow-hidden flex items-center justify-center shadow transition transform hover:scale-105 focus:outline-none cursor-pointer"
                                 title="Ativar leitor contínuo de câmera">
-                            <img src="../../assets/botao-camera.jpg" 
-                                 alt="Scanner Câmera" 
-                                 class="w-12 h-12 object-cover scale-125 block pointer-events-none"> 
+                            <svg class="scanner-theme-icon h-5 w-5 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M4 7h3l1.5-2h7L17 7h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1Z"></path>
+                                <circle cx="12" cy="13" r="3.5"></circle>
+                            </svg>
                         </button>
                     </div>
                 </div>
