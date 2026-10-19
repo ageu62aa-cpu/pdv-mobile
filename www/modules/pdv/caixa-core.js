@@ -12,6 +12,7 @@ import {
 } from '../../core/state.js';  
 import { abrirModalPesagemManual, carregarProdutosCache } from '../../services/produtos.js';
 import { supabase, adminSupabase } from '../../core/config.js';
+import { initializeBrandTheme } from '../../core/brandTheme.js';
 import {
     isolarSessaoAdministrativa,
     monitorarSessaoUnica,
@@ -192,6 +193,7 @@ async function inicializarCaixaDefinitivo() {
             return;
         }
 
+        initializeBrandTheme(db, contexto.empresa);
         monitorarSessaoUnica(db, 'operador', { rotaLogin: '../auth/auth.html' });
         inicializarLeitorTecladoPistola();
         await carregarProdutosParaCaixa();
