@@ -2020,7 +2020,7 @@ export function atualizarTabelaVenda() {
     const listaCarrinho = document.getElementById('listaCarrinhoItens');
     const carrinhoVazio = document.getElementById('listaCarrinhoVazio');
     const painelCarrinho = document.getElementById('cartPanel');
-    const marcaDaguaCarrinho = painelCarrinho?.querySelector('.cart-brand-watermark');
+    const marcaDaguaCarrinho = painelCarrinho?.querySelector('[data-brand-mascot]');
     const txtResumoSubtotal = document.getElementById('txtResumoSubtotal');
     const txtResumoTotal = document.getElementById('txtResumoTotalGeral');
 
