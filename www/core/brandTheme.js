@@ -48,11 +48,6 @@ const softBackgroundClasses = [
     'bg-emerald-950/80',
     'bg-emerald-950/90'
 ];
-const mascotUrls = [
-    new URL('../assets/caixa.registradora.jpeg', import.meta.url).href,
-    new URL('../assets/botao-admin.jpeg', import.meta.url).href
-];
-
 function ensureThemeStyles() {
     if (document.getElementById('tenant-brand-theme-styles')) return;
 
@@ -63,7 +58,9 @@ function ensureThemeStyles() {
         '.brand-theme-option[aria-pressed="true"]{border-color:var(--preview-primary);box-shadow:0 0 0 1px var(--preview-primary),0 10px 28px -14px var(--preview-glow)}',
         '.brand-theme-option [data-theme-check]{color:var(--preview-primary)}',
         '.brand-theme-preview{border-color:var(--preview-border);background:var(--preview-background);box-shadow:inset 0 0 28px -18px var(--preview-glow)}',
-        '.brand-theme-preview img{filter:var(--preview-mascot-filter,none)}',
+        '.brand-theme-mascot{display:flex;width:3.5rem;height:3.5rem;align-items:center;justify-content:center;border:1px solid color-mix(in srgb,var(--preview-primary) 45%,transparent);border-radius:1rem;background:color-mix(in srgb,var(--preview-primary) 20%,#111827);box-shadow:0 0 24px -10px var(--preview-glow);color:var(--preview-primary);font-size:2rem;transition:transform 180ms ease,box-shadow 180ms ease}',
+        '.brand-theme-option:hover .brand-theme-mascot,.brand-theme-option[aria-pressed="true"] .brand-theme-mascot{transform:translateY(-1px);box-shadow:0 0 28px -8px var(--preview-glow)}',
+        '.cart-brand-watermark{color:var(--theme-primary);font-size:clamp(7rem,16vw,11rem);opacity:.075;filter:drop-shadow(0 0 22px color-mix(in srgb,var(--theme-primary) 48%,transparent));transition:opacity 180ms ease,color 180ms ease}',
         '.brand-theme-option:disabled{cursor:wait;opacity:.72}'
     ];
     const utilityTypes = [
@@ -113,6 +110,10 @@ function ensureThemeStyles() {
         rules.push(`:root[data-brand-theme]:not([data-brand-theme="green"]) [class~="${className}"]{background-color:var(--theme-bg-subtle)!important}`);
     });
     rules.push(':root[data-brand-theme]:not([data-brand-theme="green"]) [class~="shadow-emerald-950/20"]{--tw-shadow-color:color-mix(in srgb,var(--theme-primary) 20%,transparent)!important}');
+    rules.push(':root[data-brand-theme]:not([data-brand-theme="green"]) #pdvMain,:root[data-brand-theme]:not([data-brand-theme="green"]) #adminLayout{background-image:radial-gradient(ellipse at 12% 8%,color-mix(in srgb,var(--theme-primary) 10%,transparent),transparent 52%),radial-gradient(ellipse at 92% 88%,color-mix(in srgb,var(--theme-primary) 5%,transparent),transparent 46%)}');
+    rules.push(':root[data-brand-theme]:not([data-brand-theme="green"]) #pdvHeader,:root[data-brand-theme]:not([data-brand-theme="green"]) #adminHeader{background-color:color-mix(in srgb,var(--theme-primary) 7%,#1f2937)!important;border-color:color-mix(in srgb,var(--theme-primary) 24%,#374151)!important}');
+    rules.push(':root[data-brand-theme]:not([data-brand-theme="green"]) #pdvMain .bg-gray-800,:root[data-brand-theme]:not([data-brand-theme="green"]) #adminTabs,:root[data-brand-theme]:not([data-brand-theme="green"]) #admin-conteudo-dinamico{background-color:color-mix(in srgb,var(--theme-primary) 7%,#1f2937)!important;border-color:color-mix(in srgb,var(--theme-primary) 20%,#374151)!important}');
+    rules.push(':root[data-brand-theme]:not([data-brand-theme="green"]) #pdvMain #cartPanel{background-color:color-mix(in srgb,var(--theme-primary) 9%,#1f2937)!important}');
 
     const style = document.createElement('style');
     style.id = 'tenant-brand-theme-styles';
@@ -165,7 +166,7 @@ function createModal(client, empresaId, initialTheme) {
             </header>
             <div class="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3 sm:p-5">
                 ${Object.entries(palettes).map(([key, palette]) => `
-                    <button type="button" data-theme-color="${key}" class="brand-theme-option group rounded-xl border p-3 text-left" style="--preview-primary:${palette.shades[6]};--preview-border:color-mix(in srgb, ${palette.shades[6]} 62%, #374151);--preview-surface:color-mix(in srgb, ${palette.shades[6]} 8%, #1f2937);--preview-background:color-mix(in srgb, ${palette.shades[6]} 17%, #111827);--preview-glow:${palette.shades[5]};--preview-mascot-filter:${palette.filter}" aria-pressed="${key === initialTheme}">
+                    <button type="button" data-theme-color="${key}" class="brand-theme-option group rounded-xl border p-3 text-left" style="--preview-primary:${palette.shades[6]};--preview-border:color-mix(in srgb, ${palette.shades[6]} 62%, #374151);--preview-surface:color-mix(in srgb, ${palette.shades[6]} 12%, #1f2937);--preview-background:color-mix(in srgb, ${palette.shades[6]} 28%, #111827);--preview-glow:${palette.shades[5]}" aria-pressed="${key === initialTheme}">
                         <span class="flex items-center justify-between gap-2">
                             <span class="flex items-center gap-2 text-sm font-semibold text-white">
                                 <span class="h-3.5 w-3.5 rounded-full ring-2 ring-white/10" style="background:${palette.shades[6]}"></span>
@@ -173,8 +174,8 @@ function createModal(client, empresaId, initialTheme) {
                             </span>
                             <i data-theme-check class="fa-solid fa-check text-xs ${key === initialTheme ? '' : 'opacity-0'}" aria-hidden="true"></i>
                         </span>
-                        <span class="brand-theme-preview mt-3 flex h-20 items-center justify-center overflow-hidden rounded-lg border">
-                            <img src="${mascotUrls[1]}" alt="Mascote com tema ${palette.label}" class="h-16 w-16 object-cover">
+                        <span class="brand-theme-preview mt-3 flex h-20 items-center justify-center overflow-hidden rounded-lg border" aria-hidden="true">
+                            <span class="brand-theme-mascot"><i class="fa-solid fa-robot"></i></span>
                         </span>
                     </button>
                 `).join('')}
