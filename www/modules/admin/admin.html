@@ -135,9 +135,9 @@
     <!-- Cabeçalho do Admin -->
     <header id="adminHeader" class="bg-gray-800 border-b border-gray-700 px-6 py-3 flex justify-between items-center shadow-md">
         <div id="adminBrand" class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-full overflow-hidden border-2 border-emerald-600 shadow-md flex items-center justify-center bg-white">
-                <img src="../../assets/botao-admin.jpeg" alt="Admin" class="w-14 h-14 object-cover scale-125">
-            </div>
+            <button type="button" data-brand-theme-trigger class="w-10 h-10 cursor-pointer rounded-full overflow-hidden border-2 border-emerald-600 shadow-md flex items-center justify-center bg-white transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-emerald-500" title="Personalizar cor da marca" aria-label="Personalizar cor da marca">
+                <img data-brand-mascot src="../../assets/botao-admin.jpeg" alt="" class="w-14 h-14 object-cover scale-125">
+            </button>
             <div>
                 <h1 class="font-bold text-sm text-white tracking-wide">Vancely Software - Painel Administrativo</h1>
                 <p class="text-xs text-emerald-400 font-semibold flex items-center gap-1.5">
@@ -189,8 +189,10 @@
         </section>
     </main>
 
-    <footer class="mx-auto w-full max-w-7xl px-6 pb-4 text-center text-[11px] text-gray-500">
-        <a href="../../termos.html" class="underline hover:text-emerald-400">Termos de Uso e Política de Privacidade</a>
+    <footer class="mx-auto flex w-full max-w-7xl items-center justify-center gap-4 px-6 pb-4 text-center text-[11px] text-gray-500">
+        <a href="../../termos.html#termos" class="underline hover:text-emerald-400">Termos de Uso</a>
+        <span aria-hidden="true">·</span>
+        <a href="../../termos.html#privacidade" class="underline hover:text-emerald-400">Política de Privacidade</a>
     </footer>
 
     <!-- Script Cor do Admin -->

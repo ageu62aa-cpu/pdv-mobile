@@ -5,6 +5,7 @@ import { initAdminHistorico } from './admin-historico.js';
 import { initAdminPlanos } from './admin-planos.js';
 import { adminSupabase as supabase } from '../../core/config.js';
 import { supabase as pdvSupabase } from '../../core/config.js';
+import { initializeBrandTheme } from '../../core/brandTheme.js';
 import {
     setUsuarioAtual,
     setEmpresaAtualId,
@@ -260,6 +261,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         }, 15000);
         const empresaId = contexto.empresa.id;
+        initializeBrandTheme(supabase, contexto.empresa);
 
         const { data: produtos, error: produtosError } = await supabase
             .from('produtos')

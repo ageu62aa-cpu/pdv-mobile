@@ -231,6 +231,17 @@
                 max-width: 5.5rem;
             }
         }
+
+        @media (max-width: 1023px) {
+            #pdvLegalFooter {
+                position: fixed;
+                inset-inline: 0;
+                bottom: calc(3.5rem + env(safe-area-inset-bottom));
+                z-index: 30;
+                min-height: 1.8rem;
+                background: rgba(17, 24, 39, 0.96);
+            }
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-gray-100 font-sans h-screen flex flex-col overflow-hidden">
@@ -238,9 +249,9 @@
     <!-- Topo / Header do PDV -->
     <header id="pdvHeader" class="bg-gray-800 border-b border-gray-700 px-6 py-3 flex justify-between items-center shadow-md">
         <div id="pdvHeaderIdentidade" class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-full overflow-hidden border-2 border-emerald-600 shadow-md flex items-center justify-center bg-white">
-                <img src="../../assets/caixa.registradora.jpeg" alt="Caixa Registradora" class="w-14 h-14 object-cover scale-125">
-            </div>
+            <button type="button" data-brand-theme-trigger class="w-10 h-10 cursor-pointer rounded-full overflow-hidden border-2 border-emerald-600 shadow-md flex items-center justify-center bg-white transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-emerald-500" title="Personalizar cor da marca" aria-label="Personalizar cor da marca">
+                <img data-brand-mascot src="../../assets/caixa.registradora.jpeg" alt="" class="w-14 h-14 object-cover scale-125">
+            </button>
             <div>
                 <h1 class="font-bold text-sm text-white tracking-wide">Vancely Software - Frente de Caixa</h1>
                 <p id="txtStatusCaixaHeader" class="text-xs text-amber-400 font-semibold flex items-center gap-1.5">
@@ -273,7 +284,6 @@
             <button id="btnPainelAdmin" style="display: none;" onclick="window.abrirPainelAdminIndependente()" class="w-9 h-9 rounded-lg overflow-hidden border border-emerald-600 hover:border-emerald-400 shadow-md transition flex items-center justify-center bg-white ml-1 focus:outline-none" title="Painel administrativo" aria-label="Abrir painel administrativo">
                 <img src="../../assets/botao-admin.jpeg" alt="Admin" class="w-12 h-12 object-cover scale-125">
             </button>
-            <a href="../../termos.html" class="px-2 text-[10px] text-gray-400 underline hover:text-emerald-400">Termos e Privacidade</a>
             <button id="btnSairCaixa" onclick="window.location.href='../auth/auth.html'" class="bg-red-900/50 hover:bg-red-900 text-red-200 w-9 h-9 rounded-lg text-xs font-bold transition border border-red-800 flex items-center justify-center" title="Sair" aria-label="Sair"><i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i></button>
         </div>
     </header>
@@ -615,6 +625,12 @@
         </section>
 
     </main>
+
+    <footer id="pdvLegalFooter" class="flex shrink-0 items-center justify-center gap-3 border-t border-gray-800 bg-gray-900 px-3 py-1.5 text-[10px] text-gray-500">
+        <a href="../../termos.html#termos" class="underline decoration-gray-700 underline-offset-2 transition hover:text-emerald-400">Termos de Uso</a>
+        <span aria-hidden="true">·</span>
+        <a href="../../termos.html#privacidade" class="underline decoration-gray-700 underline-offset-2 transition hover:text-emerald-400">Política de Privacidade</a>
+    </footer>
 
     <nav id="mobileFunctionBar" class="fixed inset-x-0 bottom-0 z-40 flex gap-2 overflow-x-auto border-t border-gray-700 bg-gray-950/95 px-2 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] shadow-[0_-8px_24px_rgba(0,0,0,0.4)] backdrop-blur lg:hidden" aria-label="Atalhos do caixa">
         <button type="button" onclick="window.handleAction('F1')" title="Cadastro para nota" aria-label="F1 Cadastro para nota" class="min-w-12 rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-xs font-bold text-gray-100">F1</button>
