@@ -28,10 +28,22 @@
     }
 
     function updateButton(button) {
-        button.title = isInstalled() ? 'Abrir o PDV-VS instalado' : 'Instalar o PDV-VS';
+        const adminAction = button.closest('#adminHeaderActions');
+        const instalado = isInstalled();
+        button.title = instalado ? 'Aplicativo PDV-VS instalado' : 'Instalar o aplicativo PDV-VS';
         button.setAttribute('aria-label', button.title);
-        if (isInstalled()) {
-            button.innerHTML = '<svg aria-hidden="true" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 4h6a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6"/><path d="M3 12h12m-5-5 5 5-5 5"/></svg>';
+        if (adminAction) {
+            button.className = instalado
+                ? 'flex h-10 items-center justify-center gap-2 rounded-lg border border-sky-800 bg-sky-950/60 px-3 text-sky-200 shadow-sm transition hover:border-sky-600 hover:bg-sky-900/60'
+                : 'flex h-10 items-center justify-center gap-2 rounded-lg border border-emerald-700 bg-emerald-950/50 px-3 text-emerald-200 shadow-sm transition hover:border-emerald-500 hover:bg-emerald-900/60';
+            button.innerHTML = instalado
+                ? '<svg aria-hidden="true" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2.5" width="14" height="19" rx="2.5"/><path d="M9 16l2 2 4-4"/></svg><span class="action-label text-xs font-semibold">App instalado</span>'
+                : '<svg aria-hidden="true" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v11m-4-4 4 4 4-4"/><path d="M5 17v3h14v-3"/></svg><span class="action-label text-xs font-semibold">Instalar app</span>';
+            return;
+        }
+
+        if (instalado) {
+            button.innerHTML = '<svg aria-hidden="true" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2.5" width="14" height="19" rx="2.5"/><path d="M9 16l2 2 4-4"/></svg>';
             return;
         }
 
@@ -40,6 +52,7 @@
 
     function createInstallButton() {
         let button = document.getElementById('btnPWAAction');
+        let adminAction = false;
         if (button) {
             button.style.display = 'inline-flex';
             button.type = 'button';
@@ -65,6 +78,7 @@
             const header = document.querySelector('header');
             const actionGroup = header?.lastElementChild;
             if (actionGroup instanceof HTMLElement && actionGroup !== header.firstElementChild) {
+                adminAction = actionGroup.id === 'adminHeaderActions';
                 actionGroup.prepend(button);
             } else if (header) {
                 header.append(button);
@@ -77,12 +91,15 @@
             }
         }
 
-        button.style.maxWidth = '2.25rem';
-        button.style.maxHeight = '2.25rem';
-        button.style.padding = '0';
-        button.style.gap = '0';
-        button.style.fontSize = '0';
-        button.style.lineHeight = '1';
+        adminAction ||= button.closest('#adminHeaderActions') !== null;
+        if (!adminAction) {
+            button.style.maxWidth = '2.25rem';
+            button.style.maxHeight = '2.25rem';
+            button.style.padding = '0';
+            button.style.gap = '0';
+            button.style.fontSize = '0';
+            button.style.lineHeight = '1';
+        }
 
         updateButton(button);
         button.addEventListener('click', async () => {

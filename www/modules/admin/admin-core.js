@@ -4,6 +4,7 @@ import { initAdminMaquininhas } from './admin-maquininhas.js';
 import { initAdminHistorico } from './admin-historico.js';
 import { initAdminPlanos } from './admin-planos.js';
 import { adminSupabase as supabase } from '../../core/config.js';
+import { supabase as pdvSupabase } from '../../core/config.js';
 import {
     setUsuarioAtual,
     setEmpresaAtualId,
@@ -11,7 +12,12 @@ import {
     setDadosEmpresaAtual
 } from '../../core/state.js';
 import { obterPerfilEmpresa } from '../../core/perfilEmpresa.js';
-import { monitorarSessaoUnica, validarSessaoAtual } from '../../core/sessaoService.js';
+import {
+    ativarSessaoUnica,
+    monitorarSessaoUnica,
+    transferirSessaoAutenticada,
+    validarSessaoAtual
+} from '../../core/sessaoService.js';
 
 let canaisAdminRealtime = [];
 let abaAtiva = 'produtos';
@@ -133,6 +139,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         sessionStorage.removeItem('vancely_sessao_admin_token');
         sessionStorage.removeItem('vancely_sessao_admin_user');
         window.location.href = '../auth/auth.html';
+    });
+
+    document.querySelector('[data-return-to-cash-register]')?.addEventListener('click', async event => {
+        const button = event.currentTarget;
+        button.disabled = true;
+        try {
+            const { data: { user }, error: userError } = await supabase.auth.getUser();
+            if (userError) throw userError;
+            if (!user) throw new Error('A sessão administrativa expirou. Entre novamente.');
+
+            await transferirSessaoAutenticada(supabase, pdvSupabase, user);
+            await ativarSessaoUnica(pdvSupabase, user.id, 'operador');
+            window.location.href = '../pdv/caixa-core.html';
+        } catch (error) {
+            console.error('PDV-VS: Não foi possível voltar ao caixa com a sessão atual:', error);
+            alert(`Não foi possível voltar ao caixa: ${error.message || error}`);
+            button.disabled = false;
+        }
     });
 
     async function carregarAba(tabName) {
