@@ -33,21 +33,8 @@ const palettes = {
 
 const shadeNames = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900];
 const opacitySteps = [5, 10, 15, 20, 25, 30, 40, 50, 60, 70, 75, 80, 90, 95];
-const darkSurface = '#111827';
-const softBackgroundClasses = [
-    'bg-emerald-950',
-    'bg-emerald-950/10',
-    'bg-emerald-950/15',
-    'bg-emerald-950/20',
-    'bg-emerald-950/30',
-    'bg-emerald-950/40',
-    'bg-emerald-950/50',
-    'bg-emerald-950/60',
-    'bg-emerald-950/70',
-    'bg-emerald-950/75',
-    'bg-emerald-950/80',
-    'bg-emerald-950/90'
-];
+const themeArtwork = new URL('../assets/icones-card.jpeg', import.meta.url).href;
+
 function ensureThemeStyles() {
     if (document.getElementById('tenant-brand-theme-styles')) return;
 
@@ -58,9 +45,8 @@ function ensureThemeStyles() {
         '.brand-theme-option[aria-pressed="true"]{border-color:var(--preview-primary);box-shadow:0 0 0 1px var(--preview-primary),0 10px 28px -14px var(--preview-glow)}',
         '.brand-theme-option [data-theme-check]{color:var(--preview-primary)}',
         '.brand-theme-preview{border-color:var(--preview-border);background:var(--preview-background);box-shadow:inset 0 0 28px -18px var(--preview-glow)}',
-        '.brand-theme-mascot{display:flex;width:3.5rem;height:3.5rem;align-items:center;justify-content:center;border:1px solid color-mix(in srgb,var(--preview-primary) 45%,transparent);border-radius:1rem;background:color-mix(in srgb,var(--preview-primary) 20%,#111827);box-shadow:0 0 24px -10px var(--preview-glow);color:var(--preview-primary);font-size:2rem;transition:transform 180ms ease,box-shadow 180ms ease}',
-        '.brand-theme-option:hover .brand-theme-mascot,.brand-theme-option[aria-pressed="true"] .brand-theme-mascot{transform:translateY(-1px);box-shadow:0 0 28px -8px var(--preview-glow)}',
-        '.cart-brand-watermark{color:var(--theme-primary);font-size:clamp(7rem,16vw,11rem);opacity:.075;filter:drop-shadow(0 0 22px color-mix(in srgb,var(--theme-primary) 48%,transparent));transition:opacity 180ms ease,color 180ms ease}',
+        '.brand-theme-art{width:4.5rem;height:4.5rem;border-radius:.8rem;background-image:var(--theme-artwork);background-color:var(--preview-background);background-size:300% 200%;background-position:var(--art-position);background-repeat:no-repeat;background-blend-mode:var(--art-blend,normal);box-shadow:0 4px 14px color-mix(in srgb,var(--preview-primary) 20%,transparent);transition:transform 180ms ease,box-shadow 180ms ease}',
+        '.brand-theme-option:hover .brand-theme-art,.brand-theme-option[aria-pressed="true"] .brand-theme-art{transform:translateY(-1px);box-shadow:0 6px 18px color-mix(in srgb,var(--preview-primary) 30%,transparent)}',
         '.brand-theme-option:disabled{cursor:wait;opacity:.72}'
     ];
     const utilityTypes = [
@@ -106,18 +92,11 @@ function ensureThemeStyles() {
         });
     }
 
-    softBackgroundClasses.forEach(className => {
-        rules.push(`:root[data-brand-theme]:not([data-brand-theme="green"]) [class~="${className}"]{background-color:var(--theme-bg-subtle)!important}`);
-    });
     rules.push(':root[data-brand-theme]:not([data-brand-theme="green"]) [class~="shadow-emerald-950/20"]{--tw-shadow-color:color-mix(in srgb,var(--theme-primary) 20%,transparent)!important}');
-    rules.push(':root[data-brand-theme]:not([data-brand-theme="green"]) #pdvMain,:root[data-brand-theme]:not([data-brand-theme="green"]) #adminLayout{background-image:radial-gradient(ellipse at 12% 8%,color-mix(in srgb,var(--theme-primary) 10%,transparent),transparent 52%),radial-gradient(ellipse at 92% 88%,color-mix(in srgb,var(--theme-primary) 5%,transparent),transparent 46%)}');
-    rules.push(':root[data-brand-theme]:not([data-brand-theme="green"]) #pdvHeader,:root[data-brand-theme]:not([data-brand-theme="green"]) #adminHeader{background-color:color-mix(in srgb,var(--theme-primary) 7%,#1f2937)!important;border-color:color-mix(in srgb,var(--theme-primary) 24%,#374151)!important}');
-    rules.push(':root[data-brand-theme]:not([data-brand-theme="green"]) #pdvMain .bg-gray-800,:root[data-brand-theme]:not([data-brand-theme="green"]) #adminTabs,:root[data-brand-theme]:not([data-brand-theme="green"]) #admin-conteudo-dinamico{background-color:color-mix(in srgb,var(--theme-primary) 7%,#1f2937)!important;border-color:color-mix(in srgb,var(--theme-primary) 20%,#374151)!important}');
-    rules.push(':root[data-brand-theme]:not([data-brand-theme="green"]) #pdvMain #cartPanel{background-color:color-mix(in srgb,var(--theme-primary) 9%,#1f2937)!important}');
 
     const style = document.createElement('style');
     style.id = 'tenant-brand-theme-styles';
-    style.textContent = `:root{${shadeNames.map((shade, index) => `--brand-${shade}:${palettes.green.shades[index]}`).join(';')};--theme-primary:${palettes.green.shades[6]};--theme-bg-subtle:rgba(2,44,34,.3);--theme-border:${palettes.green.shades[6]};--brand-mascot-filter:none}${rules.join('\n')}`;
+    style.textContent = `:root{${shadeNames.map((shade, index) => `--brand-${shade}:${palettes.green.shades[index]}`).join(';')};--theme-primary:${palettes.green.shades[6]};--theme-bg-subtle:rgba(2,44,34,.3);--theme-border:${palettes.green.shades[6]};--brand-mascot-filter:none;--theme-artwork:url("${themeArtwork}")}${rules.join('\n')}`;
     document.head.append(style);
 }
 
@@ -131,7 +110,7 @@ function applyTheme(themeColor) {
     root.style.setProperty('--theme-primary', palette.shades[6]);
     root.style.setProperty('--theme-bg-subtle', selected === 'green'
         ? 'rgba(2,44,34,.3)'
-        : `color-mix(in srgb, ${palette.shades[6]} 18%, ${darkSurface})`);
+        : `color-mix(in srgb, ${palette.shades[1]} 72%, white)`);
     root.style.setProperty('--theme-border', palette.shades[6]);
     root.style.setProperty('--brand-mascot-filter', palette.filter);
     root.dataset.brandTheme = selected;
@@ -165,20 +144,36 @@ function createModal(client, empresaId, initialTheme) {
                 <button type="button" data-close-brand-theme class="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-700 text-xl text-gray-400 transition hover:border-gray-500 hover:text-white" aria-label="Fechar">&times;</button>
             </header>
             <div class="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3 sm:p-5">
-                ${Object.entries(palettes).map(([key, palette]) => `
-                    <button type="button" data-theme-color="${key}" class="brand-theme-option group rounded-xl border p-3 text-left" style="--preview-primary:${palette.shades[6]};--preview-border:color-mix(in srgb, ${palette.shades[6]} 62%, #374151);--preview-surface:color-mix(in srgb, ${palette.shades[6]} 12%, #1f2937);--preview-background:color-mix(in srgb, ${palette.shades[6]} 28%, #111827);--preview-glow:${palette.shades[5]}" aria-pressed="${key === initialTheme}">
+                ${Object.entries(palettes).map(([key, palette]) => {
+                    const imagePosition = {
+                        green: '100% 100%',
+                        yellow: '0% 0%',
+                        pink: '50% 0%',
+                        orange: '100% 0%',
+                        purple: '0% 100%',
+                        gray: '50% 100%'
+                    }[key];
+                    const previewSurface = key === 'green'
+                        ? 'color-mix(in srgb, #059669 12%, #1f2937)'
+                        : `color-mix(in srgb, ${palette.shades[1]} 78%, white)`;
+                    const previewBackground = key === 'green'
+                        ? 'color-mix(in srgb, #059669 28%, #111827)'
+                        : `color-mix(in srgb, ${palette.shades[2]} 80%, white)`;
+                    const labelClass = key === 'green' ? 'text-white' : 'text-slate-900';
+                    return `
+                    <button type="button" data-theme-color="${key}" class="brand-theme-option group rounded-xl border p-3 text-left" style="--preview-primary:${palette.shades[6]};--preview-border:color-mix(in srgb, ${palette.shades[6]} 58%, ${key === 'green' ? '#374151' : '#ffffff'});--preview-surface:${previewSurface};--preview-background:${previewBackground};--preview-glow:${palette.shades[5]};--art-position:${imagePosition};--art-blend:${key === 'green' ? 'normal' : 'multiply'}" aria-pressed="${key === initialTheme}">
                         <span class="flex items-center justify-between gap-2">
-                            <span class="flex items-center gap-2 text-sm font-semibold text-white">
+                            <span class="flex items-center gap-2 text-sm font-semibold ${labelClass}">
                                 <span class="h-3.5 w-3.5 rounded-full ring-2 ring-white/10" style="background:${palette.shades[6]}"></span>
                                 ${palette.label}
                             </span>
                             <i data-theme-check class="fa-solid fa-check text-xs ${key === initialTheme ? '' : 'opacity-0'}" aria-hidden="true"></i>
                         </span>
                         <span class="brand-theme-preview mt-3 flex h-20 items-center justify-center overflow-hidden rounded-lg border" aria-hidden="true">
-                            <span class="brand-theme-mascot"><i class="fa-solid fa-robot"></i></span>
+                            <span class="brand-theme-art"></span>
                         </span>
                     </button>
-                `).join('')}
+                `}).join('')}
             </div>
             <p data-theme-status class="min-h-10 border-t border-gray-800 px-5 py-3 text-xs text-gray-400" role="status" aria-live="polite">A cor escolhida será aplicada a esta empresa e salva na nuvem.</p>
         </section>
