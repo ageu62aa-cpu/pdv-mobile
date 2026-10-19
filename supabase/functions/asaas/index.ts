@@ -23,6 +23,15 @@ async function readJsonObject(response: Response) {
   return result;
 }
 
+function asaasErrorDetail(result: Record<string, unknown>) {
+  if (!Array.isArray(result.errors)) return '';
+  const descriptions = result.errors
+    .filter(isRecord)
+    .map(error => typeof error.description === 'string' ? error.description.trim() : '')
+    .filter(Boolean);
+  return descriptions.length ? ` Detalhe do Asaas: ${descriptions.join(' ')}`.slice(0, 600) : '';
+}
+
 function normalizeBaseUrl(value: string | undefined) {
   const base = (value || 'https://api.asaas.com/v3').replace(/\/+$/, '');
   if (!/^https:\/\/(api|api-sandbox)\.asaas\.com\/v3$/.test(base)) {
@@ -115,11 +124,6 @@ Deno.serve(async request => {
     if (billingType !== 'PIX' && billingType !== 'CREDIT_CARD') {
       return response(400, { error: 'Escolha PIX ou Cartão de Crédito.' });
     }
-    const creditCardToken = typeof body.creditCardToken === 'string' ? body.creditCardToken.trim() : '';
-    if (billingType === 'CREDIT_CARD' && !creditCardToken) {
-      return response(400, { error: 'Para cartão, envie o token seguro gerado pelo SDK oficial do Asaas. Dados de cartão não devem ser enviados ao PDV.' });
-    }
-
     const asaasBaseUrl = normalizeBaseUrl(Deno.env.get('ASAAS_API_URL'));
     let customerId = company.asaas_customer_id;
     if (!customerId) {
@@ -137,7 +141,9 @@ Deno.serve(async request => {
       const customerResult = await readJsonObject(customerResponse);
       if (!customerResponse.ok) {
         console.error('Asaas customer creation failed:', customerResult);
-        return response(502, { error: 'Não foi possível cadastrar a empresa no Asaas. Confira os dados cadastrais.' });
+        return response(502, {
+          error: `Não foi possível cadastrar a empresa no Asaas. Confira os dados cadastrais.${asaasErrorDetail(customerResult)}`,
+        });
       }
       if (typeof customerResult.id !== 'string' || !customerResult.id) {
         console.error('Asaas customer response did not include an ID:', customerResult);
@@ -164,6 +170,61 @@ Deno.serve(async request => {
       .single();
     if (pendingError) throw pendingError;
 
+    if (billingType === 'CREDIT_CARD') {
+      const checkoutResponse = await fetch(`${asaasBaseUrl}/checkouts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', access_token: apiKey },
+        body: JSON.stringify({
+          billingTypes: ['CREDIT_CARD'],
+          chargeTypes: ['RECURRENT'],
+          minutesToExpire: 1440,
+          externalReference: pendingSubscription.id,
+          customer: customerId,
+          items: [{
+            name: `PDV ${plan.nome}`,
+            description: `Assinatura mensal do plano ${plan.nome}`,
+            quantity: 1,
+            value: Number(plan.preco_mensal),
+          }],
+          subscription: {
+            cycle: 'MONTHLY',
+            nextDueDate: new Date(Date.now() + 86400000)
+              .toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }),
+          },
+        }),
+      });
+      const checkoutResult = await readJsonObject(checkoutResponse);
+      if (!checkoutResponse.ok || typeof checkoutResult.id !== 'string' || typeof checkoutResult.link !== 'string') {
+        console.error('Asaas recurring checkout creation failed:', checkoutResult);
+        const { error: cleanupError } = await database.from('assinaturas').delete().eq('id', pendingSubscription.id);
+        if (cleanupError) console.error('Could not remove the failed pending checkout:', cleanupError);
+        return response(502, {
+          error: `O Asaas não aceitou criar o checkout recorrente com cartão. Verifique se essa modalidade está habilitada para a conta e tente novamente.${asaasErrorDetail(checkoutResult)}`,
+        });
+      }
+
+      const { error: checkoutUpdateError } = await database.from('assinaturas')
+        .update({
+          asaas_checkout_id: checkoutResult.id,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', pendingSubscription.id);
+      if (checkoutUpdateError) {
+        console.error('Asaas checkout created, but local synchronization failed:', checkoutUpdateError);
+        return response(502, {
+          error: 'O checkout foi criado, mas não foi possível sincronizar o identificador. Não tente novamente antes de contatar o suporte.',
+        });
+      }
+
+      return response(201, {
+        configured: true,
+        checkoutId: checkoutResult.id,
+        status: 'PENDING',
+        paymentUrl: checkoutResult.link,
+        message: 'Checkout seguro criado. O plano será ativado após a confirmação do pagamento pelo Asaas.',
+      });
+    }
+
     const subscriptionBody: Record<string, unknown> = {
       customer: customerId,
       billingType,
@@ -173,13 +234,6 @@ Deno.serve(async request => {
       description: `PDV ${plan.nome} - assinatura mensal`,
       externalReference: company.id,
     };
-    if (billingType === 'CREDIT_CARD') {
-      subscriptionBody.creditCardToken = creditCardToken;
-      if (isRecord(body.creditCardHolderInfo)) {
-        subscriptionBody.creditCardHolderInfo = body.creditCardHolderInfo;
-      }
-    }
-
     const asaasResponse = await fetch(`${asaasBaseUrl}/subscriptions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', access_token: apiKey },
@@ -190,7 +244,9 @@ Deno.serve(async request => {
       console.error('Asaas subscription creation failed:', subscriptionResult);
       const { error: cleanupError } = await database.from('assinaturas').delete().eq('id', pendingSubscription.id);
       if (cleanupError) console.error('Could not remove the failed pending subscription:', cleanupError);
-      return response(502, { error: 'O Asaas não aceitou a assinatura. Confira os dados de pagamento e tente novamente.' });
+      return response(502, {
+        error: `O Asaas não aceitou a assinatura. Confira os dados de pagamento e tente novamente.${asaasErrorDetail(subscriptionResult)}`,
+      });
     }
     if (typeof subscriptionResult.id !== 'string' || !subscriptionResult.id) {
       console.error('Asaas subscription response did not include an ID:', subscriptionResult);

@@ -128,14 +128,12 @@ export async function initAdminPlanos(container) {
         button.addEventListener('click', () => void assinar(button.dataset.plan, 'PIX'));
     });
     lista.querySelectorAll('.btn-assinar-cartao').forEach(button => {
-        button.addEventListener('click', () => {
-            mostrarStatus('O pagamento recorrente com cartão requer o token seguro gerado pelo SDK oficial do Asaas. Os dados completos do cartão não devem ser inseridos nem enviados pelo PDV.', false);
-        });
+        button.addEventListener('click', () => void assinar(button.dataset.plan, 'CREDIT_CARD'));
     });
 }
 
 async function assinar(planId, billingType) {
-    const botoes = [...document.querySelectorAll('.btn-assinar')];
+    const botoes = [...document.querySelectorAll('.btn-assinar, .btn-assinar-cartao')];
     botoes.forEach(button => { button.disabled = true; });
     try {
         const { data, error } = await supabase.functions.invoke('asaas', {
@@ -149,10 +147,27 @@ async function assinar(planId, billingType) {
         mostrarStatus(data.message || 'Assinatura enviada ao Asaas. O plano será ativado após confirmação do pagamento.', true, data.paymentUrl);
     } catch (error) {
         console.error('Não foi possível criar a assinatura no Asaas:', error);
-        mostrarStatus(error.message || 'Não foi possível iniciar a assinatura.', false);
+        mostrarStatus(await obterMensagemErro(error), false);
     } finally {
         botoes.forEach(button => { button.disabled = false; });
     }
+}
+
+async function obterMensagemErro(error) {
+    const resposta = error?.context;
+    if (resposta && typeof resposta.clone === 'function' && typeof resposta.status === 'number') {
+        try {
+            const corpo = await resposta.clone().json();
+            const mensagem = typeof corpo?.error === 'string'
+                ? corpo.error
+                : typeof corpo?.message === 'string' ? corpo.message : '';
+            if (mensagem) return `${mensagem} (HTTP ${resposta.status})`;
+        } catch {
+            // Keep the SDK error when the function response is not JSON.
+        }
+        return `${error?.message || 'A Edge Function recusou a solicitação.'} (HTTP ${resposta.status})`;
+    }
+    return error?.message || 'Não foi possível iniciar a assinatura.';
 }
 
 function mostrarStatus(mensagem, sucesso, paymentUrl = null) {
@@ -162,13 +177,13 @@ function mostrarStatus(mensagem, sucesso, paymentUrl = null) {
     if (paymentUrl) {
         try {
             const url = new URL(paymentUrl);
-            if (url.protocol === 'https:' && ['www.asaas.com', 'sandbox.asaas.com'].includes(url.hostname)) {
+            if (url.protocol === 'https:' && ['asaas.com', 'www.asaas.com', 'sandbox.asaas.com'].includes(url.hostname)) {
                 const link = document.createElement('a');
                 link.href = url.href;
                 link.target = '_blank';
                 link.rel = 'noopener noreferrer';
                 link.className = 'mt-2 block font-bold underline';
-                link.textContent = 'Abrir cobrança e concluir o pagamento';
+                link.textContent = 'Abrir checkout seguro do Asaas';
                 status.append(document.createElement('br'), link);
             }
         } catch (error) {
