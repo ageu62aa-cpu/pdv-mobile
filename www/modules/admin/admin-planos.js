@@ -145,10 +145,27 @@ async function assinar(planId, billingType) {
     const botoes = [...document.querySelectorAll('.btn-assinar, .btn-assinar-cartao')];
     botoes.forEach(button => { button.disabled = true; });
     try {
-        const { data, error } = await supabase.functions.invoke('asaas', {
-            body: { action: 'subscribe', planId, billingType }
-        });
-        if (error) throw error;
+        let cpfCnpj = '';
+        let data;
+        for (let tentativa = 0; tentativa < 2; tentativa += 1) {
+            const resultado = await supabase.functions.invoke('asaas', {
+                body: { action: 'subscribe', planId, billingType, ...(cpfCnpj ? { cpfCnpj } : {}) }
+            });
+            if (!resultado.error) {
+                data = resultado.data;
+                break;
+            }
+            const detalhe = await lerErroFuncao(resultado.error);
+            if (detalhe.code !== 'CUSTOMER_DOCUMENT_REQUIRED' || tentativa > 0) throw resultado.error;
+            const documentoInformado = window.prompt(
+                'Para gerar a cobrança da assinatura, informe o CPF (11 dígitos) ou CNPJ (14 dígitos) do titular cadastrado.'
+            );
+            if (documentoInformado === null) return;
+            cpfCnpj = documentoInformado.replace(/\D/g, '');
+            if (![11, 14].includes(cpfCnpj.length)) {
+                throw new Error('O documento deve conter 11 dígitos (CPF) ou 14 dígitos (CNPJ).');
+            }
+        }
         if (!data?.configured) {
             mostrarStatus(data?.message || 'A integração do Asaas ainda não está configurada.', false);
             return;
@@ -162,14 +179,30 @@ async function assinar(planId, billingType) {
     }
 }
 
+async function lerErroFuncao(error) {
+    const resposta = error?.context;
+    if (resposta && typeof resposta.clone === 'function') {
+        try {
+            const corpo = await resposta.clone().json();
+            return {
+                code: typeof corpo?.code === 'string' ? corpo.code : '',
+                message: typeof corpo?.error === 'string'
+                    ? corpo.error
+                    : typeof corpo?.message === 'string' ? corpo.message : '',
+                status: resposta.status
+            };
+        } catch {
+            return { code: '', message: '', status: resposta.status };
+        }
+    }
+    return { code: '', message: error?.message || '', status: null };
+}
+
 async function obterMensagemErro(error) {
     const resposta = error?.context;
     if (resposta && typeof resposta.clone === 'function' && typeof resposta.status === 'number') {
         try {
-            const corpo = await resposta.clone().json();
-            const mensagem = typeof corpo?.error === 'string'
-                ? corpo.error
-                : typeof corpo?.message === 'string' ? corpo.message : '';
+            const { message: mensagem } = await lerErroFuncao(error);
             if (mensagem) return `${mensagem} (HTTP ${resposta.status})`;
         } catch {
             // Keep the SDK error when the function response is not JSON.

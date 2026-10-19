@@ -125,6 +125,22 @@ Deno.serve(async request => {
     if (billingType !== 'PIX' && billingType !== 'CREDIT_CARD') {
       return response(400, { error: 'Escolha PIX ou Cartão de Crédito.' });
     }
+    const suppliedDocument = typeof body.cpfCnpj === 'string' ? body.cpfCnpj.replace(/\D/g, '') : '';
+    const companyDocument = typeof company.cnpj === 'string' ? company.cnpj.replace(/\D/g, '') : '';
+    const customerDocument = suppliedDocument || companyDocument;
+    if (![11, 14].includes(customerDocument.length)) {
+      return response(400, {
+        code: 'CUSTOMER_DOCUMENT_REQUIRED',
+        error: 'Informe um CPF (11 dígitos) ou CNPJ (14 dígitos) válido do titular para gerar a cobrança da assinatura.',
+      });
+    }
+    if (suppliedDocument && suppliedDocument !== companyDocument) {
+      const { error: documentUpdateError } = await database.from('empresas')
+        .update({ cnpj: suppliedDocument })
+        .eq('id', company.id);
+      if (documentUpdateError) throw documentUpdateError;
+    }
+
     const asaasBaseUrl = normalizeBaseUrl(Deno.env.get('ASAAS_API_URL'));
     let customerId = company.asaas_customer_id;
     if (!customerId) {
@@ -134,7 +150,7 @@ Deno.serve(async request => {
         body: JSON.stringify({
           name: company.nome_mercado || company.nome_empresa,
           email: company.email_admin || company.email || email,
-          cpfCnpj: company.cnpj,
+          cpfCnpj: customerDocument,
           phone: company.whatsapp,
           externalReference: company.id,
         }),
@@ -156,6 +172,19 @@ Deno.serve(async request => {
         .update({ asaas_customer_id: customerId })
         .eq('id', company.id);
       if (customerUpdateError) throw customerUpdateError;
+    } else {
+      const customerResponse = await fetch(`${asaasBaseUrl}/customers/${encodeURIComponent(customerId)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', access_token: apiKey },
+        body: JSON.stringify({ cpfCnpj: customerDocument }),
+      });
+      const customerResult = await readJsonObject(customerResponse);
+      if (!customerResponse.ok) {
+        console.error('Asaas customer document update failed:', customerResult);
+        return response(502, {
+          error: `Não foi possível atualizar o CPF/CNPJ do cliente no Asaas.${asaasErrorDetail(customerResult)}`,
+        });
+      }
     }
 
     const { data: pendingSubscription, error: pendingError } = await database
