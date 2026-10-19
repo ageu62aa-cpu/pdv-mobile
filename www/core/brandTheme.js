@@ -34,7 +34,7 @@ const palettes = {
 const shadeNames = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900];
 const opacitySteps = [5, 10, 15, 20, 25, 30, 40, 50, 60, 70, 75, 80, 90, 95];
 const themeArtwork = new URL('../assets/icones-card.jpeg', import.meta.url).href;
-const coffeeThemeArtwork = new URL('../assets/icone-carde.jpeg', import.meta.url).href;
+const coffeeThemeArtwork = new URL('../assets/icone-carde.png', import.meta.url).href;
 
 function ensureThemeStyles() {
     if (document.getElementById('tenant-brand-theme-styles')) return;
@@ -47,7 +47,7 @@ function ensureThemeStyles() {
         '.brand-theme-option [data-theme-check]{color:var(--preview-primary)}',
         '.brand-theme-preview{border-color:var(--preview-border);background:var(--preview-background);box-shadow:inset 0 0 28px -18px var(--preview-glow)}',
         '.brand-theme-art{width:4.5rem;height:4.5rem;border-radius:.8rem;background-image:var(--theme-artwork);background-color:var(--preview-background);background-size:490% 267%;background-position:var(--art-position);background-repeat:no-repeat;box-shadow:0 4px 14px color-mix(in srgb,var(--preview-primary) 20%,transparent);transition:transform 180ms ease,box-shadow 180ms ease}',
-        '.brand-theme-option[data-theme-color="coffee"] .brand-theme-art{background-image:var(--coffee-theme-artwork);background-size:230% auto;background-position:center 44%}',
+        '.brand-theme-option[data-theme-color="coffee"] .brand-theme-art{background-image:var(--coffee-theme-artwork);background-size:100% 100%;background-position:center}',
         '.brand-theme-option:hover .brand-theme-art,.brand-theme-option[aria-pressed="true"] .brand-theme-art{transform:translateY(-1px);box-shadow:0 6px 18px color-mix(in srgb,var(--preview-primary) 30%,transparent)}',
         '.brand-theme-option:disabled{cursor:wait;opacity:.72}'
     ];
