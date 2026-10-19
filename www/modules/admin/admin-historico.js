@@ -3,6 +3,7 @@
  */
 
 import { adminSupabase as supabase } from '../../core/config.js';
+import { abrirModalUpgrade } from './admin-upgrade.js';
 
 function escaparTextoHtml(valor) {
     return String(valor ?? '').replace(/[&<>"']/g, caractere => ({
@@ -94,6 +95,10 @@ export async function initAdminHistorico(containerEl) {
 
             <section class="space-y-3">
                 <h3 class="text-sm font-bold text-white">Histórico completo</h3>
+                <div id="banner-upgrade-historico" class="hidden items-center justify-between gap-3 rounded-xl border border-amber-500/40 bg-amber-950/30 p-4">
+                    <p id="mensagem-upgrade-historico" class="text-xs leading-5 text-amber-100"></p>
+                    <button id="btn-desbloquear-historico-topo" type="button" class="shrink-0 rounded-lg bg-amber-500 px-3 py-2 text-xs font-bold text-gray-950 hover:bg-amber-400">Desbloquear Agora</button>
+                </div>
                 <p id="aviso-limite-historico" class="hidden text-xs text-amber-300"></p>
                 <div class="overflow-x-auto rounded-xl border border-gray-700 bg-gray-800">
                     <table class="w-full min-w-[760px] text-left border-collapse text-sm">
@@ -122,7 +127,10 @@ export async function initAdminHistorico(containerEl) {
         </div>
     `;
 
+    const abrirUpgradeHistorico = () => abrirModalUpgrade('Faça upgrade do seu plano para consultar o histórico de vendas completo e acessar períodos anteriores.');
     containerEl.querySelector('#btn-atualizar-historico').addEventListener('click', carregarHistorico);
+    containerEl.querySelector('#btn-desbloquear-historico-topo').addEventListener('click', abrirUpgradeHistorico);
+    containerEl.querySelector('#btn-upgrade-historico').addEventListener('click', abrirUpgradeHistorico);
     await carregarHistorico();
 }
 
@@ -172,9 +180,18 @@ async function carregarHistorico() {
         vendasBloqueadas = count || 0;
     }
     const avisoLimite = document.getElementById('aviso-limite-historico');
+    const bannerUpgrade = document.getElementById('banner-upgrade-historico');
     if (corte && avisoLimite) {
         avisoLimite.textContent = `O plano ${plano?.nome || ''} permite visualizar os últimos ${plano.dias_historico} dias.`;
         avisoLimite.classList.remove('hidden');
+        bannerUpgrade.classList.remove('hidden');
+        bannerUpgrade.classList.add('flex');
+        document.getElementById('mensagem-upgrade-historico').textContent =
+            `Visualizando os últimos ${plano.dias_historico} dias do seu plano. Quer consultar o histórico completo?`;
+    } else {
+        avisoLimite?.classList.add('hidden');
+        bannerUpgrade?.classList.add('hidden');
+        bannerUpgrade?.classList.remove('flex');
     }
     const paywall = document.getElementById('paywall-historico');
     let registrosBloqueadosHtml = '';
@@ -193,9 +210,6 @@ async function carregarHistorico() {
         document.getElementById('total-historico-bloqueado').textContent =
             `${vendasBloqueadas.toLocaleString('pt-BR')} venda(s) anterior(es) ao período incluído.`;
         paywall.classList.remove('hidden');
-        document.getElementById('btn-upgrade-historico').onclick = () => {
-            document.querySelector('[data-tab="planos"]')?.click();
-        };
     } else {
         paywall.classList.add('hidden');
     }

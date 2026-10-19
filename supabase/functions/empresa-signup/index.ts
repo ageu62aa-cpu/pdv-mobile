@@ -112,6 +112,7 @@ Deno.serve(async request => {
       termos_versao_aceite: termsVersion,
       termos_aceitos_em: acceptedAt,
       termos_aceite_ip: ip,
+      termos_aceito: true,
     });
     if (companyError) throw companyError;
 

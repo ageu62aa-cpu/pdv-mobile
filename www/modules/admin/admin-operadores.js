@@ -3,6 +3,7 @@
  * Corrigido para garantir persistência do Admin, isolamento SaaS e tempo real robusto.
  */
 import { adminSupabase as supabase, loginSupabase } from '../../core/config.js';
+import { abrirModalUpgrade } from './admin-upgrade.js';
 
 function escaparTextoHtml(valor) {
     return String(valor ?? '').replace(/[&<>"']/g, caractere => ({
@@ -115,7 +116,7 @@ async function abrirCadastroOperador() {
 
         const limite = Math.max(0, Number(plano?.limite_operadores ?? 0));
         if ((count || 0) >= limite) {
-            alert(`O limite do plano ${plano?.nome || ''} foi atingido: ${count || 0} de ${limite} operador(es). Faça upgrade para adicionar operadores.`);
+            abrirModalUpgrade('Seu plano atual não permite adicionar operadores extras. Escolha um plano superior para liberar o acesso da sua equipe!');
             return;
         }
 

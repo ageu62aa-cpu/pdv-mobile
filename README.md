@@ -10,10 +10,14 @@ Sistema de Ponto de Vêrgas / Vendas (PDV) moderno, responsivo e integrado em te
 - **Painel Administrativo Multi-dispositivo:** Sessão administrativa separada do login do operador, com cadastro de operadores vinculados à empresa do administrador, status Realtime dos caixas e indicadores diários de vendas e cancelamentos.
 - **Sessões independentes com login único por usuário:** O administrador e os operadores têm autenticações separadas e cada usuário mantém somente o login mais recente; a migration de sessões ativas habilita a validação por dispositivo.
 - **Visibilidade administrativa multi-dispositivo:** A migration de visibilidade libera a leitura de caixas, vendas, cancelamentos e operadores da própria empresa para o Admin e habilita as tabelas no Supabase Realtime.
+- **Planos e upgrade contextual:** O painel oferece a comparação dos cinco planos, atalhos de upgrade nos limites de produtos/operadores e paywall para períodos antigos do histórico.
+- **Aceite legado compatível:** A migration de backfill marca tenants existentes como compatíveis com o acesso sem alterar sessões autenticadas ou registros históricos de aceite.
 
 ## Banco de dados
 
-Aplique todas as migrations de `supabase/migrations` em ordem lexicográfica pelo nome do arquivo. As migrations `20261018180000_fix_sale_rls_and_operator_membership.sql` e `20261018190000_add_saas_plans_terms_and_asaas.sql` dependem das migrations anteriores de cancelamentos, sessões, visibilidade administrativa e campos de cadastro da empresa.
+Aplique todas as migrations de `supabase/migrations` em ordem lexicográfica pelo nome do arquivo. As migrations `20261018180000_fix_sale_rls_and_operator_membership.sql` e `20261018190000_add_saas_plans_terms_and_asaas.sql` dependem das migrations anteriores de cancelamentos, sessões, visibilidade administrativa e campos de cadastro da empresa. A migration `20261018193000_backfill_terms_acceptance_for_existing_tenants.sql` prepara a flag de aceite de contas legadas sem alterar sessões autenticadas ou exigir novo login.
+
+Aplique as migrations até `20261018193000_backfill_terms_acceptance_for_existing_tenants.sql` antes de publicar a versão atualizada da Edge Function `empresa-signup`, que grava a flag de aceite explícita para novos cadastros.
 
 A migration SaaS instala os cinco planos, as assinaturas, os registros de aceite, os limites de produtos/operadores/dispositivos e as funções de sessão e entitlement. Ela remove sessões legadas sem tenant associado, pois elas não podem ser usadas como sessões válidas. Faça backup e valide em homologação antes de aplicar em produção.
 

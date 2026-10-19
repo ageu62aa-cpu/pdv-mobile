@@ -4,6 +4,7 @@
  */
 
 import { adminSupabase as supabase } from '../../core/config.js';
+import { abrirModalUpgrade } from './admin-upgrade.js';
 
 let produtosCacheAdmin = [];
 let scannerProdutoAdmin = null;
@@ -310,7 +311,7 @@ window.filtrarProdutosAdmin = function(termo) {
 
 window.abrirModalNovoProduto = async function() {
     if (quantidadeProdutosPlano >= limiteProdutosPlano) {
-        alert(`Limite de ${limiteProdutosPlano.toLocaleString('pt-BR')} produtos do plano atingido. Faça upgrade para cadastrar mais.`);
+        abrirModalUpgrade('Você atingiu o limite de produtos do seu plano. Faça um upgrade para cadastrar mais itens!');
         return;
     }
 
@@ -374,7 +375,7 @@ window.salvarProdutoAdmin = async function(e) {
         alert('Produto atualizado com sucesso!');
     } else {
         if (quantidadeProdutosPlano >= limiteProdutosPlano) {
-            alert(`Limite máximo de ${limiteProdutosPlano.toLocaleString('pt-BR')} produtos do plano atingido.`);
+            abrirModalUpgrade('Você atingiu o limite de produtos do seu plano. Faça um upgrade para cadastrar mais itens!');
             return;
         }
         const { error } = await supabase.from('produtos').insert([{

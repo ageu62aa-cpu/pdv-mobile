@@ -51,6 +51,13 @@
                 justify-content: center;
             }
 
+            #adminHeaderActions button {
+                width: 2.25rem;
+                height: 2.25rem;
+                padding: 0;
+                justify-content: center;
+            }
+
             #adminHeaderActions .action-label {
                 display: none;
             }
@@ -93,9 +100,14 @@
             </div>
         </div>
         <div id="adminHeaderActions" class="flex items-center gap-3">
-            <a href="../auth/auth.html" aria-label="Acessar o caixa" title="Acessar o caixa" class="bg-emerald-600 hover:bg-emerald-700 text-white w-9 h-9 rounded-lg font-bold transition-colors shadow flex items-center justify-center">
-                <i class="fa-solid fa-cash-register" aria-hidden="true"></i>
-            </a>
+            <button type="button" data-open-plans-tab aria-label="Planos e assinatura" title="Planos e assinatura" class="bg-amber-600 hover:bg-amber-500 text-white w-9 h-9 rounded-lg font-bold transition-colors shadow flex items-center justify-center">
+                <i class="fa-solid fa-crown" aria-hidden="true"></i>
+                <span class="action-label ml-2 text-xs">Meu Plano</span>
+            </button>
+            <button type="button" data-return-to-cash-register aria-label="Voltar ao caixa" title="Voltar ao caixa" class="flex h-10 items-center justify-center gap-2 rounded-lg border border-emerald-700 bg-emerald-600 px-3 font-bold text-white shadow-sm transition hover:border-emerald-500 hover:bg-emerald-500">
+                <i class="fa-solid fa-arrow-left-long" aria-hidden="true"></i>
+                <span class="action-label text-xs">Voltar ao caixa</span>
+            </button>
             <a href="../auth/auth.html" aria-label="Sair" title="Sair" class="bg-red-900/50 hover:bg-red-900 text-red-200 w-9 h-9 rounded-lg font-bold transition-colors border border-red-800 flex items-center justify-center">
                 <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
             </a>
@@ -119,7 +131,7 @@
                 <i class="fa-solid fa-clock-rotate-left w-4"></i> Histórico de Vendas
             </button>
             <button data-tab="planos" class="tab-btn text-left px-4 py-3 rounded-lg text-xs font-medium text-gray-300 hover:bg-gray-750 hover:text-white transition-colors flex items-center gap-2">
-                <i class="fa-solid fa-crown w-4"></i> Planos e Assinatura
+                <i class="fa-solid fa-crown w-4"></i> Planos &amp; Assinatura
             </button>
             <button data-tab="configuracoes" class="tab-btn text-left px-4 py-3 rounded-lg text-xs font-medium text-gray-300 hover:bg-gray-750 hover:text-white transition-colors flex items-center gap-2">
                 <i class="fa-solid fa-shield-halved w-4"></i> Segurança do Caixa
