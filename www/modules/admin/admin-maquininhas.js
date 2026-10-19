@@ -60,6 +60,81 @@ export async function initAdminMaquininhas(containerEl) {
                 <button type="submit" class="w-full bg-gray-700 hover:bg-gray-600 text-white font-bold py-2.5 rounded-lg text-sm">Salvar taxas gerais</button>
             </form>
 
+            <section class="max-w-3xl space-y-4 rounded-xl border border-gray-700 bg-gray-800 p-5">
+                <div>
+                    <h3 class="text-base font-bold text-white">Recebimento por Pix</h3>
+                    <p class="mt-1 text-xs text-gray-400">No modo padrão, use seu QR próprio e confirme o recebimento no caixa. Você pode ativar a cobrança automática do Asaas quando desejar.</p>
+                </div>
+                <form id="form-pix-settings" class="space-y-3">
+                    <label for="pix-qr-file" class="text-xs font-bold text-gray-300">Imagem do QR Pix próprio (PNG, JPEG ou WebP; até 500 KB)</label>
+                    <input id="pix-qr-file" type="file" accept="image/png,image/jpeg,image/webp" class="block w-full text-xs text-gray-300 file:mr-3 file:rounded-lg file:border-0 file:bg-gray-700 file:px-3 file:py-2 file:text-xs file:font-bold file:text-white">
+                    <p class="text-xs text-gray-400">A imagem fica na configuração da empresa e o pagamento será confirmado manualmente pelo operador.</p>
+                    <img id="pix-qr-preview" alt="Prévia do QR Pix da empresa" class="hidden max-h-48 rounded-lg border border-gray-600 bg-white p-2">
+                    <p id="status-pix-settings" class="hidden text-xs" role="status"></p>
+                    <button type="submit" class="rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-500">Salvar QR Pix próprio</button>
+                </form>
+
+                <div id="asaas-onboarding-card" class="border-t border-gray-700 pt-4">
+                    <h4 class="text-sm font-bold text-white">Ativar Pagamentos Automáticos via Asaas</h4>
+                    <p class="mt-1 text-xs text-gray-400">Crie a subconta da sua empresa. O Asaas enviará ao titular as instruções para ativação e cadastro bancário.</p>
+                    <p id="asaas-account-status" class="mt-3 hidden text-xs" role="status"></p>
+                    <button id="btn-ativar-asaas" type="button" class="mt-3 rounded-lg bg-sky-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-sky-600">Ativar pagamentos automáticos</button>
+                    <button id="btn-voltar-pix-proprio" type="button" class="mt-3 hidden rounded-lg bg-gray-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-gray-600">Voltar ao Pix próprio</button>
+                </div>
+            </section>
+
+            <div id="modal-onboarding-asaas" class="fixed inset-0 z-[100] hidden items-center justify-center bg-black/80 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="titulo-onboarding-asaas">
+                <section class="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-gray-700 bg-gray-900 p-5 text-gray-100 shadow-2xl">
+                    <div class="mb-4 flex items-center justify-between gap-3">
+                        <h3 id="titulo-onboarding-asaas" class="text-lg font-bold text-white">Ativar pagamentos via Asaas</h3>
+                        <button id="btn-fechar-onboarding-asaas" type="button" class="rounded-lg bg-gray-700 px-3 py-1.5 text-xs font-bold text-white">Fechar</button>
+                    </div>
+                    <p class="mb-4 text-xs leading-5 text-gray-400">Confira os dados que serão enviados ao Asaas para criar a subconta da sua loja.</p>
+                    <form id="form-asaas-account" class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <label class="text-xs font-bold text-gray-300">Razão social / nome
+                            <input name="name" required maxlength="120" class="w-full mt-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white">
+                        </label>
+                        <label class="text-xs font-bold text-gray-300">E-mail do titular
+                            <input name="email" type="email" required maxlength="160" class="w-full mt-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white">
+                        </label>
+                        <label class="text-xs font-bold text-gray-300">CPF/CNPJ
+                            <input name="cpfCnpj" required inputmode="numeric" maxlength="18" class="w-full mt-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white">
+                        </label>
+                        <label class="text-xs font-bold text-gray-300">Celular
+                            <input name="mobilePhone" required inputmode="tel" maxlength="20" class="w-full mt-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white">
+                        </label>
+                        <label class="text-xs font-bold text-gray-300">Faturamento mensal estimado (R$)
+                            <input name="incomeValue" type="number" required min="1" step="0.01" class="w-full mt-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white">
+                        </label>
+                        <label class="text-xs font-bold text-gray-300">Tipo de empresa
+                            <select name="companyType" class="w-full mt-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white">
+                                <option value="">Não informado</option>
+                                <option value="MEI">MEI</option>
+                                <option value="LIMITED">Limitada</option>
+                            </select>
+                        </label>
+                        <label class="text-xs font-bold text-gray-300">Endereço
+                            <input name="address" required maxlength="150" class="w-full mt-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white">
+                        </label>
+                        <label class="text-xs font-bold text-gray-300">Número
+                            <input name="addressNumber" required maxlength="20" class="w-full mt-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white">
+                        </label>
+                        <label class="text-xs font-bold text-gray-300">Bairro
+                            <input name="province" required maxlength="100" class="w-full mt-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white">
+                        </label>
+                        <label class="text-xs font-bold text-gray-300">CEP
+                            <input name="postalCode" required inputmode="numeric" maxlength="9" class="w-full mt-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white">
+                        </label>
+                        <label class="flex items-start gap-2 rounded-lg border border-gray-700 bg-gray-800 p-3 text-xs leading-5 text-gray-200 sm:col-span-2">
+                            <input name="acceptTerms" type="checkbox" required class="mt-1 accent-emerald-500">
+                            <span>Li e concordo com os Termos de Uso. Estou ciente de que cada venda processada com confirmação automática terá uma taxa de split de R$ 0,10 descontada pelo sistema, e autorizo a criação da minha subconta no Asaas para repasse direto dos saldos.</span>
+                        </label>
+                        <p id="status-asaas-account" class="hidden sm:col-span-2 text-xs" role="status"></p>
+                        <button type="submit" class="sm:col-span-2 rounded-lg bg-sky-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-sky-600">Concordar e criar subconta Asaas</button>
+                    </form>
+                </section>
+            </div>
+
             <section class="space-y-4">
                 <div class="flex flex-wrap items-center justify-between gap-3 border-t border-gray-700 pt-5">
                     <div>
@@ -113,6 +188,17 @@ export async function initAdminMaquininhas(containerEl) {
     const maquinaStatus = containerEl.querySelector('#status-maquininha');
     const listaMaquinas = containerEl.querySelector('#lista-maquininhas');
     const botaoCancelarEdicao = containerEl.querySelector('#btn-cancelar-edicao-maquininha');
+    const pixForm = containerEl.querySelector('#form-pix-settings');
+    const pixImageInput = containerEl.querySelector('#pix-qr-file');
+    const pixPreview = containerEl.querySelector('#pix-qr-preview');
+    const pixStatus = containerEl.querySelector('#status-pix-settings');
+    const asaasForm = containerEl.querySelector('#form-asaas-account');
+    const asaasStatus = containerEl.querySelector('#status-asaas-account');
+    const asaasCardStatus = containerEl.querySelector('#asaas-account-status');
+    const asaasModal = containerEl.querySelector('#modal-onboarding-asaas');
+    const asaasActivateButton = containerEl.querySelector('#btn-ativar-asaas');
+    const asaasManualButton = containerEl.querySelector('#btn-voltar-pix-proprio');
+    let pixQrCode = null;
 
     const camposTaxaGeral = {
         debito: containerEl.querySelector('#taxa-debito'),
@@ -180,7 +266,7 @@ export async function initAdminMaquininhas(containerEl) {
 
     const { data: configuracao, error: erroConsultaTaxas } = await supabase
         .from('empresas_config')
-        .select('taxa_debito, taxa_credito_vista, taxa_credito_parcelado')
+        .select('taxa_debito, taxa_credito_vista, taxa_credito_parcelado, pix_payment_mode, pix_qr_code')
         .eq('empresa_id', empresaId)
         .maybeSingle();
     if (erroConsultaTaxas) {
@@ -190,7 +276,181 @@ export async function initAdminMaquininhas(containerEl) {
         camposTaxaGeral.debito.value = String(configuracao.taxa_debito);
         camposTaxaGeral.creditoVista.value = String(configuracao.taxa_credito_vista);
         camposTaxaGeral.creditoParcelado.value = String(configuracao.taxa_credito_parcelado);
+        pixQrCode = configuracao.pix_qr_code || null;
+        if (pixQrCode) {
+            pixPreview.src = pixQrCode;
+            pixPreview.classList.remove('hidden');
+        }
     }
+
+    const { data: companyProfile, error: companyProfileError } = await supabase
+        .from('empresas')
+        .select('nome_empresa, nome_mercado, cnpj, email, email_admin, whatsapp, endereco, numero, cep, cidade, estado, bairro, tipo_empresa, faturamento_mensal_estimado')
+        .eq('id', empresaId)
+        .maybeSingle();
+    if (companyProfileError) {
+        console.error('PDV-VS: Erro ao carregar dados cadastrais para o onboarding Asaas:', companyProfileError);
+        mostrarStatus(asaasStatus, `Não foi possível carregar os dados cadastrais: ${companyProfileError.message}`);
+    } else if (companyProfile) {
+        const values = {
+            name: companyProfile.nome_empresa || companyProfile.nome_mercado || '',
+            email: companyProfile.email_admin || companyProfile.email || '',
+            cpfCnpj: companyProfile.cnpj || '',
+            mobilePhone: companyProfile.whatsapp || '',
+            incomeValue: companyProfile.faturamento_mensal_estimado || '',
+            companyType: companyProfile.tipo_empresa || '',
+            address: companyProfile.endereco || '',
+            addressNumber: companyProfile.numero || '',
+            province: companyProfile.bairro || '',
+            postalCode: companyProfile.cep || '',
+        };
+        Object.entries(values).forEach(([name, value]) => {
+            const input = asaasForm.elements.namedItem(name);
+            if (input) input.value = String(value);
+        });
+    }
+
+    const { data: gatewayStatus, error: gatewayStatusError } = await supabase.functions.invoke('pdv-asaas', {
+        body: { action: 'status', empresaId }
+    });
+    let gatewayConnected = Boolean(gatewayStatus?.connected);
+    if (gatewayStatusError) {
+        mostrarStatus(asaasStatus, `Não foi possível verificar a conexão Asaas: ${gatewayStatusError.message}`);
+    } else if (gatewayConnected) {
+        const modeText = gatewayStatus.gatewayMode === 'ASAAS_REAL'
+            ? 'Pagamentos automáticos via Asaas estão ativos.'
+            : 'Subconta Asaas conectada; pagamentos continuam no modo Pix próprio até você ativar.';
+        mostrarStatus(asaasCardStatus, modeText, true);
+        asaasActivateButton.classList.toggle('hidden', gatewayStatus.gatewayMode === 'ASAAS_REAL');
+        asaasManualButton.classList.toggle('hidden', gatewayStatus.gatewayMode !== 'ASAAS_REAL');
+    } else {
+        mostrarStatus(asaasCardStatus, 'Modo Pix próprio ativo. Nenhuma cobrança será enviada ao Asaas.', true);
+    }
+
+    const fecharModalAsaas = () => {
+        asaasModal.classList.add('hidden');
+        asaasModal.classList.remove('flex');
+    };
+    asaasActivateButton.addEventListener('click', async () => {
+        if (gatewayConnected) {
+            asaasActivateButton.disabled = true;
+            try {
+                const { data, error } = await supabase.functions.invoke('pdv-asaas', {
+                    body: { action: 'set_asaas_real', empresaId }
+                });
+                if (error) throw error;
+                if (!data?.updated) throw new Error(data?.error || 'Não foi possível ativar os pagamentos Asaas.');
+                mostrarStatus(asaasCardStatus, 'Pagamentos automáticos via Asaas estão ativos.', true);
+                asaasActivateButton.classList.add('hidden');
+                asaasManualButton.classList.remove('hidden');
+            } catch (error) {
+                console.error('PDV-VS: Erro ao ativar a subconta Asaas existente:', error);
+                mostrarStatus(asaasCardStatus, `Não foi possível ativar o Asaas: ${error.message}`);
+            } finally {
+                asaasActivateButton.disabled = false;
+            }
+            return;
+        }
+        asaasModal.classList.remove('hidden');
+        asaasModal.classList.add('flex');
+        asaasForm.elements.namedItem('name')?.focus();
+    });
+    containerEl.querySelector('#btn-fechar-onboarding-asaas').addEventListener('click', fecharModalAsaas);
+    asaasModal.addEventListener('click', event => {
+        if (event.target === asaasModal) fecharModalAsaas();
+    });
+
+    pixImageInput.addEventListener('change', () => {
+        const file = pixImageInput.files?.[0];
+        if (!file) return;
+        if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type) || file.size > 500 * 1024) {
+            pixImageInput.value = '';
+            mostrarStatus(pixStatus, 'Escolha uma imagem PNG, JPEG ou WebP com até 500 KB.');
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = () => {
+            if (typeof reader.result !== 'string') {
+                mostrarStatus(pixStatus, 'Não foi possível ler a imagem selecionada.');
+                return;
+            }
+            pixQrCode = reader.result;
+            pixPreview.src = pixQrCode;
+            pixPreview.classList.remove('hidden');
+        };
+        reader.onerror = () => mostrarStatus(pixStatus, 'Não foi possível ler a imagem selecionada.');
+        reader.readAsDataURL(file);
+    });
+
+    pixForm.addEventListener('submit', async event => {
+        event.preventDefault();
+        if (!pixQrCode) {
+            mostrarStatus(pixStatus, 'Envie a imagem do QR Pix próprio antes de salvar.');
+            return;
+        }
+        const button = pixForm.querySelector('button[type="submit"]');
+        button.disabled = true;
+        try {
+            const { error } = await supabase.from('empresas_config').upsert({
+                empresa_id: empresaId,
+                pix_qr_code: pixQrCode,
+            }, { onConflict: 'empresa_id' });
+            if (error) throw error;
+            mostrarStatus(pixStatus, 'Configuração Pix salva. Ela permanecerá ativa até ser alterada novamente.', true);
+        } catch (error) {
+            console.error('PDV-VS: Erro ao salvar configuração Pix:', error);
+            mostrarStatus(pixStatus, `Erro ao salvar configuração Pix: ${error.message}`);
+        } finally {
+            button.disabled = false;
+        }
+    });
+
+    asaasForm.addEventListener('submit', async event => {
+        event.preventDefault();
+        const button = asaasForm.querySelector('button[type="submit"]');
+        const formData = new FormData(asaasForm);
+        const accountData = Object.fromEntries(formData.entries());
+        accountData.acceptTerms = formData.get('acceptTerms') === 'on';
+        accountData.companyType = String(accountData.companyType || '');
+        accountData.incomeValue = Number(accountData.incomeValue);
+        button.disabled = true;
+        try {
+            const { data, error } = await supabase.functions.invoke('pdv-asaas', {
+                body: { action: 'connect_account', empresaId, ...accountData }
+            });
+            if (error) throw error;
+            if (!data?.connected) throw new Error(data?.error || 'O Asaas não confirmou a conexão.');
+            gatewayConnected = true;
+            fecharModalAsaas();
+            mostrarStatus(asaasCardStatus, data.message, true);
+            asaasActivateButton.classList.add('hidden');
+            asaasManualButton.classList.remove('hidden');
+        } catch (error) {
+            console.error('PDV-VS: Erro ao conectar subconta Asaas:', error);
+            mostrarStatus(asaasStatus, `Não foi possível conectar a conta Asaas: ${error.message}`);
+        } finally {
+            if (!gatewayConnected) button.disabled = false;
+        }
+    });
+
+    asaasManualButton.addEventListener('click', async () => {
+        asaasManualButton.disabled = true;
+        try {
+            const { data, error } = await supabase.functions.invoke('pdv-asaas', {
+                body: { action: 'set_simulated', empresaId }
+            });
+            if (error) throw error;
+            if (!data?.updated) throw new Error(data?.error || 'Não foi possível voltar ao Pix próprio.');
+            mostrarStatus(asaasCardStatus, 'Modo Pix próprio ativo. As cobranças voltarão a exigir confirmação manual.', true);
+            asaasManualButton.classList.add('hidden');
+            asaasActivateButton.classList.remove('hidden');
+        } catch (error) {
+            console.error('PDV-VS: Erro ao alterar o modo de recebimento Pix:', error);
+            mostrarStatus(asaasCardStatus, `Não foi possível alterar o modo Pix: ${error.message}`);
+        } finally {
+            asaasManualButton.disabled = false;
+        }
+    });
 
     taxaForm.addEventListener('submit', async event => {
         event.preventDefault();

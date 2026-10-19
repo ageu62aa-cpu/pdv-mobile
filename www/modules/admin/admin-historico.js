@@ -39,6 +39,14 @@ function renderizarDetalhesVenda(venda) {
     const subtotal = Number(venda.valor_subtotal ?? (Number(venda.valor_total || 0) + Number(venda.desconto || 0)));
     const desconto = Number(venda.desconto) || 0;
     const juros = Number(venda.valor_juros) || 0;
+    const statusPagamento = venda.status_pagamento || 'PAGO';
+    const textoStatus = statusPagamento === 'PAGO'
+        ? 'Pago'
+        : statusPagamento === 'PENDENTE'
+            ? 'Pendente de confirmação'
+            : statusPagamento === 'FALHOU'
+                ? 'Falha no pagamento'
+                : 'Cancelado';
     const itens = Array.isArray(venda.itens) ? venda.itens : [];
     const detalhesItens = itens.length
         ? `<ul class="mt-2 space-y-1 text-xs text-gray-400">${itens.map(item => `
@@ -58,6 +66,7 @@ function renderizarDetalhesVenda(venda) {
                 <span class="text-gray-400">Total final: <strong class="text-emerald-300">${formatarDinheiro(venda.valor_total)}</strong></span>
             </div>
             <p class="mt-2 text-xs text-gray-300">Pagamento: ${escaparTextoHtml(obterFormaDetalhada(venda))}</p>
+            <p class="mt-1 text-xs ${statusPagamento === 'PAGO' ? 'text-emerald-300' : 'text-amber-300'}">Status do pagamento: ${textoStatus}</p>
             ${detalhesCartao}
             ${detalhesItens}
         </div>
@@ -152,7 +161,7 @@ async function carregarHistorico() {
         : new Date(Date.now() - Number(plano.dias_historico) * 24 * 60 * 60 * 1000);
     let consultaVendas = supabase
         .from('vendas')
-        .select('id, created_at, operador, operador_nome, valor_total, valor_subtotal, valor_juros, desconto, forma_pagamento, parcelas, maquininha_nome, taxa_aplicada, cliente_cpf, itens')
+        .select('id, created_at, operador, operador_nome, valor_total, valor_subtotal, valor_juros, desconto, forma_pagamento, parcelas, maquininha_nome, taxa_aplicada, cliente_cpf, itens, status_pagamento')
         .eq('empresa_id', empresaId)
         .order('created_at', { ascending: false });
     if (corte) consultaVendas = consultaVendas.gte('created_at', corte.toISOString());
@@ -215,7 +224,9 @@ async function carregarHistorico() {
     }
 
     const hoje = new Date();
-    const vendasHoje = vendas.filter(venda => venda.created_at && mesmoDiaLocal(new Date(venda.created_at), hoje));
+    const vendasHoje = vendas.filter(venda => venda.created_at
+        && mesmoDiaLocal(new Date(venda.created_at), hoje)
+        && (venda.status_pagamento || 'PAGO') === 'PAGO');
     const totalDia = vendasHoje.reduce((total, venda) => total + (Number(venda.valor_total) || 0), 0);
     totalAdmin.textContent = `${formatarDinheiro(totalDia)} · ${vendasHoje.length} venda(s)`;
 

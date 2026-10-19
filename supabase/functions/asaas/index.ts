@@ -55,11 +55,11 @@ Deno.serve(async request => {
   const database = createClient(supabaseUrl, serviceKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
-  const apiKey = Deno.env.get('ASAAS_API_KEY')?.trim();
+  const apiKey = Deno.env.get('ASAAS_MASTER_API_KEY')?.trim();
   if (!apiKey) {
     return response(200, {
       configured: false,
-      message: 'A integração de pagamentos aguarda a configuração das chaves do Asaas no ambiente seguro do servidor.',
+      message: 'Configure a chave master do Asaas nos secrets das Edge Functions para habilitar assinaturas.',
     });
   }
 

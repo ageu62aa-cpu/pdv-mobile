@@ -249,8 +249,9 @@ export async function carregarGestaoOperadores() {
         supabase.from('caixas').select('*').eq('empresa_id', empresaIdDoAdmin).order('created_at', { ascending: false }),
         supabase.from('usuarios_empresas').select('user_id, cargo').eq('empresa_id', empresaIdDoAdmin),
         supabase.from('operadores').select('*').eq('empresa_id', empresaIdDoAdmin),
-        supabase.from('vendas').select('operador, operador_nome, itens, valor_total, created_at')
+        supabase.from('vendas').select('operador, operador_nome, itens, valor_total, created_at, status_pagamento')
             .eq('empresa_id', empresaIdDoAdmin)
+            .eq('status_pagamento', 'PAGO')
             .gte('created_at', inicio.toISOString())
             .lt('created_at', fim.toISOString()),
         supabase.from('cancelamentos_caixa').select('user_id, quantidade')
@@ -480,8 +481,9 @@ async function carregarFaturamentoOperadoresHoje(empresaId) {
 
     const { data: vendas, error } = await supabase
         .from('vendas')
-        .select('id, created_at, operador, operador_nome, valor_total, valor_juros, forma_pagamento, maquininha_nome, parcelas, taxa_aplicada')
+        .select('id, created_at, operador, operador_nome, valor_total, valor_juros, forma_pagamento, maquininha_nome, parcelas, taxa_aplicada, status_pagamento')
         .eq('empresa_id', empresaId)
+        .eq('status_pagamento', 'PAGO')
         .gte('created_at', inicio.toISOString())
         .lt('created_at', fim.toISOString())
         .order('created_at', { ascending: false });
