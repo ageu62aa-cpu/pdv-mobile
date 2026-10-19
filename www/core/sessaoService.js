@@ -1,5 +1,23 @@
 // www/core/sessaoService.js
 
+const sessoesEncerradas = new Set();
+
+function encerrarSessaoSubstituida(escopo, rotaLogin, chaves) {
+  if (sessoesEncerradas.has(escopo)) return;
+  sessoesEncerradas.add(escopo);
+  sessionStorage.removeItem(chaves.token);
+  sessionStorage.removeItem(chaves.user);
+
+  const aviso = document.createElement('div');
+  aviso.className = 'fixed inset-x-4 top-4 z-[200] mx-auto max-w-lg rounded-xl border border-amber-500/50 bg-amber-950 px-4 py-3 text-sm font-semibold text-amber-100 shadow-2xl';
+  aviso.setAttribute('role', 'alert');
+  aviso.setAttribute('aria-live', 'assertive');
+  aviso.textContent = `Sessão encerrada: este ${escopo === 'admin' ? 'administrador' : 'operador'} entrou em outro dispositivo. Redirecionando para o login...`;
+  document.body.append(aviso);
+
+  window.setTimeout(() => window.location.replace(rotaLogin), 2500);
+}
+
 export async function transferirSessaoAutenticada(supabaseClient, destinationClient, user) {
   const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
   if (sessionError) throw sessionError;
@@ -126,6 +144,7 @@ export async function validarSessaoAtual(
   { exigirSessao = false, rotaLogin = '/modules/auth/auth.html' } = {}
 ) {
   const chaves = obterChavesSessao(escopo);
+  if (sessoesEncerradas.has(escopo)) return false;
   let userId = sessionStorage.getItem(chaves.user);
   let tokenLocal = sessionStorage.getItem(chaves.token);
 
@@ -155,7 +174,6 @@ export async function validarSessaoAtual(
   if (!session || session.user.id !== userId) {
     sessionStorage.removeItem(chaves.token);
     sessionStorage.removeItem(chaves.user);
-    if (escopo === 'admin') localStorage.removeItem('vancely_admin_session');
     window.location.href = rotaLogin;
     return false;
   }
@@ -172,11 +190,7 @@ export async function validarSessaoAtual(
   }
 
   if (!data || data.token_sessao !== tokenLocal) {
-    alert(`Sessão encerrada: este ${escopo === 'admin' ? 'administrador' : 'operador'} entrou em outro dispositivo.`);
-    sessionStorage.removeItem(chaves.token);
-    sessionStorage.removeItem(chaves.user);
-    if (escopo === 'admin') localStorage.removeItem('vancely_admin_session');
-    window.location.href = rotaLogin;
+    encerrarSessaoSubstituida(escopo, rotaLogin, chaves);
     return false;
   }
 
@@ -189,10 +203,7 @@ export async function validarSessaoAtual(
     return true;
   }
   if (!heartbeatOk) {
-    sessionStorage.removeItem(chaves.token);
-    sessionStorage.removeItem(chaves.user);
-    if (escopo === 'admin') localStorage.removeItem('vancely_admin_session');
-    window.location.href = rotaLogin;
+    encerrarSessaoSubstituida(escopo, rotaLogin, chaves);
     return false;
   }
 
