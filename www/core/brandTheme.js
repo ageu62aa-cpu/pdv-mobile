@@ -45,7 +45,7 @@ function ensureThemeStyles() {
         '.brand-theme-option[aria-pressed="true"]{border-color:var(--preview-primary);box-shadow:0 0 0 1px var(--preview-primary),0 10px 28px -14px var(--preview-glow)}',
         '.brand-theme-option [data-theme-check]{color:var(--preview-primary)}',
         '.brand-theme-preview{border-color:var(--preview-border);background:var(--preview-background);box-shadow:inset 0 0 28px -18px var(--preview-glow)}',
-        '.brand-theme-art{width:4.5rem;height:4.5rem;border-radius:.8rem;background-image:var(--theme-artwork);background-color:var(--preview-background);background-size:300% 200%;background-position:var(--art-position);background-repeat:no-repeat;background-blend-mode:var(--art-blend,normal);box-shadow:0 4px 14px color-mix(in srgb,var(--preview-primary) 20%,transparent);transition:transform 180ms ease,box-shadow 180ms ease}',
+        '.brand-theme-art{width:4.5rem;height:4.5rem;border-radius:.8rem;background-image:var(--theme-artwork);background-color:var(--preview-background);background-size:490% 267%;background-position:var(--art-position);background-repeat:no-repeat;box-shadow:0 4px 14px color-mix(in srgb,var(--preview-primary) 20%,transparent);transition:transform 180ms ease,box-shadow 180ms ease}',
         '.brand-theme-option:hover .brand-theme-art,.brand-theme-option[aria-pressed="true"] .brand-theme-art{transform:translateY(-1px);box-shadow:0 6px 18px color-mix(in srgb,var(--preview-primary) 30%,transparent)}',
         '.brand-theme-option:disabled{cursor:wait;opacity:.72}'
     ];
@@ -93,10 +93,19 @@ function ensureThemeStyles() {
     }
 
     rules.push(':root[data-brand-theme]:not([data-brand-theme="green"]) [class~="shadow-emerald-950/20"]{--tw-shadow-color:color-mix(in srgb,var(--theme-primary) 20%,transparent)!important}');
+    rules.push(':root[data-brand-theme]:not([data-brand-theme="green"]) body.bg-gray-900{background-color:var(--theme-canvas)!important;color:#334155!important}');
+    rules.push(':root[data-brand-theme]:not([data-brand-theme="green"]) #pdvHeader,:root[data-brand-theme]:not([data-brand-theme="green"]) #adminHeader{background-color:var(--theme-surface)!important;border-color:var(--theme-border-soft)!important}');
+    rules.push(':root[data-brand-theme]:not([data-brand-theme="green"]) #pdvMain,:root[data-brand-theme]:not([data-brand-theme="green"]) #adminLayout{background-color:var(--theme-canvas)!important}');
+    rules.push(':root[data-brand-theme]:not([data-brand-theme="green"]) #pdvMain .bg-gray-800,:root[data-brand-theme]:not([data-brand-theme="green"]) #adminLayout .bg-gray-800{background-color:var(--theme-surface)!important;border-color:var(--theme-border-soft)!important;color:#334155}');
+    rules.push(':root[data-brand-theme]:not([data-brand-theme="green"]) #pdvMain .bg-gray-900:not(input):not(select):not(textarea):not(button),:root[data-brand-theme]:not([data-brand-theme="green"]) #adminLayout .bg-gray-900:not(input):not(select):not(textarea):not(button){background-color:var(--theme-canvas)!important;color:#334155}');
+    rules.push(':root[data-brand-theme]:not([data-brand-theme="green"]) #pdvMain .text-gray-100:not(input):not(select):not(textarea),:root[data-brand-theme]:not([data-brand-theme="green"]) #pdvMain .text-gray-200:not(input):not(select):not(textarea),:root[data-brand-theme]:not([data-brand-theme="green"]) #pdvMain .text-gray-300:not(input):not(select):not(textarea),:root[data-brand-theme]:not([data-brand-theme="green"]) #pdvMain .text-gray-400:not(input):not(select):not(textarea),:root[data-brand-theme]:not([data-brand-theme="green"]) #adminLayout .text-gray-100:not(input):not(select):not(textarea),:root[data-brand-theme]:not([data-brand-theme="green"]) #adminLayout .text-gray-200:not(input):not(select):not(textarea),:root[data-brand-theme]:not([data-brand-theme="green"]) #adminLayout .text-gray-300:not(input):not(select):not(textarea),:root[data-brand-theme]:not([data-brand-theme="green"]) #adminLayout .text-gray-400:not(input):not(select):not(textarea){color:#334155!important}');
+    rules.push(':root[data-brand-theme]:not([data-brand-theme="green"]) #pdvHeader .text-white:not(button),:root[data-brand-theme]:not([data-brand-theme="green"]) #adminHeader .text-white:not(button),:root[data-brand-theme]:not([data-brand-theme="green"]) #adminLayout .text-white:not(button):not(button *),:root[data-brand-theme]:not([data-brand-theme="green"]) #pdvMain .text-white:not(button):not(button *){color:#1f2937!important}');
+    rules.push(':root[data-brand-theme]:not([data-brand-theme="green"]) #pdvMain .text-emerald-300,:root[data-brand-theme]:not([data-brand-theme="green"]) #pdvMain .text-emerald-400,:root[data-brand-theme]:not([data-brand-theme="green"]) #adminLayout .text-emerald-300,:root[data-brand-theme]:not([data-brand-theme="green"]) #adminLayout .text-emerald-400{color:var(--brand-700)!important}');
+    rules.push(':root[data-brand-theme="yellow"] #pdvMain .bg-emerald-600.text-white,:root[data-brand-theme="yellow"] #adminLayout .bg-emerald-600.text-white{color:#422006!important}');
 
     const style = document.createElement('style');
     style.id = 'tenant-brand-theme-styles';
-    style.textContent = `:root{${shadeNames.map((shade, index) => `--brand-${shade}:${palettes.green.shades[index]}`).join(';')};--theme-primary:${palettes.green.shades[6]};--theme-bg-subtle:rgba(2,44,34,.3);--theme-border:${palettes.green.shades[6]};--brand-mascot-filter:none;--theme-artwork:url("${themeArtwork}")}${rules.join('\n')}`;
+    style.textContent = `:root{${shadeNames.map((shade, index) => `--brand-${shade}:${palettes.green.shades[index]}`).join(';')};--theme-primary:${palettes.green.shades[6]};--theme-bg-subtle:rgba(2,44,34,.3);--theme-canvas:#111827;--theme-surface:#1f2937;--theme-border-soft:#374151;--theme-border:${palettes.green.shades[6]};--brand-mascot-filter:none;--theme-artwork:url("${themeArtwork}")}${rules.join('\n')}`;
     document.head.append(style);
 }
 
@@ -111,6 +120,9 @@ function applyTheme(themeColor) {
     root.style.setProperty('--theme-bg-subtle', selected === 'green'
         ? 'rgba(2,44,34,.3)'
         : `color-mix(in srgb, ${palette.shades[1]} 72%, white)`);
+    root.style.setProperty('--theme-canvas', selected === 'green' ? '#111827' : `color-mix(in srgb, ${palette.shades[0]} 88%, white)`);
+    root.style.setProperty('--theme-surface', selected === 'green' ? '#1f2937' : `color-mix(in srgb, ${palette.shades[1]} 82%, white)`);
+    root.style.setProperty('--theme-border-soft', selected === 'green' ? '#374151' : `color-mix(in srgb, ${palette.shades[3]} 68%, white)`);
     root.style.setProperty('--theme-border', palette.shades[6]);
     root.style.setProperty('--brand-mascot-filter', palette.filter);
     root.dataset.brandTheme = selected;
@@ -146,12 +158,12 @@ function createModal(client, empresaId, initialTheme) {
             <div class="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3 sm:p-5">
                 ${Object.entries(palettes).map(([key, palette]) => {
                     const imagePosition = {
-                        green: '100% 100%',
-                        yellow: '0% 0%',
-                        pink: '50% 0%',
-                        orange: '100% 0%',
-                        purple: '0% 100%',
-                        gray: '50% 100%'
+                        green: '85% 85%',
+                        yellow: '14% 14%',
+                        pink: '50% 14%',
+                        orange: '85% 14%',
+                        purple: '14% 85%',
+                        gray: '50% 85%'
                     }[key];
                     const previewSurface = key === 'green'
                         ? 'color-mix(in srgb, #059669 12%, #1f2937)'
@@ -161,7 +173,7 @@ function createModal(client, empresaId, initialTheme) {
                         : `color-mix(in srgb, ${palette.shades[2]} 80%, white)`;
                     const labelClass = key === 'green' ? 'text-white' : 'text-slate-900';
                     return `
-                    <button type="button" data-theme-color="${key}" class="brand-theme-option group rounded-xl border p-3 text-left" style="--preview-primary:${palette.shades[6]};--preview-border:color-mix(in srgb, ${palette.shades[6]} 58%, ${key === 'green' ? '#374151' : '#ffffff'});--preview-surface:${previewSurface};--preview-background:${previewBackground};--preview-glow:${palette.shades[5]};--art-position:${imagePosition};--art-blend:${key === 'green' ? 'normal' : 'multiply'}" aria-pressed="${key === initialTheme}">
+                    <button type="button" data-theme-color="${key}" class="brand-theme-option group rounded-xl border p-3 text-left" style="--preview-primary:${palette.shades[6]};--preview-border:color-mix(in srgb, ${palette.shades[6]} 58%, ${key === 'green' ? '#374151' : '#ffffff'});--preview-surface:${previewSurface};--preview-background:${previewBackground};--preview-glow:${palette.shades[5]};--art-position:${imagePosition}" aria-pressed="${key === initialTheme}">
                         <span class="flex items-center justify-between gap-2">
                             <span class="flex items-center gap-2 text-sm font-semibold ${labelClass}">
                                 <span class="h-3.5 w-3.5 rounded-full ring-2 ring-white/10" style="background:${palette.shades[6]}"></span>
