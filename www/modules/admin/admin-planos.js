@@ -77,8 +77,15 @@ export async function initAdminPlanos(container) {
     const indicePlanoAtual = ordemPlanos.indexOf(planoAtualId);
     const planosDoBanco = new Map((plans || []).map(plan => [plan.id, plan]));
     const statusCatalogo = document.getElementById('status-catalogo');
-    if (plansError || entitlementError || catalogoPlanos.some(plan => !planosDoBanco.has(plan.id))) {
-        statusCatalogo.textContent = 'Os cinco planos estão visíveis. Para contratar, confirme se o catálogo foi aplicado no Supabase e se os pagamentos estão configurados.';
+    const planosAusentes = catalogoPlanos
+        .filter(plan => !planosDoBanco.has(plan.id))
+        .map(plan => plan.nome);
+    if (plansError || entitlementError || planosAusentes.length) {
+        const causas = [];
+        if (plansError) causas.push(`falha ao consultar o catálogo (${plansError.message})`);
+        if (entitlementError) causas.push(`falha ao consultar a assinatura (${entitlementError.message})`);
+        if (!plansError && planosAusentes.length) causas.push(`planos ausentes no banco: ${planosAusentes.join(', ')}`);
+        statusCatalogo.textContent = `O catálogo de planos está incompleto: ${causas.join('; ')}. Aplique as migrations SaaS no Supabase; upgrades ficarão indisponíveis até corrigir.`;
         statusCatalogo.classList.remove('hidden');
     }
 
@@ -112,14 +119,16 @@ export async function initAdminPlanos(container) {
                 </ul>
                 ${atual
                     ? '<span class="mt-2 rounded-xl bg-emerald-950/60 px-3 py-2.5 text-center text-xs font-bold text-emerald-300">Você está neste plano</span>'
-                    : superior
+                    : superior && !plansError && planosDoBanco.has(plan.id)
                         ? `<div class="space-y-2">
                         <button data-plan="${plan.id}" data-method="PIX" type="button" class="btn-assinar w-full rounded-xl bg-emerald-600 px-3 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-emerald-500">${Number(plan.preco_mensal) === 0 ? 'Selecionar plano' : 'Fazer upgrade'}</button>
                         ${Number(plan.preco_mensal) > 0 ? `
                         <button data-plan="${plan.id}" data-method="CREDIT_CARD" type="button" class="btn-assinar-cartao w-full rounded-xl border border-gray-600 px-3 py-2.5 text-xs font-bold text-gray-200 transition hover:border-emerald-500">Assinar com cartão</button>
                         ` : ''}
                     </div>`
-                        : '<span class="mt-2 rounded-xl border border-gray-700 px-3 py-2.5 text-center text-xs text-gray-500">Plano abaixo do atual</span>'}
+                        : planosAusentes.includes(plan.nome) || plansError
+                            ? '<span class="mt-2 rounded-xl border border-amber-800 bg-amber-950/30 px-3 py-2.5 text-center text-xs text-amber-200">Indisponível: plano não cadastrado no Supabase</span>'
+                            : '<span class="mt-2 rounded-xl border border-gray-700 px-3 py-2.5 text-center text-xs text-gray-500">Plano abaixo do atual</span>'}
             </article>
         `;
     }).join('');
