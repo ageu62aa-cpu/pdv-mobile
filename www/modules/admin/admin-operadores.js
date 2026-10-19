@@ -398,7 +398,7 @@ export async function carregarGestaoOperadores() {
             : '<span class="px-2.5 py-1 rounded-full text-xs font-bold bg-red-950/60 text-red-400 border border-red-900 flex items-center w-fit gap-1.5"><span class="w-2 h-2 rounded-full bg-red-500"></span> Caixa Fechado</span>';
 
         return `
-            <div class="border ${cardBorder} rounded-2xl p-5 shadow-xl flex flex-col justify-between gap-4 transition-all">
+            <div class="admin-terminal-card border ${cardBorder} rounded-2xl p-5 shadow-xl flex flex-col justify-between gap-4 transition-all">
                 <div class="flex justify-between items-start">
                     <div>
                         <span class="text-[10px] font-bold uppercase tracking-wider text-gray-500 block">${tipoPerfil}</span>
@@ -409,7 +409,7 @@ export async function carregarGestaoOperadores() {
                     <div>${statusBadge}</div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-3 bg-gray-950/50 p-3.5 rounded-xl border border-gray-800/80">
+                <div class="admin-terminal-card-summary grid grid-cols-2 gap-3 bg-gray-950/50 p-3.5 rounded-xl border border-gray-800/80">
                     <div>
                         <span class="text-[11px] text-gray-400 block font-medium">Faturamento do Dia</span>
                         <span class="text-lg font-extrabold text-emerald-400 font-mono">R$ ${faturamento}</span>
