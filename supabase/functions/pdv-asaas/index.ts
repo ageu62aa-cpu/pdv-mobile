@@ -152,11 +152,61 @@ Deno.serve(async request => {
         .select('asaas_subaccount_id, gateway_modo, termos_asaas_aceitos')
         .eq('id', companyId).maybeSingle();
       if (error) throw error;
+      const { data: activation, error: activationError } = await database
+        .from('asaas_account_activations')
+        .select('id, status, billing_type, payment_url, asaas_payment_id, created_at')
+        .eq('empresa_id', companyId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (activationError) throw activationError;
       return response(200, {
         connected: Boolean(account?.asaas_subaccount_id),
         acceptedTerms: Boolean(account?.termos_asaas_aceitos),
         gatewayMode: account?.gateway_modo || 'SIMULADO',
         accountId: account?.asaas_subaccount_id || null,
+        activation: activation ? {
+          id: activation.id,
+          status: activation.status,
+          billingType: activation.billing_type,
+          paymentUrl: activation.payment_url,
+          paymentId: activation.asaas_payment_id,
+        } : null,
+      });
+    }
+
+    if (payload.action === 'activation_status') {
+      if (!isAdmin) return response(403, { error: 'Somente o administrador pode consultar a ativação do Asaas.' });
+      const activationId = typeof payload.activationId === 'string' ? payload.activationId : '';
+      if (!activationId) return response(400, { error: 'Identificador da ativação inválido.' });
+      const { data: activation, error } = await database.from('asaas_account_activations')
+        .select('id, status, failure_message, billing_type, payment_url, asaas_payment_id')
+        .eq('id', activationId)
+        .eq('empresa_id', companyId)
+        .maybeSingle();
+      if (error) throw error;
+      if (!activation) return response(404, { error: 'Ativação não encontrada.' });
+      let pix: Record<string, unknown> | null = null;
+      if (activation.status === 'PENDING_PAYMENT' && activation.billing_type === 'PIX'
+          && activation.asaas_payment_id) {
+        const platformApiKey = Deno.env.get('ASAAS_MASTER_API_KEY')?.trim();
+        if (!platformApiKey) return response(503, { error: 'A integração Asaas não está configurada.' });
+        const qrResponse = await fetch(
+          `${apiUrl}/payments/${encodeURIComponent(activation.asaas_payment_id)}/pixQrCode`,
+          { headers: { access_token: platformApiKey } },
+        );
+        const qrData = await readAsaasJson(qrResponse);
+        if (!qrResponse.ok) throw new Error('Não foi possível recuperar o QR Pix desta ativação.');
+        pix = qrData;
+      }
+      return response(200, {
+        id: activation.id,
+        status: activation.status,
+        failure_message: activation.failure_message,
+        billingType: activation.billing_type,
+        paymentUrl: activation.payment_url,
+        paymentId: activation.asaas_payment_id,
+        pix,
       });
     }
 
@@ -185,8 +235,8 @@ Deno.serve(async request => {
       return response(200, { updated: true, gatewayMode: 'SIMULADO' });
     }
 
-    if (payload.action === 'connect_account') {
-      if (!isAdmin) return response(403, { error: 'Somente o administrador da empresa pode conectar a conta Asaas.' });
+    if (payload.action === 'start_account_activation') {
+      if (!isAdmin) return response(403, { error: 'Somente o administrador da empresa pode ativar o Asaas.' });
       const platformApiKey = Deno.env.get('ASAAS_MASTER_API_KEY')?.trim();
       const webhookToken = Deno.env.get('ASAAS_WEBHOOK_TOKEN')?.trim();
       const encryptionKey = Deno.env.get('ASAAS_CREDENTIALS_ENCRYPTION_KEY')?.trim();
@@ -194,100 +244,310 @@ Deno.serve(async request => {
         return response(503, { error: 'Configure ASAAS_MASTER_API_KEY, ASAAS_WEBHOOK_TOKEN e ASAAS_CREDENTIALS_ENCRYPTION_KEY nos secrets do servidor.' });
       }
       if (payload.acceptTerms !== true) {
-        return response(400, { error: 'É obrigatório aceitar os Termos de Uso antes de criar a subconta.' });
+        return response(400, { error: 'É obrigatório aceitar os Termos de Uso antes de iniciar a ativação.' });
       }
       const { data: existingAccount, error: existingAccountError } = await database.from('empresas')
-        .select('asaas_subaccount_id').eq('id', companyId).maybeSingle();
+        .select('asaas_subaccount_id, asaas_wallet_id, asaas_account_api_key, asaas_account_api_key_iv, gateway_modo')
+        .eq('id', companyId).maybeSingle();
       if (existingAccountError) throw existingAccountError;
-      if (existingAccount?.asaas_subaccount_id) {
-        return response(409, { error: 'Esta empresa já possui uma conta Asaas conectada. Contate o suporte para alterar a conexão existente.' });
+      if (existingAccount?.asaas_subaccount_id && existingAccount.asaas_wallet_id
+          && existingAccount.asaas_account_api_key && existingAccount.asaas_account_api_key_iv) {
+        return response(200, {
+          connected: true,
+          gatewayMode: existingAccount.gateway_modo,
+          message: 'Esta empresa já possui uma subconta Asaas conectada.',
+        });
       }
 
-      const requiredFields = ['name', 'email', 'cpfCnpj', 'mobilePhone', 'incomeValue', 'address', 'addressNumber', 'province', 'postalCode'];
+      const requiredFields = ['name', 'email', 'cpfCnpj', 'mobilePhone', 'incomeValue', 'address', 'addressNumber', 'province', 'postalCode', 'city'];
       if (requiredFields.some(field => typeof payload[field] !== 'string' || !String(payload[field]).trim())) {
         return response(400, { error: 'Preencha todos os dados obrigatórios da conta e do endereço.' });
+      }
+      const cpfCnpj = String(payload.cpfCnpj).replace(/\D/g, '');
+      const postalCode = String(payload.postalCode).replace(/\D/g, '');
+      const mobilePhone = String(payload.mobilePhone).replace(/\D/g, '');
+      if (payload.billingType !== 'PIX' && payload.billingType !== 'CREDIT_CARD') {
+        return response(400, { error: 'Escolha Pix ou cartão para pagar a taxa de ativação.' });
+      }
+      if (![11, 14].includes(cpfCnpj.length) || postalCode.length !== 8 || mobilePhone.length < 10 || mobilePhone.length > 13) {
+        return response(400, { error: 'Informe CPF/CNPJ, CEP e celular em formatos válidos.' });
       }
       const incomeValue = Number(payload.incomeValue);
       if (!Number.isFinite(incomeValue) || incomeValue <= 0) {
         return response(400, { error: 'Informe um faturamento mensal estimado válido.' });
       }
-      const webhookUrl = `${supabaseUrl.replace(/\/+$/, '')}/functions/v1/asaas-webhook`;
-      const accountBody: Record<string, unknown> = {
+      const accountData = {
         name: String(payload.name).trim(),
         email: String(payload.email).trim(),
-        cpfCnpj: String(payload.cpfCnpj).replace(/\D/g, ''),
-        mobilePhone: String(payload.mobilePhone).replace(/\D/g, ''),
+        cpfCnpj,
+        mobilePhone,
         incomeValue,
         address: String(payload.address).trim(),
         addressNumber: String(payload.addressNumber).trim(),
         province: String(payload.province).trim(),
-        postalCode: String(payload.postalCode).replace(/\D/g, ''),
-        webhooks: [{
-          name: 'PDV Mobile - pagamentos Pix',
-          url: webhookUrl,
-          email: String(payload.email).trim(),
-          enabled: true,
-          interrupted: false,
-          authToken: webhookToken,
-          sendType: 'SEQUENTIALLY',
-          events: ['PAYMENT_RECEIVED', 'PAYMENT_CONFIRMED'],
-          apiVersion: 3,
-        }],
+        postalCode,
+        city: String(payload.city).trim(),
+        ...(typeof payload.companyType === 'string' ? { companyType: payload.companyType } : {}),
       };
-      if (payload.companyType === 'MEI' || payload.companyType === 'LIMITED') {
-        accountBody.companyType = payload.companyType;
-      }
-      const asaasResponse = await fetch(`${apiUrl}/accounts`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', access_token: platformApiKey },
-        body: JSON.stringify(accountBody),
-      });
-      const account = await readAsaasJson(asaasResponse);
-      if (!asaasResponse.ok) {
-        console.error('Asaas subaccount creation failed:', account.errors || account);
-        return response(502, { error: 'O Asaas não conseguiu criar a subconta. Verifique a habilitação da conta principal e os dados cadastrais.' });
-      }
-      if (typeof account.id !== 'string' || typeof account.walletId !== 'string' || typeof account.apiKey !== 'string') {
-        console.error('Asaas subaccount response did not include required account credentials.');
-        return response(502, { error: 'A resposta do Asaas não incluiu os dados necessários para conectar a subconta.' });
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(accountData.email)) {
+        return response(400, { error: 'Informe um e-mail válido para o titular da subconta.' });
       }
 
-      const encrypted = await encryptApiKey(account.apiKey, encryptionKey);
+      const accountsResponse = await fetch(
+        `${apiUrl}/accounts?cpfCnpj=${encodeURIComponent(cpfCnpj)}&limit=100`,
+        { headers: { access_token: platformApiKey } },
+      );
+      const accountsResult = await readAsaasJson(accountsResponse);
+      if (!accountsResponse.ok) {
+        console.error('Asaas subaccount duplicate lookup failed.');
+        return response(502, { error: 'Não foi possível verificar se já existe uma subconta para este CPF/CNPJ.' });
+      }
+      const matchingAccounts = Array.isArray(accountsResult.data) ? accountsResult.data : [];
+      if (matchingAccounts.length) {
+        return response(409, {
+          code: 'ASAAS_SUBACCOUNT_ALREADY_EXISTS',
+          error: 'O Asaas já possui uma subconta com este CPF/CNPJ, mas ela não está vinculada a esta empresa. Nenhuma taxa foi cobrada. Contate o suporte para validar a titularidade e concluir a vinculação com segurança.',
+        });
+      }
+
       const acceptedAt = new Date().toISOString();
       const forwardedIp = request.headers.get('cf-connecting-ip')
         || request.headers.get('x-real-ip')
         || '';
       const acceptedIp = /^[0-9a-fA-F:.]{1,45}$/.test(forwardedIp) ? forwardedIp : null;
-      const { error: saveError } = await database.from('empresas').update({
-        asaas_subaccount_id: account.id,
-        asaas_wallet_id: account.walletId,
-        asaas_account_api_key: encrypted.ciphertext,
-        asaas_account_api_key_iv: encrypted.iv,
-        gateway_modo: 'ASAAS_REAL',
-        termos_asaas_aceitos: true,
-        termos_asaas_data_aceite: acceptedAt,
-        termos_asaas_ip_aceite: acceptedIp,
-        nome_empresa: String(payload.name).trim(),
-        cnpj: String(payload.cpfCnpj).replace(/\D/g, ''),
-        email_admin: String(payload.email).trim(),
-        whatsapp: String(payload.mobilePhone).trim(),
-        endereco: String(payload.address).trim(),
-        numero: String(payload.addressNumber).trim(),
-        bairro: String(payload.province).trim(),
-        cep: String(payload.postalCode).replace(/\D/g, ''),
-        tipo_empresa: typeof payload.companyType === 'string' ? payload.companyType : null,
-        faturamento_mensal_estimado: incomeValue,
-      }).eq('id', companyId);
-      if (saveError) {
-        console.error('Could not securely store Asaas subaccount credentials:', saveError);
-        return response(500, { error: 'A conta Asaas foi criada, mas não foi possível guardar a conexão com segurança. Contate o suporte antes de tentar novamente.' });
+
+      const { data: pendingActivation, error: pendingError } = await database
+        .from('asaas_account_activations')
+        .select('id, status, billing_type, asaas_payment_id, asaas_checkout_id, payment_url')
+        .eq('empresa_id', companyId)
+        .eq('status', 'PENDING_PAYMENT')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (pendingError) throw pendingError;
+      if (pendingActivation) {
+        if (pendingActivation.asaas_payment_id) {
+          const qrResponse = await fetch(
+            `${apiUrl}/payments/${encodeURIComponent(pendingActivation.asaas_payment_id)}/pixQrCode`,
+            { headers: { access_token: platformApiKey } },
+          );
+          const qrData = await readAsaasJson(qrResponse);
+          if (!qrResponse.ok) throw new Error('Não foi possível recuperar o Pix de ativação pendente.');
+          return response(200, {
+            activationId: pendingActivation.id,
+            status: pendingActivation.status,
+            billingType: pendingActivation.billing_type,
+            paymentId: pendingActivation.asaas_payment_id,
+            pix: qrData,
+            message: 'Existe uma ativação pendente. Use a cobrança Pix já gerada para evitar duplicidade.',
+          });
+        }
+        if (pendingActivation.asaas_checkout_id && pendingActivation.payment_url) {
+          return response(200, {
+            activationId: pendingActivation.id,
+            status: pendingActivation.status,
+            billingType: pendingActivation.billing_type,
+            paymentUrl: pendingActivation.payment_url,
+            message: 'Existe um checkout Asaas pendente. Continue o pagamento por esse link.',
+          });
+        }
+        return response(409, { error: 'Já existe uma ativação em processamento. Aguarde alguns instantes e consulte novamente.' });
+      }
+
+      const { data: reviewActivation, error: reviewActivationError } = await database
+        .from('asaas_account_activations')
+        .select('id')
+        .eq('empresa_id', companyId)
+        .eq('status', 'REVIEW_REQUIRED')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (reviewActivationError) throw reviewActivationError;
+      if (reviewActivation) {
+        return response(409, {
+          code: 'ASAAS_ACTIVATION_REVIEW_REQUIRED',
+          error: 'A taxa desta ativação já foi confirmada, mas a criação/vinculação da subconta precisa de análise do suporte. Não será gerada outra cobrança.',
+        });
+      }
+
+      const customerLookupResponse = await fetch(
+        `${apiUrl}/customers?cpfCnpj=${encodeURIComponent(cpfCnpj)}&limit=100`,
+        { headers: { access_token: platformApiKey } },
+      );
+      const customerLookup = await readAsaasJson(customerLookupResponse);
+      if (!customerLookupResponse.ok) {
+        console.error('Asaas customer lookup failed.');
+        return response(502, { error: 'Não foi possível verificar o cadastro de cobrança no Asaas.' });
+      }
+      const existingCustomers = Array.isArray(customerLookup.data) ? customerLookup.data : [];
+      const matchingCustomer = existingCustomers.find(customer =>
+        isRecord(customer) && customer.externalReference === companyId)
+        || (existingCustomers.length === 1 ? existingCustomers[0] : null);
+      if (existingCustomers.length > 1 && !matchingCustomer) {
+        return response(409, { error: 'Há mais de um cliente com este CPF/CNPJ na conta master do Asaas. Contate o suporte antes de pagar para evitar duplicidade.' });
+      }
+
+      let customerId = isRecord(matchingCustomer) && typeof matchingCustomer.id === 'string'
+        ? matchingCustomer.id
+        : '';
+      const customerBody = {
+        name: accountData.name,
+        email: accountData.email,
+        cpfCnpj,
+        phone: mobilePhone,
+        address: accountData.address,
+        addressNumber: accountData.addressNumber,
+        province: accountData.province,
+        postalCode,
+        city: accountData.city,
+        externalReference: companyId,
+      };
+      if (customerId) {
+        const updateResponse = await fetch(`${apiUrl}/customers/${encodeURIComponent(customerId)}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', access_token: platformApiKey },
+          body: JSON.stringify(customerBody),
+        });
+        if (!updateResponse.ok) {
+          console.error('Asaas master customer update failed.');
+          return response(502, { error: 'Não foi possível atualizar o cadastro de cobrança no Asaas.' });
+        }
+      } else {
+        const createResponse = await fetch(`${apiUrl}/customers`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', access_token: platformApiKey },
+          body: JSON.stringify(customerBody),
+        });
+        const createdCustomer = await readAsaasJson(createResponse);
+        if (!createResponse.ok || typeof createdCustomer.id !== 'string') {
+          console.error('Asaas master customer creation failed:', createdCustomer.errors || 'missing customer id');
+          return response(502, { error: 'Não foi possível cadastrar o titular para cobrar a ativação no Asaas.' });
+        }
+        customerId = createdCustomer.id;
+      }
+
+      const encryptedData = await encryptApiKey(JSON.stringify(accountData), encryptionKey);
+      const { data: activation, error: activationInsertError } = await database
+        .from('asaas_account_activations')
+        .insert({
+          empresa_id: companyId,
+          billing_type: payload.billingType === 'CREDIT_CARD' ? 'CREDIT_CARD' : 'PIX',
+          account_data_ciphertext: encryptedData.ciphertext,
+          account_data_iv: encryptedData.iv,
+          terms_accepted_at: acceptedAt,
+          terms_accepted_ip: acceptedIp,
+        })
+        .select('id')
+        .single();
+      if (activationInsertError) {
+        if (activationInsertError.code === '23505') {
+          return response(409, { error: 'Já existe uma cobrança de ativação em andamento. Atualize o status antes de tentar novamente.' });
+        }
+        throw activationInsertError;
+      }
+
+      const callbackUrl = 'https://pdv-mobile.vercel.app/modules/admin/admin.html';
+      if (payload.billingType === 'CREDIT_CARD') {
+        const checkoutResponse = await fetch(`${apiUrl}/checkouts`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', access_token: platformApiKey },
+          body: JSON.stringify({
+            billingTypes: ['CREDIT_CARD'],
+            chargeTypes: ['DETACHED'],
+            minutesToExpire: 1440,
+            externalReference: activation.id,
+            customer: customerId,
+            callback: {
+              successUrl: callbackUrl,
+              cancelUrl: callbackUrl,
+              expiredUrl: callbackUrl,
+            },
+            items: [{
+              name: 'Ativação de pagamentos automáticos Asaas',
+              description: 'Taxa única de homologação, criação da subconta e ativação do gateway.',
+              quantity: 1,
+              value: 49.99,
+            }],
+          }),
+        });
+        const checkout = await readAsaasJson(checkoutResponse);
+        if (!checkoutResponse.ok || typeof checkout.id !== 'string' || typeof checkout.link !== 'string') {
+          console.error('Asaas activation checkout creation failed:', checkout.errors || 'missing checkout details');
+          const { error: failedCheckoutError } = await database.from('asaas_account_activations').update({
+            status: 'FAILED',
+            failure_message: 'Não foi possível criar o checkout de ativação.',
+            updated_at: new Date().toISOString(),
+          }).eq('id', activation.id);
+          if (failedCheckoutError) throw failedCheckoutError;
+          return response(502, { error: 'O Asaas não conseguiu gerar o checkout seguro da taxa de ativação.' });
+        }
+        const { error: checkoutSaveError } = await database.from('asaas_account_activations')
+          .update({
+            asaas_checkout_id: checkout.id,
+            payment_url: checkout.link,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', activation.id);
+        if (checkoutSaveError) throw checkoutSaveError;
+        return response(201, {
+          activationId: activation.id,
+          status: 'PENDING_PAYMENT',
+          billingType: 'CREDIT_CARD',
+          paymentUrl: checkout.link,
+          message: 'Conclua o pagamento no checkout oficial e seguro do Asaas. A subconta será criada após a confirmação.',
+        });
+      }
+
+      const paymentResponse = await fetch(`${apiUrl}/payments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', access_token: platformApiKey },
+        body: JSON.stringify({
+          customer: customerId,
+          billingType: 'PIX',
+          value: 49.99,
+          dueDate: new Date().toISOString().slice(0, 10),
+          description: 'Taxa de ativação de pagamentos automáticos Asaas',
+          externalReference: activation.id,
+        }),
+      });
+      const payment = await readAsaasJson(paymentResponse);
+      if (!paymentResponse.ok || typeof payment.id !== 'string') {
+        console.error('Asaas activation Pix creation failed:', payment.errors || 'missing payment id');
+        const { error: failedPaymentError } = await database.from('asaas_account_activations').update({
+          status: 'FAILED',
+          failure_message: 'Não foi possível criar o Pix de ativação.',
+          updated_at: new Date().toISOString(),
+        }).eq('id', activation.id);
+        if (failedPaymentError) throw failedPaymentError;
+        return response(502, { error: 'O Asaas não conseguiu gerar o Pix da taxa de ativação.' });
+      }
+      const { error: paymentSaveError } = await database.from('asaas_account_activations')
+        .update({
+          asaas_payment_id: payment.id,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', activation.id);
+      if (paymentSaveError) throw paymentSaveError;
+      const pixResponse = await fetch(`${apiUrl}/payments/${encodeURIComponent(payment.id)}/pixQrCode`, {
+        headers: { access_token: platformApiKey },
+      });
+      const pix = await readAsaasJson(pixResponse);
+      if (!pixResponse.ok) {
+        console.error('Asaas activation Pix QR retrieval failed.');
+        return response(502, { error: 'O Pix foi gerado, mas o QR Code ainda não está disponível. Reabra a ativação para recuperá-lo.' });
       }
       return response(201, {
-        connected: true,
-        accountId: account.id,
-        walletId: account.walletId,
-        message: 'Conta Asaas conectada. O titular deve concluir a ativação e cadastrar os dados bancários pelo e-mail enviado pelo Asaas.',
+        activationId: activation.id,
+        status: 'PENDING_PAYMENT',
+        billingType: 'PIX',
+        paymentId: payment.id,
+        pix,
+        message: 'Pague a taxa única de ativação. A subconta será criada após a confirmação do Asaas.',
       });
+    }
+
+    if (payload.action === 'connect_account') {
+      return response(410, { error: 'A criação direta da subconta foi desativada. Use o checkout da taxa de ativação Asaas.' });
     }
 
     if (payload.action === 'create_pix_sale') {
