@@ -28,19 +28,82 @@ export async function initAdminPlanos(container) {
                 <p class="text-sm text-gray-400">Carregando planos...</p>
             </div>
             <p class="text-[11px] leading-relaxed text-gray-500">* A emissão fiscal depende de integração fiscal ativa e da cota disponível na API contratada.</p>
-            <p id="status-assinatura" class="hidden rounded-lg p-3 text-xs" role="status"></p>
         </div>
+        <dialog id="modal-upgrade" class="w-[min(94vw,38rem)] max-h-[90vh] overflow-y-auto rounded-2xl border border-gray-700 bg-gray-900 p-0 text-gray-100 shadow-2xl backdrop:bg-gray-950/80">
+            <form id="form-upgrade" class="space-y-5 p-5 sm:p-6">
+                <header class="flex items-start justify-between gap-4">
+                    <div>
+                        <p class="text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-400">Checkout seguro</p>
+                        <h3 id="upgrade-titulo" class="mt-1 text-xl font-black text-white">Assinar plano</h3>
+                        <p id="upgrade-preco" class="mt-1 text-sm text-gray-400"></p>
+                    </div>
+                    <button id="fechar-modal-upgrade" type="button" class="rounded-lg p-2 text-gray-400 transition hover:bg-gray-800 hover:text-white" aria-label="Fechar">
+                        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                    </button>
+                </header>
+                <div class="rounded-xl border border-sky-900/70 bg-sky-950/30 p-3 text-xs leading-5 text-sky-100">
+                    <i class="fa-solid fa-shield-halved mr-1.5 text-sky-300" aria-hidden="true"></i>
+                    O pagamento será concluído no checkout oficial e seguro do Asaas. Os dados do cartão não são armazenados pelo PDV.
+                </div>
+                <label class="block text-xs font-bold text-gray-300">Forma de pagamento
+                    <select name="billingType" id="upgrade-meio-pagamento" required class="mt-1 w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2.5 text-sm text-white">
+                        <option value="PIX">Pix</option>
+                        <option value="CREDIT_CARD">Cartão de crédito</option>
+                    </select>
+                </label>
+                <section class="space-y-3">
+                    <div>
+                        <h4 class="text-sm font-bold text-white">Dados para cobrança</h4>
+                        <p class="mt-1 text-xs text-gray-400">Complete ou confirme os dados do titular. O endereço é obrigatório para cartão.</p>
+                    </div>
+                    <label class="block text-xs font-bold text-gray-300">CPF ou CNPJ
+                        <input name="cpfCnpj" required inputmode="numeric" maxlength="18" autocomplete="on" class="mt-1 w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2.5 text-sm text-white">
+                    </label>
+                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <label class="text-xs font-bold text-gray-300 sm:col-span-2">Logradouro
+                            <input name="address" maxlength="150" autocomplete="street-address" class="upgrade-address mt-1 w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2.5 text-sm text-white">
+                        </label>
+                        <label class="text-xs font-bold text-gray-300">Número
+                            <input name="addressNumber" maxlength="20" autocomplete="address-line2" class="upgrade-address mt-1 w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2.5 text-sm text-white">
+                        </label>
+                        <label class="text-xs font-bold text-gray-300">Bairro
+                            <input name="province" maxlength="100" autocomplete="address-level3" class="upgrade-address mt-1 w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2.5 text-sm text-white">
+                        </label>
+                        <label class="text-xs font-bold text-gray-300">CEP
+                            <input name="postalCode" inputmode="numeric" maxlength="9" autocomplete="postal-code" class="upgrade-address mt-1 w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2.5 text-sm text-white">
+                        </label>
+                        <label class="text-xs font-bold text-gray-300">Cidade
+                            <input name="city" maxlength="100" autocomplete="address-level2" class="upgrade-address mt-1 w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2.5 text-sm text-white">
+                        </label>
+                    </div>
+                </section>
+                <p id="status-upgrade" class="hidden rounded-lg border p-3 text-xs" role="status"></p>
+                <footer class="flex flex-col-reverse gap-2 border-t border-gray-800 pt-4 sm:flex-row sm:justify-end">
+                    <button id="cancelar-upgrade" type="button" class="rounded-lg border border-gray-700 px-4 py-2.5 text-xs font-bold text-gray-300 transition hover:bg-gray-800">Cancelar</button>
+                    <button id="confirmar-upgrade" type="submit" class="rounded-lg bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow transition hover:bg-emerald-500">
+                        <i class="fa-solid fa-lock mr-1.5" aria-hidden="true"></i>Continuar para pagamento
+                    </button>
+                </footer>
+            </form>
+        </dialog>
     `;
 
     const empresaId = window.empresaAtualId;
     if (!empresaId) throw new Error('Empresa não identificada para carregar os planos.');
 
-    const [{ data: plans, error: plansError }, { data: entitlement, error: entitlementError }, paymentStatus] =
+    const [{ data: plans, error: plansError }, { data: entitlement, error: entitlementError }, paymentStatus, companyProfileResult] =
         await Promise.all([
             supabase.from('planos').select('*').order('preco_mensal'),
             supabase.rpc('vancely_get_tenant_entitlements', { p_empresa_id: empresaId }).maybeSingle(),
-            supabase.functions.invoke('asaas', { body: { action: 'status' } })
+            supabase.functions.invoke('asaas', { body: { action: 'status' } }),
+            supabase.from('empresas')
+                .select('cnpj, endereco, numero, bairro, cep, cidade')
+                .eq('id', empresaId)
+                .maybeSingle()
         ]);
+    if (companyProfileResult.error) {
+        console.error('Não foi possível carregar os dados para o upgrade:', companyProfileResult.error);
+    }
 
     if (plansError) {
         console.error('Não foi possível carregar os planos cadastrados:', plansError);
@@ -120,12 +183,7 @@ export async function initAdminPlanos(container) {
                 ${atual
                     ? '<span class="mt-2 rounded-xl bg-emerald-950/60 px-3 py-2.5 text-center text-xs font-bold text-emerald-300">Você está neste plano</span>'
                     : superior && !plansError && planosDoBanco.has(plan.id)
-                        ? `<div class="space-y-2">
-                        <button data-plan="${plan.id}" data-method="PIX" type="button" class="btn-assinar w-full rounded-xl bg-emerald-600 px-3 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-emerald-500">${Number(plan.preco_mensal) === 0 ? 'Selecionar plano' : 'Fazer upgrade'}</button>
-                        ${Number(plan.preco_mensal) > 0 ? `
-                        <button data-plan="${plan.id}" data-method="CREDIT_CARD" type="button" class="btn-assinar-cartao w-full rounded-xl border border-gray-600 px-3 py-2.5 text-xs font-bold text-gray-200 transition hover:border-emerald-500">Assinar com cartão</button>
-                        ` : ''}
-                    </div>`
+                        ? `<button data-plan="${plan.id}" data-plan-name="${plan.nome}" data-plan-price="${Number(plan.preco_mensal)}" type="button" class="btn-assinar mt-2 w-full rounded-xl bg-emerald-600 px-3 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-emerald-500">${Number(plan.preco_mensal) === 0 ? 'Selecionar plano' : 'Fazer upgrade'}</button>`
                         : planosAusentes.includes(plan.nome) || plansError
                             ? '<span class="mt-2 rounded-xl border border-amber-800 bg-amber-950/30 px-3 py-2.5 text-center text-xs text-amber-200">Indisponível: plano não cadastrado no Supabase</span>'
                             : '<span class="mt-2 rounded-xl border border-gray-700 px-3 py-2.5 text-center text-xs text-gray-500">Plano abaixo do atual</span>'}
@@ -133,51 +191,95 @@ export async function initAdminPlanos(container) {
         `;
     }).join('');
 
-    lista.querySelectorAll('.btn-assinar').forEach(button => {
-        button.addEventListener('click', () => void assinar(button.dataset.plan, 'PIX'));
+    const modal = document.getElementById('modal-upgrade');
+    const form = document.getElementById('form-upgrade');
+    const paymentMethod = document.getElementById('upgrade-meio-pagamento');
+    const addressFields = [...form.querySelectorAll('.upgrade-address')];
+    let selectedPlanId = '';
+    const updateAddressRequirements = () => {
+        const required = paymentMethod.value === 'CREDIT_CARD';
+        addressFields.forEach(field => { field.required = required; });
+    };
+    const closeModal = () => modal.close();
+    document.getElementById('fechar-modal-upgrade').addEventListener('click', closeModal);
+    document.getElementById('cancelar-upgrade').addEventListener('click', closeModal);
+    paymentMethod.addEventListener('change', updateAddressRequirements);
+    Object.entries({
+        cpfCnpj: companyProfileResult.data?.cnpj,
+        address: companyProfileResult.data?.endereco,
+        addressNumber: companyProfileResult.data?.numero,
+        province: companyProfileResult.data?.bairro,
+        postalCode: companyProfileResult.data?.cep,
+        city: companyProfileResult.data?.cidade
+    }).forEach(([name, value]) => {
+        const input = form.elements.namedItem(name);
+        if (input && value) input.value = value;
     });
-    lista.querySelectorAll('.btn-assinar-cartao').forEach(button => {
-        button.addEventListener('click', () => void assinar(button.dataset.plan, 'CREDIT_CARD'));
+    updateAddressRequirements();
+
+    lista.querySelectorAll('.btn-assinar').forEach(button => {
+        button.addEventListener('click', () => {
+            if (Number(button.dataset.planPrice) <= 0) return;
+            selectedPlanId = button.dataset.plan;
+            document.getElementById('upgrade-titulo').textContent = `Upgrade para ${button.dataset.planName}`;
+            document.getElementById('upgrade-preco').textContent = `${formatarMoeda(button.dataset.planPrice)} por mês`;
+            document.getElementById('status-upgrade').classList.add('hidden');
+            modal.showModal();
+        });
+    });
+    form.addEventListener('submit', event => {
+        event.preventDefault();
+        void assinar(selectedPlanId, new FormData(form));
     });
 }
 
-async function assinar(planId, billingType) {
-    const botoes = [...document.querySelectorAll('.btn-assinar, .btn-assinar-cartao')];
-    botoes.forEach(button => { button.disabled = true; });
+async function assinar(planId, formData) {
+    const submitButton = document.getElementById('confirmar-upgrade');
+    const status = document.getElementById('status-upgrade');
+    submitButton.disabled = true;
+    submitButton.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1.5" aria-hidden="true"></i>Preparando checkout seguro...';
+    status.classList.add('hidden');
     try {
-        let cpfCnpj = '';
-        let data;
-        for (let tentativa = 0; tentativa < 2; tentativa += 1) {
-            const resultado = await supabase.functions.invoke('asaas', {
-                body: { action: 'subscribe', planId, billingType, ...(cpfCnpj ? { cpfCnpj } : {}) }
-            });
-            if (!resultado.error) {
-                data = resultado.data;
-                break;
+        const resultado = await supabase.functions.invoke('asaas', {
+            body: {
+                action: 'subscribe',
+                planId,
+                billingType: formData.get('billingType'),
+                cpfCnpj: String(formData.get('cpfCnpj') || '').replace(/\D/g, ''),
+                address: String(formData.get('address') || '').trim(),
+                addressNumber: String(formData.get('addressNumber') || '').trim(),
+                province: String(formData.get('province') || '').trim(),
+                postalCode: String(formData.get('postalCode') || '').replace(/\D/g, ''),
+                city: String(formData.get('city') || '').trim()
             }
-            const detalhe = await lerErroFuncao(resultado.error);
-            const exigeDocumento = detalhe.code === 'CUSTOMER_DOCUMENT_REQUIRED'
-                || /cpf|cnpj|documento/i.test(detalhe.message);
-            if (!exigeDocumento || tentativa > 0) throw resultado.error;
-            const documentoInformado = window.prompt(
-                'Para gerar a cobrança da assinatura, informe o CPF (11 dígitos) ou CNPJ (14 dígitos) do titular cadastrado.'
-            );
-            if (documentoInformado === null) return;
-            cpfCnpj = documentoInformado.replace(/\D/g, '');
-            if (![11, 14].includes(cpfCnpj.length)) {
-                throw new Error('O documento deve conter 11 dígitos (CPF) ou 14 dígitos (CNPJ).');
-            }
-        }
+        });
+        if (resultado.error) throw resultado.error;
+        const data = resultado.data;
         if (!data?.configured) {
-            mostrarStatus(data?.message || 'A integração do Asaas ainda não está configurada.', false);
+            status.textContent = data?.message || 'A integração do Asaas ainda não está configurada.';
+            status.className = 'rounded-lg border border-amber-800 bg-amber-950/40 p-3 text-xs text-amber-200';
+            status.classList.remove('hidden');
             return;
         }
-        mostrarStatus(data.message || 'Assinatura enviada ao Asaas. O plano será ativado após confirmação do pagamento.', true, data.paymentUrl);
+        if (data.paymentUrl) {
+            const url = new URL(data.paymentUrl);
+            const hostsAsaas = ['asaas.com', 'www.asaas.com', 'sandbox.asaas.com'];
+            if (url.protocol !== 'https:' || !hostsAsaas.includes(url.hostname)) {
+                throw new Error('O Asaas retornou um endereço de checkout inválido. Contate o suporte.');
+            }
+            window.location.assign(url.href);
+            return;
+        }
+        throw new Error('A cobrança foi criada, mas o Asaas não retornou o link de pagamento. Contate o suporte antes de tentar novamente.');
     } catch (error) {
         console.error('Não foi possível criar a assinatura no Asaas:', error);
-        mostrarStatus(await obterMensagemErro(error), false);
+        const mensagem = await obterMensagemErro(error);
+        status.textContent = mensagem;
+        status.className = 'rounded-lg border border-rose-800 bg-rose-950/40 p-3 text-xs text-rose-200';
+        status.classList.remove('hidden');
     } finally {
-        botoes.forEach(button => { button.disabled = false; });
+        submitButton.disabled = false;
+        submitButton.innerHTML = '<i class="fa-solid fa-lock mr-1.5" aria-hidden="true"></i>Continuar para pagamento';
     }
 }
 
@@ -219,29 +321,4 @@ async function obterMensagemErro(error) {
         return `${error?.message || 'A Edge Function recusou a solicitação.'} (HTTP ${resposta.status})`;
     }
     return error?.message || 'Não foi possível iniciar a assinatura.';
-}
-
-function mostrarStatus(mensagem, sucesso, paymentUrl = null) {
-    const status = document.getElementById('status-assinatura');
-    if (!status) return;
-    status.replaceChildren(document.createTextNode(mensagem));
-    if (paymentUrl) {
-        try {
-            const url = new URL(paymentUrl);
-            if (url.protocol === 'https:' && ['asaas.com', 'www.asaas.com', 'sandbox.asaas.com'].includes(url.hostname)) {
-                const link = document.createElement('a');
-                link.href = url.href;
-                link.target = '_blank';
-                link.rel = 'noopener noreferrer';
-                link.className = 'mt-2 block font-bold underline';
-                link.textContent = 'Abrir checkout seguro do Asaas';
-                status.append(document.createElement('br'), link);
-            }
-        } catch (error) {
-            console.error('URL de cobrança retornada pelo Asaas é inválida:', error);
-        }
-    }
-    status.className = `rounded-lg border p-3 text-xs ${sucesso
-        ? 'border-emerald-800 bg-emerald-950/40 text-emerald-200'
-        : 'border-amber-800 bg-amber-950/40 text-amber-200'}`;
 }

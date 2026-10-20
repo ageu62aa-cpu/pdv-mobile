@@ -134,25 +134,37 @@ Deno.serve(async request => {
         error: 'Informe um CPF (11 dígitos) ou CNPJ (14 dígitos) válido do titular para gerar a cobrança da assinatura.',
       });
     }
-    if (suppliedDocument && suppliedDocument !== companyDocument) {
-      const { error: documentUpdateError } = await database.from('empresas')
-        .update({ cnpj: suppliedDocument })
-        .eq('id', company.id);
-      if (documentUpdateError) throw documentUpdateError;
-    }
-
-    const customerAddress = {
-      address: company.endereco?.trim() || '',
-      addressNumber: company.numero?.trim() || '',
-      province: company.bairro?.trim() || '',
-      postalCode: company.cep?.replace(/\D/g, '') || '',
-      city: company.cidade?.trim() || '',
+    const suppliedAddress = (field: string, existingValue: string | null | undefined) => {
+      const value = body[field];
+      return typeof value === 'string' && value.trim() ? value.trim() : existingValue?.trim() || '';
     };
-    if (billingType === 'CREDIT_CARD' && Object.values(customerAddress).some(value => !value)) {
+    const customerAddress = {
+      address: suppliedAddress('address', company.endereco),
+      addressNumber: suppliedAddress('addressNumber', company.numero),
+      province: suppliedAddress('province', company.bairro),
+      postalCode: suppliedAddress('postalCode', company.cep).replace(/\D/g, ''),
+      city: suppliedAddress('city', company.cidade),
+    };
+    if (billingType === 'CREDIT_CARD'
+      && (Object.values(customerAddress).some(value => !value) || customerAddress.postalCode.length !== 8)) {
       return response(400, {
         code: 'CUSTOMER_ADDRESS_REQUIRED',
-        error: 'Para assinar com cartão, complete o endereço da empresa (logradouro, número, bairro, CEP e cidade) em Configurações antes de tentar novamente.',
+        error: 'Preencha logradouro, número, bairro, CEP válido com 8 dígitos e cidade no formulário do upgrade para continuar com cartão.',
       });
+    }
+
+    const companyUpdates: Record<string, string> = {};
+    if (suppliedDocument && suppliedDocument !== companyDocument) companyUpdates.cnpj = suppliedDocument;
+    if (customerAddress.address) companyUpdates.endereco = customerAddress.address;
+    if (customerAddress.addressNumber) companyUpdates.numero = customerAddress.addressNumber;
+    if (customerAddress.province) companyUpdates.bairro = customerAddress.province;
+    if (customerAddress.postalCode) companyUpdates.cep = customerAddress.postalCode;
+    if (customerAddress.city) companyUpdates.cidade = customerAddress.city;
+    if (Object.keys(companyUpdates).length) {
+      const { error: companyUpdateError } = await database.from('empresas')
+        .update(companyUpdates)
+        .eq('id', company.id);
+      if (companyUpdateError) throw companyUpdateError;
     }
 
     const asaasBaseUrl = normalizeBaseUrl(Deno.env.get('ASAAS_API_URL'));
