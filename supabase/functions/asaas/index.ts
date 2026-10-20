@@ -85,13 +85,13 @@ Deno.serve(async request => {
     const email = user.email?.trim().toLowerCase() || '';
     let { data: company, error: companyError } = await database
       .from('empresas')
-      .select('id, nome_mercado, nome_empresa, cnpj, email, email_admin, whatsapp, asaas_customer_id')
+      .select('id, nome_mercado, nome_empresa, cnpj, email, email_admin, whatsapp, endereco, numero, bairro, cep, cidade, asaas_customer_id')
       .eq('id', user.id)
       .maybeSingle();
     if (!company && !companyError && email) {
       const companyByEmail = await database
         .from('empresas')
-        .select('id, nome_mercado, nome_empresa, cnpj, email, email_admin, whatsapp, asaas_customer_id')
+        .select('id, nome_mercado, nome_empresa, cnpj, email, email_admin, whatsapp, endereco, numero, bairro, cep, cidade, asaas_customer_id')
         .ilike('email_admin', email)
         .limit(2);
       company = companyByEmail.data?.length === 1 ? companyByEmail.data[0] : null;
@@ -141,19 +141,39 @@ Deno.serve(async request => {
       if (documentUpdateError) throw documentUpdateError;
     }
 
+    const customerAddress = {
+      address: company.endereco?.trim() || '',
+      addressNumber: company.numero?.trim() || '',
+      province: company.bairro?.trim() || '',
+      postalCode: company.cep?.replace(/\D/g, '') || '',
+      city: company.cidade?.trim() || '',
+    };
+    if (billingType === 'CREDIT_CARD' && Object.values(customerAddress).some(value => !value)) {
+      return response(400, {
+        code: 'CUSTOMER_ADDRESS_REQUIRED',
+        error: 'Para assinar com cartão, complete o endereço da empresa (logradouro, número, bairro, CEP e cidade) em Configurações antes de tentar novamente.',
+      });
+    }
+
     const asaasBaseUrl = normalizeBaseUrl(Deno.env.get('ASAAS_API_URL'));
     let customerId = company.asaas_customer_id;
     if (!customerId) {
+      const customerData = {
+        name: company.nome_mercado || company.nome_empresa,
+        email: company.email_admin || company.email || email,
+        cpfCnpj: customerDocument,
+        phone: company.whatsapp,
+        externalReference: company.id,
+        ...(customerAddress.address ? { address: customerAddress.address } : {}),
+        ...(customerAddress.addressNumber ? { addressNumber: customerAddress.addressNumber } : {}),
+        ...(customerAddress.province ? { province: customerAddress.province } : {}),
+        ...(customerAddress.postalCode ? { postalCode: customerAddress.postalCode } : {}),
+        ...(customerAddress.city ? { city: customerAddress.city } : {}),
+      };
       const customerResponse = await fetch(`${asaasBaseUrl}/customers`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', access_token: apiKey },
-        body: JSON.stringify({
-          name: company.nome_mercado || company.nome_empresa,
-          email: company.email_admin || company.email || email,
-          cpfCnpj: customerDocument,
-          phone: company.whatsapp,
-          externalReference: company.id,
-        }),
+        body: JSON.stringify(customerData),
       });
       const customerResult = await readJsonObject(customerResponse);
       if (!customerResponse.ok) {
@@ -176,7 +196,14 @@ Deno.serve(async request => {
       const customerResponse = await fetch(`${asaasBaseUrl}/customers/${encodeURIComponent(customerId)}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', access_token: apiKey },
-        body: JSON.stringify({ cpfCnpj: customerDocument }),
+        body: JSON.stringify({
+          cpfCnpj: customerDocument,
+          ...(customerAddress.address ? { address: customerAddress.address } : {}),
+          ...(customerAddress.addressNumber ? { addressNumber: customerAddress.addressNumber } : {}),
+          ...(customerAddress.province ? { province: customerAddress.province } : {}),
+          ...(customerAddress.postalCode ? { postalCode: customerAddress.postalCode } : {}),
+          ...(customerAddress.city ? { city: customerAddress.city } : {}),
+        }),
       });
       const customerResult = await readJsonObject(customerResponse);
       if (!customerResponse.ok) {
