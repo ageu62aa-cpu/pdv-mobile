@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pdv-vs-v66';
+const CACHE_NAME = 'pdv-vs-v68';
 const urlsToCache = [
     '/',
     '/index.html',
@@ -67,6 +67,9 @@ self.addEventListener('activate', event => {
 
 // Interceptação de requisições simplificada
 self.addEventListener('fetch', event => {
+    const requestUrl = new URL(event.request.url);
+    if (event.request.method !== 'GET' || requestUrl.origin !== self.location.origin) return;
+
     event.respondWith(
         caches.match(event.request)
             .then(response => {

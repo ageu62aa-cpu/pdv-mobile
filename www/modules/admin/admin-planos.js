@@ -6,11 +6,11 @@ const formatarMoeda = valor => Number(valor).toLocaleString('pt-BR', {
 });
 const ordemPlanos = ['gratis', 'iniciante', 'profissional', 'ouro', 'diamante'];
 const catalogoPlanos = [
-    { id: 'gratis', nome: 'Grátis', preco_mensal: 0, limite_operadores: 0, limite_dispositivos: 1, limite_produtos: 100, dias_historico: 7, limite_notas_mensais: 0, icone: 'fa-gift', borda: 'border-gray-700' },
-    { id: 'iniciante', nome: 'Iniciante', preco_mensal: 29.99, limite_operadores: 1, limite_dispositivos: 2, limite_produtos: 1000, dias_historico: 30, limite_notas_mensais: 50, icone: 'fa-medal', borda: 'border-amber-700' },
-    { id: 'profissional', nome: 'Profissional', preco_mensal: 49.99, limite_operadores: 3, limite_dispositivos: 4, limite_produtos: 3000, dias_historico: 90, limite_notas_mensais: 200, icone: 'fa-medal', borda: 'border-slate-500' },
-    { id: 'ouro', nome: 'Ouro', preco_mensal: 59.99, limite_operadores: 5, limite_dispositivos: 6, limite_produtos: 5000, dias_historico: 365, limite_notas_mensais: 500, icone: 'fa-medal', borda: 'border-yellow-700' },
-    { id: 'diamante', nome: 'Diamante', preco_mensal: 99.99, limite_operadores: 10, limite_dispositivos: 12, limite_produtos: 10000, dias_historico: null, limite_notas_mensais: null, icone: 'fa-gem', borda: 'border-cyan-700' }
+    { id: 'gratis', nome: 'Grátis', preco_mensal: 0, limite_operadores: 0, limite_dispositivos: 1, limite_produtos: 100, dias_historico: 7, icone: 'fa-gift', borda: 'border-gray-700' },
+    { id: 'iniciante', nome: 'Iniciante', preco_mensal: 29.99, limite_operadores: 1, limite_dispositivos: 2, limite_produtos: 1000, dias_historico: 30, icone: 'fa-medal', borda: 'border-amber-700' },
+    { id: 'profissional', nome: 'Profissional', preco_mensal: 49.99, limite_operadores: 3, limite_dispositivos: 4, limite_produtos: 3000, dias_historico: 90, icone: 'fa-medal', borda: 'border-slate-500' },
+    { id: 'ouro', nome: 'Ouro', preco_mensal: 59.99, limite_operadores: 5, limite_dispositivos: 6, limite_produtos: 5000, dias_historico: 365, icone: 'fa-medal', borda: 'border-yellow-700' },
+    { id: 'diamante', nome: 'Diamante', preco_mensal: 99.99, limite_operadores: 10, limite_dispositivos: 12, limite_produtos: 10000, dias_historico: null, icone: 'fa-gem', borda: 'border-cyan-700' }
 ];
 
 export async function initAdminPlanos(container) {
@@ -27,7 +27,6 @@ export async function initAdminPlanos(container) {
             <div id="lista-planos" class="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-3 sm:grid sm:w-full sm:grid-cols-2 sm:overflow-visible sm:pb-0 xl:grid-cols-3">
                 <p class="text-sm text-gray-400">Carregando planos...</p>
             </div>
-            <p class="text-[11px] leading-relaxed text-gray-500">* A emissão fiscal depende de integração fiscal ativa e da cota disponível na API contratada.</p>
         </div>
         <dialog id="modal-upgrade" class="w-[min(94vw,38rem)] max-h-[90vh] overflow-y-auto rounded-2xl border border-gray-700 bg-gray-900 p-0 text-gray-100 shadow-2xl backdrop:bg-gray-950/80">
             <form id="form-upgrade" class="space-y-5 p-5 sm:p-6">
@@ -162,7 +161,6 @@ export async function initAdminPlanos(container) {
             ['fa-users', 'Operadores', `${plan.limite_operadores} extra(s) + 1 admin`],
             ['fa-box', 'Produtos', Number(plan.limite_produtos).toLocaleString('pt-BR')],
             ['fa-clock', 'Histórico', plan.dias_historico == null ? 'Ilimitado' : `${plan.dias_historico} dias`],
-            ['fa-file-invoice', 'Notas fiscais', plan.limite_notas_mensais == null ? 'Ilimitado*' : `${plan.limite_notas_mensais}/mês`],
             ['fa-mobile-screen-button', 'Dispositivos', String(plan.limite_dispositivos)]
         ];
         const atual = plan.id === planoAtualId;

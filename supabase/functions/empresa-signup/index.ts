@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 
-const termsVersion = '2026-10-18';
+const termsVersion = '2026-11-09';
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',

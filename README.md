@@ -29,7 +29,7 @@ As migrations `20261019192000_add_company_gateway_and_plan_fields.sql`, `2026102
 
 A migration `20261020160000_default_legacy_companies_to_free.sql` coloca no plano Grátis as empresas legadas que não tenham uma assinatura paga `ACTIVE`/`TRIALING`. Os cadastros novos também iniciam explicitamente no Grátis; produtos existentes são preservados, mas a cota gratuita de novos cadastros é aplicada até o upgrade.
 
-A migration `20261020170000_repair_plan_catalog.sql` completa o esquema público de `planos`, popula o catálogo Grátis/Iniciante/Profissional/Ouro/Diamante, mapeia as antigas referências Bronze/Prata e habilita leitura pública via RLS.
+A migration `20261020170000_repair_plan_catalog.sql` completa o esquema público de `planos`, popula o catálogo Grátis/Iniciante/Profissional/Ouro/Diamante, mapeia as antigas referências Bronze/Prata e habilita leitura pública via RLS. A migration `20261109200000_disable_fiscal_invoicing.sql` zera as cotas fiscais legadas dos planos; o PDV não emite notas fiscais.
 
 A migration `20261020180000_add_asaas_activation_checkout.sql` cria o armazenamento cifrado e os estados idempotentes da taxa de ativação Asaas. Aplique-a antes de publicar `pdv-asaas` e `asaas-webhook`.
 
@@ -57,4 +57,4 @@ O QR Pix próprio é uma opção independente: o operador exibe o QR/chave confi
 
 PIX cria a assinatura e apresenta o link inicial de cobrança quando o Asaas o disponibiliza. Cartão abre uma página de checkout recorrente hospedada pelo Asaas; os dados do cartão não passam pelo PDV. A taxa de ativação do gateway também usa Pix pela API Asaas ou cartão em checkout hospedado; o navegador do PDV nunca coleta número de cartão ou CVV.
 
-O catálogo inclui cotas de emissão fiscal, mas este projeto ainda não possui fluxo de emissão NFC-e/NF-e para aplicar essas cotas. Os termos em `www/termos.html` são uma minuta e precisam de revisão jurídica. Sem uma integração fiscal habilitada, o comprovante impresso está identificado como documento não fiscal e não substitui documento fiscal obrigatório.
+O PDV não possui integração ou fluxo de emissão de NFC-e/NF-e. Os comprovantes são documentos não fiscais e não substituem documento fiscal obrigatório, cuja emissão permanece sob responsabilidade do estabelecimento por sistema e provedor regularizados. Os termos em `www/termos.html` são uma minuta e precisam de revisão jurídica.

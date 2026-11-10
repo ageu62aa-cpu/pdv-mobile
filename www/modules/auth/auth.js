@@ -207,7 +207,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const { error: cadastroError } = await supabase.functions.invoke('empresa-signup', {
                     body: {
                     acceptTerms: true,
-                    termsVersion: '2026-10-18',
+                    termsVersion: '2026-11-09',
                     nome_mercado: nomeEmpresa.trim(),
                     nomeEmpresa: nomeEmpresa.trim(),
                     cnpj,

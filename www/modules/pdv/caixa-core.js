@@ -422,11 +422,11 @@ window.acaoAtalhoF1 = () => {
     const painelAberto = document.getElementById('blocoF1') && !document.getElementById('blocoF1').classList.contains('hidden');
     
     if (painelAberto && document.activeElement === inputCpf) {
-        window.salvarConsumidorEImprimir();
+        window.aplicarIdentificacaoConsumidor();
         return;
     }
 
-    abrirPainelLateral('blocoF1', 'F1 - Cadastro para Nota');
+    abrirPainelLateral('blocoF1', 'F1 - Identificação do Cliente');
     
     setTimeout(() => {
         if (inputCpf) {
@@ -436,17 +436,17 @@ window.acaoAtalhoF1 = () => {
             inputCpf.onkeydown = (e) => {
                 if (e.key === 'Enter') {
                     e.preventDefault();
-                    window.salvarConsumidorEImprimir();
+                    window.aplicarIdentificacaoConsumidor();
                 } else if (e.key === 'F1') {
                     e.preventDefault();
-                    window.salvarConsumidorEImprimir();
+                    window.aplicarIdentificacaoConsumidor();
                 }
             };
         }
     }, 50);
 };
 
-window.salvarConsumidorEImprimir = () => {
+window.aplicarIdentificacaoConsumidor = () => {
     const doc = document.getElementById('inputCpfNota')?.value.trim();
     document.getElementById('cupomCliente').innerText = doc || "Consumidor Final";
     if (typeof fecharPainelLateral === 'function') {
@@ -1140,7 +1140,7 @@ window.handleAction = key => {
 
 window.abrirModalTodosAtalhos = () => {
     alert(`GUIA DE ATALHOS (F1 a F12):
-- F1: Identificar Consumidor (Nota Fiscal)
+- F1: Identificar Cliente/Consumidor (opcional)
 - F2: Vendedor / Operador
 - F3: Dinheiro (calcula troco) ou Pix (finaliza direto)
 - F4: Finalizar pagamento no débito

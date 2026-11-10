@@ -396,11 +396,11 @@
                         <button onclick="fecharPainelLateral()" class="text-gray-400 hover:text-white text-xs font-bold">&times;</button>
                     </div>
 
-                    <!-- F1: Identificação de Consumidor (Janela Única Refatorada) -->
+                    <!-- F1: Identificação opcional do cliente -->
                     <div id="blocoF1" class="painel-etapa hidden space-y-2">
-                        <label class="text-[11px] text-gray-300">Cadastro para Nota (CPF ou CNPJ):</label>
+                        <label class="text-[11px] text-gray-300">CPF ou CNPJ do cliente (opcional):</label>
                         <input type="text" id="inputCpfNota" placeholder="000.000.000-00 ou CNPJ" class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-xs text-white focus:outline-none focus:ring-1 focus:ring-emerald-500">
-                        <button onclick="salvarConsumidorEImprimir()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded text-xs font-bold">Salvar Cadastro para Nota (F1)</button>
+                        <button onclick="aplicarIdentificacaoConsumidor()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded text-xs font-bold">Usar na venda (F1)</button>
                     </div>
 
                     <!-- F3: Dinheiro / Pix e Troco com Seleção Numérica (1 ou 2) -->
@@ -523,7 +523,7 @@
                     <button onclick="window.handleAction('F1')" class="w-full bg-gray-900/60 hover:bg-gray-700/80 border border-gray-700/80 p-2 rounded-lg transition flex items-center justify-between group pt-1.5">
                         <div class="flex flex-col text-left overflow-hidden">
                             <span class="text-[11px] font-bold text-gray-200 group-hover:text-emerald-400 truncate">Identificar Consumidor</span>
-                            <span class="text-[9px] text-gray-400 truncate">Cadastro para nota</span>
+                            <span class="text-[9px] text-gray-400 truncate">Identificação opcional</span>
                         </div>
                         <span class="bg-emerald-950 text-emerald-400 text-[10px] font-bold px-1.5 py-0.5 rounded border border-emerald-800/50 font-mono ml-1">F1</span>
                     </button>
@@ -640,7 +640,7 @@
     </footer>
 
     <nav id="mobileFunctionBar" class="fixed inset-x-0 bottom-0 z-40 flex gap-2 overflow-x-auto border-t border-gray-700 bg-gray-950/95 px-2 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] shadow-[0_-8px_24px_rgba(0,0,0,0.4)] backdrop-blur lg:hidden" aria-label="Atalhos do caixa">
-        <button type="button" onclick="window.handleAction('F1')" title="Cadastro para nota" aria-label="F1 Cadastro para nota" class="min-w-12 rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-xs font-bold text-gray-100">F1</button>
+        <button type="button" onclick="window.handleAction('F1')" title="Identificar cliente (opcional)" aria-label="F1 Identificar cliente (opcional)" class="min-w-12 rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-xs font-bold text-gray-100">F1</button>
         <button type="button" onclick="window.handleAction('F2')" title="Selecionar operador" aria-label="F2 Operador" class="min-w-12 rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-xs font-bold text-gray-100">F2</button>
         <button type="button" onclick="window.handleAction('F3')" title="Dinheiro ou Pix" aria-label="F3 Dinheiro ou Pix" class="min-w-12 rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-xs font-bold text-emerald-300">F3</button>
         <button type="button" onclick="window.handleAction('F4')" title="Débito" aria-label="F4 Débito" class="min-w-12 rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-xs font-bold text-gray-100">F4</button>
@@ -747,7 +747,7 @@
       </section>
     </div>
 
-    <!-- Elemento oculto para impressão térmica opcional NFC-e (58mm / 80mm) -->
+    <!-- Comprovante operacional não fiscal para impressão térmica (58mm / 80mm) -->
     <div id="cupom-termico" class="hidden">
         <div class="cupom-cabecalho" style="text-align: center; font-weight: bold;">VANCELY SOFTWARE - PDV-VS</div>
         <div style="margin: 2mm 0; text-align: center; font-weight: bold;">*** DOCUMENTO NÃO FISCAL - SEM VALOR JURÍDICO ***</div>
@@ -972,13 +972,13 @@
 
         // --- FUNÇÕES DIRETAS NO PAINEL LATERAL (SEM POP-UPS NATIVOS E SEM DUPLICIDADE) ---
 
-        // F1: Cadastro para nota 
+        // F1: Identificação opcional do cliente
         window.acaoAtalhoF1 = () => {
-            abrirPainelLateral('blocoF1', 'F1 - Cadastro para Nota');
+            abrirPainelLateral('blocoF1', 'F1 - Identificação do Cliente');
             document.getElementById('inputCpfNota')?.focus();
         };
 
-        window.salvarConsumidorEImprimir = () => {
+        window.aplicarIdentificacaoConsumidor = () => {
             const doc = document.getElementById('inputCpfNota')?.value.trim();
             document.getElementById('cupomCliente').innerText = doc || "Consumidor Final";
             fecharPainelLateral();
