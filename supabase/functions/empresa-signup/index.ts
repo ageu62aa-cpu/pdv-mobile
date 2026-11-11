@@ -1,4 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const termsVersion = '2026-11-09';
 const corsHeaders = {
@@ -27,22 +28,18 @@ function normalizeIpAddress(value: string | null) {
   }
 }
 
-Deno.serve(async request => {
+serve(async request => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (request.method !== 'POST') return response(405, { error: 'Método não permitido.' });
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
-  const anonKey = Deno.env.get('SUPABASE_ANON_KEY');
   const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-  if (!supabaseUrl || !anonKey || !serviceKey) {
+  if (!supabaseUrl || !serviceKey) {
     console.error('Supabase service environment is not configured.');
     return response(503, { error: 'O cadastro está temporariamente indisponível. Tente novamente mais tarde.' });
   }
 
   const database = createClient(supabaseUrl, serviceKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
-  const authClient = createClient(supabaseUrl, anonKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
   let createdUserId: string | null = null;
@@ -68,16 +65,19 @@ Deno.serve(async request => {
       return response(400, { error: 'Preencha todos os dados obrigatórios da empresa.' });
     }
 
-    const { data: userData, error: userError } = await authClient.auth.signUp({
+    const { data: userData, error: userError } = await database.auth.admin.createUser({
       email,
       password,
-      options: { data: { full_name: contactName, terms_version: termsVersion } },
+      email_confirm: true,
+      user_metadata: {
+        full_name: contactName,
+        nome: contactName,
+        razao_social: companyName,
+        terms_version: termsVersion,
+      },
     });
     if (userError) {
       return response(400, { error: userError.message });
-    }
-    if (!userData.user || userData.user.identities?.length === 0) {
-      return response(400, { error: 'Este e-mail já está cadastrado. Entre na conta ou use outro e-mail.' });
     }
     createdUserId = userData.user.id;
     createdCompanyId = userData.user.id;
@@ -128,7 +128,7 @@ Deno.serve(async request => {
     });
     if (consentError) throw consentError;
 
-    return response(201, { ok: true, emailConfirmationRequired: true });
+    return response(201, { ok: true, emailConfirmationRequired: false });
   } catch (error) {
     console.error('Company registration failed:', error);
     if (createdCompanyId) {

@@ -229,7 +229,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
 
-                showCadastroFeedback('Empresa cadastrada no plano Grátis. Confirme o e-mail antes de entrar.', 'success');
+                showCadastroFeedback('Empresa cadastrada no plano Grátis. Já pode entrar com seu e-mail e senha.', 'success');
                 setTimeout(() => {
                     modalCadastro.classList.add('hidden');
                     formCadastro.reset();
