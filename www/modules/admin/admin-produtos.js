@@ -215,7 +215,7 @@ async function carregarProdutosAdmin() {
         p_empresa_id: empresaId
     }).maybeSingle();
     if (erroPlano) throw erroPlano;
-    limiteProdutosPlano = Number(plano?.limite_produtos) || 100;
+    limiteProdutosPlano = Number(plano?.limite_produtos) || 50;
 
     const produtosIniciais = window.adminProdutosIniciais;
     let produtos = produtosIniciais;

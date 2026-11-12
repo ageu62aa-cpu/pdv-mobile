@@ -381,9 +381,14 @@ export async function initAdminMaquininhas(containerEl) {
     let gatewayConnected = Boolean(gatewayStatus?.connected);
     if (gatewayStatusError) {
         mostrarStatus(asaasStatus, `Não foi possível verificar a conexão Asaas: ${gatewayStatusError.message}`);
+    } else if (gatewayConnected && gatewayStatus.connectionHealthy === false) {
+        mostrarStatus(asaasCardStatus, gatewayStatus.connectionMessage
+            || 'Não foi possível validar a conexão com o Asaas. Pagamentos automáticos podem falhar.', false);
+        asaasActivateButton.classList.add('hidden');
+        asaasManualButton.classList.toggle('hidden', gatewayStatus.gatewayMode !== 'ASAAS_REAL');
     } else if (gatewayConnected) {
         const modeText = gatewayStatus.gatewayMode === 'ASAAS_REAL'
-            ? 'Pagamentos automáticos via Asaas estão ativos.'
+            ? 'Conexão com o Asaas validada; pagamentos automáticos estão selecionados.'
             : 'Subconta Asaas conectada; pagamentos continuam no modo Pix próprio até você ativar.';
         mostrarStatus(asaasCardStatus, modeText, true);
         asaasActivateButton.classList.toggle('hidden', gatewayStatus.gatewayMode === 'ASAAS_REAL');
@@ -420,7 +425,7 @@ export async function initAdminMaquininhas(containerEl) {
                     gatewayConnected = true;
                     asaasPaymentStatus.textContent = 'Pagamento confirmado e subconta criada. Cadastre/valide sua conta de saque diretamente no Asaas para receber os repasses.';
                     asaasPaymentStatus.className = 'rounded-lg border border-emerald-800 bg-emerald-950/30 p-3 text-xs text-emerald-200';
-                    mostrarStatus(asaasCardStatus, 'Pagamento confirmado. A subconta foi criada e o Pix automático está ativo.', true);
+                    mostrarStatus(asaasCardStatus, 'Pagamento confirmado e subconta criada. A confirmação automática das vendas depende da entrega dos webhooks do Asaas.', true);
                     asaasActivateButton.classList.add('hidden');
                     asaasManualButton.classList.remove('hidden');
                 } else if (data?.status === 'FAILED') {

@@ -149,9 +149,40 @@ Deno.serve(async request => {
     if (payload.action === 'status') {
       if (!isAdmin) return response(403, { error: 'Somente o administrador pode consultar a conexão Asaas.' });
       const { data: account, error } = await database.from('empresas')
-        .select('asaas_subaccount_id, gateway_modo, termos_asaas_aceitos')
+        .select('asaas_subaccount_id, asaas_wallet_id, asaas_account_api_key, asaas_account_api_key_iv, gateway_modo, termos_asaas_aceitos')
         .eq('id', companyId).maybeSingle();
       if (error) throw error;
+      const connected = Boolean(account?.asaas_subaccount_id);
+      let connectionHealthy: boolean | null = null;
+      let connectionMessage: string | null = null;
+      if (connected) {
+        const encryptionKey = Deno.env.get('ASAAS_CREDENTIALS_ENCRYPTION_KEY')?.trim();
+        if (!account?.asaas_wallet_id || !account.asaas_account_api_key
+            || !account.asaas_account_api_key_iv || !encryptionKey) {
+          connectionHealthy = false;
+          connectionMessage = 'A conexão salva está incompleta. Contate o suporte antes de receber pagamentos pelo Asaas.';
+        } else {
+          try {
+            const subaccountApiKey = await decryptApiKey(
+              account.asaas_account_api_key,
+              account.asaas_account_api_key_iv,
+              encryptionKey,
+            );
+            const accountResponse = await fetch(`${apiUrl}/myAccount`, {
+              headers: { access_token: subaccountApiKey },
+            });
+            connectionHealthy = accountResponse.ok;
+            if (!connectionHealthy) {
+              console.error('Asaas subaccount health check failed:', accountResponse.status);
+              connectionMessage = 'O Asaas não validou a conexão desta empresa. Confira a chave e o ambiente ou contate o suporte.';
+            }
+          } catch (healthCheckError) {
+            console.error('Could not validate the Asaas subaccount connection:', healthCheckError);
+            connectionHealthy = false;
+            connectionMessage = 'Não foi possível validar a conexão com o Asaas. Tente novamente ou contate o suporte.';
+          }
+        }
+      }
       const { data: activation, error: activationError } = await database
         .from('asaas_account_activations')
         .select('id, status, billing_type, payment_url, asaas_payment_id, created_at')
@@ -161,7 +192,9 @@ Deno.serve(async request => {
         .maybeSingle();
       if (activationError) throw activationError;
       return response(200, {
-        connected: Boolean(account?.asaas_subaccount_id),
+        connected,
+        connectionHealthy,
+        connectionMessage,
         acceptedTerms: Boolean(account?.termos_asaas_aceitos),
         gatewayMode: account?.gateway_modo || 'SIMULADO',
         accountId: account?.asaas_subaccount_id || null,

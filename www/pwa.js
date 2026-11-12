@@ -1,5 +1,6 @@
 (() => {
     let installPrompt = null;
+    let installedInCurrentPage = false;
     const standaloneQuery = window.matchMedia('(display-mode: standalone)');
 
     function isStandalone() {
@@ -7,7 +8,7 @@
     }
 
     function isInstalled() {
-        return isStandalone() || localStorage.getItem('pdvPwaInstalled') === 'true';
+        return isStandalone() || installedInCurrentPage;
     }
 
     function showInstallInstructions() {
@@ -109,7 +110,7 @@
         updateButton(button);
         button.addEventListener('click', async () => {
             if (isStandalone()) return;
-            if (isInstalled() || !installPrompt) {
+            if (!installPrompt) {
                 showInstallInstructions();
                 return;
             }
@@ -140,7 +141,7 @@
 
     window.addEventListener('appinstalled', () => {
         installPrompt = null;
-        localStorage.setItem('pdvPwaInstalled', 'true');
+        installedInCurrentPage = true;
         const button = document.getElementById('btnPWAAction');
         if (button) updateButton(button);
     });

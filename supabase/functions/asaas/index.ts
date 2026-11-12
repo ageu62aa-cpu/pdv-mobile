@@ -40,6 +40,14 @@ function normalizeBaseUrl(value: string | undefined) {
   return base;
 }
 
+function parseProductBlocks(value: unknown, label: string) {
+  const count = value === undefined ? 0 : Number(value);
+  if (!Number.isSafeInteger(count) || count < 0 || count > 1000) {
+    throw new Error(`Informe de 0 a 1.000 blocos ${label}.`);
+  }
+  return count;
+}
+
 Deno.serve(async request => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (request.method !== 'POST') return response(405, { error: 'Método não permitido.' });
@@ -85,13 +93,13 @@ Deno.serve(async request => {
     const email = user.email?.trim().toLowerCase() || '';
     let { data: company, error: companyError } = await database
       .from('empresas')
-      .select('id, nome_mercado, nome_empresa, cnpj, email, email_admin, whatsapp, endereco, numero, bairro, cep, cidade, asaas_customer_id')
+      .select('id, plano_id, nome_mercado, nome_empresa, cnpj, email, email_admin, whatsapp, endereco, numero, bairro, cep, cidade, asaas_customer_id')
       .eq('id', user.id)
       .maybeSingle();
     if (!company && !companyError && email) {
       const companyByEmail = await database
         .from('empresas')
-        .select('id, nome_mercado, nome_empresa, cnpj, email, email_admin, whatsapp, endereco, numero, bairro, cep, cidade, asaas_customer_id')
+        .select('id, plano_id, nome_mercado, nome_empresa, cnpj, email, email_admin, whatsapp, endereco, numero, bairro, cep, cidade, asaas_customer_id')
         .ilike('email_admin', email)
         .limit(2);
       company = companyByEmail.data?.length === 1 ? companyByEmail.data[0] : null;
@@ -105,22 +113,205 @@ Deno.serve(async request => {
     }
 
     if (body.action === 'status') {
+      const asaasBaseUrl = normalizeBaseUrl(Deno.env.get('ASAAS_API_URL'));
+      const accountResponse = await fetch(`${asaasBaseUrl}/myAccount`, {
+        headers: { access_token: apiKey },
+      });
+      if (!accountResponse.ok) {
+        console.error('Asaas master account health check failed:', accountResponse.status);
+        return response(200, {
+          configured: false,
+          message: accountResponse.status === 401 || accountResponse.status === 403
+            ? 'A chave do Asaas foi recusada. Confira se o secret pertence ao ambiente configurado.'
+            : 'Não foi possível validar a conta Asaas. Confira a configuração e tente novamente.',
+        });
+      }
       return response(200, { configured: true });
     }
 
-    const planId = typeof body.planId === 'string' ? body.planId.trim() : '';
+    const action = body.action;
+    if (action !== 'subscribe' && action !== 'update_product_blocks') {
+      return response(400, { error: 'Ação de pagamento inválida.' });
+    }
+
+    let planId = typeof body.planId === 'string' ? body.planId.trim() : '';
+    let activeSubscription: {
+      id: string;
+      plano_id: string;
+      billing_type: string | null;
+      asaas_subscription_id: string | null;
+      blocos_100_produtos: number;
+      blocos_1000_produtos: number;
+    } | null = null;
+    if (action === 'update_product_blocks') {
+      const { data: activeSubscriptions, error: activeError } = await database
+        .from('assinaturas')
+        .select('id, plano_id, billing_type, asaas_subscription_id, blocos_100_produtos, blocos_1000_produtos')
+        .eq('empresa_id', company.id)
+        .in('status', ['ACTIVE', 'TRIALING'])
+        .order('updated_at', { ascending: false })
+        .limit(2);
+      if (activeError) throw activeError;
+      if ((activeSubscriptions || []).length > 1) {
+        return response(409, {
+          error: 'Há mais de uma assinatura ativa no Asaas para esta empresa. Contate o suporte para evitar cobranças duplicadas antes de alterar os blocos.',
+        });
+      }
+      activeSubscription = activeSubscriptions?.[0] || null;
+      if (!activeSubscription && company.plano_id && company.plano_id !== 'gratis') {
+        return response(409, {
+          error: 'Não foi encontrada uma assinatura ativa para alterar os blocos. Regularize ou contrate novamente seu plano antes de comprar blocos.',
+        });
+      }
+      if (!activeSubscription) {
+        const { data: pendingSubscription, error: pendingError } = await database
+          .from('assinaturas')
+          .select('id')
+          .eq('empresa_id', company.id)
+          .eq('status', 'PENDING')
+          .limit(1)
+          .maybeSingle();
+        if (pendingError) throw pendingError;
+        if (pendingSubscription) {
+          return response(409, {
+            error: 'Existe uma contratação pendente. Conclua ou resolva essa cobrança antes de iniciar outra recorrência de blocos.',
+          });
+        }
+      }
+      planId = activeSubscription?.plano_id || company.plano_id || 'gratis';
+    }
+
+    let blocos100: number;
+    let blocos1000: number;
+    try {
+      blocos100 = parseProductBlocks(body.blocos100, 'de +100 produtos');
+      blocos1000 = parseProductBlocks(body.blocos1000, 'de +1.000 produtos');
+    } catch (error) {
+      return response(400, { error: error instanceof Error ? error.message : 'Quantidade de blocos inválida.' });
+    }
+
     const { data: plan, error: planError } = await database
       .from('planos')
       .select('id, nome, preco_mensal')
       .eq('id', planId)
-      .eq('ativo', true)
       .maybeSingle();
     if (planError) throw planError;
-    if (!plan || Number(plan.preco_mensal) <= 0) {
-      return response(400, { error: 'Selecione um plano pago válido.' });
+    if (!plan) return response(400, { error: 'Não foi possível localizar o plano selecionado.' });
+
+    if (action === 'subscribe' || (action === 'update_product_blocks' && !activeSubscription)) {
+      const { data: activePlan, error: activePlanError } = await database
+        .from('planos')
+        .select('id')
+        .eq('id', plan.id)
+        .eq('ativo', true)
+        .maybeSingle();
+      if (activePlanError) throw activePlanError;
+      if (!activePlan) return response(400, { error: 'O plano selecionado não está disponível.' });
     }
 
-    if (body.action !== 'subscribe') return response(400, { error: 'Ação de pagamento inválida.' });
+    const planPrice = Number(plan.preco_mensal);
+    const monthlyTotal = Math.round((planPrice + blocos100 * 9.9 + blocos1000 * 24.9) * 100) / 100;
+    if (!Number.isFinite(monthlyTotal)) {
+      return response(400, { error: 'O valor mensal calculado é inválido.' });
+    }
+    if (action === 'subscribe' && monthlyTotal <= 0) {
+      return response(400, { error: 'Escolha um plano pago ou pelo menos um bloco de produtos.' });
+    }
+
+    if (action === 'update_product_blocks' && activeSubscription) {
+      const subscriptionId = activeSubscription.asaas_subscription_id;
+      if (!subscriptionId) {
+        return response(409, {
+          error: 'A assinatura atual ainda não foi sincronizada com o Asaas. Aguarde a confirmação ou contate o suporte.',
+        });
+      }
+
+      const asaasBaseUrl = normalizeBaseUrl(Deno.env.get('ASAAS_API_URL'));
+      if (monthlyTotal > 0
+          && blocos100 === activeSubscription.blocos_100_produtos
+          && blocos1000 === activeSubscription.blocos_1000_produtos) {
+        return response(200, {
+          configured: true,
+          updated: true,
+          monthlyTotal,
+          message: 'A quantidade destes blocos já está ativa na assinatura.',
+        });
+      }
+      if (monthlyTotal === 0) {
+        const cancelResponse = await fetch(
+          `${asaasBaseUrl}/subscriptions/${encodeURIComponent(subscriptionId)}`,
+          { method: 'DELETE', headers: { access_token: apiKey } },
+        );
+        if (!cancelResponse.ok) {
+          const cancelResult = await readJsonObject(cancelResponse);
+          console.error('Asaas subscription cancellation failed:', cancelResult);
+          return response(502, {
+            error: `Não foi possível cancelar a recorrência dos blocos no Asaas.${asaasErrorDetail(cancelResult)}`,
+          });
+        }
+        const { error: cancelUpdateError } = await database.from('assinaturas')
+          .update({
+            status: 'CANCELED',
+            blocos_100_produtos: 0,
+            blocos_1000_produtos: 0,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', activeSubscription.id);
+        if (cancelUpdateError) throw cancelUpdateError;
+        return response(200, {
+          configured: true,
+          canceled: true,
+          monthlyTotal: 0,
+          message: 'A recorrência dos blocos foi cancelada no Asaas.',
+        });
+      }
+
+      const updateResponse = await fetch(
+        `${asaasBaseUrl}/subscriptions/${encodeURIComponent(subscriptionId)}`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', access_token: apiKey },
+          body: JSON.stringify({
+            value: monthlyTotal,
+            description: `PDV ${plan.nome} + blocos de produtos`,
+          }),
+        },
+      );
+      const updateResult = await readJsonObject(updateResponse);
+      if (!updateResponse.ok) {
+        console.error('Asaas subscription update failed:', updateResult);
+        const cardTokenizationMessage = activeSubscription.billing_type === 'CREDIT_CARD'
+          ? ' Para alterar o valor de assinaturas com cartão, a conta Asaas pode exigir tokenização habilitada.'
+          : '';
+        return response(502, {
+          error: `O Asaas não aceitou alterar o valor recorrente.${cardTokenizationMessage}${asaasErrorDetail(updateResult)}`,
+        });
+      }
+
+      const { error: blockUpdateError } = await database.from('assinaturas')
+        .update({
+          blocos_100_produtos: blocos100,
+          blocos_1000_produtos: blocos1000,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', activeSubscription.id);
+      if (blockUpdateError) {
+        console.error('Asaas recurring amount changed but local product blocks could not be synchronized:', blockUpdateError);
+        return response(502, {
+          error: 'O Asaas atualizou a recorrência, mas não foi possível sincronizar os blocos no PDV. Contate o suporte.',
+        });
+      }
+      return response(200, {
+        configured: true,
+        updated: true,
+        monthlyTotal,
+        message: 'Os blocos e o valor da recorrência foram atualizados. A alteração será cobrada nas próximas mensalidades.',
+      });
+    }
+    if (action === 'update_product_blocks' && monthlyTotal <= 0) {
+      return response(400, { error: 'Escolha pelo menos um bloco de produtos para iniciar a recorrência.' });
+    }
+
     const billingType = body.billingType;
     if (billingType !== 'PIX' && billingType !== 'CREDIT_CARD') {
       return response(400, { error: 'Escolha PIX ou Cartão de Crédito.' });
@@ -234,6 +425,8 @@ Deno.serve(async request => {
         status: 'PENDING',
         billing_type: billingType,
         asaas_customer_id: customerId,
+        blocos_100_produtos: blocos100,
+        blocos_1000_produtos: blocos1000,
       })
       .select('id')
       .single();
@@ -258,8 +451,18 @@ Deno.serve(async request => {
             name: `PDV ${plan.nome}`,
             description: `Assinatura mensal do plano ${plan.nome}`,
             quantity: 1,
-            value: Number(plan.preco_mensal),
-          }],
+            value: planPrice,
+          }, ...(blocos100 > 0 ? [{
+            name: 'Bloco +100 produtos',
+            description: 'Bloco mensal recorrente de 100 produtos adicionais',
+            quantity: blocos100,
+            value: 9.9,
+          }] : []), ...(blocos1000 > 0 ? [{
+            name: 'Bloco +1.000 produtos',
+            description: 'Bloco mensal recorrente de 1.000 produtos adicionais',
+            quantity: blocos1000,
+            value: 24.9,
+          }] : [])].filter(item => item.value > 0),
           subscription: {
             cycle: 'MONTHLY',
             nextDueDate: new Date(Date.now() + 86400000)
@@ -302,11 +505,11 @@ Deno.serve(async request => {
     const subscriptionBody: Record<string, unknown> = {
       customer: customerId,
       billingType,
-      value: Number(plan.preco_mensal),
+      value: monthlyTotal,
       nextDueDate: new Date(Date.now() + 86400000).toISOString().slice(0, 10),
       cycle: 'MONTHLY',
-      description: `PDV ${plan.nome} - assinatura mensal`,
-      externalReference: company.id,
+      description: `PDV ${plan.nome} + blocos de produtos - assinatura mensal`,
+      externalReference: pendingSubscription.id,
     };
     const asaasResponse = await fetch(`${asaasBaseUrl}/subscriptions`, {
       method: 'POST',

@@ -4,13 +4,12 @@ const formatarMoeda = valor => Number(valor).toLocaleString('pt-BR', {
     style: 'currency',
     currency: 'BRL'
 });
-const ordemPlanos = ['gratis', 'iniciante', 'profissional', 'ouro', 'diamante'];
+const ordemPlanos = ['gratis', 'iniciante', 'profissional', 'ouro'];
 const catalogoPlanos = [
-    { id: 'gratis', nome: 'Grátis', preco_mensal: 0, limite_operadores: 0, limite_dispositivos: 1, limite_produtos: 100, dias_historico: 7, icone: 'fa-gift', borda: 'border-gray-700' },
-    { id: 'iniciante', nome: 'Iniciante', preco_mensal: 29.99, limite_operadores: 1, limite_dispositivos: 2, limite_produtos: 1000, dias_historico: 30, icone: 'fa-medal', borda: 'border-amber-700' },
-    { id: 'profissional', nome: 'Profissional', preco_mensal: 49.99, limite_operadores: 3, limite_dispositivos: 4, limite_produtos: 3000, dias_historico: 90, icone: 'fa-medal', borda: 'border-slate-500' },
-    { id: 'ouro', nome: 'Ouro', preco_mensal: 59.99, limite_operadores: 5, limite_dispositivos: 6, limite_produtos: 5000, dias_historico: 365, icone: 'fa-medal', borda: 'border-yellow-700' },
-    { id: 'diamante', nome: 'Diamante', preco_mensal: 99.99, limite_operadores: 10, limite_dispositivos: 12, limite_produtos: 10000, dias_historico: null, icone: 'fa-gem', borda: 'border-cyan-700' }
+    { id: 'gratis', nome: 'Grátis', preco_mensal: 0, limite_operadores: 0, limite_dispositivos: 1, limite_produtos: 50, dias_historico: 7, icone: 'fa-gift', borda: 'border-gray-700' },
+    { id: 'iniciante', nome: 'Bronze', preco_mensal: 29.99, limite_operadores: 2, limite_dispositivos: 2, limite_produtos: 500, dias_historico: 30, icone: 'fa-medal', borda: 'border-amber-700' },
+    { id: 'profissional', nome: 'Prata', preco_mensal: 49.99, limite_operadores: 3, limite_dispositivos: 4, limite_produtos: 1000, dias_historico: 365, icone: 'fa-medal', borda: 'border-slate-500' },
+    { id: 'ouro', nome: 'Ouro', preco_mensal: 69, limite_operadores: 5, limite_dispositivos: 6, limite_produtos: 5000, dias_historico: 1095, icone: 'fa-medal', borda: 'border-yellow-700' }
 ];
 
 export async function initAdminPlanos(container) {
@@ -18,10 +17,13 @@ export async function initAdminPlanos(container) {
         <div class="space-y-5">
             <header>
                 <h2 class="text-lg font-bold text-white">Planos e assinatura</h2>
-                <p class="mt-1 text-xs text-gray-400">Limites, situação atual e contratação segura pelo Asaas.</p>
+                <p class="mt-1 text-xs text-gray-400">Limites, blocos adicionais de produtos e cobrança recorrente pelo checkout oficial do Asaas.</p>
             </header>
             <p id="status-asaas" class="rounded-lg border border-gray-700 bg-gray-900 p-3 text-xs text-gray-300" role="status">Verificando configuração de pagamentos...</p>
             <div id="plano-atual" class="rounded-xl border border-emerald-800 bg-emerald-950/30 p-4 text-sm text-emerald-200">Carregando assinatura...</div>
+            <button id="abrir-blocos-produtos" type="button" class="rounded-lg border border-sky-800 bg-sky-950/30 px-4 py-3 text-left text-xs font-bold text-sky-200 transition hover:border-sky-600 hover:bg-sky-950/60">
+                Adicionar ou gerenciar blocos de produtos
+            </button>
             <p class="text-[11px] text-gray-500 sm:hidden">Deslize os cartões para comparar todos os planos.</p>
             <div id="status-catalogo" class="hidden rounded-lg border border-amber-800 bg-amber-950/30 p-3 text-xs text-amber-200" role="status"></div>
             <div id="lista-planos" class="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-3 sm:grid sm:w-full sm:grid-cols-2 sm:overflow-visible sm:pb-0 xl:grid-cols-3">
@@ -42,8 +44,23 @@ export async function initAdminPlanos(container) {
                 </header>
                 <div class="rounded-xl border border-sky-900/70 bg-sky-950/30 p-3 text-xs leading-5 text-sky-100">
                     <i class="fa-solid fa-shield-halved mr-1.5 text-sky-300" aria-hidden="true"></i>
-                    O pagamento será concluído no checkout oficial e seguro do Asaas. Os dados do cartão não são armazenados pelo PDV.
+                    O pagamento será concluído no checkout oficial do Asaas, que coleta os dados de pagamento. O valor exibido é mensal e será cobrado de forma recorrente enquanto a assinatura estiver ativa.
                 </div>
+                <section class="space-y-3 rounded-xl border border-gray-700 bg-gray-950/50 p-3">
+                    <div>
+                        <h4 class="text-sm font-bold text-white">Blocos adicionais de produtos</h4>
+                        <p class="mt-1 text-xs leading-5 text-gray-400">Os blocos são adicionados à mensalidade escolhida. Você poderá alterar ou remover quantidades depois; a alteração do valor vale para as próximas cobranças recorrentes. Até 1.000 unidades de cada tipo por assinatura.</p>
+                    </div>
+                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <label class="text-xs font-bold text-gray-300">Blocos de +100 produtos · R$ 9,90/mês
+                            <input id="upgrade-blocos-100" type="number" min="0" max="1000" step="1" value="0" required class="mt-1 w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2.5 text-sm text-white">
+                        </label>
+                        <label class="text-xs font-bold text-gray-300">Blocos de +1.000 produtos · R$ 24,90/mês
+                            <input id="upgrade-blocos-1000" type="number" min="0" max="1000" step="1" value="0" required class="mt-1 w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2.5 text-sm text-white">
+                        </label>
+                    </div>
+                    <p id="upgrade-total-mensal" class="text-sm font-bold text-emerald-300"></p>
+                </section>
                 <label class="block text-xs font-bold text-gray-300">Forma de pagamento
                     <select name="billingType" id="upgrade-meio-pagamento" required class="mt-1 w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2.5 text-sm text-white">
                         <option value="PIX">Pix</option>
@@ -121,7 +138,7 @@ export async function initAdminPlanos(container) {
             || 'A integração de pagamentos aguarda a configuração das chaves do Asaas no ambiente seguro do servidor.';
         statusAsaas.className = 'rounded-lg border border-amber-800 bg-amber-950/40 p-3 text-xs text-amber-200';
     } else {
-        statusAsaas.textContent = 'Pagamentos pelo Asaas configurados.';
+        statusAsaas.textContent = 'Conta e chave de API do Asaas validadas.';
         statusAsaas.className = 'rounded-lg border border-emerald-800 bg-emerald-950/40 p-3 text-xs text-emerald-200';
     }
 
@@ -158,13 +175,15 @@ export async function initAdminPlanos(container) {
     }));
     lista.innerHTML = planosExibidos.map(plan => {
         const limites = [
-            ['fa-users', 'Operadores', `${plan.limite_operadores} extra(s) + 1 admin`],
+            ['fa-users', 'Operadores de caixa', plan.id === 'gratis' ? '1 admin (sem operadores)' : `1 admin + ${plan.limite_operadores} operadores`],
             ['fa-box', 'Produtos', Number(plan.limite_produtos).toLocaleString('pt-BR')],
-            ['fa-clock', 'Histórico', plan.dias_historico == null ? 'Ilimitado' : `${plan.dias_historico} dias`],
-            ['fa-mobile-screen-button', 'Dispositivos', String(plan.limite_dispositivos)]
+            ['fa-clock', 'Histórico de vendas e caixa', plan.dias_historico >= 1095 ? 'Últimos 3 anos' : `Últimos ${plan.dias_historico} dias`],
+            ['fa-mobile-screen-button', 'PDV Mobile (PWA) + Pix Estático', 'Sim'],
+            ['fa-camera', 'Leitor de Câmera / USB', 'Sim'],
+            ['fa-palette', 'Sangria, Suprimento e Temas', 'Cortesia']
         ];
         const atual = plan.id === planoAtualId;
-        const superior = ordemPlanos.indexOf(plan.id) > indicePlanoAtual;
+        const superior = indicePlanoAtual >= 0 && ordemPlanos.indexOf(plan.id) > indicePlanoAtual;
         return `
             <article class="plan-card flex w-[84vw] max-w-[20rem] shrink-0 snap-start flex-col rounded-2xl border ${atual ? 'border-emerald-500 bg-gradient-to-b from-emerald-950/40 to-gray-900 ring-1 ring-emerald-500/30' : `${plan.borda} bg-gray-900/70`} p-4 shadow-lg shadow-black/10 transition hover:-translate-y-0.5 hover:bg-gray-800/90 sm:w-auto">
                 <div class="flex min-h-10 items-center justify-between gap-2">
@@ -192,8 +211,25 @@ export async function initAdminPlanos(container) {
     const modal = document.getElementById('modal-upgrade');
     const form = document.getElementById('form-upgrade');
     const paymentMethod = document.getElementById('upgrade-meio-pagamento');
+    const blocos100Input = document.getElementById('upgrade-blocos-100');
+    const blocos1000Input = document.getElementById('upgrade-blocos-1000');
+    const totalMensal = document.getElementById('upgrade-total-mensal');
     const addressFields = [...form.querySelectorAll('.upgrade-address')];
+    const blocosAtuais = {
+        blocos100: Number(entitlement?.blocos_100_produtos) || 0,
+        blocos1000: Number(entitlement?.blocos_1000_produtos) || 0
+    };
     let selectedPlanId = '';
+    let selectedPlanPrice = 0;
+    let manageProductBlocks = false;
+    const atualizarTotalMensal = () => {
+        const total = selectedPlanPrice
+            + (Number(blocos100Input.value) || 0) * 9.9
+            + (Number(blocos1000Input.value) || 0) * 24.9;
+        totalMensal.textContent = `Total mensal recorrente: ${formatarMoeda(total)}${total > 0 ? ' enquanto a assinatura estiver ativa' : ''}.`;
+    };
+    blocos100Input.addEventListener('input', atualizarTotalMensal);
+    blocos1000Input.addEventListener('input', atualizarTotalMensal);
     const updateAddressRequirements = () => {
         const required = paymentMethod.value === 'CREDIT_CARD';
         addressFields.forEach(field => { field.required = required; });
@@ -219,19 +255,47 @@ export async function initAdminPlanos(container) {
         button.addEventListener('click', () => {
             if (Number(button.dataset.planPrice) <= 0) return;
             selectedPlanId = button.dataset.plan;
+            selectedPlanPrice = Number(button.dataset.planPrice);
+            manageProductBlocks = false;
+            blocos100Input.value = '0';
+            blocos1000Input.value = '0';
             document.getElementById('upgrade-titulo').textContent = `Upgrade para ${button.dataset.planName}`;
-            document.getElementById('upgrade-preco').textContent = `${formatarMoeda(button.dataset.planPrice)} por mês`;
+            document.getElementById('upgrade-preco').textContent = `Plano ${formatarMoeda(selectedPlanPrice)}/mês, antes dos blocos adicionais.`;
             document.getElementById('status-upgrade').classList.add('hidden');
+            atualizarTotalMensal();
             modal.showModal();
         });
     });
+    document.getElementById('abrir-blocos-produtos').addEventListener('click', () => {
+        const planoAtualDados = planosExibidos.find(plan => plan.id === planoAtualId)
+            || catalogoPlanos[0];
+        selectedPlanId = planoAtualDados.id;
+        selectedPlanPrice = Number(entitlement?.preco_mensal ?? planoAtualDados.preco_mensal) || 0;
+        manageProductBlocks = true;
+        blocos100Input.value = String(blocosAtuais.blocos100);
+        blocos1000Input.value = String(blocosAtuais.blocos1000);
+        document.getElementById('upgrade-titulo').textContent = 'Blocos adicionais de produtos';
+        document.getElementById('upgrade-preco').textContent = `Plano atual: ${formatarMoeda(selectedPlanPrice)}/mês.`;
+        document.getElementById('status-upgrade').classList.add('hidden');
+        atualizarTotalMensal();
+        modal.showModal();
+    });
     form.addEventListener('submit', event => {
         event.preventDefault();
-        void assinar(selectedPlanId, new FormData(form));
+        if (!form.reportValidity()) return;
+        void assinar(selectedPlanId, new FormData(form), {
+            action: manageProductBlocks ? 'update_product_blocks' : 'subscribe',
+            blocos100: Number(blocos100Input.value),
+            blocos1000: Number(blocos1000Input.value)
+        }).then(result => {
+            if (!manageProductBlocks || !result) return;
+            blocosAtuais.blocos100 = result.canceled ? 0 : Number(blocos100Input.value);
+            blocosAtuais.blocos1000 = result.canceled ? 0 : Number(blocos1000Input.value);
+        });
     });
 }
 
-async function assinar(planId, formData) {
+async function assinar(planId, formData, blocos) {
     const submitButton = document.getElementById('confirmar-upgrade');
     const status = document.getElementById('status-upgrade');
     submitButton.disabled = true;
@@ -240,8 +304,10 @@ async function assinar(planId, formData) {
     try {
         const resultado = await supabase.functions.invoke('asaas', {
             body: {
-                action: 'subscribe',
-                planId,
+                action: blocos.action,
+                ...(blocos.action === 'subscribe' ? { planId } : {}),
+                blocos100: blocos.blocos100,
+                blocos1000: blocos.blocos1000,
                 billingType: formData.get('billingType'),
                 cpfCnpj: String(formData.get('cpfCnpj') || '').replace(/\D/g, ''),
                 address: String(formData.get('address') || '').trim(),
@@ -267,6 +333,12 @@ async function assinar(planId, formData) {
             }
             window.location.assign(url.href);
             return;
+        }
+        if (data.updated || data.canceled) {
+            status.textContent = data.message;
+            status.className = 'rounded-lg border border-emerald-800 bg-emerald-950/40 p-3 text-xs text-emerald-200';
+            status.classList.remove('hidden');
+            return data;
         }
         throw new Error('A cobrança foi criada, mas o Asaas não retornou o link de pagamento. Contate o suporte antes de tentar novamente.');
     } catch (error) {
