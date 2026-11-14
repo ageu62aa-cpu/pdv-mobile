@@ -1,33 +1,27 @@
 const palettes = {
     green: {
         label: 'Verde',
-        shades: ['#ecfdf5', '#d1fae5', '#a7f3d0', '#6ee7b7', '#34d399', '#10b981', '#059669', '#047857', '#065f46', '#064e3b'],
-        filter: 'none'
+        shades: ['#ecfdf5', '#d1fae5', '#a7f3d0', '#6ee7b7', '#34d399', '#10b981', '#059669', '#047857', '#065f46', '#064e3b']
     },
     yellow: {
         label: 'Amarelo',
-        shades: ['#fffbeb', '#fef3c7', '#fde68a', '#fcd34d', '#fde047', '#facc15', '#facc15', '#eab308', '#a16207', '#713f12'],
-        filter: 'hue-rotate(-62deg) saturate(1.25)'
+        shades: ['#fffbeb', '#fef3c7', '#fde68a', '#fcd34d', '#fde047', '#facc15', '#facc15', '#eab308', '#a16207', '#713f12']
     },
     pink: {
         label: 'Rosa',
-        shades: ['#fdf2f8', '#fce7f3', '#fbcfe8', '#f9a8d4', '#f472b6', '#ec4899', '#db2777', '#be185d', '#9d174d', '#831843'],
-        filter: 'hue-rotate(205deg) saturate(1.25)'
+        shades: ['#fdf2f8', '#fce7f3', '#fbcfe8', '#f9a8d4', '#f472b6', '#ec4899', '#db2777', '#be185d', '#9d174d', '#831843']
     },
     orange: {
         label: 'Laranja',
-        shades: ['#fff7ed', '#ffedd5', '#fed7aa', '#fdba74', '#fb923c', '#f97316', '#ea580c', '#c2410c', '#9a3412', '#7c2d12'],
-        filter: 'hue-rotate(-92deg) saturate(1.25)'
+        shades: ['#fff7ed', '#ffedd5', '#fed7aa', '#fdba74', '#fb923c', '#f97316', '#ea580c', '#c2410c', '#9a3412', '#7c2d12']
     },
     purple: {
         label: 'Roxo',
-        shades: ['#faf5ff', '#f3e8ff', '#e9d5ff', '#d8b4fe', '#c084fc', '#a855f7', '#9333ea', '#7e22ce', '#6b21a8', '#581c87'],
-        filter: 'hue-rotate(145deg) saturate(1.2)'
+        shades: ['#faf5ff', '#f3e8ff', '#e9d5ff', '#d8b4fe', '#c084fc', '#a855f7', '#9333ea', '#7e22ce', '#6b21a8', '#581c87']
     },
     coffee: {
         label: 'Marrom-Café',
-        shades: ['#faf3e8', '#f2e2c9', '#e5c9a0', '#d4aa76', '#bd8954', '#a66b3f', '#8b5633', '#70432b', '#563322', '#3d251a'],
-        filter: 'sepia(.55) saturate(1.2)'
+        shades: ['#faf3e8', '#f2e2c9', '#e5c9a0', '#d4aa76', '#bd8954', '#a66b3f', '#8b5633', '#70432b', '#563322', '#3d251a']
     }
 };
 
@@ -35,12 +29,21 @@ const shadeNames = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900];
 const opacitySteps = [5, 10, 15, 20, 25, 30, 40, 50, 60, 70, 75, 80, 90, 95];
 const themeArtwork = new URL('../assets/icones-card.jpeg', import.meta.url).href;
 const coffeeThemeArtwork = new URL('../assets/icone-carde.png', import.meta.url).href;
+const mascotArtworkPositions = {
+    green: '85% 85%',
+    yellow: '14% 14%',
+    pink: '50% 14%',
+    orange: '85% 14%',
+    purple: '14% 85%',
+    coffee: 'center'
+};
 
 function ensureThemeStyles() {
     if (document.getElementById('tenant-brand-theme-styles')) return;
 
     const rules = [
-        '.brand-mascot-tint{filter:var(--brand-mascot-filter,none);transition:filter 180ms ease}',
+        '.brand-logo-trigger{width:2.5rem;height:2.5rem;min-width:2.5rem;aspect-ratio:1;border-radius:50%;overflow:hidden}',
+        '.brand-mascot-image{display:inline-block;flex:none;background-image:var(--brand-mascot-artwork);background-size:var(--brand-mascot-size,490% 267%);background-position:var(--brand-mascot-position,85% 85%);background-repeat:no-repeat}',
         '.brand-theme-option{border-color:var(--preview-border);background-color:var(--preview-surface);box-shadow:0 8px 24px -18px var(--preview-glow);transition:background-color 180ms ease,border-color 180ms ease,box-shadow 180ms ease,transform 180ms ease}',
         '.brand-theme-option:hover{border-color:var(--preview-primary);box-shadow:0 10px 26px -14px var(--preview-glow);transform:translateY(-1px)}',
         '.brand-theme-option[aria-pressed="true"]{border-color:var(--preview-primary);box-shadow:0 0 0 1px var(--preview-primary),0 10px 28px -14px var(--preview-glow)}',
@@ -142,7 +145,7 @@ function ensureThemeStyles() {
 
     const style = document.createElement('style');
     style.id = 'tenant-brand-theme-styles';
-    style.textContent = `:root{${shadeNames.map((shade, index) => `--brand-${shade}:${palettes.green.shades[index]}`).join(';')};--theme-primary:${palettes.green.shades[6]};--theme-bg-subtle:rgba(2,44,34,.3);--theme-canvas:#111827;--theme-surface:#1f2937;--theme-control:#111827;--theme-control-hover:#1f2937;--theme-accent-soft:rgba(2,44,34,.3);--theme-accent-ink:#a7f3d0;--theme-border-soft:#374151;--theme-border:${palettes.green.shades[6]};--brand-mascot-filter:none;--theme-artwork:url("${themeArtwork}")}${rules.join('\n')}`;
+    style.textContent = `:root{${shadeNames.map((shade, index) => `--brand-${shade}:${palettes.green.shades[index]}`).join(';')};--theme-primary:${palettes.green.shades[6]};--theme-bg-subtle:rgba(2,44,34,.3);--theme-canvas:#111827;--theme-surface:#1f2937;--theme-control:#111827;--theme-control-hover:#1f2937;--theme-accent-soft:rgba(2,44,34,.3);--theme-accent-ink:#a7f3d0;--theme-border-soft:#374151;--theme-border:${palettes.green.shades[6]};--theme-artwork:url("${themeArtwork}");--brand-mascot-artwork:url("${themeArtwork}");--brand-mascot-size:490% 267%;--brand-mascot-position:85% 85%}${rules.join('\n')}`;
     document.head.append(style);
 }
 
@@ -167,12 +170,11 @@ function applyTheme(themeColor) {
     root.style.setProperty('--theme-border-soft', selected === 'green' ? '#374151' : `color-mix(in srgb, ${palette.shades[6]} 20%, #e2e8f0)`);
     root.style.setProperty('--theme-border', palette.shades[6]);
     root.style.setProperty('--theme-icon-ink', selected === 'yellow' ? '#1e293b' : '#ffffff');
-    root.style.setProperty('--brand-mascot-filter', palette.filter);
+    root.style.setProperty('--brand-mascot-artwork', `url("${selected === 'coffee' ? coffeeThemeArtwork : themeArtwork}")`);
+    root.style.setProperty('--brand-mascot-position', mascotArtworkPositions[selected]);
+    root.style.setProperty('--brand-mascot-size', selected === 'coffee' ? '100% 100%' : '490% 267%');
     root.dataset.brandTheme = selected;
     document.querySelector('meta[name="theme-color"]')?.setAttribute('content', palette.shades[7]);
-    document.querySelectorAll('[data-brand-mascot]').forEach(image => {
-        image.classList.add('brand-mascot-tint');
-    });
     document.querySelectorAll('[data-brand-theme-trigger]').forEach(button => {
         button.title = `Personalizar cor da marca · ${palette.label}`;
         button.setAttribute('aria-label', button.title);

@@ -30,6 +30,7 @@ let processamentoPix = false;
 let tipoPagamentoAtualF3 = 'Dinheiro';
 let maquininhasPagamento = [];
 let taxasGeraisPagamento = null;
+let filaLeiturasPistola = Promise.resolve();
 
 // --- UTILITÁRIO DE CLIENTE SUPABASE ---
 const getSupabase = () => window.supabaseClient || window.supabase || supabase;
@@ -1256,7 +1257,7 @@ function atualizarSelecaoSugestoes(painel, indexAtual) {
     });
 }
 
-window.adicionarProdutoAoCarrinho = function(produto, quantidade = 1) {
+window.adicionarProdutoAoCarrinho = function(produto, quantidade = 1, preservarBusca = false) {
     if (!produto || produto.id == null) {
         console.error('PDV-VS: Não foi possível adicionar um produto inválido ao carrinho.', produto);
         return;
@@ -1294,16 +1295,20 @@ window.adicionarProdutoAoCarrinho = function(produto, quantidade = 1) {
     window.quantidadeMultiplicador = 1;
     ocultarPainelSugestoes();
     const inputBusca = document.getElementById('inputBusca');
-    if (inputBusca) {
+    if (inputBusca && !preservarBusca) {
         inputBusca.value = '';
         inputBusca.dataset.indiceSelecionado = '0';
         inputBusca.focus();
     }
 };
 
-window.adicionarProdutoComQtd = function(produto, quantidade = 1) {
-    window.adicionarProdutoAoCarrinho(produto, quantidade);
+window.adicionarProdutoComQtd = function(produto, quantidade = 1, preservarBusca = false) {
+    window.adicionarProdutoAoCarrinho(produto, quantidade, preservarBusca);
 };
+
+export function aguardarLeiturasPistola() {
+    return filaLeiturasPistola;
+}
 
 window.adicionarProdutoPorId = function(produtoId, quantidade = window.quantidadeMultiplicador || 1) {
     const produto = produtosCache.find(item => String(item.id) === String(produtoId));
@@ -1395,27 +1400,26 @@ export async function tratarEnterBuscaCaixa(e) {
             String(produto.codigo_barras || '').trim().toLocaleLowerCase() === valorNormalizado
             || String(produto.codigo || '').trim().toLocaleLowerCase() === valorNormalizado
         );
-        if (codigoExato) {
-            window.adicionarProdutoComQtd?.(codigoExato, window.quantidadeMultiplicador || 1);
+        if (codigoExato || /^(?=.*\d)[A-Za-z0-9-]{6,}$/.test(valor)) {
+            const quantidade = window.quantidadeMultiplicador || 1;
+            input.value = '';
+            input.dataset.indiceSelecionado = '0';
             window.quantidadeMultiplicador = 1;
-            return;
-        }
-        if (/^(?=.*\d)[A-Za-z0-9-]{6,}$/.test(valor)) {
-            try {
-                const produtoLido = await buscarProdutoPorCodigoScanner(valor);
-                if (produtoLido) {
-                    window.adicionarProdutoComQtd?.(produtoLido, window.quantidadeMultiplicador || 1);
-                } else {
-                    alert('PDV-VS: Produto não encontrado pelo código de barras.');
-                    input.value = '';
-                    ocultarPainelSugestoes();
-                    focarBusca();
+            ocultarPainelSugestoes();
+
+            filaLeiturasPistola = filaLeiturasPistola.then(async () => {
+                try {
+                    const produtoLido = codigoExato || await buscarProdutoPorCodigoScanner(valor);
+                    if (!produtoLido) {
+                        alert('PDV-VS: Produto não encontrado pelo código de barras.');
+                        return;
+                    }
+                    window.adicionarProdutoComQtd?.(produtoLido, quantidade, true);
+                } catch (error) {
+                    console.error('PDV-VS: Erro ao consultar código de barras no Supabase:', error);
+                    alert(`PDV-VS: Não foi possível consultar o produto no servidor: ${error.message}`);
                 }
-            } catch (error) {
-                console.error('PDV-VS: Erro ao consultar código de barras no Supabase:', error);
-                alert(`PDV-VS: Não foi possível consultar o produto no servidor: ${error.message}`);
-            }
-            window.quantidadeMultiplicador = 1;
+            });
             return;
         }
 

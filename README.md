@@ -4,7 +4,7 @@ Sistema de Ponto de Vêrgas / Vendas (PDV) moderno, responsivo e integrado em te
 
 ## Funcionalidades
 - **Busca Rápida Inteligente:** Sugestões em tempo real ao digitar a partir de 4 caracteres.
-- **Leitura de Código de Barras:** Compatível com pistolas USB/Bluetooth (entrada como teclado) no cadastro e no caixa, além do leitor de câmera em celulares e computadores.
+- **Leitura de Código de Barras:** Compatível com pistolas USB/Bluetooth configuradas como teclado e finalização da leitura com Enter. O caixa processa leituras em sequência sem perder códigos enquanto consulta o servidor; o cadastro mantém o campo de código pronto para leituras repetidas em produtos novos e editados. Como esses leitores enviam teclas ao navegador, o sistema reconhece as leituras, mas não consegue identificar cada aparelho físico individualmente. Também há leitor de câmera em celulares e computadores.
 - **Gestão Completa de Estoque:** Painel dedicado para consultar, editar valores/quantidades e excluir produtos sem sair do app.
 - **Baixa Automática:** Atualização instantânea no banco de dados do Supabase ao finalizar a venda.
 - **Painel Administrativo Multi-dispositivo:** Sessão administrativa separada do login do operador, com cadastro de operadores vinculados à empresa do administrador, status Realtime dos caixas e indicadores diários de vendas e cancelamentos.

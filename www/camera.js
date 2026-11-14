@@ -11,6 +11,7 @@ let capturaCodigoCallback = null;
 let modosFocoDisponiveis = [];
 let contextoAudio = null;
 let zoomNativoDisponivel = false;
+let leitorTecladoInicializado = false;
 
 function atualizarStatusCamera(mensagem, erro = false) {
     const status = document.getElementById('camera-status');
@@ -581,7 +582,26 @@ export async function fecharLeitorCamera() {
 }
 
 export function inicializarLeitorTecladoPistola() {
-    console.info('[PDV-LEITOR] Suporte a leitor USB/Bluetooth ativo.');
+    if (leitorTecladoInicializado) return;
+    leitorTecladoInicializado = true;
+
+    const restaurarFocoBusca = () => {
+        if (document.visibilityState === 'hidden') return;
+        const modalCamera = document.getElementById(MODAL_ID);
+        if (modalCamera && !modalCamera.classList.contains('hidden')) return;
+
+        const ativo = document.activeElement;
+        if (ativo && ativo !== document.body && ativo !== document.documentElement) return;
+
+        const input = document.getElementById('inputBusca');
+        if (!input) return;
+        input.focus();
+        input.setSelectionRange(input.value.length, input.value.length);
+    };
+
+    window.addEventListener('focus', restaurarFocoBusca);
+    document.addEventListener('visibilitychange', restaurarFocoBusca);
+    console.info('[PDV-LEITOR] Entrada por teclado para leitores USB/Bluetooth ativa.');
 }
 
 window.iniciarCamera = abrirLeitorCamera;

@@ -15,6 +15,20 @@ let scannerProdutoZoom = { min: 1, max: 1, step: 0.1, value: 1 };
 let scannerProdutoFocoModo = [];
 let limiteProdutosPlano = 1000;
 let quantidadeProdutosPlano = 0;
+let focoScannerProdutoInstalado = false;
+
+function restaurarFocoScannerProduto() {
+    if (document.visibilityState === 'hidden') return;
+
+    const modal = document.getElementById('modalFormProdutoAdmin');
+    const campoCodigo = document.getElementById('formProdCodigo');
+    if (!modal || modal.classList.contains('hidden') || !campoCodigo) return;
+
+    const ativo = document.activeElement;
+    if (ativo && ativo !== document.body && ativo !== document.documentElement) return;
+    campoCodigo.focus();
+    campoCodigo.select();
+}
 
 async function garantirBibliotecaCamera() {
     if (window.Html5Qrcode) return;
@@ -198,8 +212,15 @@ export async function initAdminProdutos(containerEl) {
     document.getElementById('formProdCodigo')?.addEventListener('keydown', event => {
         if (event.key === 'Enter') {
             event.preventDefault();
+            event.currentTarget.select();
         }
     });
+
+    if (!focoScannerProdutoInstalado) {
+        focoScannerProdutoInstalado = true;
+        window.addEventListener('focus', restaurarFocoScannerProduto);
+        document.addEventListener('visibilitychange', restaurarFocoScannerProduto);
+    }
 
     await carregarProdutosAdmin();
 }
@@ -327,7 +348,11 @@ window.abrirModalNovoProduto = async function() {
     document.getElementById('modalFormProdutoAdmin').classList.remove('hidden');
     
     // Deixa o foco pronto caso o operador use pistola física logo ao abrir o modal
-    setTimeout(() => document.getElementById('formProdCodigo').focus(), 100);
+    setTimeout(() => {
+        const campoCodigo = document.getElementById('formProdCodigo');
+        campoCodigo.focus();
+        campoCodigo.select();
+    }, 100);
 };
 
 window.abrirModalEditarProduto = function(p) {
@@ -341,6 +366,11 @@ window.abrirModalEditarProduto = function(p) {
     document.getElementById('formProdUnidade').value = p.unidade || 'UN';
 
     document.getElementById('modalFormProdutoAdmin').classList.remove('hidden');
+    setTimeout(() => {
+        const campoCodigo = document.getElementById('formProdCodigo');
+        campoCodigo.focus();
+        campoCodigo.select();
+    }, 100);
 };
 
 window.fecharModalProdutoAdmin = function() {

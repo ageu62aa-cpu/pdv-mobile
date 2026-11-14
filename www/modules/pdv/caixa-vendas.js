@@ -8,7 +8,7 @@ import {
 } from '../../core/state.js';
 import { carregarProdutosCache } from '../../services/produtos.js';
 import { carregarHistoricoAdmin, carregarOperadoresLoja } from '../admin/admin-core.js';
-import { getSupabase } from './caixa-core.js';
+import { getSupabase, aguardarLeiturasPistola } from './caixa-core.js';
 import { focarBusca } from './caixa-busca.js';
 
 window.addEventListener('keydown', (e) => {
@@ -43,6 +43,7 @@ export function cancelarVenda() {
 
 export async function finalizarVenda() {
     if (!caixaAberto) { alert('PDV-VS: O caixa individual precisa estar aberto! Pressione [F1] ou abra o caixa.'); return; }
+    await aguardarLeiturasPistola();
     if (itensVenda.length === 0) { alert('PDV-VS: Adicione produtos antes de finalizar.'); return; }
     
     const total = itensVenda.reduce((acc, item) => acc + (item.qtd * item.preco), 0);
