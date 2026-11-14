@@ -12,14 +12,14 @@ Sistema de Ponto de Vêrgas / Vendas (PDV) moderno, responsivo e integrado em te
 - **Visibilidade administrativa multi-dispositivo:** A migration de visibilidade libera a leitura de caixas, vendas, cancelamentos e operadores da própria empresa para o Admin e habilita as tabelas no Supabase Realtime.
 - **Planos e upgrade contextual:** O painel compara os quatro planos, oferece blocos mensais de produtos recorrentes pelo Asaas e apresenta atalhos de upgrade nos limites de produtos/operadores e paywall para períodos antigos do histórico.
 - **Aceite legado compatível:** A migration de backfill marca tenants existentes como compatíveis com o acesso sem alterar sessões autenticadas ou registros históricos de aceite.
-- **Identidade visual por empresa:** Administradores e operadores podem abrir o seletor pelo logo no cabeçalho, pré-visualizar seis cores e salvar a preferência do tenant.
+- **Identidade visual por empresa:** Administradores e operadores podem abrir o seletor pelo logo circular no cabeçalho, pré-visualizar seis cores e salvar a preferência do tenant; o mascote completo usa imagens individuais em alta resolução para cada tema.
 - **Links legais no rodapé:** Frente de Caixa e Painel Administrativo oferecem links separados para Termos de Uso e Política de Privacidade.
 
 ## Banco de dados
 
 Aplique todas as migrations de `supabase/migrations` em ordem lexicográfica pelo nome do arquivo. As migrations `20261018180000_fix_sale_rls_and_operator_membership.sql` e `20261018190000_add_saas_plans_terms_and_asaas.sql` dependem das migrations anteriores de cancelamentos, sessões, visibilidade administrativa e campos de cadastro da empresa. A migration `20261018193000_backfill_terms_acceptance_for_existing_tenants.sql` prepara a flag de aceite de contas legadas sem alterar sessões autenticadas ou exigir novo login.
 
-A migration `20261114120000_fix_theme_color_validation.sql` atualiza a RPC `vancely_update_theme_color` para normalizar e validar nomes de tema em português ou inglês antes de salvar a chave interna correspondente. Aplique-a para corrigir o erro “Cor de tema inválida” ao alterar a identidade visual.
+A migration `20261114120000_fix_theme_color_validation.sql` atualiza a RPC `vancely_update_theme_color` para normalizar e validar nomes de tema em português ou inglês, migrar valores legados e restringir `empresas.theme_color` às seis cores canônicas. Aplique-a para corrigir o erro “Cor de tema inválida” ao alterar a identidade visual.
 
 Aplique as migrations até `20261018193000_backfill_terms_acceptance_for_existing_tenants.sql` antes de publicar a versão atualizada da Edge Function `empresa-signup`, que grava a flag de aceite explícita para novos cadastros.
 
