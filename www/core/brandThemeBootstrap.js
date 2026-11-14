@@ -37,6 +37,12 @@
         'blue-ice': 'mascote-azul-branco-gelo.png',
         red: 'mascote-vermelho.png'
     };
+    const appIconFiles = Object.fromEntries(
+        Object.keys(palettes).map(theme => [theme, `${theme}-512.png`])
+    );
+    const appleTouchIconFiles = Object.fromEntries(
+        Object.keys(palettes).map(theme => [theme, `${theme}-192.png`])
+    );
 
     function updateMascots(node) {
         if (!(node instanceof Element)) return;
@@ -96,12 +102,13 @@
         const iconLink = document.querySelector('link[rel~="icon"]');
         if (iconLink) {
             iconLink.type = 'image/png';
-            iconLink.removeAttribute('sizes');
-            iconLink.href = new URL(`/assets/${mascotFiles[selected]}`, window.location.origin).href;
+            iconLink.sizes = '512x512';
+            iconLink.href = new URL(`/assets/app-icons/${appIconFiles[selected]}`, window.location.origin).href;
         }
         const appleTouchIcon = document.querySelector('link[rel="apple-touch-icon"]');
         if (appleTouchIcon) {
-            appleTouchIcon.href = new URL(`/assets/${mascotFiles[appIconTheme]}`, window.location.origin).href;
+            appleTouchIcon.sizes = '192x192';
+            appleTouchIcon.href = new URL(`/assets/app-icons/${appleTouchIconFiles[appIconTheme]}`, window.location.origin).href;
         }
     };
     updateFavicon();

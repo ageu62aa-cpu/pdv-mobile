@@ -48,6 +48,8 @@ const coffeeThemeArtwork = new URL('../assets/icone-carde.png', import.meta.url)
 const blackGoldMascotArtwork = new URL('../assets/mascote-black-gold.png', import.meta.url).href;
 const blueIceMascotArtwork = new URL('../assets/mascote-azul-branco-gelo.png', import.meta.url).href;
 const redMascotArtwork = new URL('../assets/mascote-vermelho.png', import.meta.url).href;
+const appIconArtwork = theme => new URL(`../assets/app-icons/${theme}-512.png`, import.meta.url).href;
+const appleTouchArtwork = theme => new URL(`../assets/app-icons/${theme}-192.png`, import.meta.url).href;
 const standaloneThemeArtworks = {
     coffee: coffeeThemeArtwork,
     'black-gold': blackGoldMascotArtwork,
@@ -248,13 +250,14 @@ function updateBrowserThemeIdentity(theme, palette, appIconTheme = theme) {
     const iconLink = document.querySelector('link[rel~="icon"]');
     if (iconLink) {
         iconLink.type = 'image/png';
-        iconLink.removeAttribute('sizes');
-        iconLink.href = mascotArtworks[theme];
+        iconLink.sizes = '512x512';
+        iconLink.href = appIconArtwork(theme);
     }
 
     const appleTouchIcon = document.querySelector('link[rel="apple-touch-icon"]');
     if (appleTouchIcon) {
-        appleTouchIcon.href = mascotArtworks[appIconTheme];
+        appleTouchIcon.sizes = '192x192';
+        appleTouchIcon.href = appleTouchArtwork(appIconTheme);
     }
 
     const manifestLink = document.querySelector('link[rel="manifest"]');
