@@ -59,6 +59,16 @@
 
     if (!hasPersistedTheme) return;
 
+    let appIconTheme = selected;
+    try {
+        const savedAppIconTheme = localStorage.getItem('vancely-app-icon-theme');
+        if (Object.prototype.hasOwnProperty.call(palettes, savedAppIconTheme)) {
+            appIconTheme = savedAppIconTheme;
+        }
+    } catch (error) {
+        console.warn('PDV-VS: Não foi possível ler o tema do ícone do aplicativo:', error);
+    }
+
     const root = document.documentElement;
     const shades = palettes[selected];
     const isBlackGold = selected === 'black-gold';
@@ -84,20 +94,21 @@
     metaThemeColor?.setAttribute('content', shades[7]);
     const updateFavicon = () => {
         const iconLink = document.querySelector('link[rel~="icon"]');
-        if (!iconLink) return;
-        iconLink.type = 'image/png';
-        iconLink.sizes = '512x512';
-        iconLink.href = new URL(`/assets/theme-icons/${selected}.png`, window.location.origin).href;
+        if (iconLink) {
+            iconLink.type = 'image/png';
+            iconLink.removeAttribute('sizes');
+            iconLink.href = new URL(`/assets/${mascotFiles[selected]}`, window.location.origin).href;
+        }
         const appleTouchIcon = document.querySelector('link[rel="apple-touch-icon"]');
         if (appleTouchIcon) {
-            appleTouchIcon.href = iconLink.href;
+            appleTouchIcon.href = new URL(`/assets/${mascotFiles[appIconTheme]}`, window.location.origin).href;
         }
     };
     updateFavicon();
     document.addEventListener('DOMContentLoaded', updateFavicon, { once: true });
     const manifestLink = document.querySelector('link[rel="manifest"]');
     if (manifestLink) {
-        const manifestPath = selected === 'green' ? '/manifest.json' : `/manifest-${selected}.json`;
+        const manifestPath = appIconTheme === 'green' ? '/manifest.json' : `/manifest-${appIconTheme}.json`;
         const manifestUrl = new URL(manifestPath, window.location.origin);
         manifestLink.href = manifestUrl.href;
     }
