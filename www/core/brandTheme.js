@@ -41,14 +41,14 @@ const shadeNames = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900];
 const opacitySteps = [5, 10, 15, 20, 25, 30, 40, 50, 60, 70, 75, 80, 90, 95];
 const themeArtwork = new URL('../assets/icones-card.jpeg', import.meta.url).href;
 const coffeeThemeArtwork = new URL('../assets/icone-carde.png', import.meta.url).href;
-const blackGoldThemeArtwork = new URL('../assets/icone-carde-black-gold.jpeg', import.meta.url).href;
-const blueIceThemeArtwork = new URL('../assets/icone-carde-azul-branco Gelo1.jpeg', import.meta.url).href;
-const redThemeArtwork = new URL('../assets/image.png', import.meta.url).href;
+const blackGoldMascotArtwork = new URL('../assets/mascote-black-gold.png', import.meta.url).href;
+const blueIceMascotArtwork = new URL('../assets/mascote-azul-branco-gelo.png', import.meta.url).href;
+const redMascotArtwork = new URL('../assets/mascote-vermelho.png', import.meta.url).href;
 const standaloneThemeArtworks = {
     coffee: coffeeThemeArtwork,
-    'black-gold': blackGoldThemeArtwork,
-    'blue-ice': blueIceThemeArtwork,
-    red: redThemeArtwork
+    'black-gold': blackGoldMascotArtwork,
+    'blue-ice': blueIceMascotArtwork,
+    red: redMascotArtwork
 };
 const mascotArtworks = {
     green: new URL('../assets/mascote-verde.png', import.meta.url).href,
@@ -57,9 +57,9 @@ const mascotArtworks = {
     orange: new URL('../assets/mascote-laranja.png', import.meta.url).href,
     purple: new URL('../assets/mascote-roxo.png', import.meta.url).href,
     coffee: coffeeThemeArtwork,
-    'black-gold': blackGoldThemeArtwork,
-    'blue-ice': blueIceThemeArtwork,
-    red: redThemeArtwork
+    'black-gold': blackGoldMascotArtwork,
+    'blue-ice': blueIceMascotArtwork,
+    red: redMascotArtwork
 };
 const rpcThemeValues = {
     green: 'verde',
@@ -84,7 +84,7 @@ function ensureThemeStyles() {
         '.brand-theme-option[aria-pressed="true"]{border-color:var(--preview-primary);box-shadow:0 0 0 1px var(--preview-primary),0 10px 28px -14px var(--preview-glow)}',
         '.brand-theme-option [data-theme-check]{color:var(--preview-primary)}',
         '.brand-theme-preview{border-color:var(--preview-border);background:var(--preview-background);box-shadow:inset 0 0 28px -18px var(--preview-glow)}',
-        '.brand-theme-art{width:4.5rem;height:4.5rem;border-radius:.8rem;background-image:var(--theme-artwork);background-color:var(--preview-background);background-size:490% 267%;background-position:var(--art-position);background-repeat:no-repeat;box-shadow:0 4px 14px color-mix(in srgb,var(--preview-primary) 20%,transparent);transition:transform 180ms ease,box-shadow 180ms ease}',
+        '.brand-theme-art{display:block;flex:none;width:4.5rem;height:4.5rem;border-radius:.8rem;background-image:var(--theme-artwork);background-color:var(--preview-background);background-size:490% 267%;background-position:var(--art-position);background-repeat:no-repeat;box-shadow:0 4px 14px color-mix(in srgb,var(--preview-primary) 20%,transparent);transition:transform 180ms ease,box-shadow 180ms ease}',
         '.brand-theme-option[data-theme-color="coffee"] .brand-theme-art,.brand-theme-option[data-theme-color="black-gold"] .brand-theme-art,.brand-theme-option[data-theme-color="blue-ice"] .brand-theme-art,.brand-theme-option[data-theme-color="red"] .brand-theme-art{background-image:var(--theme-card-artwork);background-size:100% 100%;background-position:center}',
         '.brand-theme-option:hover .brand-theme-art,.brand-theme-option[aria-pressed="true"] .brand-theme-art{transform:translateY(-1px);box-shadow:0 6px 18px color-mix(in srgb,var(--preview-primary) 30%,transparent)}',
         '.brand-theme-option:disabled{cursor:wait;opacity:.72}'
