@@ -12,7 +12,7 @@ Sistema de Ponto de Vêrgas / Vendas (PDV) moderno, responsivo e integrado em te
 - **Visibilidade administrativa multi-dispositivo:** A migration de visibilidade libera a leitura de caixas, vendas, cancelamentos e operadores da própria empresa para o Admin e habilita as tabelas no Supabase Realtime.
 - **Planos e upgrade contextual:** O painel compara os quatro planos, oferece blocos mensais de produtos recorrentes pelo Asaas e apresenta atalhos de upgrade nos limites de produtos/operadores e paywall para períodos antigos do histórico.
 - **Aceite legado compatível:** A migration de backfill marca tenants existentes como compatíveis com o acesso sem alterar sessões autenticadas ou registros históricos de aceite.
-- **Identidade visual por empresa:** Administradores e operadores podem abrir o seletor pelo logo circular no cabeçalho, pré-visualizar nove temas e salvar a preferência do tenant; Preto e Ouro, Azul-Branco Gelo e Vermelho usam a arte oficial de cada card na pré-visualização e ao selecionar o tema.
+- **Identidade visual por empresa:** Administradores e operadores podem abrir o seletor pelo logo circular no cabeçalho, pré-visualizar nove temas e salvar a preferência do tenant; Preto e Ouro mantém a interface escura com dourado nos destaques, e Vermelho usa acentos bordô em superfícies claras.
 - **Links legais no rodapé:** Frente de Caixa e Painel Administrativo oferecem links separados para Termos de Uso e Política de Privacidade.
 
 ## Banco de dados

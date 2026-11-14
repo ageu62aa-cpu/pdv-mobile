@@ -9,9 +9,9 @@
         orange: ['#fff7ed', '#ffedd5', '#fed7aa', '#fdba74', '#fb923c', '#f97316', '#ea580c', '#c2410c', '#9a3412', '#7c2d12'],
         purple: ['#faf5ff', '#f3e8ff', '#e9d5ff', '#d8b4fe', '#c084fc', '#a855f7', '#9333ea', '#7e22ce', '#6b21a8', '#581c87'],
         coffee: ['#faf3e8', '#f2e2c9', '#e5c9a0', '#d4aa76', '#bd8954', '#a66b3f', '#8b5633', '#70432b', '#563322', '#3d251a'],
-        'black-gold': ['#fffdf5', '#f8f0d9', '#eedca7', '#dfc471', '#cfad45', '#bc962b', '#9c7614', '#75580f', '#503d0e', '#30270f'],
+        'black-gold': ['#fff9e8', '#f5e6b3', '#e5cc79', '#d8b64e', '#d0aa35', '#c79b26', '#b2871e', '#916c17', '#674c12', '#46340d'],
         'blue-ice': ['#f0f9ff', '#e0f2fe', '#bae6fd', '#7dd3fc', '#38bdf8', '#0ea5e9', '#0284c7', '#0369a1', '#075985', '#0c4a6e'],
-        red: ['#fff1f2', '#ffe4e6', '#fecdd3', '#fda4af', '#fb7185', '#f43f5e', '#e11d48', '#be123c', '#9f1239', '#881337']
+        red: ['#fff5f6', '#fce8ec', '#f2cbd4', '#d99aaa', '#b95a73', '#8f294b', '#68102c', '#510d24', '#3e0a1c', '#2b0714']
     };
 
     let selected;
@@ -27,6 +27,8 @@
 
     const root = document.documentElement;
     const shades = palettes[selected];
+    const isBlackGold = selected === 'black-gold';
+    const isRed = selected === 'red';
     root.dataset.brandTheme = selected;
     shadeNames.forEach((shade, index) => {
         root.style.setProperty(`--brand-${shade}`, shades[index]);
@@ -34,14 +36,14 @@
     root.style.setProperty('--theme-primary', shades[6]);
     root.style.setProperty('--theme-bg-subtle', selected === 'green'
         ? 'rgba(2,44,34,.3)'
-        : `color-mix(in srgb, ${shades[2]} 52%, white)`);
-    root.style.setProperty('--theme-canvas', selected === 'green' ? '#111827' : `color-mix(in srgb, ${shades[2]} 55%, white)`);
-    root.style.setProperty('--theme-surface', selected === 'green' ? '#1f2937' : `color-mix(in srgb, ${shades[1]} 48%, white)`);
-    root.style.setProperty('--theme-control', selected === 'green' ? '#111827' : `color-mix(in srgb, ${shades[1]} 62%, white)`);
-    root.style.setProperty('--theme-control-hover', selected === 'green' ? '#1f2937' : `color-mix(in srgb, ${shades[2]} 42%, white)`);
-    root.style.setProperty('--theme-accent-soft', selected === 'green' ? 'rgba(2,44,34,.3)' : `color-mix(in srgb, ${shades[2]} 42%, white)`);
-    root.style.setProperty('--theme-accent-ink', selected === 'green' ? '#a7f3d0' : shades[7]);
-    root.style.setProperty('--theme-border-soft', selected === 'green' ? '#374151' : `color-mix(in srgb, ${shades[6]} 20%, #e2e8f0)`);
+        : isBlackGold ? '#33290f' : isRed ? '#f5e9ec' : `color-mix(in srgb, ${shades[2]} 52%, white)`);
+    root.style.setProperty('--theme-canvas', isBlackGold ? '#111519' : isRed ? '#f5f6f8' : selected === 'green' ? '#111827' : `color-mix(in srgb, ${shades[2]} 55%, white)`);
+    root.style.setProperty('--theme-surface', isBlackGold ? '#1c2228' : isRed ? '#ffffff' : selected === 'green' ? '#1f2937' : `color-mix(in srgb, ${shades[1]} 48%, white)`);
+    root.style.setProperty('--theme-control', isBlackGold ? '#101419' : isRed ? '#f1f2f4' : selected === 'green' ? '#111827' : `color-mix(in srgb, ${shades[1]} 62%, white)`);
+    root.style.setProperty('--theme-control-hover', isBlackGold ? '#293039' : isRed ? '#e9ebef' : selected === 'green' ? '#1f2937' : `color-mix(in srgb, ${shades[2]} 42%, white)`);
+    root.style.setProperty('--theme-accent-soft', selected === 'green' ? 'rgba(2,44,34,.3)' : isBlackGold ? '#33290f' : isRed ? '#f5e9ec' : `color-mix(in srgb, ${shades[2]} 42%, white)`);
+    root.style.setProperty('--theme-accent-ink', selected === 'green' ? '#a7f3d0' : isBlackGold ? '#e5c25b' : isRed ? '#640b24' : shades[7]);
+    root.style.setProperty('--theme-border-soft', selected === 'green' ? '#374151' : isBlackGold ? '#59471b' : isRed ? '#e3d6da' : `color-mix(in srgb, ${shades[6]} 20%, #e2e8f0)`);
     root.style.setProperty('--theme-border', shades[6]);
     root.style.setProperty('--theme-icon-ink', selected === 'yellow' ? '#1e293b' : '#ffffff');
 
@@ -123,6 +125,27 @@
     rules.push(':root[data-brand-theme]:not([data-brand-theme="green"]) #pdvHeader,:root[data-brand-theme]:not([data-brand-theme="green"]) #adminHeader{background-color:var(--theme-surface,#fff)!important;border-color:var(--theme-border-soft,#e2e8f0)!important}');
     rules.push(':root[data-brand-theme]:not([data-brand-theme="green"]) #pdvMain,:root[data-brand-theme]:not([data-brand-theme="green"]) #adminLayout{background-color:var(--theme-canvas,#f8fafc)!important}');
     rules.push(':root[data-brand-theme]:not([data-brand-theme="green"]) .theme-commission-description{color:#334155!important;font-weight:600}');
+    for (let index = 0; index < rules.length; index += 1) {
+        rules[index] = rules[index].replaceAll(
+            ':not([data-brand-theme="green"])',
+            ':not([data-brand-theme="green"]):not([data-brand-theme="black-gold"])'
+        );
+    }
+    rules.push(':root[data-brand-theme="black-gold"] body.bg-gray-900{background-color:var(--theme-canvas)!important;color:#f8fafc!important}');
+    rules.push(':root[data-brand-theme="black-gold"] #pdvHeader,:root[data-brand-theme="black-gold"] #adminHeader{background-color:#0d1117!important;background-image:linear-gradient(90deg,#080b0f,#111519)!important;border-color:#5a471d!important;color:#f8fafc!important}');
+    rules.push(':root[data-brand-theme="black-gold"] #pdvMain,:root[data-brand-theme="black-gold"] #adminLayout{background-color:var(--theme-canvas)!important;color:#e2e8f0}');
+    rules.push(':root[data-brand-theme="black-gold"] #pdvMain .bg-gray-800,:root[data-brand-theme="black-gold"] #adminLayout .bg-gray-800{background-color:var(--theme-surface)!important;border-color:var(--theme-border-soft)!important;color:#e2e8f0!important}');
+    rules.push(':root[data-brand-theme="black-gold"] #pdvMain .bg-gray-900:not(input):not(select):not(textarea):not(button),:root[data-brand-theme="black-gold"] #adminLayout .bg-gray-900:not(input):not(select):not(textarea):not(button){background-color:var(--theme-canvas)!important;color:#e2e8f0!important}');
+    rules.push(':root[data-brand-theme="black-gold"] #pdvMain button[class~="bg-gray-900"],:root[data-brand-theme="black-gold"] #pdvMain button[class~="bg-gray-800"],:root[data-brand-theme="black-gold"] #pdvMain button[class~="bg-gray-700"],:root[data-brand-theme="black-gold"] #pdvMain button[class~="bg-gray-850"],:root[data-brand-theme="black-gold"] #adminLayout button[class~="bg-gray-900"],:root[data-brand-theme="black-gold"] #adminLayout button[class~="bg-gray-800"],:root[data-brand-theme="black-gold"] #adminLayout button[class~="bg-gray-700"]{background-color:var(--theme-control)!important;border-color:var(--theme-border-soft)!important;color:#f8fafc!important}');
+    rules.push(':root[data-brand-theme="black-gold"] #pdvMain input:not([type="checkbox"]):not([type="radio"]),:root[data-brand-theme="black-gold"] #pdvMain select,:root[data-brand-theme="black-gold"] #pdvMain textarea,:root[data-brand-theme="black-gold"] #adminLayout input:not([type="checkbox"]):not([type="radio"]),:root[data-brand-theme="black-gold"] #adminLayout select,:root[data-brand-theme="black-gold"] #adminLayout textarea{background-color:var(--theme-control)!important;border-color:var(--theme-border-soft)!important;color:#f8fafc!important}');
+    rules.push(':root[data-brand-theme="black-gold"] #pdvMain .text-gray-100,:root[data-brand-theme="black-gold"] #pdvMain .text-gray-200,:root[data-brand-theme="black-gold"] #pdvMain .text-gray-300,:root[data-brand-theme="black-gold"] #pdvMain .text-gray-400,:root[data-brand-theme="black-gold"] #adminLayout .text-gray-100,:root[data-brand-theme="black-gold"] #adminLayout .text-gray-200,:root[data-brand-theme="black-gold"] #adminLayout .text-gray-300,:root[data-brand-theme="black-gold"] #adminLayout .text-gray-400{color:#cbd5e1!important}');
+    rules.push(':root[data-brand-theme="black-gold"] #pdvMain .bg-emerald-950,:root[data-brand-theme="black-gold"] #pdvMain [class~="bg-emerald-950/50"],:root[data-brand-theme="black-gold"] #pdvMain [class~="bg-emerald-950/60"],:root[data-brand-theme="black-gold"] #pdvMain [class~="bg-emerald-950/80"]{background-color:var(--theme-accent-soft)!important;border-color:var(--theme-border-soft)!important;color:var(--theme-accent-ink)!important}');
+    rules.push(':root[data-brand-theme="black-gold"] #pdvLegalFooter{background-color:#0d1117!important;color:#cbd5e1!important;border-color:#5a471d!important}');
+    rules.push(':root[data-brand-theme="red"]:not([data-brand-theme="green"]):not([data-brand-theme="black-gold"]) #pdvHeader,:root[data-brand-theme="red"]:not([data-brand-theme="green"]):not([data-brand-theme="black-gold"]) #adminHeader{background-color:#4d0b20!important;background-image:linear-gradient(90deg,#4d0b20,#600d2a)!important;border-color:#6b1730!important;color:#fff!important}');
+    rules.push(':root[data-brand-theme="red"]:not([data-brand-theme="green"]):not([data-brand-theme="black-gold"]) #pdvHeader .text-white:not(button),:root[data-brand-theme="red"]:not([data-brand-theme="green"]):not([data-brand-theme="black-gold"]) #adminHeader .text-white:not(button){color:#fff!important}');
+    rules.push(':root[data-brand-theme="red"] #pdvMain,:root[data-brand-theme="red"] #adminLayout{background-color:var(--theme-canvas)!important}');
+    rules.push(':root[data-brand-theme="red"] #pdvMain .bg-gray-800,:root[data-brand-theme="red"] #adminLayout .bg-gray-800{background-color:#fff!important;border-color:#e4d8dc!important}');
+    rules.push(':root[data-brand-theme="red"] #pdvLegalFooter{background-color:#fff!important;color:#4d0b20!important;border-color:#e4d8dc!important}');
     [500, 600, 700].forEach(shade => {
         const selector = `:root[data-brand-theme="yellow"] button[class~="bg-emerald-${shade}"]`;
         rules.push(`${selector}{color:#1e293b!important}`);
