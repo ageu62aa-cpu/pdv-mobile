@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pdv-vs-v83';
+const CACHE_NAME = 'pdv-vs-v84';
 const themePreferenceCacheName = 'pdv-brand-theme-preference-v3';
 const themePreferenceRequestUrl = '/__vancely_brand_theme_preference__';
 const urlsToCache = [
