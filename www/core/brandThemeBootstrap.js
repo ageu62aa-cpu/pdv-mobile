@@ -1,6 +1,5 @@
-(async function () {
+(function () {
     const themeStorageKey = 'vancely-brand-theme';
-    const themeCacheRequestUrl = '/__vancely_brand_theme_preference__';
     const shadeNames = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900];
     const opacitySteps = [5, 10, 15, 20, 25, 30, 40, 50, 60, 70, 75, 80, 90, 95];
     const palettes = {
@@ -15,21 +14,7 @@
         red: ['#fff5f6', '#fce8ec', '#f2cbd4', '#d99aaa', '#b95a73', '#8f294b', '#68102c', '#510d24', '#3e0a1c', '#2b0714']
     };
 
-    async function readPersistedTheme() {
-        try {
-            if ('caches' in window) {
-                const response = await fetch(new URL(themeCacheRequestUrl, window.location.origin), { cache: 'no-cache' });
-                if (response.ok) {
-                    const payload = await response.json();
-                    if (payload && typeof payload.theme === 'string' && Object.prototype.hasOwnProperty.call(palettes, payload.theme)) {
-                        return payload.theme;
-                    }
-                }
-            }
-        } catch (error) {
-            console.warn('PDV-VS: Não foi possível ler o tema do cache do service worker:', error);
-        }
-
+    function readPersistedTheme() {
         try {
             return localStorage.getItem(themeStorageKey);
         } catch (error) {
@@ -38,7 +23,7 @@
         }
     }
 
-    let selected = await readPersistedTheme();
+    let selected = readPersistedTheme();
     if (selected === 'gray') selected = 'coffee';
     if (!Object.prototype.hasOwnProperty.call(palettes, selected)) return;
 
@@ -63,6 +48,27 @@
     root.style.setProperty('--theme-border-soft', selected === 'green' ? '#374151' : isBlackGold ? '#59471b' : isRed ? '#e3d6da' : `color-mix(in srgb, ${shades[6]} 20%, #e2e8f0)`);
     root.style.setProperty('--theme-border', shades[6]);
     root.style.setProperty('--theme-icon-ink', selected === 'yellow' ? '#1e293b' : '#ffffff');
+    const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+    metaThemeColor?.setAttribute('content', shades[7]);
+    const updateFavicon = () => {
+        const iconLink = document.querySelector('link[rel~="icon"]');
+        if (!iconLink) return;
+        iconLink.type = 'image/png';
+        iconLink.sizes = '512x512';
+        iconLink.href = new URL(`/assets/theme-icons/${selected}.png`, window.location.origin).href;
+        const appleTouchIcon = document.querySelector('link[rel="apple-touch-icon"]');
+        if (appleTouchIcon) {
+            appleTouchIcon.href = iconLink.href;
+        }
+    };
+    updateFavicon();
+    document.addEventListener('DOMContentLoaded', updateFavicon, { once: true });
+    const manifestLink = document.querySelector('link[rel="manifest"]');
+    if (manifestLink) {
+        const manifestPath = selected === 'green' ? '/manifest.json' : `/manifest-${selected}.json`;
+        const manifestUrl = new URL(manifestPath, window.location.origin);
+        manifestLink.href = manifestUrl.href;
+    }
 
     const rules = [];
     const utilityTypes = [
@@ -142,6 +148,8 @@
     rules.push(':root[data-brand-theme]:not([data-brand-theme="green"]) #pdvHeader,:root[data-brand-theme]:not([data-brand-theme="green"]) #adminHeader{background-color:var(--theme-surface,#fff)!important;border-color:var(--theme-border-soft,#e2e8f0)!important}');
     rules.push(':root[data-brand-theme]:not([data-brand-theme="green"]) #pdvMain,:root[data-brand-theme]:not([data-brand-theme="green"]) #adminLayout{background-color:var(--theme-canvas,#f8fafc)!important}');
     rules.push(':root[data-brand-theme]:not([data-brand-theme="green"]) .theme-commission-description{color:#334155!important;font-weight:600}');
+    rules.push(':root[data-brand-theme] #pdvMain [class*="border-gray-"],:root[data-brand-theme] #adminLayout [class*="border-gray-"]{border-color:var(--theme-border-soft)!important}');
+    rules.push(':root[data-brand-theme] #pdvHeaderIdentidade .brand-logo-trigger,:root[data-brand-theme] #adminBrand .brand-logo-trigger{border-color:var(--theme-primary)!important}');
     for (let index = 0; index < rules.length; index += 1) {
         rules[index] = rules[index].replaceAll(
             ':not([data-brand-theme="green"])',

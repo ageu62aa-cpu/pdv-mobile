@@ -39,7 +39,7 @@ const palettes = {
 
 const shadeNames = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900];
 const opacitySteps = [5, 10, 15, 20, 25, 30, 40, 50, 60, 70, 75, 80, 90, 95];
-const themeCacheName = 'pdv-brand-theme-preference-v2';
+const themeCacheName = 'pdv-brand-theme-preference-v3';
 const themeCacheRequestUrl = '/__vancely_brand_theme_preference__';
 let themeCacheUpdate = Promise.resolve();
 const themeArtwork = new URL('../assets/icones-card.jpeg', import.meta.url).href;
@@ -140,6 +140,8 @@ function ensureThemeStyles() {
     rules.push(':root[data-brand-theme]:not([data-brand-theme="green"]) body.bg-gray-900{background-color:var(--theme-canvas)!important;color:#334155!important}');
     rules.push(':root[data-brand-theme]:not([data-brand-theme="green"]) #pdvHeader,:root[data-brand-theme]:not([data-brand-theme="green"]) #adminHeader{background-color:var(--theme-surface)!important;border-color:var(--theme-border-soft)!important}');
     rules.push(':root[data-brand-theme]:not([data-brand-theme="green"]) #pdvMain,:root[data-brand-theme]:not([data-brand-theme="green"]) #adminLayout{background-color:var(--theme-canvas)!important}');
+    rules.push(':root[data-brand-theme] #pdvMain [class*="border-gray-"],:root[data-brand-theme] #adminLayout [class*="border-gray-"]{border-color:var(--theme-border-soft)!important}');
+    rules.push(':root[data-brand-theme] #pdvHeaderIdentidade .brand-logo-trigger,:root[data-brand-theme] #adminBrand .brand-logo-trigger{border-color:var(--theme-primary)!important}');
     rules.push(':root[data-brand-theme]:not([data-brand-theme="green"]) .theme-commission-description{color:#334155!important;font-weight:600}');
     rules.push(':root[data-brand-theme]:not([data-brand-theme="green"]) #pdvMain .bg-gray-800,:root[data-brand-theme]:not([data-brand-theme="green"]) #adminLayout .bg-gray-800{background-color:var(--theme-surface)!important;border-color:var(--theme-border-soft)!important;color:#334155}');
     rules.push(':root[data-brand-theme]:not([data-brand-theme="green"]) #pdvMain .bg-gray-900:not(input):not(select):not(textarea):not(button),:root[data-brand-theme]:not([data-brand-theme="green"]) #adminLayout .bg-gray-900:not(input):not(select):not(textarea):not(button){background-color:var(--theme-canvas)!important;color:#334155}');
@@ -220,6 +222,30 @@ function ensureThemeStyles() {
     document.head.append(style);
 }
 
+function updateBrowserThemeIdentity(theme, palette) {
+    const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+    metaThemeColor?.setAttribute('content', palette.shades[7]);
+
+    const iconLink = document.querySelector('link[rel~="icon"]');
+    if (iconLink) {
+        iconLink.type = 'image/png';
+        iconLink.sizes = '512x512';
+        iconLink.href = new URL(`/assets/theme-icons/${theme}.png`, window.location.origin).href;
+    }
+
+    const appleTouchIcon = document.querySelector('link[rel="apple-touch-icon"]');
+    if (appleTouchIcon) {
+        appleTouchIcon.href = new URL(`/assets/theme-icons/${theme}.png`, window.location.origin).href;
+    }
+
+    const manifestLink = document.querySelector('link[rel="manifest"]');
+    if (manifestLink) {
+        const manifestPath = theme === 'green' ? '/manifest.json' : `/manifest-${theme}.json`;
+        const manifestUrl = new URL(manifestPath, window.location.origin);
+        manifestLink.href = manifestUrl.href;
+    }
+}
+
 function applyTheme(themeColor) {
     const selectedTheme = themeColor === 'gray' ? 'coffee' : themeColor;
     const selected = palettes[selectedTheme] ? selectedTheme : 'green';
@@ -244,7 +270,7 @@ function applyTheme(themeColor) {
     root.style.setProperty('--theme-border', palette.shades[6]);
     root.style.setProperty('--theme-icon-ink', selected === 'yellow' ? '#1e293b' : '#ffffff');
     root.dataset.brandTheme = selected;
-    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', palette.shades[7]);
+    updateBrowserThemeIdentity(selected, palette);
     document.querySelectorAll('[data-brand-mascot]').forEach(image => {
         image.src = mascotArtworks[selected];
     });

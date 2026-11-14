@@ -1,0 +1,25 @@
+{
+    "id": "./",
+    "name": "PDV-VS - Automação Comercial",
+    "short_name": "PDV-VS",
+    "start_url": "./index.html",
+    "scope": "./",
+    "display": "standalone",
+    "background_color": "#fffbeb",
+    "theme_color": "#facc15",
+    "description": "Frente de caixa e gestão de estoque PDV-VS.",
+    "icons": [
+        {
+            "src": "./assets/theme-icons/yellow.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "./assets/theme-icons/yellow.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ]
+}

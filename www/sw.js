@@ -1,10 +1,18 @@
-const CACHE_NAME = 'pdv-vs-v76';
-const themePreferenceCacheName = 'pdv-brand-theme-preference-v2';
+const CACHE_NAME = 'pdv-vs-v77';
+const themePreferenceCacheName = 'pdv-brand-theme-preference-v3';
 const themePreferenceRequestUrl = '/__vancely_brand_theme_preference__';
 const urlsToCache = [
     '/',
     '/index.html',
     '/manifest.json',
+    '/manifest-yellow.json',
+    '/manifest-pink.json',
+    '/manifest-orange.json',
+    '/manifest-purple.json',
+    '/manifest-coffee.json',
+    '/manifest-black-gold.json',
+    '/manifest-blue-ice.json',
+    '/manifest-red.json',
     '/pwa.js',
     '/assets/pwa-192.png',
     '/assets/pwa-512.png',
@@ -21,19 +29,39 @@ const urlsToCache = [
     '/assets/mascote-black-gold.png',
     '/assets/mascote-azul-branco-gelo.png',
     '/assets/mascote-vermelho.png',
+    '/assets/theme-icons/green.png',
+    '/assets/theme-icons/yellow.png',
+    '/assets/theme-icons/pink.png',
+    '/assets/theme-icons/orange.png',
+    '/assets/theme-icons/purple.png',
+    '/assets/theme-icons/coffee.png',
+    '/assets/theme-icons/black-gold.png',
+    '/assets/theme-icons/blue-ice.png',
+    '/assets/theme-icons/red.png',
     '/modules/auth/auth.html', // Adicionado para garantir a tela de login no cache
     '/modules/auth/auth.js',
+    '/modules/auth/update-password.html',
     '/modules/pdv/caixa-core.html',
     '/modules/pdv/operador.html',
     '/modules/pdv/caixa-core.js',
+    '/modules/pdv/caixa-operacoes.js',
+    '/modules/pdv/caixa-vendas.js',
+    '/modules/pdv/caixa-busca.js',
+    '/modules/pdv/components/modalCheckout.js',
+    '/modules/pdv/components/modalProduto.js',
     '/modules/admin/admin.html',
     '/modules/admin/admin-core.js',
+    '/modules/admin/admin.js',
     '/modules/admin/admin-produtos.js',
     '/modules/admin/admin-operadores.js',
     '/modules/admin/admin-maquininhas.js',
     '/modules/admin/admin-historico.js',
     '/modules/admin/admin-planos.js',
     '/modules/admin/admin-upgrade.js',
+    '/modules/admin/components/modalAdmin.js',
+    '/modules/super-admin.html',
+    '/modules/super-admin/components/super-admin.js',
+    '/modules/super-admin/components/modalSuperAdmin.js',
     '/termos.html',
     '/camera.js',
     '/core/config.js',
@@ -66,15 +94,27 @@ self.addEventListener('install', event => {
 // Ativação e limpeza de caches antigos
 self.addEventListener('activate', event => {
     event.waitUntil(
-        caches.keys().then(cacheNames => {
-            return Promise.all(
-                cacheNames.map(cacheName => {
-                    if (cacheName !== CACHE_NAME) {
-                        return caches.delete(cacheName);
-                    }
-                })
-            );
-        }).then(() => self.clients.claim())
+        (async () => {
+            const themeCache = await caches.open(themePreferenceCacheName);
+            const themeRequest = new Request(new URL(themePreferenceRequestUrl, self.location.origin));
+            if (!await themeCache.match(themeRequest)) {
+                const previousThemeCache = await caches.open('pdv-brand-theme-preference-v2');
+                const previousTheme = await previousThemeCache.match(themeRequest);
+                if (previousTheme) await themeCache.put(themeRequest, previousTheme);
+            }
+
+            const cacheNames = await caches.keys();
+            await Promise.all(cacheNames.map(cacheName => {
+                if (cacheName.startsWith('pdv-vs-') && cacheName !== CACHE_NAME) {
+                    return caches.delete(cacheName);
+                }
+                if (cacheName.startsWith('pdv-brand-theme-preference-') && cacheName !== themePreferenceCacheName) {
+                    return caches.delete(cacheName);
+                }
+                return Promise.resolve();
+            }));
+            await self.clients.claim();
+        })()
     );
 });
 
@@ -98,10 +138,18 @@ self.addEventListener('fetch', event => {
         return;
     }
 
-    event.respondWith(
-        caches.match(event.request)
-            .then(response => {
-                return response || fetch(event.request);
-            })
-    );
+    event.respondWith((async () => {
+        const cache = await caches.open(CACHE_NAME);
+        const cached = await cache.match(event.request);
+        if (cached) return cached;
+
+        const response = await fetch(event.request);
+        const cacheableDestination = ['document', 'script', 'style', 'image', 'font'].includes(event.request.destination);
+        if (cacheableDestination && response.ok) {
+            event.waitUntil(cache.put(event.request, response.clone()).catch(error => {
+                console.warn(`[Service Worker] Não foi possível guardar em cache: ${requestUrl.pathname}`, error);
+            }));
+        }
+        return response;
+    })());
 });
