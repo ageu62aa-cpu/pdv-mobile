@@ -15,6 +15,8 @@ let scannerProdutoZoom = { min: 1, max: 1, step: 0.1, value: 1 };
 let scannerProdutoFocoModo = [];
 let scannerProdutoFocoTimer = null;
 let scannerProdutoPointerHandler = null;
+let scannerProdutoPointerStartHandler = null;
+let scannerProdutoPointerStart = null;
 let limiteProdutosPlano = 1000;
 let quantidadeProdutosPlano = 0;
 let focoScannerProdutoInstalado = false;
@@ -519,7 +521,12 @@ async function encerrarLeitorProdutoAdmin(leitor) {
     if (areaLeitura && scannerProdutoPointerHandler) {
         areaLeitura.removeEventListener('pointerup', scannerProdutoPointerHandler);
     }
+    if (areaLeitura && scannerProdutoPointerStartHandler) {
+        areaLeitura.removeEventListener('pointerdown', scannerProdutoPointerStartHandler);
+    }
     scannerProdutoPointerHandler = null;
+    scannerProdutoPointerStartHandler = null;
+    scannerProdutoPointerStart = null;
     window.clearTimeout(scannerProdutoFocoTimer);
     areaLeitura?.querySelector('.camera-focus-target')?.remove();
     scannerProdutoFocoModo = [];
@@ -531,11 +538,17 @@ function configurarFocoPorToqueProdutoAdmin(leitor) {
     const areaLeitura = document.getElementById('readerAdminProduto');
     if (!areaLeitura) return;
     areaLeitura.style.touchAction = 'manipulation';
+    scannerProdutoPointerStartHandler = event => {
+        if (!(event.target instanceof Element) || !event.target.closest('video')) return;
+        scannerProdutoPointerStart = { x: event.clientX, y: event.clientY };
+        event.target.setPointerCapture?.(event.pointerId);
+    };
     scannerProdutoPointerHandler = async event => {
-        if (!(event.target instanceof Element) || scannerProdutoAdmin !== leitor || !leitor.isScanning) return;
-        const video = event.target instanceof HTMLVideoElement
-            ? event.target
-            : areaLeitura.querySelector('video');
+        if (!(event.target instanceof Element) || !scannerProdutoPointerStart
+            || scannerProdutoAdmin !== leitor || !leitor.isScanning) return;
+        const start = scannerProdutoPointerStart;
+        scannerProdutoPointerStart = null;
+        const video = event.target.closest('video');
         if (!video) return;
         const videoBounds = video.getBoundingClientRect();
         const areaBounds = areaLeitura.getBoundingClientRect();
@@ -547,8 +560,20 @@ function configurarFocoPorToqueProdutoAdmin(leitor) {
         const renderedHeight = video.videoHeight * scale;
         const cropX = (renderedWidth - videoBounds.width) / 2;
         const cropY = (renderedHeight - videoBounds.height) / 2;
-        const x = Math.min(1, Math.max(0, (event.clientX - videoBounds.left + cropX) / renderedWidth));
-        const y = Math.min(1, Math.max(0, (event.clientY - videoBounds.top + cropY) / renderedHeight));
+        const pointAt = (clientX, clientY) => ({
+            x: Math.min(1, Math.max(0, (clientX - videoBounds.left + cropX) / renderedWidth)),
+            y: Math.min(1, Math.max(0, (clientY - videoBounds.top + cropY) / renderedHeight))
+        });
+        const tappedPoint = pointAt(event.clientX, event.clientY);
+        const didDrag = Math.hypot(event.clientX - start.x, event.clientY - start.y) > 18;
+        const startX = Math.min(1, Math.max(0, (start.x - areaBounds.left) / areaBounds.width));
+        const startY = Math.min(1, Math.max(0, (start.y - areaBounds.top) / areaBounds.height));
+        const endX = Math.min(1, Math.max(0, (event.clientX - areaBounds.left) / areaBounds.width));
+        const endY = Math.min(1, Math.max(0, (event.clientY - areaBounds.top) / areaBounds.height));
+        const width = didDrag ? Math.max(Math.abs(endX - startX), 52 / areaBounds.width) : Math.min(0.78, 250 / areaBounds.width);
+        const height = didDrag ? Math.max(Math.abs(endY - startY), 36 / areaBounds.height) : Math.min(0.5, 120 / areaBounds.height);
+        const centerX = didDrag ? (startX + endX) / 2 : endX;
+        const centerY = didDrag ? (startY + endY) / 2 : endY;
         let marcador = areaLeitura.querySelector('.camera-focus-target');
         if (!marcador) {
             marcador = document.createElement('span');
@@ -557,34 +582,38 @@ function configurarFocoPorToqueProdutoAdmin(leitor) {
             Object.assign(marcador.style, {
                 position: 'absolute',
                 zIndex: '20',
-                width: '48px',
-                height: '48px',
                 border: '2px solid var(--theme-primary, #059669)',
-                borderRadius: '50%',
-                boxShadow: '0 0 0 2px rgb(255 255 255 / 75%), 0 0 14px var(--theme-primary, #059669)',
+                borderRadius: '0.4rem',
+                boxShadow: '0 0 0 2px rgb(255 255 255 / 75%), 0 0 14px var(--theme-primary, #059669), inset 0 0 0 1px rgb(255 255 255 / 45%)',
+                background: 'rgb(255 255 255 / 6%)',
                 pointerEvents: 'none',
-                transform: 'translate(-50%, -50%)',
-                transition: 'opacity 850ms ease, transform 850ms ease',
+                transform: 'scale(1.08)',
+                transition: 'opacity 1.8s ease, transform 1.8s ease',
                 opacity: '0'
             });
             areaLeitura.append(marcador);
         }
-        marcador.style.left = `${((event.clientX - areaBounds.left) / areaBounds.width) * 100}%`;
-        marcador.style.top = `${((event.clientY - areaBounds.top) / areaBounds.height) * 100}%`;
+        marcador.style.left = `${Math.min(1 - width, Math.max(0, centerX - width / 2)) * 100}%`;
+        marcador.style.top = `${Math.min(1 - height, Math.max(0, centerY - height / 2)) * 100}%`;
+        marcador.style.width = `${width * 100}%`;
+        marcador.style.height = `${height * 100}%`;
         marcador.style.opacity = '1';
-        marcador.style.transform = 'translate(-50%, -50%) scale(0.85)';
+        marcador.style.transform = 'scale(1)';
         window.clearTimeout(scannerProdutoFocoTimer);
         scannerProdutoFocoTimer = window.setTimeout(() => {
             marcador.style.opacity = '0';
-            marcador.style.transform = 'translate(-50%, -50%) scale(1.2)';
-        }, 850);
+            marcador.style.transform = 'scale(1)';
+        }, 1800);
 
         try {
             const capabilities = leitor.getRunningTrackCapabilities();
             const supported = navigator.mediaDevices.getSupportedConstraints?.() || {};
+            const focusPoint = didDrag
+                ? pointAt((start.x + event.clientX) / 2, (start.y + event.clientY) / 2)
+                : tappedPoint;
             const advanced = [];
             if (supported.pointsOfInterest) {
-                advanced.push({ pointsOfInterest: [{ x, y }] });
+                advanced.push({ pointsOfInterest: [{ x: focusPoint.x, y: focusPoint.y }] });
             }
             if (capabilities.focusMode?.includes('single-shot')) {
                 advanced.push({ focusMode: 'single-shot' });
@@ -594,9 +623,9 @@ function configurarFocoPorToqueProdutoAdmin(leitor) {
             if (advanced.length) await leitor.applyVideoConstraints({ advanced });
             const status = document.getElementById('cameraStatusAdminProduto');
             if (status) {
-                status.textContent = supported.pointsOfInterest
-                    ? 'Ajustando o foco no ponto selecionado. Mantenha o código estável.'
-                    : 'Ponto selecionado; a câmera ajustará o foco automaticamente.';
+                status.textContent = didDrag
+                    ? 'Moldura posicionada sobre o código. Ajustando o foco para a captura.'
+                    : 'Moldura automática posicionada. Ajustando o foco; mantenha o código estável.';
             }
             atualizarBotaoFocoProdutoAdmin(true, 'Foco direcionado para o ponto selecionado');
             window.setTimeout(() => {
@@ -611,6 +640,7 @@ function configurarFocoPorToqueProdutoAdmin(leitor) {
             if (status) status.textContent = 'A câmera controla o foco. Afaste ou aproxime o código devagar.';
         }
     };
+    areaLeitura.addEventListener('pointerdown', scannerProdutoPointerStartHandler);
     areaLeitura.addEventListener('pointerup', scannerProdutoPointerHandler);
 }
 

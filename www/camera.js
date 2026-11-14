@@ -15,6 +15,7 @@ let capturaCodigoCallback = null;
 let modosFocoDisponiveis = [];
 let focoContinuoAtivo = false;
 let focoAlvoTimer = null;
+let focoPonteiroInicial = null;
 let contextoAudio = null;
 let zoomNativoDisponivel = false;
 let leitorTecladoInicializado = false;
@@ -211,52 +212,83 @@ function atualizarBotaoFoco(ativo, texto = 'Ajustar foco') {
     botao.setAttribute('aria-label', texto);
 }
 
-function mostrarAlvoFoco(x, y) {
+function mostrarMolduraFoco(left, top, width, height) {
     const container = document.getElementById(READER_ID);
     if (!container) return;
 
-    let alvo = container.querySelector('.camera-focus-target');
-    if (!alvo) {
-        alvo = document.createElement('span');
-        alvo.className = 'camera-focus-target';
-        alvo.setAttribute('aria-hidden', 'true');
-        container.append(alvo);
+    let moldura = container.querySelector('.camera-focus-target');
+    if (!moldura) {
+        moldura = document.createElement('span');
+        moldura.className = 'camera-focus-target';
+        moldura.setAttribute('aria-hidden', 'true');
+        container.append(moldura);
     }
 
-    alvo.style.left = `${x * 100}%`;
-    alvo.style.top = `${y * 100}%`;
-    alvo.classList.remove('camera-focus-target-active');
-    void alvo.offsetWidth;
-    alvo.classList.add('camera-focus-target-active');
+    Object.assign(moldura.style, {
+        left: `${left * 100}%`,
+        top: `${top * 100}%`,
+        width: `${width * 100}%`,
+        height: `${height * 100}%`
+    });
+    moldura.classList.remove('camera-focus-target-active');
+    void moldura.offsetWidth;
+    moldura.classList.add('camera-focus-target-active');
     window.clearTimeout(focoAlvoTimer);
     focoAlvoTimer = window.setTimeout(() => {
-        alvo.classList.remove('camera-focus-target-active');
-    }, 900);
+        moldura.classList.remove('camera-focus-target-active');
+    }, 1800);
 }
 
-async function focarCameraNaPosicao(evento) {
-    if (!scanner?.isScanning || !(evento.target instanceof Element)) return;
-    const container = document.getElementById(READER_ID);
-    const video = evento.target instanceof HTMLVideoElement
-        ? evento.target
-        : container?.querySelector('video');
-    if (!container || !video) return;
+function obterPontoDaCamera(video, clientX, clientY) {
     const bounds = video.getBoundingClientRect();
-    if (!bounds.width || !bounds.height || !video.videoWidth || !video.videoHeight) return;
-
+    if (!bounds.width || !bounds.height || !video.videoWidth || !video.videoHeight) return null;
     const scale = Math.max(bounds.width / video.videoWidth, bounds.height / video.videoHeight);
     const renderedWidth = video.videoWidth * scale;
     const renderedHeight = video.videoHeight * scale;
     const cropX = (renderedWidth - bounds.width) / 2;
     const cropY = (renderedHeight - bounds.height) / 2;
-    const x = Math.min(1, Math.max(0, (evento.clientX - bounds.left + cropX) / renderedWidth));
-    const y = Math.min(1, Math.max(0, (evento.clientY - bounds.top + cropY) / renderedHeight));
+    return {
+        x: Math.min(1, Math.max(0, (clientX - bounds.left + cropX) / renderedWidth)),
+        y: Math.min(1, Math.max(0, (clientY - bounds.top + cropY) / renderedHeight))
+    };
+}
+
+function registrarInicioToqueFoco(evento) {
+    if (!(evento.target instanceof Element) || !(evento.target.closest('video'))) return;
+    focoPonteiroInicial = { x: evento.clientX, y: evento.clientY };
+    evento.target.setPointerCapture?.(evento.pointerId);
+}
+
+async function focarCameraNaPosicao(evento) {
+    if (!scanner?.isScanning || !focoPonteiroInicial || !(evento.target instanceof Element)) return;
+    const inicio = focoPonteiroInicial;
+    focoPonteiroInicial = null;
+    const container = document.getElementById(READER_ID);
+    const video = evento.target.closest('video');
+    if (!container || !video) return;
+    const startPoint = obterPontoDaCamera(video, inicio.x, inicio.y);
+    const endPoint = obterPontoDaCamera(video, evento.clientX, evento.clientY);
+    if (!startPoint || !endPoint) return;
+    const didDrag = Math.hypot(evento.clientX - inicio.x, evento.clientY - inicio.y) > 18;
     const containerBounds = container.getBoundingClientRect();
     if (!containerBounds.width || !containerBounds.height) return;
-    mostrarAlvoFoco(
-        (evento.clientX - containerBounds.left) / containerBounds.width,
-        (evento.clientY - containerBounds.top) / containerBounds.height
-    );
+    const startX = Math.min(1, Math.max(0, (inicio.x - containerBounds.left) / containerBounds.width));
+    const startY = Math.min(1, Math.max(0, (inicio.y - containerBounds.top) / containerBounds.height));
+    const endX = Math.min(1, Math.max(0, (evento.clientX - containerBounds.left) / containerBounds.width));
+    const endY = Math.min(1, Math.max(0, (evento.clientY - containerBounds.top) / containerBounds.height));
+    const defaultWidth = Math.min(0.78, 250 / containerBounds.width);
+    const defaultHeight = Math.min(0.5, 120 / containerBounds.height);
+    const width = didDrag ? Math.max(Math.abs(endX - startX), 52 / containerBounds.width) : defaultWidth;
+    const height = didDrag ? Math.max(Math.abs(endY - startY), 36 / containerBounds.height) : defaultHeight;
+    const centerX = didDrag ? (startX + endX) / 2 : endX;
+    const centerY = didDrag ? (startY + endY) / 2 : endY;
+    const left = Math.min(1 - width, Math.max(0, centerX - width / 2));
+    const top = Math.min(1 - height, Math.max(0, centerY - height / 2));
+    mostrarMolduraFoco(left, top, width, height);
+    const focusPoint = didDrag
+        ? obterPontoDaCamera(video, (inicio.x + evento.clientX) / 2, (inicio.y + evento.clientY) / 2)
+        : endPoint;
+    if (!focusPoint) return;
 
     try {
         const supported = navigator.mediaDevices.getSupportedConstraints?.() || {};
@@ -266,7 +298,7 @@ async function focarCameraNaPosicao(evento) {
         if (supported.pointsOfInterest) {
             try {
                 await scanner.applyVideoConstraints({
-                    advanced: [{ pointsOfInterest: [{ x, y }] }]
+                    advanced: [{ pointsOfInterest: [{ x: focusPoint.x, y: focusPoint.y }] }]
                 });
             } catch (error) {
                 console.info('[PDV-CAMERA] O dispositivo recusou o ponto de foco solicitado:', error);
@@ -280,9 +312,9 @@ async function focarCameraNaPosicao(evento) {
         }
 
         atualizarBotaoFoco(true, 'Foco direcionado para o ponto selecionado');
-        atualizarStatusCamera(supported.pointsOfInterest
-            ? 'Ajustando o foco no ponto selecionado. Mantenha o código estável.'
-            : 'Ponto selecionado. A câmera ajustará o foco automaticamente; mantenha o código estável.');
+        atualizarStatusCamera(didDrag
+            ? 'Moldura posicionada sobre o código. Ajustando o foco para a captura.'
+            : 'Moldura automática posicionada. Ajustando o foco; mantenha o código estável.');
         window.setTimeout(() => {
             if (scanner?.isScanning) {
                 if (focoContinuoAnterior && modosFoco.includes('single-shot')) {
@@ -581,6 +613,7 @@ async function iniciarLeitura() {
         });
     }
 
+    container.onpointerdown = registrarInicioToqueFoco;
     container.onpointerup = evento => { void focarCameraNaPosicao(evento); };
     const codigoInput = document.getElementById('camera-codigo');
     if (codigoInput) codigoInput.value = 'Aguardando leitura...';
@@ -747,7 +780,9 @@ export async function pararCamera() {
     zoomNativoDisponivel = false;
     document.getElementById('camera-zoom-wrapper')?.classList.add('hidden');
     const reader = document.getElementById(READER_ID);
+    if (reader) reader.onpointerdown = null;
     if (reader) reader.onpointerup = null;
+    focoPonteiroInicial = null;
     window.clearTimeout(focoAlvoTimer);
     focoContinuoAtivo = false;
     modal?.classList.add('hidden');

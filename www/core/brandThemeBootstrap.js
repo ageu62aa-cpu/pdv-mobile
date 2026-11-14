@@ -87,12 +87,12 @@
         if (iconLink) {
             iconLink.type = 'image/png';
             iconLink.sizes = '512x512';
-            iconLink.href = new URL('/assets/app-icons/green-512.png', window.location.origin).href;
+            iconLink.href = new URL('/assets/pwa-512.png', window.location.origin).href;
         }
         const appleTouchIcon = document.querySelector('link[rel="apple-touch-icon"]');
         if (appleTouchIcon) {
             appleTouchIcon.sizes = '192x192';
-            appleTouchIcon.href = new URL('/assets/app-icons/green-192.png', window.location.origin).href;
+            appleTouchIcon.href = new URL('/assets/pwa-192.png', window.location.origin).href;
         }
     };
     updateFavicon();
