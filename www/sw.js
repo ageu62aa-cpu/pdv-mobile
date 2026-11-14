@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pdv-vs-v69';
+const CACHE_NAME = 'pdv-vs-v72';
 const urlsToCache = [
     '/',
     '/index.html',
@@ -8,6 +8,9 @@ const urlsToCache = [
     '/assets/pwa-512.png',
     '/assets/icones-card.jpeg',
     '/assets/icone-carde.png',
+    '/assets/icone-carde-black-gold.jpeg',
+    '/assets/icone-carde-azul-branco Gelo1.jpeg',
+    '/assets/image.png',
     '/assets/mascote-verde.png',
     '/assets/mascote-amarelo.png',
     '/assets/mascote-rosa.png',

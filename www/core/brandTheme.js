@@ -22,6 +22,18 @@ const palettes = {
     coffee: {
         label: 'Marrom-Café',
         shades: ['#faf3e8', '#f2e2c9', '#e5c9a0', '#d4aa76', '#bd8954', '#a66b3f', '#8b5633', '#70432b', '#563322', '#3d251a']
+    },
+    'black-gold': {
+        label: 'Preto e Ouro',
+        shades: ['#fffdf5', '#f8f0d9', '#eedca7', '#dfc471', '#cfad45', '#bc962b', '#9c7614', '#75580f', '#503d0e', '#30270f']
+    },
+    'blue-ice': {
+        label: 'Azul-Branco Gelo',
+        shades: ['#f0f9ff', '#e0f2fe', '#bae6fd', '#7dd3fc', '#38bdf8', '#0ea5e9', '#0284c7', '#0369a1', '#075985', '#0c4a6e']
+    },
+    red: {
+        label: 'Vermelho',
+        shades: ['#fff1f2', '#ffe4e6', '#fecdd3', '#fda4af', '#fb7185', '#f43f5e', '#e11d48', '#be123c', '#9f1239', '#881337']
     }
 };
 
@@ -29,13 +41,25 @@ const shadeNames = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900];
 const opacitySteps = [5, 10, 15, 20, 25, 30, 40, 50, 60, 70, 75, 80, 90, 95];
 const themeArtwork = new URL('../assets/icones-card.jpeg', import.meta.url).href;
 const coffeeThemeArtwork = new URL('../assets/icone-carde.png', import.meta.url).href;
+const blackGoldThemeArtwork = new URL('../assets/icone-carde-black-gold.jpeg', import.meta.url).href;
+const blueIceThemeArtwork = new URL('../assets/icone-carde-azul-branco Gelo1.jpeg', import.meta.url).href;
+const redThemeArtwork = new URL('../assets/image.png', import.meta.url).href;
+const standaloneThemeArtworks = {
+    coffee: coffeeThemeArtwork,
+    'black-gold': blackGoldThemeArtwork,
+    'blue-ice': blueIceThemeArtwork,
+    red: redThemeArtwork
+};
 const mascotArtworks = {
     green: new URL('../assets/mascote-verde.png', import.meta.url).href,
     yellow: new URL('../assets/mascote-amarelo.png', import.meta.url).href,
     pink: new URL('../assets/mascote-rosa.png', import.meta.url).href,
     orange: new URL('../assets/mascote-laranja.png', import.meta.url).href,
     purple: new URL('../assets/mascote-roxo.png', import.meta.url).href,
-    coffee: coffeeThemeArtwork
+    coffee: coffeeThemeArtwork,
+    'black-gold': blackGoldThemeArtwork,
+    'blue-ice': blueIceThemeArtwork,
+    red: redThemeArtwork
 };
 const rpcThemeValues = {
     green: 'verde',
@@ -43,7 +67,10 @@ const rpcThemeValues = {
     pink: 'rosa',
     orange: 'laranja',
     purple: 'roxo',
-    coffee: 'marrom-cafe'
+    coffee: 'marrom-cafe',
+    'black-gold': 'preto-e-ouro',
+    'blue-ice': 'azul-branco-gelo',
+    red: 'vermelho'
 };
 
 function ensureThemeStyles() {
@@ -58,7 +85,7 @@ function ensureThemeStyles() {
         '.brand-theme-option [data-theme-check]{color:var(--preview-primary)}',
         '.brand-theme-preview{border-color:var(--preview-border);background:var(--preview-background);box-shadow:inset 0 0 28px -18px var(--preview-glow)}',
         '.brand-theme-art{width:4.5rem;height:4.5rem;border-radius:.8rem;background-image:var(--theme-artwork);background-color:var(--preview-background);background-size:490% 267%;background-position:var(--art-position);background-repeat:no-repeat;box-shadow:0 4px 14px color-mix(in srgb,var(--preview-primary) 20%,transparent);transition:transform 180ms ease,box-shadow 180ms ease}',
-        '.brand-theme-option[data-theme-color="coffee"] .brand-theme-art{background-image:var(--coffee-theme-artwork);background-size:100% 100%;background-position:center}',
+        '.brand-theme-option[data-theme-color="coffee"] .brand-theme-art,.brand-theme-option[data-theme-color="black-gold"] .brand-theme-art,.brand-theme-option[data-theme-color="blue-ice"] .brand-theme-art,.brand-theme-option[data-theme-color="red"] .brand-theme-art{background-image:var(--theme-card-artwork);background-size:100% 100%;background-position:center}',
         '.brand-theme-option:hover .brand-theme-art,.brand-theme-option[aria-pressed="true"] .brand-theme-art{transform:translateY(-1px);box-shadow:0 6px 18px color-mix(in srgb,var(--preview-primary) 30%,transparent)}',
         '.brand-theme-option:disabled{cursor:wait;opacity:.72}'
     ];
@@ -224,8 +251,11 @@ function createModal(client, empresaId, initialTheme) {
                         pink: '50% 14%',
                         orange: '85% 14%',
                         purple: '14% 85%',
-                        coffee: '50% 85%'
-                    }[key];
+                        coffee: '50% 85%',
+                        'black-gold': 'center',
+                        'blue-ice': 'center',
+                        red: 'center'
+                    }[key] || 'center';
                     const previewSurface = key === 'green'
                         ? 'color-mix(in srgb, #059669 12%, #1f2937)'
                         : `color-mix(in srgb, ${palette.shades[1]} 78%, white)`;
@@ -233,8 +263,12 @@ function createModal(client, empresaId, initialTheme) {
                         ? 'color-mix(in srgb, #059669 28%, #111827)'
                         : `color-mix(in srgb, ${palette.shades[2]} 80%, white)`;
                     const labelClass = key === 'green' ? 'text-white' : 'text-slate-900';
+                    const cardArtwork = standaloneThemeArtworks[key];
+                    const cardArtworkStyle = cardArtwork
+                        ? `--theme-card-artwork:url('${cardArtwork}');`
+                        : '';
                     return `
-                    <button type="button" data-theme-color="${key}" class="brand-theme-option group rounded-xl border p-3 text-left" style="--preview-primary:${palette.shades[6]};--preview-border:color-mix(in srgb, ${palette.shades[6]} 58%, ${key === 'green' ? '#374151' : '#ffffff'});--preview-surface:${previewSurface};--preview-background:${previewBackground};--preview-glow:${palette.shades[5]};--art-position:${imagePosition};--coffee-theme-artwork:url('${coffeeThemeArtwork}') " aria-pressed="${key === initialTheme}">
+                    <button type="button" data-theme-color="${key}" class="brand-theme-option group rounded-xl border p-3 text-left" style="--preview-primary:${palette.shades[6]};--preview-border:color-mix(in srgb, ${palette.shades[6]} 58%, ${key === 'green' ? '#374151' : '#ffffff'});--preview-surface:${previewSurface};--preview-background:${previewBackground};--preview-glow:${palette.shades[5]};--art-position:${imagePosition};${cardArtworkStyle}" aria-pressed="${key === initialTheme}">
                         <span class="flex items-center justify-between gap-2">
                             <span class="flex items-center gap-2 text-sm font-semibold ${labelClass}">
                                 <span class="h-3.5 w-3.5 rounded-full ring-2 ring-white/10" style="background:${palette.shades[6]}"></span>
