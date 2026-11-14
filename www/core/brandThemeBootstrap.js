@@ -1,5 +1,6 @@
-(function () {
+(async function () {
     const themeStorageKey = 'vancely-brand-theme';
+    const themeCacheRequestUrl = '/__vancely_brand_theme_preference__';
     const shadeNames = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900];
     const opacitySteps = [5, 10, 15, 20, 25, 30, 40, 50, 60, 70, 75, 80, 90, 95];
     const palettes = {
@@ -14,14 +15,30 @@
         red: ['#fff5f6', '#fce8ec', '#f2cbd4', '#d99aaa', '#b95a73', '#8f294b', '#68102c', '#510d24', '#3e0a1c', '#2b0714']
     };
 
-    let selected;
-    try {
-        selected = localStorage.getItem(themeStorageKey);
-    } catch (error) {
-        console.warn('PDV-VS: Não foi possível ler o tema persistido neste dispositivo:', error);
-        return;
+    async function readPersistedTheme() {
+        try {
+            if ('caches' in window) {
+                const response = await fetch(new URL(themeCacheRequestUrl, window.location.origin), { cache: 'no-cache' });
+                if (response.ok) {
+                    const payload = await response.json();
+                    if (payload && typeof payload.theme === 'string' && Object.prototype.hasOwnProperty.call(palettes, payload.theme)) {
+                        return payload.theme;
+                    }
+                }
+            }
+        } catch (error) {
+            console.warn('PDV-VS: Não foi possível ler o tema do cache do service worker:', error);
+        }
+
+        try {
+            return localStorage.getItem(themeStorageKey);
+        } catch (error) {
+            console.warn('PDV-VS: Não foi possível ler o tema persistido neste dispositivo:', error);
+            return null;
+        }
     }
 
+    let selected = await readPersistedTheme();
     if (selected === 'gray') selected = 'coffee';
     if (!Object.prototype.hasOwnProperty.call(palettes, selected)) return;
 

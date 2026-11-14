@@ -39,6 +39,9 @@ const palettes = {
 
 const shadeNames = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900];
 const opacitySteps = [5, 10, 15, 20, 25, 30, 40, 50, 60, 70, 75, 80, 90, 95];
+const themeCacheName = 'pdv-brand-theme-preference-v1';
+const themeCacheRequestUrl = '/__vancely_brand_theme_preference__';
+let themeCacheUpdate = Promise.resolve();
 const themeArtwork = new URL('../assets/icones-card.jpeg', import.meta.url).href;
 const coffeeThemeArtwork = new URL('../assets/icone-carde.png', import.meta.url).href;
 const blackGoldMascotArtwork = new URL('../assets/mascote-black-gold.png', import.meta.url).href;
@@ -262,6 +265,24 @@ function persistThemeSelection(theme) {
     } catch (error) {
         console.warn('PDV-VS: Não foi possível persistir o tema neste dispositivo:', error);
     }
+
+    if (!('caches' in window)) return;
+
+    themeCacheUpdate = themeCacheUpdate
+        .catch(error => {
+            console.error('PDV-VS: A atualização anterior do cache de tema falhou:', error);
+        })
+        .then(async () => {
+            const cache = await caches.open(themeCacheName);
+            const request = new Request(new URL(themeCacheRequestUrl, window.location.origin));
+            await cache.delete(request);
+            await cache.put(request, new Response(JSON.stringify({ theme }), {
+                headers: { 'Content-Type': 'application/json' }
+            }));
+        })
+        .catch(error => {
+            console.error('PDV-VS: Não foi possível atualizar o cache do tema:', error);
+        });
 }
 
 function createModal(client, empresaId, initialTheme) {

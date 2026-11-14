@@ -1,4 +1,6 @@
 const CACHE_NAME = 'pdv-vs-v75';
+const themePreferenceCacheName = 'pdv-brand-theme-preference-v1';
+const themePreferenceRequestUrl = '/__vancely_brand_theme_preference__';
 const urlsToCache = [
     '/',
     '/index.html',
@@ -80,6 +82,21 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
     const requestUrl = new URL(event.request.url);
     if (event.request.method !== 'GET' || requestUrl.origin !== self.location.origin) return;
+
+    if (requestUrl.pathname === themePreferenceRequestUrl) {
+        event.respondWith(
+            caches.open(themePreferenceCacheName)
+                .then(cache => cache.match(requestUrl))
+                .then(response => {
+                    if (response) return response;
+                    return new Response(JSON.stringify({ theme: 'green' }), {
+                        status: 200,
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                })
+        );
+        return;
+    }
 
     event.respondWith(
         caches.match(event.request)
