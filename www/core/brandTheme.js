@@ -81,7 +81,7 @@ function ensureThemeStyles() {
 
     const rules = [
         '.brand-logo-trigger{width:2.5rem;height:2.5rem;min-width:2.5rem;aspect-ratio:1;border-radius:50%;overflow:hidden;background-color:transparent!important}',
-        '.brand-mascot-image{display:block;flex:none;object-fit:contain}',
+        '.brand-logo-trigger img,.brand-mascot-image{display:block;flex:none;object-fit:contain;background-color:transparent!important;padding:0;border-radius:0}',
         '.brand-theme-option{border-color:var(--preview-border);background-color:var(--preview-surface);box-shadow:0 8px 24px -18px var(--preview-glow);transition:background-color 180ms ease,border-color 180ms ease,box-shadow 180ms ease,transform 180ms ease}',
         '.brand-theme-option:hover{border-color:var(--preview-primary);box-shadow:0 10px 26px -14px var(--preview-glow);transform:translateY(-1px)}',
         '.brand-theme-option[aria-pressed="true"]{border-color:var(--preview-primary);box-shadow:0 0 0 1px var(--preview-primary),0 10px 28px -14px var(--preview-glow)}',
