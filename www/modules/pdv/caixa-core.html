@@ -66,6 +66,33 @@
             background-color: #0b0f19 !important;
         }
 
+        #reader {
+            touch-action: manipulation;
+        }
+
+        .camera-focus-target {
+            position: absolute;
+            z-index: 20;
+            width: 48px;
+            height: 48px;
+            border: 2px solid var(--theme-primary, #059669);
+            border-radius: 50%;
+            opacity: 0;
+            pointer-events: none;
+            transform: translate(-50%, -50%) scale(1.35);
+            box-shadow: 0 0 0 2px rgb(255 255 255 / 75%), 0 0 14px var(--theme-primary, #059669);
+        }
+
+        .camera-focus-target-active {
+            animation: camera-focus-pulse 850ms ease-out;
+        }
+
+        @keyframes camera-focus-pulse {
+            0% { opacity: 1; transform: translate(-50%, -50%) scale(1.25); }
+            70% { opacity: 1; transform: translate(-50%, -50%) scale(0.82); }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(0.82); }
+        }
+
         #camera-focus-button {
             min-width: 44px;
             min-height: 44px;
@@ -696,7 +723,7 @@
             <div class="rounded-xl border border-slate-700 bg-slate-800 p-2">
               <div id="reader" class="overflow-hidden rounded-lg bg-slate-950" aria-label="Área de captura da câmera"></div>
               <div class="flex flex-wrap items-center justify-between gap-2 pt-2">
-                <p class="text-[10px] text-slate-400">Toque na imagem para ajustar o foco; use o botão para foco automático.</p>
+                <p class="text-[10px] text-slate-400">Toque sobre o código na imagem para direcionar o foco; use o botão para foco automático.</p>
                 <button id="camera-focus-button" type="button" onclick="window.ativarFocoAutomaticoScanner()" class="min-h-11 min-w-11 touch-manipulation rounded-md border border-slate-600 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-200 transition-colors active:scale-95 hover:border-emerald-500 hover:text-emerald-300" aria-label="Ajustar foco da câmera" aria-pressed="false" title="Ajustar foco da câmera">
                   <i class="fa-solid fa-crosshairs mr-1"></i>Ajustar foco
                 </button>

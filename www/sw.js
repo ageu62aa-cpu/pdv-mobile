@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pdv-vs-v81';
+const CACHE_NAME = 'pdv-vs-v82';
 const themePreferenceCacheName = 'pdv-brand-theme-preference-v3';
 const themePreferenceRequestUrl = '/__vancely_brand_theme_preference__';
 const urlsToCache = [
@@ -16,6 +16,8 @@ const urlsToCache = [
     '/pwa.js',
     '/assets/pwa-192.png',
     '/assets/pwa-512.png',
+    '/assets/app-icons/green-192.png',
+    '/assets/app-icons/green-512.png',
     '/assets/icones-card.jpeg',
     '/assets/icone-carde.png',
     '/assets/icone-carde-black-gold.jpeg',
@@ -80,6 +82,8 @@ const urlsToPrecache = urlsToCache.filter(url =>
     || url === '/pwa.js'
     || url === '/assets/pwa-192.png'
     || url === '/assets/pwa-512.png'
+    || url === '/assets/app-icons/green-192.png'
+    || url === '/assets/app-icons/green-512.png'
     || url === '/assets/icone-carde.png'
     || url.startsWith('/assets/mascote-')
     || url.startsWith('/assets/theme-icons/')

@@ -37,12 +37,6 @@
         'blue-ice': 'mascote-azul-branco-gelo.png',
         red: 'mascote-vermelho.png'
     };
-    const appIconFiles = Object.fromEntries(
-        Object.keys(palettes).map(theme => [theme, `${theme}-512.png`])
-    );
-    const appleTouchIconFiles = Object.fromEntries(
-        Object.keys(palettes).map(theme => [theme, `${theme}-192.png`])
-    );
 
     function updateMascots(node) {
         if (!(node instanceof Element)) return;
@@ -64,16 +58,6 @@
     }).observe(document.documentElement, { childList: true, subtree: true });
 
     if (!hasPersistedTheme) return;
-
-    let appIconTheme = selected;
-    try {
-        const savedAppIconTheme = localStorage.getItem('vancely-app-icon-theme');
-        if (Object.prototype.hasOwnProperty.call(palettes, savedAppIconTheme)) {
-            appIconTheme = savedAppIconTheme;
-        }
-    } catch (error) {
-        console.warn('PDV-VS: Não foi possível ler o tema do ícone do aplicativo:', error);
-    }
 
     const root = document.documentElement;
     const shades = palettes[selected];
@@ -103,22 +87,16 @@
         if (iconLink) {
             iconLink.type = 'image/png';
             iconLink.sizes = '512x512';
-            iconLink.href = new URL(`/assets/app-icons/${appIconFiles[selected]}`, window.location.origin).href;
+            iconLink.href = new URL('/assets/app-icons/green-512.png', window.location.origin).href;
         }
         const appleTouchIcon = document.querySelector('link[rel="apple-touch-icon"]');
         if (appleTouchIcon) {
             appleTouchIcon.sizes = '192x192';
-            appleTouchIcon.href = new URL(`/assets/app-icons/${appleTouchIconFiles[appIconTheme]}`, window.location.origin).href;
+            appleTouchIcon.href = new URL('/assets/app-icons/green-192.png', window.location.origin).href;
         }
     };
     updateFavicon();
     document.addEventListener('DOMContentLoaded', updateFavicon, { once: true });
-    const manifestLink = document.querySelector('link[rel="manifest"]');
-    if (manifestLink) {
-        const manifestPath = appIconTheme === 'green' ? '/manifest.json' : `/manifest-${appIconTheme}.json`;
-        const manifestUrl = new URL(manifestPath, window.location.origin);
-        manifestLink.href = manifestUrl.href;
-    }
 
     const rules = [];
     const utilityTypes = [

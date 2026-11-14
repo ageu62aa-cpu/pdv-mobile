@@ -13,6 +13,8 @@ let ultimoCodigoLido = null;
 let ultimaLeituraEm = 0;
 let capturaCodigoCallback = null;
 let modosFocoDisponiveis = [];
+let focoContinuoAtivo = false;
+let focoAlvoTimer = null;
 let contextoAudio = null;
 let zoomNativoDisponivel = false;
 let leitorTecladoInicializado = false;
@@ -209,6 +211,101 @@ function atualizarBotaoFoco(ativo, texto = 'Ajustar foco') {
     botao.setAttribute('aria-label', texto);
 }
 
+function mostrarAlvoFoco(x, y) {
+    const container = document.getElementById(READER_ID);
+    if (!container) return;
+
+    let alvo = container.querySelector('.camera-focus-target');
+    if (!alvo) {
+        alvo = document.createElement('span');
+        alvo.className = 'camera-focus-target';
+        alvo.setAttribute('aria-hidden', 'true');
+        container.append(alvo);
+    }
+
+    alvo.style.left = `${x * 100}%`;
+    alvo.style.top = `${y * 100}%`;
+    alvo.classList.remove('camera-focus-target-active');
+    void alvo.offsetWidth;
+    alvo.classList.add('camera-focus-target-active');
+    window.clearTimeout(focoAlvoTimer);
+    focoAlvoTimer = window.setTimeout(() => {
+        alvo.classList.remove('camera-focus-target-active');
+    }, 900);
+}
+
+async function focarCameraNaPosicao(evento) {
+    if (!scanner?.isScanning || !(evento.target instanceof Element)) return;
+    const container = document.getElementById(READER_ID);
+    const video = evento.target instanceof HTMLVideoElement
+        ? evento.target
+        : container?.querySelector('video');
+    if (!container || !video) return;
+    const bounds = video.getBoundingClientRect();
+    if (!bounds.width || !bounds.height || !video.videoWidth || !video.videoHeight) return;
+
+    const scale = Math.max(bounds.width / video.videoWidth, bounds.height / video.videoHeight);
+    const renderedWidth = video.videoWidth * scale;
+    const renderedHeight = video.videoHeight * scale;
+    const cropX = (renderedWidth - bounds.width) / 2;
+    const cropY = (renderedHeight - bounds.height) / 2;
+    const x = Math.min(1, Math.max(0, (evento.clientX - bounds.left + cropX) / renderedWidth));
+    const y = Math.min(1, Math.max(0, (evento.clientY - bounds.top + cropY) / renderedHeight));
+    const containerBounds = container.getBoundingClientRect();
+    if (!containerBounds.width || !containerBounds.height) return;
+    mostrarAlvoFoco(
+        (evento.clientX - containerBounds.left) / containerBounds.width,
+        (evento.clientY - containerBounds.top) / containerBounds.height
+    );
+
+    try {
+        const supported = navigator.mediaDevices.getSupportedConstraints?.() || {};
+        const capacidades = scanner.getRunningTrackCapabilities();
+        const modosFoco = capacidades.focusMode || modosFocoDisponiveis;
+        const focoContinuoAnterior = focoContinuoAtivo;
+        if (supported.pointsOfInterest) {
+            try {
+                await scanner.applyVideoConstraints({
+                    advanced: [{ pointsOfInterest: [{ x, y }] }]
+                });
+            } catch (error) {
+                console.info('[PDV-CAMERA] O dispositivo recusou o ponto de foco solicitado:', error);
+            }
+        }
+
+        if (modosFoco.includes('single-shot')) {
+            await scanner.applyVideoConstraints({ advanced: [{ focusMode: 'single-shot' }] });
+        } else if (modosFoco.includes('continuous')) {
+            await scanner.applyVideoConstraints({ advanced: [{ focusMode: 'continuous' }] });
+        }
+
+        atualizarBotaoFoco(true, 'Foco direcionado para o ponto selecionado');
+        atualizarStatusCamera(supported.pointsOfInterest
+            ? 'Ajustando o foco no ponto selecionado. Mantenha o código estável.'
+            : 'Ponto selecionado. A câmera ajustará o foco automaticamente; mantenha o código estável.');
+        window.setTimeout(() => {
+            if (scanner?.isScanning) {
+                if (focoContinuoAnterior && modosFoco.includes('single-shot')) {
+                    void scanner.applyVideoConstraints({ advanced: [{ focusMode: 'continuous' }] })
+                        .then(() => {
+                            focoContinuoAtivo = true;
+                            atualizarBotaoFoco(true, 'Foco contínuo ativo; toque para reajustar');
+                        })
+                        .catch(error => console.info('[PDV-CAMERA] Não foi possível restaurar o foco contínuo:', error));
+                } else {
+                    atualizarBotaoFoco(focoContinuoAtivo, focoContinuoAtivo
+                        ? 'Foco contínuo ativo; toque para reajustar'
+                        : 'Ajustar foco');
+                }
+            }
+        }, 700);
+    } catch (error) {
+        console.info('[PDV-CAMERA] O dispositivo não permite focar no ponto selecionado:', error);
+        atualizarBotaoFoco(false, 'A câmera controla o foco automaticamente');
+        atualizarStatusCamera('Ponto selecionado. A câmera controla o foco; aproxime ou afaste o código devagar.');
+    }
+}
+
 async function configurarFocoAutomatico() {
     try {
         const capacidades = scanner.getRunningTrackCapabilities();
@@ -218,12 +315,15 @@ async function configurarFocoAutomatico() {
             await scanner.applyVideoConstraints({
                 advanced: [{ focusMode: 'continuous' }]
             });
+            focoContinuoAtivo = true;
             atualizarBotaoFoco(true, 'Foco contínuo ativo; toque para reajustar');
             return;
         }
+        focoContinuoAtivo = false;
         atualizarBotaoFoco(false);
     } catch (error) {
         modosFocoDisponiveis = [];
+        focoContinuoAtivo = false;
         atualizarBotaoFoco(false);
         console.info('[PDV-CAMERA] O foco automático é controlado pelo sistema da câmera.', error);
     }
@@ -365,6 +465,7 @@ async function ativarFocoAutomatico() {
             await scanner.applyVideoConstraints({
                 advanced: [{ focusMode: 'continuous' }]
             });
+            focoContinuoAtivo = true;
             atualizarBotaoFoco(true, 'Foco contínuo ativo; toque para reajustar');
             atualizarStatusCamera('Foco automático contínuo ativo. O leitor continua procurando códigos.');
             return;
@@ -413,9 +514,13 @@ async function focarCamera() {
                 if (scanner?.isScanning && modosFoco.includes('continuous')) {
                     void scanner.applyVideoConstraints({
                         advanced: [{ focusMode: 'continuous' }]
-                    }).then(() => atualizarBotaoFoco(true, 'Foco contínuo ativo; toque para reajustar'))
+                    }).then(() => {
+                        focoContinuoAtivo = true;
+                        atualizarBotaoFoco(true, 'Foco contínuo ativo; toque para reajustar');
+                    })
                         .catch(error => console.info('[PDV-CAMERA] Não foi possível restaurar o foco contínuo:', error));
                 } else if (scanner?.isScanning) {
+                    focoContinuoAtivo = false;
                     atualizarBotaoFoco(false);
                 }
             }, 500);
@@ -476,7 +581,7 @@ async function iniciarLeitura() {
         });
     }
 
-    container.onclick = focarCamera;
+    container.onpointerup = evento => { void focarCameraNaPosicao(evento); };
     const codigoInput = document.getElementById('camera-codigo');
     if (codigoInput) codigoInput.value = 'Aguardando leitura...';
     const leituraStatus = document.getElementById('camera-leitura-status');
@@ -641,7 +746,10 @@ export async function pararCamera() {
     modosFocoDisponiveis = [];
     zoomNativoDisponivel = false;
     document.getElementById('camera-zoom-wrapper')?.classList.add('hidden');
-    document.getElementById(READER_ID)?.removeAttribute('onclick');
+    const reader = document.getElementById(READER_ID);
+    if (reader) reader.onpointerup = null;
+    window.clearTimeout(focoAlvoTimer);
+    focoContinuoAtivo = false;
     modal?.classList.add('hidden');
     if (modal) modal.style.display = 'none';
 }

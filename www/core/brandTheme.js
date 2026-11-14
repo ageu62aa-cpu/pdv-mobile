@@ -41,15 +41,12 @@ const shadeNames = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900];
 const opacitySteps = [5, 10, 15, 20, 25, 30, 40, 50, 60, 70, 75, 80, 90, 95];
 const themeCacheName = 'pdv-brand-theme-preference-v3';
 const themeCacheRequestUrl = '/__vancely_brand_theme_preference__';
-const appIconThemeStorageKey = 'vancely-app-icon-theme';
 let themeCacheUpdate = Promise.resolve();
 const themeArtwork = new URL('../assets/icones-card.jpeg', import.meta.url).href;
 const coffeeThemeArtwork = new URL('../assets/icone-carde.png', import.meta.url).href;
 const blackGoldMascotArtwork = new URL('../assets/mascote-black-gold.png', import.meta.url).href;
 const blueIceMascotArtwork = new URL('../assets/mascote-azul-branco-gelo.png', import.meta.url).href;
 const redMascotArtwork = new URL('../assets/mascote-vermelho.png', import.meta.url).href;
-const appIconArtwork = theme => new URL(`../assets/app-icons/${theme}-512.png`, import.meta.url).href;
-const appleTouchArtwork = theme => new URL(`../assets/app-icons/${theme}-192.png`, import.meta.url).href;
 const standaloneThemeArtworks = {
     coffee: coffeeThemeArtwork,
     'black-gold': blackGoldMascotArtwork,
@@ -225,50 +222,12 @@ function ensureThemeStyles() {
     document.head.append(style);
 }
 
-function getAppIconTheme(fallbackTheme) {
-    try {
-        const savedTheme = localStorage.getItem(appIconThemeStorageKey);
-        return palettes[savedTheme] ? savedTheme : fallbackTheme;
-    } catch (error) {
-        console.warn('PDV-VS: Não foi possível ler a preferência do ícone do aplicativo:', error);
-        return fallbackTheme;
-    }
-}
-
-function saveAppIconTheme(theme) {
-    try {
-        localStorage.setItem(appIconThemeStorageKey, theme);
-    } catch (error) {
-        console.warn('PDV-VS: Não foi possível salvar a preferência do ícone do aplicativo:', error);
-    }
-}
-
-function updateBrowserThemeIdentity(theme, palette, appIconTheme = theme) {
+function updateBrowserThemeIdentity(palette) {
     const metaThemeColor = document.querySelector('meta[name="theme-color"]');
     metaThemeColor?.setAttribute('content', palette.shades[7]);
-
-    const iconLink = document.querySelector('link[rel~="icon"]');
-    if (iconLink) {
-        iconLink.type = 'image/png';
-        iconLink.sizes = '512x512';
-        iconLink.href = appIconArtwork(theme);
-    }
-
-    const appleTouchIcon = document.querySelector('link[rel="apple-touch-icon"]');
-    if (appleTouchIcon) {
-        appleTouchIcon.sizes = '192x192';
-        appleTouchIcon.href = appleTouchArtwork(appIconTheme);
-    }
-
-    const manifestLink = document.querySelector('link[rel="manifest"]');
-    if (manifestLink) {
-        const manifestPath = appIconTheme === 'green' ? '/manifest.json' : `/manifest-${appIconTheme}.json`;
-        const manifestUrl = new URL(manifestPath, window.location.origin);
-        manifestLink.href = manifestUrl.href;
-    }
 }
 
-function applyTheme(themeColor, appIconTheme = getAppIconTheme(themeColor)) {
+function applyTheme(themeColor) {
     const selectedTheme = themeColor === 'gray' ? 'coffee' : themeColor;
     const selected = palettes[selectedTheme] ? selectedTheme : 'green';
     const palette = palettes[selected];
@@ -292,7 +251,7 @@ function applyTheme(themeColor, appIconTheme = getAppIconTheme(themeColor)) {
     root.style.setProperty('--theme-border', palette.shades[6]);
     root.style.setProperty('--theme-icon-ink', selected === 'yellow' ? '#1e293b' : '#ffffff');
     root.dataset.brandTheme = selected;
-    updateBrowserThemeIdentity(selected, palette, appIconTheme);
+    updateBrowserThemeIdentity(palette);
     document.querySelectorAll('[data-brand-mascot]').forEach(image => {
         image.src = mascotArtworks[selected];
     });
@@ -409,23 +368,15 @@ function createModal(client, empresaId, initialTheme) {
 
         const selected = option.dataset.themeColor;
         const previous = document.documentElement.dataset.brandTheme || 'green';
-        const previousAppIconTheme = getAppIconTheme(previous);
-        const updateAppIcon = selected === previousAppIconTheme || window.confirm(
-            `Deseja atualizar o ícone do aplicativo instalado para o mascote ${palettes[selected].label}? O navegador pode solicitar confirmação para aplicar a nova logo.`
-        );
-        const appIconTheme = updateAppIcon ? selected : previousAppIconTheme;
-        saveAppIconTheme(appIconTheme);
         const status = modal.querySelector('[data-theme-status]');
         modal.querySelectorAll('[data-theme-color]').forEach(button => {
             button.disabled = true;
             button.setAttribute('aria-pressed', String(button === option));
             button.querySelector('[data-theme-check]')?.classList.toggle('opacity-0', button !== option);
         });
-        applyTheme(selected, appIconTheme);
+        applyTheme(selected);
         persistThemeSelection(selected);
-        status.textContent = updateAppIcon
-            ? 'Salvando o tema e preparando a atualização do ícone do aplicativo...'
-            : 'Salvando o tema da empresa; o ícone atual do aplicativo será mantido...';
+        status.textContent = 'Salvando a preferência da empresa...';
         status.className = 'min-h-10 border-t border-gray-800 px-5 py-3 text-xs text-gray-300';
 
         try {
@@ -435,15 +386,12 @@ function createModal(client, empresaId, initialTheme) {
             });
             if (error) throw error;
             document.documentElement.dataset.brandTheme = selected;
-            status.textContent = updateAppIcon
-                ? `Tema ${palettes[selected].label} salvo. O ícone do app foi definido para esse mascote; o navegador pode aplicar a mudança ao reabrir o aplicativo.`
-                : `Tema ${palettes[selected].label} salvo. O ícone do app ${palettes[previousAppIconTheme].label} foi mantido.`;
+            status.textContent = `Tema ${palettes[selected].label} salvo para esta empresa.`;
             status.className = 'min-h-10 border-t border-gray-800 px-5 py-3 text-xs text-emerald-300';
         } catch (error) {
             console.error('PDV-VS: Não foi possível salvar a cor da marca:', error);
-            applyTheme(previous, previousAppIconTheme);
+            applyTheme(previous);
             persistThemeSelection(previous);
-            saveAppIconTheme(previousAppIconTheme);
             document.documentElement.dataset.brandTheme = previous;
             modal.querySelectorAll('[data-theme-color]').forEach(button => {
                 const isPrevious = button.dataset.themeColor === previous;

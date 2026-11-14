@@ -13,6 +13,8 @@ let scannerProdutoCapturado = false;
 let scannerProdutoSessao = 0;
 let scannerProdutoZoom = { min: 1, max: 1, step: 0.1, value: 1 };
 let scannerProdutoFocoModo = [];
+let scannerProdutoFocoTimer = null;
+let scannerProdutoPointerHandler = null;
 let limiteProdutosPlano = 1000;
 let quantidadeProdutosPlano = 0;
 let focoScannerProdutoInstalado = false;
@@ -65,7 +67,7 @@ function garantirModalCameraAdmin() {
                 <div id="readerAdminProduto" class="relative min-h-[260px] overflow-hidden rounded-xl border border-slate-700 bg-slate-950"></div>
                 <p id="cameraStatusAdminProduto" class="text-center text-xs text-slate-300" role="status">Solicitando permissão da câmera...</p>
                 <div class="flex items-center justify-between gap-2">
-                    <span class="text-[10px] text-slate-400">Ajuste o foco ou o zoom para facilitar a leitura.</span>
+                    <span class="text-[10px] text-slate-400">Toque sobre o código na imagem para direcionar o foco, ou ajuste o zoom.</span>
                     <button id="cameraFocusAdminProduto" type="button" onclick="window.ajustarFocoScannerProdutoAdmin()" class="min-h-11 shrink-0 touch-manipulation rounded-lg border border-slate-600 bg-slate-800 px-3 text-xs font-semibold text-slate-100 transition-colors active:scale-95 hover:border-emerald-500" aria-label="Ativar foco automático" aria-pressed="false">
                         <i class="fa-solid fa-crosshairs mr-1" aria-hidden="true"></i>Foco auto
                     </button>
@@ -482,6 +484,7 @@ window.ativarScannerModal = async function() {
         }
         if (scannerProdutoCapturado) return;
         configurarAjustesCameraProdutoAdmin(leitorCodigo);
+        configurarFocoPorToqueProdutoAdmin(leitorCodigo);
         status.textContent = 'Aponte a câmera para um código de barras.';
     } catch (error) {
         if (scannerProdutoAdmin) await encerrarLeitorProdutoAdmin(scannerProdutoAdmin);
@@ -512,9 +515,103 @@ async function encerrarLeitorProdutoAdmin(leitor) {
         if (!erroParada) erroParada = error;
     }
     if (scannerProdutoAdmin === leitor) scannerProdutoAdmin = null;
+    const areaLeitura = document.getElementById('readerAdminProduto');
+    if (areaLeitura && scannerProdutoPointerHandler) {
+        areaLeitura.removeEventListener('pointerup', scannerProdutoPointerHandler);
+    }
+    scannerProdutoPointerHandler = null;
+    window.clearTimeout(scannerProdutoFocoTimer);
+    areaLeitura?.querySelector('.camera-focus-target')?.remove();
     scannerProdutoFocoModo = [];
     document.getElementById('cameraZoomAdminProduto')?.classList.add('hidden');
     return erroParada;
+}
+
+function configurarFocoPorToqueProdutoAdmin(leitor) {
+    const areaLeitura = document.getElementById('readerAdminProduto');
+    if (!areaLeitura) return;
+    areaLeitura.style.touchAction = 'manipulation';
+    scannerProdutoPointerHandler = async event => {
+        if (!(event.target instanceof Element) || scannerProdutoAdmin !== leitor || !leitor.isScanning) return;
+        const video = event.target instanceof HTMLVideoElement
+            ? event.target
+            : areaLeitura.querySelector('video');
+        if (!video) return;
+        const videoBounds = video.getBoundingClientRect();
+        const areaBounds = areaLeitura.getBoundingClientRect();
+        if (!videoBounds.width || !videoBounds.height || !areaBounds.width || !areaBounds.height
+            || !video.videoWidth || !video.videoHeight) return;
+
+        const scale = Math.max(videoBounds.width / video.videoWidth, videoBounds.height / video.videoHeight);
+        const renderedWidth = video.videoWidth * scale;
+        const renderedHeight = video.videoHeight * scale;
+        const cropX = (renderedWidth - videoBounds.width) / 2;
+        const cropY = (renderedHeight - videoBounds.height) / 2;
+        const x = Math.min(1, Math.max(0, (event.clientX - videoBounds.left + cropX) / renderedWidth));
+        const y = Math.min(1, Math.max(0, (event.clientY - videoBounds.top + cropY) / renderedHeight));
+        let marcador = areaLeitura.querySelector('.camera-focus-target');
+        if (!marcador) {
+            marcador = document.createElement('span');
+            marcador.className = 'camera-focus-target';
+            marcador.setAttribute('aria-hidden', 'true');
+            Object.assign(marcador.style, {
+                position: 'absolute',
+                zIndex: '20',
+                width: '48px',
+                height: '48px',
+                border: '2px solid var(--theme-primary, #059669)',
+                borderRadius: '50%',
+                boxShadow: '0 0 0 2px rgb(255 255 255 / 75%), 0 0 14px var(--theme-primary, #059669)',
+                pointerEvents: 'none',
+                transform: 'translate(-50%, -50%)',
+                transition: 'opacity 850ms ease, transform 850ms ease',
+                opacity: '0'
+            });
+            areaLeitura.append(marcador);
+        }
+        marcador.style.left = `${((event.clientX - areaBounds.left) / areaBounds.width) * 100}%`;
+        marcador.style.top = `${((event.clientY - areaBounds.top) / areaBounds.height) * 100}%`;
+        marcador.style.opacity = '1';
+        marcador.style.transform = 'translate(-50%, -50%) scale(0.85)';
+        window.clearTimeout(scannerProdutoFocoTimer);
+        scannerProdutoFocoTimer = window.setTimeout(() => {
+            marcador.style.opacity = '0';
+            marcador.style.transform = 'translate(-50%, -50%) scale(1.2)';
+        }, 850);
+
+        try {
+            const capabilities = leitor.getRunningTrackCapabilities();
+            const supported = navigator.mediaDevices.getSupportedConstraints?.() || {};
+            const advanced = [];
+            if (supported.pointsOfInterest) {
+                advanced.push({ pointsOfInterest: [{ x, y }] });
+            }
+            if (capabilities.focusMode?.includes('single-shot')) {
+                advanced.push({ focusMode: 'single-shot' });
+            } else if (capabilities.focusMode?.includes('continuous')) {
+                advanced.push({ focusMode: 'continuous' });
+            }
+            if (advanced.length) await leitor.applyVideoConstraints({ advanced });
+            const status = document.getElementById('cameraStatusAdminProduto');
+            if (status) {
+                status.textContent = supported.pointsOfInterest
+                    ? 'Ajustando o foco no ponto selecionado. Mantenha o código estável.'
+                    : 'Ponto selecionado; a câmera ajustará o foco automaticamente.';
+            }
+            atualizarBotaoFocoProdutoAdmin(true, 'Foco direcionado para o ponto selecionado');
+            window.setTimeout(() => {
+                if (scannerProdutoAdmin === leitor && leitor.isScanning) {
+                    atualizarBotaoFocoProdutoAdmin(false, 'Ajustar foco da câmera');
+                }
+            }, 700);
+        } catch (error) {
+            console.info('PDV-VS: Foco no ponto tocado não é suportado por este dispositivo.', error);
+            atualizarBotaoFocoProdutoAdmin(false, 'A câmera controla o foco automaticamente');
+            const status = document.getElementById('cameraStatusAdminProduto');
+            if (status) status.textContent = 'A câmera controla o foco. Afaste ou aproxime o código devagar.';
+        }
+    };
+    areaLeitura.addEventListener('pointerup', scannerProdutoPointerHandler);
 }
 
 function atualizarBotaoFocoProdutoAdmin(ativo, texto = 'Foco auto') {
