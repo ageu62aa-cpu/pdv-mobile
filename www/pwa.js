@@ -1,6 +1,5 @@
 (() => {
     let installPrompt = null;
-    let installedInCurrentPage = false;
     const standaloneQuery = window.matchMedia('(display-mode: standalone)');
 
     function isStandalone() {
@@ -8,7 +7,7 @@
     }
 
     function isInstalled() {
-        return isStandalone() || installedInCurrentPage;
+        return isStandalone();
     }
 
     function showInstallInstructions() {
@@ -29,6 +28,7 @@
     }
 
     function updateButton(button) {
+        button.hidden = isStandalone();
         const adminAction = button.closest('#adminHeaderActions');
         const instalado = isInstalled();
         button.title = instalado ? 'Aplicativo PDV-VS instalado' : 'Instalar o aplicativo PDV-VS';
@@ -115,10 +115,15 @@
                 return;
             }
 
-            installPrompt.prompt();
-            const { outcome } = await installPrompt.userChoice;
-            installPrompt = null;
-            if (outcome === 'accepted') updateButton(button);
+            try {
+                installPrompt.prompt();
+                await installPrompt.userChoice;
+                installPrompt = null;
+            } catch (error) {
+                console.error('[PWA] Não foi possível abrir o diálogo de instalação:', error);
+                installPrompt = null;
+                showInstallInstructions();
+            }
         });
     }
 
@@ -128,7 +133,7 @@
         const serviceWorkerUrl = manifest
             ? new URL('sw.js', manifest.href)
             : new URL('/sw.js', window.location.origin);
-        navigator.serviceWorker.register(serviceWorkerUrl.href)
+        navigator.serviceWorker.register(serviceWorkerUrl.href, { updateViaCache: 'none' })
             .catch(error => console.error('[PWA] Falha ao registrar o service worker:', error));
     }
 
@@ -141,7 +146,11 @@
 
     window.addEventListener('appinstalled', () => {
         installPrompt = null;
-        installedInCurrentPage = true;
+        const button = document.getElementById('btnPWAAction');
+        if (button) updateButton(button);
+    });
+
+    standaloneQuery.addEventListener?.('change', () => {
         const button = document.getElementById('btnPWAAction');
         if (button) updateButton(button);
     });

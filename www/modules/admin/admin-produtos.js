@@ -66,7 +66,7 @@ function garantirModalCameraAdmin() {
                 <p id="cameraStatusAdminProduto" class="text-center text-xs text-slate-300" role="status">Solicitando permissão da câmera...</p>
                 <div class="flex items-center justify-between gap-2">
                     <span class="text-[10px] text-slate-400">Ajuste o foco ou o zoom para facilitar a leitura.</span>
-                    <button id="cameraFocusAdminProduto" type="button" onclick="window.ajustarFocoScannerProdutoAdmin()" class="min-h-10 shrink-0 rounded-lg border border-slate-600 bg-slate-800 px-3 text-xs font-semibold text-slate-100 hover:border-emerald-500" aria-label="Ativar foco automático">
+                    <button id="cameraFocusAdminProduto" type="button" onclick="window.ajustarFocoScannerProdutoAdmin()" class="min-h-11 shrink-0 touch-manipulation rounded-lg border border-slate-600 bg-slate-800 px-3 text-xs font-semibold text-slate-100 transition-colors active:scale-95 hover:border-emerald-500" aria-label="Ativar foco automático" aria-pressed="false">
                         <i class="fa-solid fa-crosshairs mr-1" aria-hidden="true"></i>Foco auto
                     </button>
                 </div>
@@ -517,11 +517,28 @@ async function encerrarLeitorProdutoAdmin(leitor) {
     return erroParada;
 }
 
+function atualizarBotaoFocoProdutoAdmin(ativo, texto = 'Foco auto') {
+    const botao = document.getElementById('cameraFocusAdminProduto');
+    if (!botao) return;
+    botao.disabled = false;
+    botao.setAttribute('aria-pressed', String(ativo));
+    botao.title = texto;
+    botao.setAttribute('aria-label', texto);
+    if (ativo) {
+        botao.style.backgroundColor = 'var(--theme-primary, #059669)';
+        botao.style.borderColor = 'var(--theme-primary, #059669)';
+        botao.style.color = '#fff';
+    } else {
+        botao.style.removeProperty('background-color');
+        botao.style.removeProperty('border-color');
+        botao.style.removeProperty('color');
+    }
+}
+
 function configurarAjustesCameraProdutoAdmin(leitor) {
     const wrapperZoom = document.getElementById('cameraZoomAdminProduto');
     const faixaZoom = document.getElementById('cameraZoomRangeAdminProduto');
     const valorZoom = document.getElementById('cameraZoomValueAdminProduto');
-    const botaoFoco = document.getElementById('cameraFocusAdminProduto');
     try {
         const capacidades = leitor.getRunningTrackCapabilities();
         const settings = leitor.getRunningTrackSettings();
@@ -533,7 +550,9 @@ function configurarAjustesCameraProdutoAdmin(leitor) {
             value: Number(settings.zoom) || Number(zoom?.min) || 1
         };
         scannerProdutoFocoModo = Array.isArray(capacidades.focusMode) ? capacidades.focusMode : [];
-        if (botaoFoco) botaoFoco.disabled = !scannerProdutoFocoModo.includes('continuous');
+        atualizarBotaoFocoProdutoAdmin(false, scannerProdutoFocoModo.length
+            ? 'Ajustar foco da câmera'
+            : 'A câmera controla o foco automaticamente');
         if (zoom && scannerProdutoZoom.max > scannerProdutoZoom.min && wrapperZoom && faixaZoom) {
             faixaZoom.min = String(scannerProdutoZoom.min);
             faixaZoom.max = String(scannerProdutoZoom.max);
@@ -547,7 +566,7 @@ function configurarAjustesCameraProdutoAdmin(leitor) {
         }
     } catch (error) {
         scannerProdutoFocoModo = [];
-        if (botaoFoco) botaoFoco.disabled = true;
+        atualizarBotaoFocoProdutoAdmin(false, 'A câmera controla o foco automaticamente');
         wrapperZoom?.classList.add('hidden');
         console.info('PDV-VS: Ajustes manuais de câmera indisponíveis neste dispositivo.', error);
     }
@@ -556,15 +575,36 @@ function configurarAjustesCameraProdutoAdmin(leitor) {
 window.ajustarFocoScannerProdutoAdmin = async function() {
     const leitor = scannerProdutoAdmin;
     if (!leitor?.isScanning) return;
-    if (!scannerProdutoFocoModo.includes('continuous')) {
-        alert('O foco automático não é controlável neste aparelho. Use o foco disponível na câmera.');
-        return;
-    }
     try {
-        await leitor.applyVideoConstraints({ advanced: [{ focusMode: 'continuous' }] });
+        const modosFoco = leitor.getRunningTrackCapabilities().focusMode || scannerProdutoFocoModo;
+        if (modosFoco.includes('continuous')) {
+            await leitor.applyVideoConstraints({ advanced: [{ focusMode: 'continuous' }] });
+            atualizarBotaoFocoProdutoAdmin(true, 'Foco automático contínuo ativo');
+            return;
+        }
+        if (modosFoco.includes('single-shot')) {
+            await leitor.applyVideoConstraints({ advanced: [{ focusMode: 'single-shot' }] });
+        }
+        atualizarBotaoFocoProdutoAdmin(true, 'Foco reajustado');
+        window.setTimeout(() => {
+            if (scannerProdutoAdmin?.isScanning) {
+                atualizarBotaoFocoProdutoAdmin(false, 'A câmera controla o foco automaticamente');
+            }
+        }, 600);
+        const status = document.getElementById('cameraStatusAdminProduto');
+        if (!modosFoco.includes('single-shot')) {
+            if (status) status.textContent = 'A câmera controla o foco. Afaste ou aproxime o código devagar.';
+            return;
+        }
+        if (status) status.textContent = 'Foco ajustado. Mantenha o código estável para leitura.';
     } catch (error) {
         console.error('PDV-VS: Não foi possível ativar o foco automático da câmera:', error);
-        alert(`Não foi possível ativar o foco automático: ${error.message || error}`);
+        atualizarBotaoFocoProdutoAdmin(true, 'A câmera controla o foco automaticamente');
+        window.setTimeout(() => {
+            if (scannerProdutoAdmin?.isScanning) atualizarBotaoFocoProdutoAdmin(false);
+        }, 600);
+        const status = document.getElementById('cameraStatusAdminProduto');
+        if (status) status.textContent = 'O foco é controlado pelo dispositivo. Afaste ou aproxime o código devagar.';
     }
 };
 

@@ -25,7 +25,39 @@
 
     let selected = readPersistedTheme();
     if (selected === 'gray') selected = 'coffee';
-    if (!Object.prototype.hasOwnProperty.call(palettes, selected)) return;
+    const hasPersistedTheme = Object.prototype.hasOwnProperty.call(palettes, selected);
+    const mascotFiles = {
+        green: 'mascote-verde.png',
+        yellow: 'mascote-amarelo.png',
+        pink: 'mascote-rosa.png',
+        orange: 'mascote-laranja.png',
+        purple: 'mascote-roxo.png',
+        coffee: 'icone-carde.png',
+        'black-gold': 'mascote-black-gold.png',
+        'blue-ice': 'mascote-azul-branco-gelo.png',
+        red: 'mascote-vermelho.png'
+    };
+
+    function updateMascots(node) {
+        if (!(node instanceof Element)) return;
+        const theme = hasPersistedTheme ? selected : 'green';
+        const mascotUrl = new URL(`/assets/${mascotFiles[theme]}`, window.location.origin).href;
+        const images = [];
+        if (node.matches('[data-brand-mascot]')) images.push(node);
+        images.push(...node.querySelectorAll('[data-brand-mascot]'));
+        images.forEach(image => {
+            if (image.src !== mascotUrl) image.src = mascotUrl;
+            image.loading = 'eager';
+            image.decoding = 'async';
+        });
+    }
+
+    updateMascots(document.documentElement);
+    new MutationObserver(records => {
+        records.forEach(record => record.addedNodes.forEach(updateMascots));
+    }).observe(document.documentElement, { childList: true, subtree: true });
+
+    if (!hasPersistedTheme) return;
 
     const root = document.documentElement;
     const shades = palettes[selected];

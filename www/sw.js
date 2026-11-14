@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pdv-vs-v77';
+const CACHE_NAME = 'pdv-vs-v79';
 const themePreferenceCacheName = 'pdv-brand-theme-preference-v3';
 const themePreferenceRequestUrl = '/__vancely_brand_theme_preference__';
 const urlsToCache = [
@@ -73,6 +73,21 @@ const urlsToCache = [
     '/core/state.js',
     '/services/produtos.js'
 ];
+const urlsToPrecache = urlsToCache.filter(url =>
+    url === '/'
+    || url === '/index.html'
+    || url.startsWith('/manifest')
+    || url === '/pwa.js'
+    || url === '/assets/pwa-192.png'
+    || url === '/assets/pwa-512.png'
+    || url === '/assets/icone-carde.png'
+    || url.startsWith('/assets/mascote-')
+    || url.startsWith('/assets/theme-icons/')
+    || url === '/modules/auth/auth.html'
+    || url === '/modules/auth/auth.js'
+    || url === '/core/brandThemeBootstrap.js'
+    || url === '/core/brandTheme.js'
+);
 
 // Instalação do Service Worker de forma robusta (não falha se um recurso oscilar)
 self.addEventListener('install', event => {
@@ -80,7 +95,7 @@ self.addEventListener('install', event => {
         caches.open(CACHE_NAME)
             .then(cache => {
                 return Promise.all(
-                    urlsToCache.map(url => {
+                    urlsToPrecache.map(url => {
                         return cache.add(url).catch(err => {
                             console.warn(`[Service Worker] Não foi possível colocar em cache: ${url}`, err);
                         });

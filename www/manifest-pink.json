@@ -10,14 +10,14 @@
     "description": "Frente de caixa e gestão de estoque PDV-VS.",
     "icons": [
         {
-            "src": "./assets/theme-icons/pink.png",
-            "sizes": "512x512",
+            "src": "./assets/mascote-rosa.png",
+            "sizes": "250x250",
             "type": "image/png",
             "purpose": "any"
         },
         {
-            "src": "./assets/theme-icons/pink.png",
-            "sizes": "512x512",
+            "src": "./assets/mascote-rosa.png",
+            "sizes": "250x250",
             "type": "image/png",
             "purpose": "maskable"
         }

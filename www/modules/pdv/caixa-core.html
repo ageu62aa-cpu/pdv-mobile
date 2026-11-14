@@ -66,6 +66,19 @@
             background-color: #0b0f19 !important;
         }
 
+        #camera-focus-button {
+            min-width: 44px;
+            min-height: 44px;
+            touch-action: manipulation;
+        }
+
+        #camera-focus-button.camera-focus-active {
+            background-color: var(--theme-primary, #059669);
+            border-color: var(--theme-primary, #059669);
+            color: #fff;
+            box-shadow: 0 0 0 2px color-mix(in srgb, var(--theme-primary, #059669) 28%, transparent);
+        }
+
         #reader__dashboard {
             display: none !important;
         }
@@ -256,7 +269,7 @@
     <header id="pdvHeader" class="bg-gray-800 border-b border-gray-700 px-6 py-3 flex justify-between items-center shadow-md">
         <div id="pdvHeaderIdentidade" class="flex items-center gap-3">
             <button type="button" data-brand-theme-trigger class="brand-logo-trigger w-10 h-10 cursor-pointer rounded-full overflow-hidden border-2 border-emerald-600 shadow-md flex items-center justify-center transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-emerald-500" title="Personalizar cor da marca" aria-label="Personalizar cor da marca">
-                <img data-brand-mascot src="../../assets/mascote-verde.png" alt="" class="brand-mascot-image h-10 w-10">
+                <img data-brand-mascot alt="" class="brand-mascot-image h-10 w-10">
             </button>
             <div>
                 <h1 class="font-bold text-sm text-white tracking-wide">Vancely Software - Frente de Caixa</h1>
@@ -288,7 +301,7 @@
             <span id="txtInfoOperador" class="text-xs text-gray-300 bg-gray-900 border border-gray-700 rounded-lg px-2 py-1" title="Operador do caixa">Operador · #01</span>
             
             <button id="btnPainelAdmin" style="display: none;" onclick="window.abrirPainelAdminIndependente()" class="w-9 h-9 rounded-full overflow-hidden border border-emerald-600 hover:border-emerald-400 shadow-md transition flex items-center justify-center ml-1 focus:outline-none" title="Painel administrativo" aria-label="Abrir painel administrativo">
-                <img data-brand-mascot src="../../assets/mascote-verde.png" alt="" class="brand-mascot-image h-9 w-9">
+                <img data-brand-mascot alt="" class="brand-mascot-image h-9 w-9">
             </button>
             <button id="btnSairCaixa" onclick="window.location.href='../auth/auth.html'" class="bg-red-900/50 hover:bg-red-900 text-red-200 w-9 h-9 rounded-lg text-xs font-bold transition border border-red-800 flex items-center justify-center" title="Sair" aria-label="Sair"><i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i></button>
         </div>
@@ -351,7 +364,7 @@
             <div id="cartPanel" class="flex-1 min-h-0 bg-gray-800 border border-gray-700 rounded-xl flex flex-col overflow-hidden shadow-sm relative">
                 
                 <div class="absolute inset-0 flex items-center justify-center pointer-events-none opacity-10 z-0" aria-hidden="true">
-                    <img data-brand-mascot src="../../assets/mascote-verde.png" alt="" class="brand-mascot-image h-48 w-48 rounded-full">
+                    <img data-brand-mascot alt="" class="brand-mascot-image h-48 w-48 rounded-full">
                 </div>
 
                 <div class="bg-gray-850 px-2 py-2 border-b border-gray-700 grid grid-cols-12 gap-1 text-[9px] font-bold text-gray-400 uppercase tracking-wider relative z-10 sm:px-4 sm:py-3 sm:gap-2 sm:text-xs">
@@ -684,7 +697,7 @@
               <div id="reader" class="overflow-hidden rounded-lg bg-slate-950" aria-label="Área de captura da câmera"></div>
               <div class="flex flex-wrap items-center justify-between gap-2 pt-2">
                 <p class="text-[10px] text-slate-400">Toque na imagem para ajustar o foco; use o botão para foco automático.</p>
-                <button id="camera-focus-button" type="button" onclick="window.ativarFocoAutomaticoScanner()" class="rounded-md border border-slate-600 bg-slate-900 px-2.5 py-1 text-[10px] font-semibold text-slate-200 hover:border-emerald-500 hover:text-emerald-300" aria-label="Ativar foco automático" title="Ativar foco automático">
+                <button id="camera-focus-button" type="button" onclick="window.ativarFocoAutomaticoScanner()" class="min-h-11 min-w-11 touch-manipulation rounded-md border border-slate-600 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-200 transition-colors active:scale-95 hover:border-emerald-500 hover:text-emerald-300" aria-label="Ajustar foco da câmera" aria-pressed="false" title="Ajustar foco da câmera">
                   <i class="fa-solid fa-crosshairs mr-1"></i>Ajustar foco
                 </button>
               </div>
