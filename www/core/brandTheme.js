@@ -37,6 +37,14 @@ const mascotArtworkPositions = {
     purple: '14% 85%',
     coffee: 'center'
 };
+const rpcThemeValues = {
+    green: 'verde',
+    yellow: 'amarelo',
+    pink: 'rosa',
+    orange: 'laranja',
+    purple: 'roxo',
+    coffee: 'marrom-cafe'
+};
 
 function ensureThemeStyles() {
     if (document.getElementById('tenant-brand-theme-styles')) return;
@@ -269,7 +277,7 @@ function createModal(client, empresaId, initialTheme) {
         try {
             const { error } = await client.rpc('vancely_update_theme_color', {
                 p_empresa_id: empresaId,
-                p_theme_color: selected
+                p_theme_color: rpcThemeValues[selected]
             });
             if (error) throw error;
             document.documentElement.dataset.brandTheme = selected;

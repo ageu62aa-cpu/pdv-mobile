@@ -19,6 +19,8 @@ Sistema de Ponto de Vêrgas / Vendas (PDV) moderno, responsivo e integrado em te
 
 Aplique todas as migrations de `supabase/migrations` em ordem lexicográfica pelo nome do arquivo. As migrations `20261018180000_fix_sale_rls_and_operator_membership.sql` e `20261018190000_add_saas_plans_terms_and_asaas.sql` dependem das migrations anteriores de cancelamentos, sessões, visibilidade administrativa e campos de cadastro da empresa. A migration `20261018193000_backfill_terms_acceptance_for_existing_tenants.sql` prepara a flag de aceite de contas legadas sem alterar sessões autenticadas ou exigir novo login.
 
+A migration `20261114120000_fix_theme_color_validation.sql` atualiza a RPC `vancely_update_theme_color` para normalizar e validar nomes de tema em português ou inglês antes de salvar a chave interna correspondente. Aplique-a para corrigir o erro “Cor de tema inválida” ao alterar a identidade visual.
+
 Aplique as migrations até `20261018193000_backfill_terms_acceptance_for_existing_tenants.sql` antes de publicar a versão atualizada da Edge Function `empresa-signup`, que grava a flag de aceite explícita para novos cadastros.
 
 A migration `20261019010000_add_tenant_brand_theme.sql` adiciona `empresas.theme_color` e a RPC protegida que valida o vínculo do usuário antes de atualizar a cor da empresa. Aplique-a para habilitar a persistência da personalização de marca.
