@@ -4,12 +4,13 @@ const formatarMoeda = valor => Number(valor).toLocaleString('pt-BR', {
     style: 'currency',
     currency: 'BRL'
 });
-const ordemPlanos = ['gratis', 'iniciante', 'profissional', 'ouro'];
+const ordemPlanos = ['gratis', 'iniciante', 'profissional', 'ouro', 'diamante'];
 const catalogoPlanos = [
-    { id: 'gratis', nome: 'Grátis', preco_mensal: 0, limite_operadores: 0, limite_dispositivos: 1, limite_produtos: 50, dias_historico: 7, icone: 'fa-gift', borda: 'border-gray-700' },
-    { id: 'iniciante', nome: 'Bronze', preco_mensal: 29.99, limite_operadores: 2, limite_dispositivos: 2, limite_produtos: 500, dias_historico: 30, icone: 'fa-medal', borda: 'border-amber-700' },
-    { id: 'profissional', nome: 'Prata', preco_mensal: 49.99, limite_operadores: 3, limite_dispositivos: 4, limite_produtos: 1000, dias_historico: 365, icone: 'fa-medal', borda: 'border-slate-500' },
-    { id: 'ouro', nome: 'Ouro', preco_mensal: 69, limite_operadores: 5, limite_dispositivos: 6, limite_produtos: 5000, dias_historico: 1095, icone: 'fa-medal', borda: 'border-yellow-700' }
+    { id: 'gratis', nome: 'GRATIS', preco_mensal: 0, limite_operadores: 0, limite_dispositivos: 1, limite_produtos: 50, dias_historico: 7, icone: 'fa-gift', borda: 'border-gray-700' },
+    { id: 'iniciante', nome: 'BRONZE', preco_mensal: 29.99, limite_operadores: 2, limite_dispositivos: 2, limite_produtos: 500, dias_historico: 30, icone: 'fa-medal', borda: 'border-amber-700' },
+    { id: 'profissional', nome: 'PRATA', preco_mensal: 49.99, limite_operadores: 3, limite_dispositivos: 4, limite_produtos: 1000, dias_historico: 365, icone: 'fa-medal', borda: 'border-slate-500' },
+    { id: 'ouro', nome: 'OURO', preco_mensal: 69, limite_operadores: 5, limite_dispositivos: 6, limite_produtos: 5000, dias_historico: 1095, icone: 'fa-medal', borda: 'border-yellow-700' },
+    { id: 'diamante', nome: 'DIAMANTE', preco_mensal: 99.99, limite_operadores: 10, limite_dispositivos: 12, limite_produtos: 10000, dias_historico: null, icone: 'fa-gem', borda: 'border-cyan-500' }
 ];
 
 export async function initAdminPlanos(container) {
@@ -109,7 +110,7 @@ export async function initAdminPlanos(container) {
 
     const [{ data: plans, error: plansError }, { data: entitlement, error: entitlementError }, paymentStatus, companyProfileResult] =
         await Promise.all([
-            supabase.from('planos').select('*').order('preco_mensal'),
+            supabase.from('planos').select('*').eq('ativo', true).order('preco_mensal'),
             supabase.rpc('vancely_get_tenant_entitlements', { p_empresa_id: empresaId }).maybeSingle(),
             supabase.functions.invoke('asaas', { body: { action: 'status' } }),
             supabase.from('empresas')
@@ -177,7 +178,7 @@ export async function initAdminPlanos(container) {
         const limites = [
             ['fa-users', 'Operadores de caixa', plan.id === 'gratis' ? '1 admin (sem operadores)' : `1 admin + ${plan.limite_operadores} operadores`],
             ['fa-box', 'Produtos', Number(plan.limite_produtos).toLocaleString('pt-BR')],
-            ['fa-clock', 'Histórico de vendas e caixa', plan.dias_historico >= 1095 ? 'Últimos 3 anos' : `Últimos ${plan.dias_historico} dias`],
+            ['fa-clock', 'Histórico de vendas e caixa', plan.dias_historico == null ? 'Completo' : plan.dias_historico >= 1095 ? 'Últimos 3 anos' : `Últimos ${plan.dias_historico} dias`],
             ['fa-mobile-screen-button', 'PDV Mobile (PWA) + Pix Estático', 'Sim'],
             ['fa-camera', 'Leitor de Câmera / USB', 'Sim'],
             ['fa-palette', 'Sangria, Suprimento e Temas', 'Cortesia']
