@@ -24,11 +24,12 @@
     }
 
     function updateButton(button) {
-        button.hidden = isStandalone() && !updateAvailable;
+        const instalado = isStandalone();
+        button.hidden = false;
         const adminAction = button.closest('#adminHeaderActions');
         const updatingLabel = updatingApp ? 'Atualizando app...' : 'Atualizar app';
-        button.title = updateAvailable
-            ? updatingApp ? 'Atualizando o aplicativo PDV-VS' : 'Nova versão disponível. Atualizar aplicativo'
+        button.title = updateAvailable || instalado
+            ? updatingApp ? 'Atualizando o aplicativo PDV-VS' : 'Verificar e atualizar o aplicativo PDV-VS'
             : 'Instalar o aplicativo PDV-VS';
         button.setAttribute('aria-label', button.title);
         if (adminAction) {
@@ -37,16 +38,16 @@
             button.style.removeProperty('padding');
             button.style.removeProperty('max-width');
             button.style.removeProperty('max-height');
-            button.className = updateAvailable
+            button.className = updateAvailable || instalado
                 ? 'flex h-10 items-center justify-center gap-2 rounded-lg border border-amber-700 bg-amber-950/50 px-3 text-amber-200 shadow-sm transition hover:border-amber-500 hover:bg-amber-900/60'
                 : 'flex h-10 items-center justify-center gap-2 rounded-lg border border-emerald-700 bg-emerald-950/50 px-3 text-emerald-200 shadow-sm transition hover:border-emerald-500 hover:bg-emerald-900/60';
-            button.innerHTML = updateAvailable
+            button.innerHTML = updateAvailable || instalado
                 ? `<svg aria-hidden="true" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7v5h-5"/><path d="M4.9 9a7.5 7.5 0 0 1 12.4-2L20 12M4 17v-5h5"/><path d="M19.1 15a7.5 7.5 0 0 1-12.4 2L4 12"/></svg><span class="action-label text-xs font-semibold">${updatingLabel}</span>`
                 : '<svg aria-hidden="true" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v11m-4-4 4 4 4-4"/><path d="M5 17v3h14v-3"/></svg><span class="action-label text-xs font-semibold">Instalar app</span>';
             return;
         }
 
-        if (updateAvailable) {
+        if (updateAvailable || instalado) {
             button.className = 'rounded-lg border border-amber-500 bg-amber-600 text-white shadow transition hover:bg-amber-500';
             button.innerHTML = '<svg aria-hidden="true" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7v5h-5"/><path d="M4.9 9a7.5 7.5 0 0 1 12.4-2L20 12M4 17v-5h5"/><path d="M19.1 15a7.5 7.5 0 0 1-12.4 2L4 12"/></svg>';
             return;
@@ -92,6 +93,10 @@
         if (!waitingServiceWorker || updatingApp) return;
         if (!window.confirm('Uma nova versão do aplicativo está disponível. Atualizar e recarregar o PDV agora?')) return;
 
+        activateWaitingServiceWorker(button);
+    }
+
+    function activateWaitingServiceWorker(button) {
         updatingApp = true;
         reloadAfterUpdate = true;
         button.disabled = true;
@@ -112,6 +117,61 @@
             updateButton(button);
             window.alert('Não foi possível aplicar a atualização agora. Tente novamente.');
         }, 15000);
+    }
+
+    function waitForInstall(worker) {
+        if (worker.state === 'installed' || worker.state === 'activated' || worker.state === 'redundant') {
+            return Promise.resolve();
+        }
+
+        return new Promise(resolve => {
+            const timeout = window.setTimeout(() => {
+                worker.removeEventListener('statechange', onStateChange);
+                resolve();
+            }, 20000);
+            const onStateChange = () => {
+                if (worker.state !== 'installed' && worker.state !== 'activated' && worker.state !== 'redundant') return;
+                window.clearTimeout(timeout);
+                worker.removeEventListener('statechange', onStateChange);
+                resolve();
+            };
+            worker.addEventListener('statechange', onStateChange);
+        });
+    }
+
+    async function refreshInstalledApp(button) {
+        if (!serviceWorkerRegistration) {
+            window.alert('O serviço de atualização ainda está iniciando. Feche e abra o aplicativo novamente.');
+            return;
+        }
+        if (!window.confirm('Verificar atualizações e recarregar o aplicativo agora?')) return;
+
+        updatingApp = true;
+        button.disabled = true;
+        updateButton(button);
+        try {
+            await serviceWorkerRegistration.update();
+            let worker = serviceWorkerRegistration.waiting;
+            if (!worker && serviceWorkerRegistration.installing) {
+                await waitForInstall(serviceWorkerRegistration.installing);
+                worker = serviceWorkerRegistration.waiting;
+            }
+
+            if (worker) {
+                waitingServiceWorker = worker;
+                updateAvailable = true;
+                activateWaitingServiceWorker(button);
+                return;
+            }
+
+            window.location.reload();
+        } catch (error) {
+            updatingApp = false;
+            button.disabled = false;
+            console.error('[PWA] Não foi possível atualizar o aplicativo:', error);
+            updateButton(button);
+            window.alert('Não foi possível verificar atualizações. Confira sua conexão e tente novamente.');
+        }
     }
 
     function createInstallButton() {
@@ -169,6 +229,10 @@
         button.addEventListener('click', async () => {
             if (updateAvailable) {
                 applyUpdate(button);
+                return;
+            }
+            if (isStandalone()) {
+                await refreshInstalledApp(button);
                 return;
             }
             if (!installPrompt) {
