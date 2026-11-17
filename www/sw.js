@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pdv-vs-v85';
+const CACHE_NAME = 'pdv-vs-v86';
 const themePreferenceCacheName = 'pdv-brand-theme-preference-v3';
 const themePreferenceRequestUrl = '/__vancely_brand_theme_preference__';
 const urlsToCache = [
@@ -102,8 +102,14 @@ self.addEventListener('install', event => {
                     })
                 );
             })
-            .then(() => self.skipWaiting())
     );
+});
+
+// Updates wait for the user to confirm through the app's update button.
+self.addEventListener('message', event => {
+    if (event.data?.type === 'SKIP_WAITING') {
+        event.waitUntil(self.skipWaiting());
+    }
 });
 
 // Ativação e limpeza de caches antigos

@@ -15,6 +15,8 @@ Sistema de Ponto de Vêrgas / Vendas (PDV) moderno, responsivo e integrado em te
 - **Identidade visual por empresa:** Administradores e operadores podem abrir o seletor pelo logo circular no cabeçalho, pré-visualizar nove temas e salvar a preferência do tenant; Preto e Ouro mantém a interface escura com dourado nos destaques, Vermelho usa acentos bordô em superfícies claras, e os três temas novos usam mascotes quadrados próprios no cabeçalho e na marca d'água do carrinho, separados da arte integral dos cards.
 - **Links legais no rodapé:** Frente de Caixa e Painel Administrativo oferecem links separados para Termos de Uso e Política de Privacidade.
 
+O PWA verifica atualizações ao abrir/retomar o app e a cada cinco minutos. Quando uma versão nova do service worker estiver pronta, o botão de instalação passa a oferecer **Atualizar app**; ao confirmar, o app ativa a nova versão e recarrega. Ao publicar uma versão com alterações de código, incremente também `CACHE_NAME` em `www/sw.js` para invalidar o cache e disponibilizar a atualização.
+
 ## Banco de dados
 
 Aplique todas as migrations de `supabase/migrations` em ordem lexicográfica pelo nome do arquivo. As migrations `20261018180000_fix_sale_rls_and_operator_membership.sql` e `20261018190000_add_saas_plans_terms_and_asaas.sql` dependem das migrations anteriores de cancelamentos, sessões, visibilidade administrativa e campos de cadastro da empresa. A migration `20261018193000_backfill_terms_acceptance_for_existing_tenants.sql` prepara a flag de aceite de contas legadas sem alterar sessões autenticadas ou exigir novo login.
